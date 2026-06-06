@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   brief.decision = { type, annotations, rejectReason, imageIndex, decidedAt: new Date().toISOString() }
 
   await put(`briefings/${id}.json`, JSON.stringify(brief, null, 2), {
-    access: 'private',
+    access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
   })

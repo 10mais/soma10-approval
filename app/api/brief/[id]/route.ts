@@ -6,12 +6,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const { blobs } = await list({ prefix: `briefings/${params.id}.json` })
     if (!blobs.length) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-    // Para blob privado, buscar via token interno
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    const res = await fetch(blobs[0].url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-
+    const res = await fetch(blobs[0].url)
     if (!res.ok) throw new Error(`Blob fetch failed: ${res.status}`)
     const data = await res.json()
     return NextResponse.json(data)
