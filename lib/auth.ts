@@ -1,0 +1,39 @@
+import { NextAuthOptions } from 'next-auth'
+import CredentialsProvider from 'next-auth/providers/credentials'
+import { redis, Usuario } from './redis'
+import bcrypt from 'bcryptjs'
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Senha', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
+
+        const usuario = await redis.get<Usuario>(`usuario:${credentials.email}`)
+        if (!usuario) return null
+
+        const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
+        if (!senhaCorreta) return null
+
+        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role } as any
+      },
+    }),
+  ],
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) token.role = (user as any).role
+      return token
+    },
+    session({ session, token }) {
+      if (session.user) (session.user as any).role = token.role
+      return session
+    },
+  },
+  pages: { signIn: '/login' },
+  secret: process.env.NEXTAUTH_SECRET || 'soma10-secret-2026',
+}

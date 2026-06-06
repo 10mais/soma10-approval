@@ -1,9 +1,12 @@
-export const metadata = { title: 'Aprovação de Criativos — Grupo 10+' }
+import { Providers } from './providers'
+
+export const metadata = { title: 'Soma10Approval — Grupo 10+' }
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', background: '#f5f5f5' }}>
-        {children}
+      <body style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
