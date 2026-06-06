@@ -5,6 +5,9 @@ import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
 
 export async function POST(req: NextRequest) {
+  // Rota desativada após criação do admin inicial
+  return NextResponse.json({ error: 'rota desativada' }, { status: 410 })
+
   const { chave } = await req.json()
   if (chave !== 'soma10-setup-2026') {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
