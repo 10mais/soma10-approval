@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Post = { id: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[] }
-type Cliente = { id: string; nome: string; instagram: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string }
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: 'Rascunho',
@@ -32,6 +32,10 @@ export default function Dashboard() {
   const [aba, setAba] = useState<'posts' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
   const [novoPost, setNovoPost] = useState({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
   const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '' })
+  const [conectando, setConectando] = useState<string | null>(null) // clienteId sendo conectado
+  const [pageIdInput, setPageIdInput] = useState('')
+  const [conectandoLoading, setConectandoLoading] = useState(false)
+  const [conectandoMsg, setConectandoMsg] = useState<{ ok: boolean; msg: string } | null>(null)
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [linkGerado, setLinkGerado] = useState('')
@@ -65,6 +69,34 @@ export default function Dashboard() {
     setCodigoGerado(res.post.codigo)
     fetch('/api/posts').then(r => r.json()).then(setPosts)
     setNovoPost({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
+  }
+
+  async function conectarInstagram(clienteId: string) {
+    if (!pageIdInput.trim()) return
+    setConectandoLoading(true)
+    setConectandoMsg(null)
+    const res = await fetch('/api/clientes/conectar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clienteId, facebookPageId: pageIdInput.trim() }),
+    }).then(r => r.json())
+    setConectandoLoading(false)
+    if (res.ok) {
+      setConectandoMsg({ ok: true, msg: `Instagram @${res.instagram} conectado com sucesso!` })
+      fetch('/api/clientes').then(r => r.json()).then(setClientes)
+      setTimeout(() => { setConectando(null); setPageIdInput(''); setConectandoMsg(null) }, 2000)
+    } else {
+      setConectandoMsg({ ok: false, msg: res.error + (res.dica ? ' — ' + res.dica : '') })
+    }
+  }
+
+  async function desconectarInstagram(clienteId: string) {
+    await fetch('/api/clientes/conectar', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clienteId }),
+    })
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
   async function criarCliente() {
@@ -227,14 +259,74 @@ export default function Dashboard() {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {clientes.map(c => (
-                <div key={c.id} style={{ background: '#fff', borderRadius: 14, padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{c.nome}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram}</p>
+                <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{c.nome}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ background: '#f5f5f5', borderRadius: 8, padding: '3px 10px', fontSize: 12, color: '#666' }}>
+                        {posts.filter(p => p.clienteNome === c.nome).length} posts
+                      </span>
+                      {c.metaConectado ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                            Instagram conectado
+                          </span>
+                          {role === 'admin' && (
+                            <button onClick={() => desconectarInstagram(c.id)}
+                              style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '3px 10px', fontSize: 12, color: '#aaa', cursor: 'pointer' }}>
+                              Desconectar
+                            </button>
+                          )}
+                        </div>
+                      ) : role === 'admin' ? (
+                        <button onClick={() => { setConectando(c.id); setPageIdInput(''); setConectandoMsg(null) }}
+                          style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          Conectar Instagram
+                        </button>
+                      ) : (
+                        <span style={{ background: '#fff3cd', color: '#b45309', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                          Não conectado
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span style={{ background: '#f5f5f5', borderRadius: 12, padding: '4px 12px', fontSize: 12, color: '#666' }}>
-                    {posts.filter(p => p.clienteNome === c.nome).length} posts
-                  </span>
+
+                  {/* Painel de conexão expandido */}
+                  {conectando === c.id && (
+                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa' }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 13, color: '#111' }}>Conectar Instagram do cliente</p>
+                      <p style={{ margin: '0 0 12px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>
+                        A conta da 10+ precisa ser <strong>administradora da Página do Facebook</strong> do cliente. Informe o ID da Página abaixo.
+                      </p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          value={pageIdInput}
+                          onChange={e => setPageIdInput(e.target.value)}
+                          placeholder="ID da Página do Facebook (ex: 123456789)"
+                          style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                        />
+                        <button onClick={() => conectarInstagram(c.id)} disabled={conectandoLoading || !pageIdInput.trim()}
+                          style={{ padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: conectandoLoading ? 0.6 : 1 }}>
+                          {conectandoLoading ? 'Verificando...' : 'Conectar'}
+                        </button>
+                        <button onClick={() => setConectando(null)}
+                          style={{ padding: '10px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#666' }}>
+                          Cancelar
+                        </button>
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#aaa' }}>
+                        Para encontrar o ID: acesse a Página no Facebook → Sobre → ID da Página
+                      </p>
+                      {conectandoMsg && (
+                        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 8, background: conectandoMsg.ok ? '#dcfce7' : '#fee2e2', color: conectandoMsg.ok ? '#16a34a' : '#dc2626', fontSize: 13 }}>
+                          {conectandoMsg.msg}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

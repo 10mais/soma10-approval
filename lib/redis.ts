@@ -23,6 +23,12 @@ export type Cliente = {
   instagram: string
   logo?: string
   criadoEm: string
+  // Integração Meta
+  facebookPageId?: string
+  facebookPageToken?: string
+  instagramBusinessId?: string
+  instagramUsername?: string
+  metaConectado?: boolean
 }
 
 export type PostStatus = 'rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado'

@@ -70,17 +70,28 @@ export async function POST(req: NextRequest) {
 
   // Publicar no Instagram se aprovado
   if (type === 'approved') {
-    try { await publishToInstagram(post as Post) } catch (e) { console.error('Erro Instagram:', e) }
+    try {
+      // Buscar dados de integração do cliente
+      const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
+      await publishToInstagram(post as Post, cliente)
+    } catch (e) { console.error('Erro Instagram:', e) }
   }
 
   return NextResponse.json({ ok: true })
 }
 
-async function publishToInstagram(post: Post) {
-  const TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN
-  const IG_ID = process.env.INSTAGRAM_BUSINESS_ID
+async function publishToInstagram(post: Post, cliente?: any) {
   const VERSION = process.env.META_API_VERSION || 'v19.0'
   const BASE = `https://graph.facebook.com/${VERSION}`
+
+  // Usar token e ID do cliente se disponível, senão usar credenciais da 10+
+  const TOKEN = (cliente?.metaConectado && cliente?.facebookPageToken)
+    ? cliente.facebookPageToken
+    : process.env.INSTAGRAM_ACCESS_TOKEN
+  const IG_ID = (cliente?.metaConectado && cliente?.instagramBusinessId)
+    ? cliente.instagramBusinessId
+    : process.env.INSTAGRAM_BUSINESS_ID
+
   if (!TOKEN || !IG_ID) return
 
   const imagens = post.imagens || []
