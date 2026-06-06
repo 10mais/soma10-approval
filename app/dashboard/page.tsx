@@ -1,10 +1,11 @@
 'use client'
 import { useSession, signOut } from 'next-auth/react'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type Post = { id: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[] }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string }
+type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: 'Rascunho',
@@ -24,22 +25,37 @@ const STATUS_COLOR: Record<string, string> = {
   publicado: '#dbeafe',
 }
 
-export default function Dashboard() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <Dashboard />
+    </Suspense>
+  )
+}
+
+function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [aba, setAba] = useState<'posts' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
   const [novoPost, setNovoPost] = useState({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
   const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '' })
-  const [conectando, setConectando] = useState<string | null>(null) // clienteId sendo conectado
-  const [pageIdInput, setPageIdInput] = useState('')
-  const [conectandoLoading, setConectandoLoading] = useState(false)
-  const [conectandoMsg, setConectandoMsg] = useState<{ ok: boolean; msg: string } | null>(null)
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [linkGerado, setLinkGerado] = useState('')
   const [codigoGerado, setCodigoGerado] = useState('')
+  // Conexão manual por ID
+  const [conectando, setConectando] = useState<string | null>(null)
+  const [pageIdInput, setPageIdInput] = useState('')
+  const [conectandoLoading, setConectandoLoading] = useState(false)
+  const [conectandoMsg, setConectandoMsg] = useState<{ ok: boolean; msg: string } | null>(null)
+  // OAuth Meta
+  const [metaPages, setMetaPages] = useState<MetaPage[]>([])
+  const [vinculos, setVinculos] = useState<Record<string, string>>({}) // pageId -> clienteId
+  const [vinculando, setVinculando] = useState(false)
+  const [metaErro, setMetaErro] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -55,6 +71,31 @@ export default function Dashboard() {
     }
   }, [status])
 
+  // Ler páginas do cookie após OAuth
+  useEffect(() => {
+    if (searchParams.get('meta_pages')) {
+      setAba('clientes')
+      const cookie = document.cookie.split('; ').find(r => r.startsWith('meta_pages='))
+      if (cookie) {
+        try {
+          const pages = JSON.parse(decodeURIComponent(cookie.split('=').slice(1).join('=')))
+          setMetaPages(pages)
+          document.cookie = 'meta_pages=; max-age=0; path=/'
+        } catch {}
+      }
+    }
+    if (searchParams.get('meta_error')) {
+      setAba('clientes')
+      const erros: Record<string, string> = {
+        acesso_negado: 'Acesso negado pelo Facebook.',
+        token_falhou: 'Não foi possível obter o token de acesso.',
+        sem_paginas: 'Nenhuma Página do Facebook encontrada. Verifique se você é administrador de alguma página.',
+        erro_interno: 'Erro interno. Tente novamente.',
+      }
+      setMetaErro(erros[searchParams.get('meta_error')!] || 'Erro desconhecido.')
+    }
+  }, [searchParams])
+
   const role = (session?.user as any)?.role
 
   async function criarPost() {
@@ -69,6 +110,30 @@ export default function Dashboard() {
     setCodigoGerado(res.post.codigo)
     fetch('/api/posts').then(r => r.json()).then(setPosts)
     setNovoPost({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
+  }
+
+  async function salvarVinculos() {
+    setVinculando(true)
+    for (const [pageId, clienteId] of Object.entries(vinculos)) {
+      if (!clienteId) continue
+      const page = metaPages.find(p => p.pageId === pageId)
+      if (!page || !page.instagram) continue
+      await fetch('/api/clientes/conectar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId,
+          facebookPageId: pageId,
+          facebookPageToken: page.pageToken,
+          instagramBusinessId: page.instagram.id,
+          instagramUsername: page.instagram.username,
+        }),
+      })
+    }
+    setVinculando(false)
+    setMetaPages([])
+    setVinculos({})
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
   async function conectarInstagram(clienteId: string) {
@@ -244,16 +309,80 @@ export default function Dashboard() {
         {/* CLIENTES */}
         {aba === 'clientes' && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Clientes</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Clientes</h2>
+              {role === 'admin' && (
+                <a href="/api/meta/oauth" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#1877f2', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  Conectar via Facebook
+                </a>
+              )}
+            </div>
+
+            {/* Erro OAuth */}
+            {metaErro && (
+              <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#dc2626' }}>
+                {metaErro}
+                <button onClick={() => setMetaErro('')} style={{ marginLeft: 12, background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              </div>
+            )}
+
+            {/* Painel de páginas encontradas via OAuth */}
+            {metaPages.length > 0 && (
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e0e0e0', marginBottom: 20, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+                  <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
+                </div>
+                <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {metaPages.map(page => (
+                    <div key={page.pageId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
+                      {page.instagram?.profilePic && (
+                        <img src={page.instagram.profilePic} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>{page.pageName}</p>
+                        {page.instagram ? (
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>@{page.instagram.username}</p>
+                        ) : (
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#f59e0b' }}>Sem Instagram vinculado</p>
+                        )}
+                      </div>
+                      {page.instagram && (
+                        <select
+                          value={vinculos[page.pageId] || ''}
+                          onChange={e => setVinculos(v => ({ ...v, [page.pageId]: e.target.value }))}
+                          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit', minWidth: 180 }}
+                        >
+                          <option value="">Selecionar cliente...</option>
+                          {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setMetaPages([]); setVinculos({}) }}
+                    style={{ padding: '9px 18px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={salvarVinculos} disabled={vinculando || Object.values(vinculos).every(v => !v)}
+                    style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
+                    {vinculando ? 'Salvando...' : 'Salvar vínculos'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {role === 'admin' && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Adicionar cliente</h3>
-                <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ background: '#fff', borderRadius: 14, padding: 20, marginBottom: 20, border: '1px solid #e8e8e8' }}>
+                <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#555' }}>Adicionar cliente manualmente</h3>
+                <div style={{ display: 'flex', gap: 10 }}>
                   <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do cliente"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                  <button onClick={criarCliente} style={{ padding: '10px 20px', background: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  <button onClick={criarCliente} style={{ padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
                 </div>
               </div>
             )}
