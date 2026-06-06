@@ -1,0 +1,6 @@
+.env.local
+.env
+node_modules
+.next
+data/pendentes/*.json
+clientes/*/. env
