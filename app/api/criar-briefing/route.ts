@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { id } = brief
 
   await put(`briefings/${id}.json`, JSON.stringify(brief, null, 2), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
   })
