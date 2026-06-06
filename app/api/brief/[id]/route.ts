@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { list, getDownloadUrl } from '@vercel/blob'
+import { list } from '@vercel/blob'
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { blobs } = await list({ prefix: `briefings/${params.id}.json` })
     if (!blobs.length) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-    const downloadUrl = await getDownloadUrl(blobs[0].url)
-    const res = await fetch(downloadUrl)
+    // Para blob privado, buscar via token interno
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    const res = await fetch(blobs[0].url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+
+    if (!res.ok) throw new Error(`Blob fetch failed: ${res.status}`)
     const data = await res.json()
     return NextResponse.json(data)
   } catch (e) {
