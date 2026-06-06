@@ -7,12 +7,12 @@ type Post = { id: string; clienteNome: string; status: string; dataAgendada?: st
 type Cliente = { id: string; nome: string; instagram: string }
 
 const STATUS_LABEL: Record<string, string> = {
-  rascunho: '📝 Rascunho',
-  aguardando_aprovacao: '⏳ Aguardando',
-  aprovado: '✅ Aprovado',
-  corrigir: '✏️ Corrigir',
-  reprovado: '❌ Reprovado',
-  publicado: '📱 Publicado',
+  rascunho: 'Rascunho',
+  aguardando_aprovacao: 'Aguardando',
+  aprovado: 'Aprovado',
+  corrigir: 'Corrigir',
+  reprovado: 'Reprovado',
+  publicado: 'Publicado',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -115,7 +115,7 @@ export default function Dashboard() {
             borderBottom: aba === a ? '2px solid #ffc00f' : '2px solid transparent',
             fontSize: 14, transition: 'all 0.15s',
           }}>
-            {a === 'posts' ? '📋 Posts' : a === 'novo-post' ? '➕ Novo Post' : a === 'clientes' ? '👥 Clientes' : '👤 Usuários'}
+            {a === 'posts' ? 'Posts' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
           </button>
         ))}
       </div>
@@ -128,8 +128,7 @@ export default function Dashboard() {
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Todos os Posts</h2>
             {posts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
-                <p style={{ fontSize: 40, margin: '0 0 12px' }}>📭</p>
-                <p>Nenhum post criado ainda. Clique em "Novo Post" para começar!</p>
+                <p>Nenhum post criado ainda. Clique em "Novo Post" para começar.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -142,7 +141,7 @@ export default function Dashboard() {
                         <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>{STATUS_LABEL[post.status] || post.status}</span>
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
-                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>📅 {new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
+                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
                     </div>
                   </div>
                 ))}
@@ -158,7 +157,6 @@ export default function Dashboard() {
 
             {linkGerado ? (
               <div style={{ background: '#f0fdf4', border: '2px solid #22c55e', borderRadius: 14, padding: 24, textAlign: 'center' }}>
-                <p style={{ fontSize: 32, margin: '0 0 8px' }}>✅</p>
                 <h3 style={{ margin: '0 0 16px', color: '#111' }}>Post criado com sucesso!</h3>
                 <div style={{ background: '#fff', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid #e0e0e0' }}>
                   <p style={{ margin: '0 0 8px', fontSize: 13, color: '#888' }}>Link de aprovação:</p>
