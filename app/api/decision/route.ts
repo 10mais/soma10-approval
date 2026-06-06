@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   const { id, type, annotations, rejectReason, imageIndex } = body
 
   // Buscar briefing no Blob
-  const { blobs } = await list({ prefix: `briefings/${id}.json` })
+  const token = 'vercel_blob_rw_s2mVFZe3Gz5dvopb_pGDnFIY8NJW2EEjSnBkU4nSlcLzsl8'
+  const { blobs } = await list({ prefix: `briefings/${id}.json`, token })
   if (!blobs.length) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
   const res = await fetch(blobs[0].url)
@@ -20,9 +21,10 @@ export async function POST(req: NextRequest) {
   brief.decision = { type, annotations, rejectReason, imageIndex, decidedAt: new Date().toISOString() }
 
   await put(`briefings/${id}.json`, JSON.stringify(brief, null, 2), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
+    token,
   })
 
   // Enviar email de notificação

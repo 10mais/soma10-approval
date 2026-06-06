@@ -11,10 +11,12 @@ export async function POST(req: NextRequest) {
   const brief = await req.json()
   const { id } = brief
 
+  const token = 'vercel_blob_rw_s2mVFZe3Gz5dvopb_pGDnFIY8NJW2EEjSnBkU4nSlcLzsl8'
   await put(`briefings/${id}.json`, JSON.stringify(brief, null, 2), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
+    token,
   })
 
   const link = `${process.env.APPROVAL_BASE_URL}/aprovar/${id}`
