@@ -4,3 +4,4 @@ node_modules
 .next
 data/pendentes/*.json
 clientes/*/. env
+tsconfig.tsbuildinfo
