@@ -85,8 +85,8 @@ export default function PortalPage() {
       {/* Header */}
       <header style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: '#111', borderRadius: 12, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#ffc00f', fontWeight: 900, fontSize: 13 }}>10+</span>
+          <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <img src="/logo.svg" alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111' }}>Portal do Cliente</h1>

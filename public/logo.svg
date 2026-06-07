@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Barra superior inclinada -->
+  <rect x="62" y="46" width="62" height="22" rx="4" fill="#FFC20E" transform="rotate(-6 93 57)"/>
+  <!-- Anel (letra "o" estilizada) -->
+  <path fill-rule="evenodd" clip-rule="evenodd"
+    d="M97 86c-24.3 0-44 18.5-44 41.5S72.7 169 97 169s44-18.5 44-41.5S121.3 86 97 86Zm0 22c-12.7 0-23 8.7-23 19.5S84.3 147 97 147s23-8.7 23-19.5S109.7 108 97 108Z"
+    fill="#FFC20E"/>
+</svg>
