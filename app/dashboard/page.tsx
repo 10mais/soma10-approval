@@ -6,7 +6,8 @@ import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
+type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -41,7 +42,16 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
+  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config'>('posts')
+  const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
+  const [salvandoConfig, setSalvandoConfig] = useState(false)
+  const [configMsg, setConfigMsg] = useState('')
+  const [enviandoLogoAgencia, setEnviandoLogoAgencia] = useState(false)
+  const [editandoCliente, setEditandoCliente] = useState<string | null>(null)
+  const [edicaoCliente, setEdicaoCliente] = useState<Partial<Cliente>>({})
+  const [enviandoLogoCliente, setEnviandoLogoCliente] = useState(false)
+  const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
+  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string }>({ nome: '', role: 'gerente', novaSenha: '' })
   const [bibBusca, setBibBusca] = useState('')
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
@@ -50,7 +60,8 @@ function Dashboard() {
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)
   const [criandoPost, setCriandoPost] = useState(false)
-  const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '', loginEmail: '' })
+  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
+  const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
@@ -78,6 +89,7 @@ function Dashboard() {
       fetch('/api/clientes').then(r => r.json()).then(setClientes)
       if ((session?.user as any)?.role === 'admin') {
         fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
+        fetch('/api/config').then(r => r.json()).then(setConfigAgencia)
       }
     }
   }, [status])
@@ -196,7 +208,14 @@ function Dashboard() {
       setCredenciaisGeradas({ nome: data.cliente.nome, email: data.cliente.loginEmail, senha: data.cliente.loginSenha })
     }
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
-    setNovoCliente({ nome: '', instagram: '', loginEmail: '' })
+    setNovoCliente({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
+  }
+
+  async function uploadLogoNovoCliente(arquivo: File) {
+    setEnviandoLogoNovoCliente(true)
+    const url = await enviarImagem(arquivo)
+    if (url) setNovoCliente(c => ({ ...c, logo: url }))
+    setEnviandoLogoNovoCliente(false)
   }
 
   async function criarUsuario() {
@@ -207,6 +226,95 @@ function Dashboard() {
     })
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
     setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente' })
+  }
+
+  async function enviarImagem(arquivo: File): Promise<string | null> {
+    const form = new FormData()
+    form.append('arquivo', arquivo)
+    const res = await fetch('/api/upload', { method: 'POST', body: form })
+    const data = await res.json()
+    return res.ok ? data.url : null
+  }
+
+  async function salvarConfigAgencia() {
+    setSalvandoConfig(true)
+    setConfigMsg('')
+    const res = await fetch('/api/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configAgencia),
+    })
+    setSalvandoConfig(false)
+    if (res.ok) {
+      setConfigMsg('Configurações salvas com sucesso!')
+      setTimeout(() => setConfigMsg(''), 3000)
+    } else {
+      setConfigMsg('Erro ao salvar configurações.')
+    }
+  }
+
+  async function uploadLogoAgencia(arquivo: File) {
+    setEnviandoLogoAgencia(true)
+    const url = await enviarImagem(arquivo)
+    if (url) setConfigAgencia(c => ({ ...c, logo: url }))
+    setEnviandoLogoAgencia(false)
+  }
+
+  function iniciarEdicaoCliente(c: Cliente) {
+    setEditandoCliente(c.id)
+    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111' })
+  }
+
+  async function uploadLogoCliente(arquivo: File) {
+    setEnviandoLogoCliente(true)
+    const url = await enviarImagem(arquivo)
+    if (url) setEdicaoCliente(c => ({ ...c, logo: url }))
+    setEnviandoLogoCliente(false)
+  }
+
+  async function salvarEdicaoCliente(id: string) {
+    await fetch('/api/clientes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...edicaoCliente }),
+    })
+    setEditandoCliente(null)
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
+  }
+
+  async function excluirCliente(id: string, nome: string) {
+    if (!confirm(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`)) return
+    await fetch('/api/clientes', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
+  }
+
+  function iniciarEdicaoUsuario(u: any) {
+    setEditandoUsuario(u.email)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '' })
+  }
+
+  async function salvarEdicaoUsuario(email: string) {
+    await fetch('/api/usuarios', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, novaSenha: edicaoUsuario.novaSenha || undefined }),
+    })
+    setEditandoUsuario(null)
+    fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
+  }
+
+  async function excluirUsuario(email: string, nome: string) {
+    if (!confirm(`Tem certeza que deseja excluir o colaborador "${nome}"?`)) return
+    await fetch('/api/usuarios', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
   }
 
   if (status === 'loading') return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
@@ -258,14 +366,14 @@ function Dashboard() {
 
           {/* Menu vertical */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
+            {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
               <button key={a} onClick={() => setAba(a as any)} style={{
                 padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                 fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                 background: aba === a ? '#ffc00f' : 'transparent',
                 fontSize: 14, transition: 'all 0.15s',
               }}>
-                {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
+                {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
               </button>
             ))}
           </nav>
@@ -575,7 +683,29 @@ function Dashboard() {
                     style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={novoCliente.loginEmail} onChange={e => setNovoCliente(p => ({ ...p, loginEmail: e.target.value }))} placeholder="E-mail de acesso do cliente (opcional)" type="email"
                     style={{ flex: 1.4, minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                  <button onClick={criarCliente} style={{ padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
+                </div>
+
+                {/* Identidade visual do cliente */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {novoCliente.logo ? <img src={novoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                    </div>
+                    <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoNovoCliente ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { if (e.target.files?.[0]) uploadLogoNovoCliente(e.target.files[0]); e.target.value = '' }} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                    Cor primária
+                    <input type="color" value={novoCliente.corPrimaria || '#ffc00f'} onChange={e => setNovoCliente(p => ({ ...p, corPrimaria: e.target.value }))}
+                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                    Cor secundária
+                    <input type="color" value={novoCliente.corSecundaria || '#111111'} onChange={e => setNovoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
+                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                  </label>
+                  <button onClick={criarCliente} style={{ marginLeft: 'auto', padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar cliente</button>
                 </div>
                 <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>
                   Informe o e-mail para gerar automaticamente um login e senha para o cliente acessar o portal de aprovação.
@@ -610,7 +740,10 @@ function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {clientes.map(c => (
                 <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, fontSize: 14, color: c.corSecundaria || '#111' }}>{c.nome[0]?.toUpperCase()}</span>}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{c.nome}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram}</p>
@@ -619,6 +752,18 @@ function Dashboard() {
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {role === 'admin' && (
+                        <>
+                          <button onClick={() => editandoCliente === c.id ? setEditandoCliente(null) : iniciarEdicaoCliente(c)}
+                            style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>
+                            {editandoCliente === c.id ? 'Fechar' : 'Editar'}
+                          </button>
+                          <button onClick={() => excluirCliente(c.id, c.nome)}
+                            style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#ef4444', cursor: 'pointer' }}>
+                            Excluir
+                          </button>
+                        </>
+                      )}
                       <span style={{ background: '#f5f5f5', borderRadius: 8, padding: '3px 10px', fontSize: 12, color: '#666' }}>
                         {posts.filter(p => p.clienteNome === c.nome).length} posts
                       </span>
@@ -680,6 +825,42 @@ function Dashboard() {
                       )}
                     </div>
                   )}
+
+                  {/* Painel de edição */}
+                  {editandoCliente === c.id && (
+                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <input value={edicaoCliente.instagram || ''} onChange={e => setEdicaoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
+                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {edicaoCliente.logo ? <img src={edicaoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                          </div>
+                          <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoCliente ? 'Enviando...' : 'Trocar logomarca'}</span>
+                          <input type="file" accept="image/*" style={{ display: 'none' }}
+                            onChange={e => { if (e.target.files?.[0]) uploadLogoCliente(e.target.files[0]); e.target.value = '' }} />
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                          Cor primária
+                          <input type="color" value={edicaoCliente.corPrimaria || '#ffc00f'} onChange={e => setEdicaoCliente(p => ({ ...p, corPrimaria: e.target.value }))}
+                            style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                          Cor secundária
+                          <input type="color" value={edicaoCliente.corSecundaria || '#111111'} onChange={e => setEdicaoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
+                            style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                        </label>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                          <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
+                          <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -713,15 +894,138 @@ function Dashboard() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {usuarios.map(u => (
-                <div key={u.id} style={{ background: '#fff', borderRadius: 14, padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
+                <div key={u.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
+                    </div>
+                    <span style={{ background: u.role === 'admin' ? '#fef3c7' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#333' }}>{u.role}</span>
+                    <button onClick={() => editandoUsuario === u.email ? setEditandoUsuario(null) : iniciarEdicaoUsuario(u)}
+                      style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>
+                      {editandoUsuario === u.email ? 'Fechar' : 'Editar'}
+                    </button>
+                    <button onClick={() => excluirUsuario(u.email, u.nome)}
+                      style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#ef4444', cursor: 'pointer' }}>
+                      Excluir
+                    </button>
                   </div>
-                  <span style={{ background: u.role === 'admin' ? '#fef3c7' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#333' }}>{u.role}</span>
+                  {editandoUsuario === u.email && (
+                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
+                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                          <option value="gerente">Gerente</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <input type="password" value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Nova senha (opcional)"
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
+                        <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* CONFIGURAÇÕES (admin only) */}
+        {aba === 'config' && role === 'admin' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
+            <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Configurações</h2>
+
+            {/* Dados gerais da agência */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Dados da agência</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Informações e identidade visual exibidas no sistema.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <input value={configAgencia.nomeAgencia || ''} onChange={e => setConfigAgencia(p => ({ ...p, nomeAgencia: e.target.value }))} placeholder="Nome da agência"
+                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  <input value={configAgencia.emailContato || ''} onChange={e => setConfigAgencia(p => ({ ...p, emailContato: e.target.value }))} placeholder="E-mail de contato" type="email"
+                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {configAgencia.logo ? <img src={configAgencia.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                    </div>
+                    <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoAgencia ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { if (e.target.files?.[0]) uploadLogoAgencia(e.target.files[0]); e.target.value = '' }} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                    Cor primária
+                    <input type="color" value={configAgencia.corPrimaria || '#ffc00f'} onChange={e => setConfigAgencia(p => ({ ...p, corPrimaria: e.target.value }))}
+                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                    Cor secundária
+                    <input type="color" value={configAgencia.corSecundaria || '#111111'} onChange={e => setConfigAgencia(p => ({ ...p, corSecundaria: e.target.value }))}
+                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                  </label>
+                  <button onClick={salvarConfigAgencia} disabled={salvandoConfig}
+                    style={{ marginLeft: 'auto', padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoConfig ? 0.6 : 1 }}>
+                    {salvandoConfig ? 'Salvando...' : 'Salvar alterações'}
+                  </button>
+                </div>
+                {configMsg && (
+                  <p style={{ margin: 0, fontSize: 12, color: configMsg.includes('sucesso') ? '#16a34a' : '#ef4444' }}>{configMsg}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Integrações */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Integrações</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Status das conexões usadas pelo sistema.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Meta (Facebook / Instagram)</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>
+                      {clientes.filter(c => c.metaConectado).length} de {clientes.length} cliente(s) com Instagram conectado
+                    </p>
+                  </div>
+                  <button onClick={() => setAba('clientes')}
+                    style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    Gerenciar conexões
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Armazenamento de mídia (Vercel Blob)</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Usado para upload direto de imagens e vídeos nos posts</p>
+                  </div>
+                  <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Ativo</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notificações */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações por e-mail</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>
+                Envio automático de e-mails (ex: ao gerar link de aprovação) usa um servidor SMTP configurado nas variáveis de ambiente da Vercel.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Servidor SMTP</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Para alterar host, usuário ou senha, edite as variáveis SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS na Vercel</p>
+                </div>
+                <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
+              </div>
+            </div>
+
+            <p style={{ margin: 0, fontSize: 12, color: '#bbb', textAlign: 'center' }}>
+              Para editar ou remover clientes e colaboradores, use as abas <strong>Clientes</strong> e <strong>Usuários</strong> — agora com botões de Editar/Excluir em cada item.
+            </p>
           </div>
         )}
         </div>

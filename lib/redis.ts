@@ -23,6 +23,8 @@ export type Cliente = {
   nome: string
   instagram: string
   logo?: string
+  corPrimaria?: string
+  corSecundaria?: string
   criadoEm: string
   // Integração Meta
   facebookPageId?: string
@@ -35,7 +37,16 @@ export type Cliente = {
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
 }
 
-export type PostStatus = 'rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado'
+export type ConfigAgencia = {
+  nomeAgencia: string
+  emailContato?: string
+  logo?: string
+  corPrimaria?: string
+  corSecundaria?: string
+  atualizadoEm?: string
+}
+
+export type PostStatus ='rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado'
 
 export type Post = {
   id: string

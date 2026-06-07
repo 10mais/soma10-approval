@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { nome, instagram, logo, loginEmail } = await req.json()
-  const cliente: Cliente = { id: uuid(), nome, instagram, logo, criadoEm: new Date().toISOString() }
+  const { nome, instagram, logo, corPrimaria, corSecundaria, loginEmail } = await req.json()
+  const cliente: Cliente = { id: uuid(), nome, instagram, logo, corPrimaria, corSecundaria, criadoEm: new Date().toISOString() }
 
   // Criar acesso de login para o cliente, se um e-mail foi informado
   if (loginEmail) {
@@ -68,6 +68,24 @@ export async function POST(req: NextRequest) {
   await redis.sadd('clientes', cliente.id)
 
   return NextResponse.json({ ok: true, cliente })
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+
+  const { id, ...updates } = await req.json()
+  const cliente = await redis.get<Cliente>(`cliente:${id}`)
+  if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+
+  const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria']
+  const atualizado = { ...cliente }
+  for (const campo of camposPermitidos) {
+    if (campo in updates) (atualizado as any)[campo] = updates[campo]
+  }
+
+  await redis.set(`cliente:${id}`, atualizado)
+  return NextResponse.json({ ok: true, cliente: atualizado })
 }
 
 export async function DELETE(req: NextRequest) {
