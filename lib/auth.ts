@@ -20,17 +20,23 @@ export const authOptions: NextAuthOptions = {
         const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
         if (!senhaCorreta) return null
 
-        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role } as any
+        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId } as any
       },
     }),
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.role = (user as any).role
+      if (user) {
+        token.role = (user as any).role
+        token.clienteId = (user as any).clienteId
+      }
       return token
     },
     session({ session, token }) {
-      if (session.user) (session.user as any).role = token.role
+      if (session.user) {
+        (session.user as any).role = token.role
+        ;(session.user as any).clienteId = token.clienteId
+      }
       return session
     },
   },

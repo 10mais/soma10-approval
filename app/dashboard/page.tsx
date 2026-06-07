@@ -2,9 +2,10 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Calendar from '../components/Calendar'
 
 type Post = { id: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[] }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,9 +40,11 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
+  const [aba, setAba] = useState<'posts' | 'calendario' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
   const [novoPost, setNovoPost] = useState({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
-  const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '' })
+  const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '', loginEmail: '' })
+  const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
+  const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [linkGerado, setLinkGerado] = useState('')
@@ -165,13 +168,23 @@ function Dashboard() {
   }
 
   async function criarCliente() {
-    await fetch('/api/clientes', {
+    setErroCliente('')
+    setCredenciaisGeradas(null)
+    const res = await fetch('/api/clientes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novoCliente),
     })
+    const data = await res.json()
+    if (!res.ok) {
+      setErroCliente(data?.error || 'Erro ao criar cliente.')
+      return
+    }
+    if (data?.cliente?.loginEmail && data?.cliente?.loginSenha) {
+      setCredenciaisGeradas({ nome: data.cliente.nome, email: data.cliente.loginEmail, senha: data.cliente.loginSenha })
+    }
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
-    setNovoCliente({ nome: '', instagram: '' })
+    setNovoCliente({ nome: '', instagram: '', loginEmail: '' })
   }
 
   async function criarUsuario() {
@@ -205,14 +218,14 @@ function Dashboard() {
 
       {/* Nav */}
       <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 24px', display: 'flex', gap: 4 }}>
-        {(['posts', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
+        {(['posts', 'calendario', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
           <button key={a} onClick={() => setAba(a as any)} style={{
             padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer',
             fontWeight: aba === a ? 700 : 400, color: aba === a ? '#111' : '#888',
             borderBottom: aba === a ? '2px solid #ffc00f' : '2px solid transparent',
             fontSize: 14, transition: 'all 0.15s',
           }}>
-            {a === 'posts' ? 'Posts' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
+            {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
           </button>
         ))}
       </div>
@@ -244,6 +257,14 @@ function Dashboard() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* CALENDÁRIO */}
+        {aba === 'calendario' && (
+          <div>
+            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>
+            <Calendar posts={posts as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
           </div>
         )}
 
@@ -377,13 +398,43 @@ function Dashboard() {
             {role === 'admin' && (
               <div style={{ background: '#fff', borderRadius: 14, padding: 20, marginBottom: 20, border: '1px solid #e8e8e8' }}>
                 <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#555' }}>Adicionar cliente manualmente</h3>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do cliente"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  <input value={novoCliente.loginEmail} onChange={e => setNovoCliente(p => ({ ...p, loginEmail: e.target.value }))} placeholder="E-mail de acesso do cliente (opcional)" type="email"
+                    style={{ flex: 1.4, minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                   <button onClick={criarCliente} style={{ padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
                 </div>
+                <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>
+                  Informe o e-mail para gerar automaticamente um login e senha para o cliente acessar o portal de aprovação.
+                </p>
+
+                {erroCliente && (
+                  <div style={{ marginTop: 14, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#ef4444' }}>
+                    {erroCliente}
+                  </div>
+                )}
+
+                {credenciaisGeradas && (
+                  <div style={{ marginTop: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                      Acesso criado para {credenciaisGeradas.nome} — copie e envie ao cliente:
+                    </p>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
+                      <span style={{ color: '#555' }}>Portal: <strong>{typeof window !== 'undefined' ? window.location.origin : ''}/login</strong></span>
+                      <span style={{ color: '#555' }}>E-mail: <strong>{credenciaisGeradas.email}</strong></span>
+                      <span style={{ color: '#555' }}>Senha: <strong>{credenciaisGeradas.senha}</strong></span>
+                    </div>
+                    <button onClick={() => {
+                      const texto = `Acesso ao portal de aprovação:\n${typeof window !== 'undefined' ? window.location.origin : ''}/login\nE-mail: ${credenciaisGeradas.email}\nSenha: ${credenciaisGeradas.senha}`
+                      navigator.clipboard?.writeText(texto)
+                    }} style={{ marginTop: 10, padding: '7px 14px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                      Copiar dados de acesso
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -393,6 +444,9 @@ function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{c.nome}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram}</p>
+                      {c.loginEmail && (
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ background: '#f5f5f5', borderRadius: 8, padding: '3px 10px', fontSize: 12, color: '#666' }}>

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
 import { list, put } from '@vercel/blob'
 import nodemailer from 'nodemailer'
@@ -21,9 +23,16 @@ export async function POST(req: NextRequest) {
     post = await res.json() as Post
   }
 
-  // Verificar código se for post do Redis
-  if (post.codigo && codigo !== post.codigo) {
-    return NextResponse.json({ error: 'código inválido' }, { status: 401 })
+  // Autorização: cliente logado (sessão) OU código de 6 dígitos (link público)
+  const session = await getServerSession(authOptions)
+  const sessionRole = (session?.user as any)?.role
+  const sessionClienteId = (session?.user as any)?.clienteId
+
+  const autorizadoPorSessao = sessionRole === 'cliente' && sessionClienteId === post.clienteId
+  const autorizadoPorCodigo = post.codigo && codigo === post.codigo
+
+  if (!autorizadoPorSessao && !autorizadoPorCodigo) {
+    return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
   // Atualizar status

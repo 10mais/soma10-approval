@@ -12,7 +12,14 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const clienteId = req.nextUrl.searchParams.get('clienteId')
+  const role = (session.user as any).role
+  let clienteId = req.nextUrl.searchParams.get('clienteId')
+
+  // Cliente só pode ver os próprios posts, independente do parâmetro
+  if (role === 'cliente') {
+    clienteId = (session.user as any).clienteId
+  }
+
   const ids = await redis.smembers('posts')
   const posts = await Promise.all(ids.map(id => redis.get<Post>(`post:${id}`)))
   const filtrados = posts.filter(Boolean).filter(p => !clienteId || p!.clienteId === clienteId)

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
@@ -17,7 +17,9 @@ export default function LoginPage() {
 
     const res = await signIn('credentials', { email, password: senha, redirect: false })
     if (res?.ok) {
-      router.push('/dashboard')
+      const session = await getSession()
+      const role = (session?.user as any)?.role
+      router.push(role === 'cliente' ? '/portal' : '/dashboard')
     } else {
       setErro('Email ou senha incorretos.')
       setLoading(false)

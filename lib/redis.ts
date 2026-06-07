@@ -6,7 +6,7 @@ export const redis = new Redis({
 })
 
 // Tipos
-export type Role = 'admin' | 'gerente'
+export type Role = 'admin' | 'gerente' | 'cliente'
 
 export type Usuario = {
   id: string
@@ -14,6 +14,7 @@ export type Usuario = {
   email: string
   senha: string
   role: Role
+  clienteId?: string // presente quando role === 'cliente', vincula ao Cliente
   criadoEm: string
 }
 
@@ -29,6 +30,9 @@ export type Cliente = {
   instagramBusinessId?: string
   instagramUsername?: string
   metaConectado?: boolean
+  // Login do cliente
+  loginEmail?: string
+  loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
 }
 
 export type PostStatus = 'rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado'
