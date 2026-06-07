@@ -214,17 +214,17 @@ function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#ffc00f', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: '#111', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#ffc00f', fontWeight: 900, fontSize: 11 }}>10+</span>
+          <div style={{ background: '#ffc00f', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: '#111', fontWeight: 900, fontSize: 11 }}>10+</span>
           </div>
-          <span style={{ fontWeight: 800, color: '#111', fontSize: 15 }}>Soma10Approval</span>
+          <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 13, color: '#333' }}>{session?.user?.name}</span>
-          <span style={{ background: '#111', color: '#ffc00f', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
-          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #111', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Sair</button>
+          <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
+          <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
+          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#fff' }}>Sair</button>
         </div>
       </div>
 
@@ -244,7 +244,7 @@ function Dashboard() {
               fontSize: 13, fontWeight: 700, background: verComoClienteId ? '#fffbeb' : '#f8f8f8',
               color: '#111', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer',
             }}>
-              <option value="">🏢 Visão da agência (todos)</option>
+              <option value="">Visão da agência (todos)</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
             {verComoClienteId && (
