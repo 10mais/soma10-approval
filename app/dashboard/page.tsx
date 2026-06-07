@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
 
-type Post = { id: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[] }
+type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -40,7 +40,11 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'calendario' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
+  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post'>('posts')
+  const [bibBusca, setBibBusca] = useState('')
+  const [bibCliente, setBibCliente] = useState('')
+  const [bibStatus, setBibStatus] = useState('')
+  const [postPreview, setPostPreview] = useState<Post | null>(null)
   const [novoPost, setNovoPost] = useState({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
   const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '', loginEmail: '' })
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -218,14 +222,14 @@ function Dashboard() {
 
       {/* Nav */}
       <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 24px', display: 'flex', gap: 4 }}>
-        {(['posts', 'calendario', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
+        {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
           <button key={a} onClick={() => setAba(a as any)} style={{
             padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer',
             fontWeight: aba === a ? 700 : 400, color: aba === a ? '#111' : '#888',
             borderBottom: aba === a ? '2px solid #ffc00f' : '2px solid transparent',
             fontSize: 14, transition: 'all 0.15s',
           }}>
-            {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
+            {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
           </button>
         ))}
       </div>
@@ -265,6 +269,141 @@ function Dashboard() {
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>
             <Calendar posts={posts as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
+          </div>
+        )}
+
+        {/* BIBLIOTECA */}
+        {aba === 'biblioteca' && (
+          <div>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Biblioteca de Conteúdo</h2>
+
+            {/* Filtros */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+              <input value={bibBusca} onChange={e => setBibBusca(e.target.value)} placeholder="Buscar por legenda..."
+                style={{ flex: 1.5, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+              <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
+                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }}>
+                <option value="">Todos os clientes</option>
+                {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+              </select>
+              <select value={bibStatus} onChange={e => setBibStatus(e.target.value)}
+                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }}>
+                <option value="">Todos os status</option>
+                {Object.keys(STATUS_LABEL).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+              </select>
+            </div>
+
+            {(() => {
+              const filtrados = posts.filter(p =>
+                (!bibBusca || p.legenda?.toLowerCase().includes(bibBusca.toLowerCase())) &&
+                (!bibCliente || p.clienteNome === bibCliente) &&
+                (!bibStatus || p.status === bibStatus)
+              )
+              if (filtrados.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+                    <p>Nenhum conteúdo encontrado com esses filtros.</p>
+                  </div>
+                )
+              }
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+                  {filtrados.map(post => (
+                    <div key={post.id} onClick={() => setPostPreview(post)} style={{
+                      background: '#fff', borderRadius: 14, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer',
+                    }}>
+                      <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
+                        {post.imagens?.[0] ? (
+                          <img src={post.imagens[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>Sem imagem</div>
+                        )}
+                        {post.imagens?.length > 1 && (
+                          <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600, borderRadius: 999, padding: '2px 8px' }}>
+                            {post.imagens.length}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ padding: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{post.clienteNome}</span>
+                          <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 999, padding: '2px 9px', fontSize: 10, fontWeight: 600, color: '#333' }}>
+                            {STATUS_LABEL[post.status] || post.status}
+                          </span>
+                        </div>
+                        <p style={{
+                          margin: 0, fontSize: 12, color: '#888', lineHeight: 1.4,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        }}>
+                          {post.legenda}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Modal de preview */}
+            {postPreview && (
+              <div onClick={() => setPostPreview(null)} style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
+              }}>
+                <div onClick={e => e.stopPropagation()} style={{
+                  background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                }}>
+                  {/* Cabeçalho estilo Instagram */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111' }}>
+                      {postPreview.clienteNome?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
+                    <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
+                      {STATUS_LABEL[postPreview.status] || postPreview.status}
+                    </span>
+                  </div>
+
+                  {/* Imagem principal */}
+                  {postPreview.imagens?.[0] && (
+                    <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', overflow: 'auto', display: 'flex', gap: 2 }}>
+                      {postPreview.imagens.map((img, i) => (
+                        <img key={i} src={img} alt="" style={{ width: postPreview.imagens.length > 1 ? '90%' : '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} />
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ padding: 16, overflowY: 'auto' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
+                    </p>
+                    {postPreview.dataAgendada && (
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>
+                        Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button onClick={() => {
+                        const cliente = clientes.find(c => c.nome === postPreview.clienteNome)
+                        setNovoPost({
+                          clienteId: cliente?.id || '',
+                          legenda: postPreview.legenda || '',
+                          dataAgendada: '',
+                          imagens: (postPreview.imagens || []).join('\n'),
+                        })
+                        setPostPreview(null)
+                        setAba('novo-post')
+                      }} style={{ flex: 1, padding: '10px 0', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        Reaproveitar conteúdo
+                      </button>
+                      <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
