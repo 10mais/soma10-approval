@@ -44,6 +44,7 @@ export type Post = {
   imagens: string[]
   legenda: string
   status: PostStatus
+  formato?: 'feed' | 'reel' | 'story'
   dataAgendada?: string
   codigo?: string
   criadoPor: string

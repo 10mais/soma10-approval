@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato } = await req.json()
   const post: Post = {
     id: uuid(),
     clienteId,
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     imagens,
     legenda,
     status: 'rascunho',
+    formato: formato || 'feed',
     dataAgendada,
     codigo: gerarCodigo(),
     criadoPor: session.user?.name || '',

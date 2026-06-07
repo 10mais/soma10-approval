@@ -3,6 +3,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
+import PostComposer from '../components/PostComposer'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string }
@@ -45,7 +46,9 @@ function Dashboard() {
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
   const [postPreview, setPostPreview] = useState<Post | null>(null)
-  const [novoPost, setNovoPost] = useState({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
+  const [composerPrefill, setComposerPrefill] = useState<any>(null)
+  const [composerKey, setComposerKey] = useState(0)
+  const [criandoPost, setCriandoPost] = useState(false)
   const [novoCliente, setNovoCliente] = useState({ nome: '', instagram: '', loginEmail: '' })
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
@@ -105,18 +108,20 @@ function Dashboard() {
 
   const role = (session?.user as any)?.role
 
-  async function criarPost() {
-    const imagens = novoPost.imagens.split('\n').map(s => s.trim()).filter(Boolean)
-    const cliente = clientes.find(c => c.id === novoPost.clienteId)
+  async function criarPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
+    setCriandoPost(true)
+    const cliente = clientes.find(c => c.id === valor.clienteId)
     const res = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...novoPost, imagens, clienteNome: cliente?.nome }),
+      body: JSON.stringify({ ...valor, clienteNome: cliente?.nome }),
     }).then(r => r.json())
+    setCriandoPost(false)
     setLinkGerado(res.link)
     setCodigoGerado(res.post.codigo)
     fetch('/api/posts').then(r => r.json()).then(setPosts)
-    setNovoPost({ clienteId: '', legenda: '', dataAgendada: '', imagens: '' })
+    setComposerPrefill(null)
+    setComposerKey(k => k + 1)
   }
 
   async function salvarVinculos() {
@@ -385,12 +390,14 @@ function Dashboard() {
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button onClick={() => {
                         const cliente = clientes.find(c => c.nome === postPreview.clienteNome)
-                        setNovoPost({
+                        setComposerPrefill({
                           clienteId: cliente?.id || '',
                           legenda: postPreview.legenda || '',
                           dataAgendada: '',
-                          imagens: (postPreview.imagens || []).join('\n'),
+                          imagens: postPreview.imagens || [],
+                          formato: 'feed',
                         })
+                        setComposerKey(k => k + 1)
                         setPostPreview(null)
                         setAba('novo-post')
                       }} style={{ flex: 1, padding: '10px 0', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -421,47 +428,20 @@ function Dashboard() {
                   <p style={{ margin: '0 0 8px', fontSize: 13, color: '#888' }}>Código do cliente:</p>
                   <p style={{ margin: 0, fontWeight: 900, fontSize: 32, color: '#ffc00f', letterSpacing: 8 }}>{codigoGerado}</p>
                 </div>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: '#666' }}>Envie o link + código para o cliente via WhatsApp ou email.</p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: '#666' }}>Envie o link + código para o cliente via WhatsApp ou email (ou peça que ele acesse o portal com login próprio).</p>
                 <button onClick={() => { setLinkGerado(''); setCodigoGerado('') }} style={{ padding: '10px 24px', background: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>
                   Criar outro post
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Cliente</label>
-                  <select value={novoPost.clienteId} onChange={e => setNovoPost(p => ({ ...p, clienteId: e.target.value }))}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
-                    <option value="">Selecione o cliente...</option>
-                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nome} (@{c.instagram})</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>URLs das imagens (uma por linha)</label>
-                  <textarea value={novoPost.imagens} onChange={e => setNovoPost(p => ({ ...p, imagens: e.target.value }))}
-                    placeholder="https://exemplo.com/imagem1.png&#10;https://exemplo.com/imagem2.png"
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Legenda</label>
-                  <textarea value={novoPost.legenda} onChange={e => setNovoPost(p => ({ ...p, legenda: e.target.value }))}
-                    placeholder="Escreva a legenda do post..."
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 120, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data agendada</label>
-                  <input type="datetime-local" value={novoPost.dataAgendada} onChange={e => setNovoPost(p => ({ ...p, dataAgendada: e.target.value }))}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                </div>
-
-                <button onClick={criarPost} disabled={!novoPost.clienteId || !novoPost.legenda || !novoPost.imagens}
-                  style={{ padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer', opacity: (!novoPost.clienteId || !novoPost.legenda) ? 0.5 : 1 }}>
-                  Criar post e gerar link de aprovação
-                </button>
-              </div>
+              <PostComposer
+                key={composerKey}
+                clientes={clientes}
+                valorInicial={composerPrefill || undefined}
+                onSubmit={criarPost}
+                enviando={criandoPost}
+                textoBotao="Criar post e gerar link de aprovação"
+              />
             )}
           </div>
         )}
