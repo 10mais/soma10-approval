@@ -46,6 +46,7 @@ function Dashboard() {
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
   const [postPreview, setPostPreview] = useState<Post | null>(null)
+  const [verComoClienteId, setVerComoClienteId] = useState('')
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)
   const [criandoPost, setCriandoPost] = useState(false)
@@ -107,6 +108,8 @@ function Dashboard() {
   }, [searchParams])
 
   const role = (session?.user as any)?.role
+  const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
+  const postsView = verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts
 
   async function criarPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
     setCriandoPost(true)
@@ -225,33 +228,81 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Nav */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 24px', display: 'flex', gap: 4 }}>
-        {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
-          <button key={a} onClick={() => setAba(a as any)} style={{
-            padding: '14px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            fontWeight: aba === a ? 700 : 400, color: aba === a ? '#111' : '#888',
-            borderBottom: aba === a ? '2px solid #ffc00f' : '2px solid transparent',
-            fontSize: 14, transition: 'all 0.15s',
-          }}>
-            {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
-          </button>
-        ))}
-      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        {/* Sidebar */}
+        <aside style={{
+          width: 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
+          minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56, padding: '20px 14px', boxSizing: 'border-box',
+        }}>
+          {/* Seletor de visualização por cliente — primeira coisa exibida */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
+              Visualizando como
+            </label>
+            <select value={verComoClienteId} onChange={e => setVerComoClienteId(e.target.value)} style={{
+              width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0',
+              fontSize: 13, fontWeight: 700, background: verComoClienteId ? '#fffbeb' : '#f8f8f8',
+              color: '#111', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer',
+            }}>
+              <option value="">🏢 Visão da agência (todos)</option>
+              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            {verComoClienteId && (
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#b45309', padding: '0 4px' }}>
+                Vendo como se fosse este cliente
+              </p>
+            )}
+          </div>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
+          <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />
+
+          {/* Menu vertical */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios'] : [])] as const).map(a => (
+              <button key={a} onClick={() => setAba(a as any)} style={{
+                padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                background: aba === a ? '#ffc00f' : 'transparent',
+                fontSize: 14, transition: 'all 0.15s',
+              }}>
+                {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : 'Usuários'}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Conteúdo principal */}
+        <div style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
+
+        {/* Faixa indicando visualização filtrada por cliente */}
+        {clienteEmVisualizacao && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
+            borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+          }}>
+            <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
+              {clienteEmVisualizacao.nome[0]?.toUpperCase()}
+            </span>
+            <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
+              Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram}) — somente o conteúdo dele é exibido.
+            </p>
+            <button onClick={() => setVerComoClienteId('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+              Voltar à visão da agência
+            </button>
+          </div>
+        )}
 
         {/* POSTS */}
         {aba === 'posts' && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Todos os Posts</h2>
-            {posts.length === 0 ? (
+            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
+            {postsView.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
-                <p>Nenhum post criado ainda. Clique em "Novo Post" para começar.</p>
+                <p>Nenhum post {clienteEmVisualizacao ? 'para este cliente ainda' : 'criado ainda. Clique em "Novo Post" para começar'}.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {posts.map(post => (
+                {postsView.map(post => (
                   <div key={post.id} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', gap: 16, alignItems: 'center' }}>
                     {post.imagens?.[0] && <img src={post.imagens[0]} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -273,7 +324,7 @@ function Dashboard() {
         {aba === 'calendario' && (
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>
-            <Calendar posts={posts as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
+            <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
           </div>
         )}
 
@@ -299,7 +350,7 @@ function Dashboard() {
             </div>
 
             {(() => {
-              const filtrados = posts.filter(p =>
+              const filtrados = postsView.filter(p =>
                 (!bibBusca || p.legenda?.toLowerCase().includes(bibBusca.toLowerCase())) &&
                 (!bibCliente || p.clienteNome === bibCliente) &&
                 (!bibStatus || p.status === bibStatus)
@@ -437,7 +488,7 @@ function Dashboard() {
               <PostComposer
                 key={composerKey}
                 clientes={clientes}
-                valorInicial={composerPrefill || undefined}
+                valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
                 onSubmit={criarPost}
                 enviando={criandoPost}
                 textoBotao="Criar post e gerar link de aprovação"
@@ -673,6 +724,7 @@ function Dashboard() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
