@@ -46,7 +46,7 @@ export type ConfigAgencia = {
   atualizadoEm?: string
 }
 
-export type PostStatus ='rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado'
+export type PostStatus ='rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
 export type Post = {
   id: string
@@ -63,4 +63,5 @@ export type Post = {
   atualizadoEm: string
   anotacoes?: any[]
   motivoReprovacao?: string
+  erroPublicacao?: string
 }

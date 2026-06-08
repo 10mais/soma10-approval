@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 
-type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string }
+type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
   corrigir: 'Corrigir',
   reprovado: 'Reprovado',
   publicado: 'Publicado',
+  falha_publicacao: 'Falha ao publicar',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -26,6 +27,20 @@ const STATUS_COLOR: Record<string, string> = {
   corrigir: '#fff3cd',
   reprovado: '#fee2e2',
   publicado: '#dbeafe',
+  falha_publicacao: '#fee2e2',
+}
+
+// Converte uma data ISO para o formato aceito pelo input datetime-local (YYYY-MM-DDTHH:mm)
+function paraDatetimeLocal(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function emailValido(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 }
 
 export default function DashboardPage() {
@@ -60,11 +75,14 @@ function Dashboard() {
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)
   const [criandoPost, setCriandoPost] = useState(false)
+  const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
+  const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario'>('lista')
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
+  const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [linkGerado, setLinkGerado] = useState('')
   const [codigoGerado, setCodigoGerado] = useState('')
@@ -139,6 +157,43 @@ function Dashboard() {
     setComposerKey(k => k + 1)
   }
 
+  function iniciarEdicaoPost(post: Post) {
+    const cliente = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
+    setEditandoPostId(post.id)
+    setComposerPrefill({
+      clienteId: cliente?.id || post.clienteId || '',
+      legenda: post.legenda || '',
+      dataAgendada: paraDatetimeLocal(post.dataAgendada),
+      imagens: post.imagens || [],
+      formato: (post as any).formato || 'feed',
+    })
+    setComposerKey(k => k + 1)
+    setPostPreview(null)
+    setAba('novo-post')
+  }
+
+  function cancelarEdicaoPost() {
+    setEditandoPostId(null)
+    setComposerPrefill(null)
+    setComposerKey(k => k + 1)
+  }
+
+  async function salvarEdicaoPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
+    if (!editandoPostId) return
+    setCriandoPost(true)
+    const cliente = clientes.find(c => c.id === valor.clienteId)
+    await fetch('/api/posts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editandoPostId, ...valor, clienteNome: cliente?.nome }),
+    })
+    setCriandoPost(false)
+    setEditandoPostId(null)
+    setComposerPrefill(null)
+    setComposerKey(k => k + 1)
+    fetch('/api/posts').then(r => r.json()).then(setPosts)
+  }
+
   async function salvarVinculos() {
     setVinculando(true)
     for (const [pageId, clienteId] of Object.entries(vinculos)) {
@@ -194,6 +249,9 @@ function Dashboard() {
   async function criarCliente() {
     setErroCliente('')
     setCredenciaisGeradas(null)
+    if (novoCliente.nome.trim().length < 2) { setErroCliente('Informe o nome do cliente.'); return }
+    if (novoCliente.instagram.trim().length < 2) { setErroCliente('Informe o @instagram do cliente.'); return }
+    if (novoCliente.loginEmail.trim() && !emailValido(novoCliente.loginEmail)) { setErroCliente('O e-mail de acesso informado não é válido.'); return }
     const res = await fetch('/api/clientes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -219,11 +277,21 @@ function Dashboard() {
   }
 
   async function criarUsuario() {
-    await fetch('/api/usuarios', {
+    setErroUsuario('')
+    if (novoUsuario.nome.trim().length < 2) { setErroUsuario('Informe o nome do colaborador.'); return }
+    if (!emailValido(novoUsuario.email)) { setErroUsuario('Informe um e-mail válido.'); return }
+    if (novoUsuario.senha.trim().length < 6) { setErroUsuario('A senha deve ter pelo menos 6 caracteres.'); return }
+    if (!novoUsuario.role) { setErroUsuario('Selecione o nível de acesso.'); return }
+    const res = await fetch('/api/usuarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novoUsuario),
     })
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      setErroUsuario(data?.error || 'Erro ao adicionar colaborador.')
+      return
+    }
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
     setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente' })
   }
@@ -317,13 +385,26 @@ function Dashboard() {
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
   }
 
+  // Validação do formulário de novo cliente — não deixa confirmar com dados incompletos/incorretos
+  const clienteNomeValido = novoCliente.nome.trim().length >= 2
+  const clienteInstagramValido = novoCliente.instagram.trim().length >= 2
+  const clienteEmailValido = !novoCliente.loginEmail.trim() || emailValido(novoCliente.loginEmail)
+  const clienteFormValido = clienteNomeValido && clienteInstagramValido && clienteEmailValido
+
+  // Validação do formulário de novo usuário — nome, e-mail, senha e nível de acesso obrigatórios
+  const usuarioNomeValido = novoUsuario.nome.trim().length >= 2
+  const usuarioEmailValido = emailValido(novoUsuario.email)
+  const usuarioSenhaValida = novoUsuario.senha.trim().length >= 6
+  const usuarioRoleValido = !!novoUsuario.role
+  const usuarioFormValido = usuarioNomeValido && usuarioEmailValido && usuarioSenhaValida && usuarioRoleValido
+
   if (status === 'loading') return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div onClick={() => { setVerComoClienteId(''); setAba('posts'); router.push('/dashboard') }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o início">
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
@@ -347,18 +428,28 @@ function Dashboard() {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               Visualizando como
             </label>
-            <select value={verComoClienteId} onChange={e => setVerComoClienteId(e.target.value)} style={{
-              width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0',
-              fontSize: 13, fontWeight: 700, background: verComoClienteId ? '#fffbeb' : '#f8f8f8',
-              color: '#111', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer',
-            }}>
-              <option value="">Visão da agência (todos)</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-            {verComoClienteId && (
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#b45309', padding: '0 4px' }}>
-                Vendo como se fosse este cliente
-              </p>
+            {verComoClienteId ? (
+              // Cliente travado: cada cliente é único, sem opção de trocar para outro
+              <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                  {clienteEmVisualizacao?.nome || 'Cliente'}
+                </p>
+                <button onClick={() => setVerComoClienteId('')} style={{
+                  background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
+                  cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                }}>
+                  ← Voltar para a visão da agência
+                </button>
+              </div>
+            ) : (
+              <select value={verComoClienteId} onChange={e => setVerComoClienteId(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0',
+                fontSize: 13, fontWeight: 700, background: '#f8f8f8',
+                color: '#111', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer',
+              }}>
+                <option value="">Visão da agência (todos)</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
             )}
           </div>
 
@@ -366,17 +457,36 @@ function Dashboard() {
 
           {/* Menu vertical */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(['posts', 'calendario', 'biblioteca', 'novo-post', 'clientes', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+            {(['posts', 'clientes', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
               <button key={a} onClick={() => setAba(a as any)} style={{
                 padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                 fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                 background: aba === a ? '#ffc00f' : 'transparent',
                 fontSize: 14, transition: 'all 0.15s',
               }}>
-                {a === 'posts' ? 'Posts' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : a === 'novo-post' ? 'Novo Post' : a === 'clientes' ? 'Clientes' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                {a === 'posts' ? 'Posts' : a === 'clientes' ? 'Clientes' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
               </button>
             ))}
           </nav>
+
+          {/* Conteúdo agrupado por cliente: Novo Post / Calendário / Biblioteca */}
+          <div style={{ marginTop: 18 }}>
+            <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Conteúdo'}
+            </p>
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {(['novo-post', 'calendario', 'biblioteca'] as const).map(a => (
+                <button key={a} onClick={() => setAba(a as any)} style={{
+                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                  background: aba === a ? '#ffc00f' : 'transparent',
+                  fontSize: 14, transition: 'all 0.15s',
+                }}>
+                  {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : 'Biblioteca'}
+                </button>
+              ))}
+            </nav>
+          </div>
         </aside>
 
         {/* Conteúdo principal */}
@@ -403,11 +513,39 @@ function Dashboard() {
         {/* POSTS */}
         {aba === 'posts' && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
+              <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 4 }}>
+                {(['lista', 'calendario'] as const).map(v => (
+                  <button key={v} onClick={() => setVisualizacaoPosts(v)} style={{
+                    padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    background: visualizacaoPosts === v ? '#111' : 'transparent',
+                    color: visualizacaoPosts === v ? '#ffc00f' : '#888',
+                  }}>
+                    {v === 'lista' ? '☰ Lista' : '📅 Calendário'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Aviso de falhas de publicação */}
+            {postsView.some(p => p.status === 'falha_publicacao') && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <p style={{ margin: 0, fontSize: 13, color: '#b91c1c' }}>
+                  {postsView.filter(p => p.status === 'falha_publicacao').length === 1
+                    ? 'Há 1 post que falhou ao publicar. Verifique e tente novamente.'
+                    : `Há ${postsView.filter(p => p.status === 'falha_publicacao').length} posts que falharam ao publicar. Verifique e tente novamente.`}
+                </p>
+              </div>
+            )}
+
             {postsView.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
                 <p>Nenhum post {clienteEmVisualizacao ? 'para este cliente ainda' : 'criado ainda. Clique em "Novo Post" para começar'}.</p>
               </div>
+            ) : visualizacaoPosts === 'calendario' ? (
+              <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {postsView.map(post => (
@@ -416,10 +554,27 @@ function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{post.clienteNome}</span>
-                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>{STATUS_LABEL[post.status] || post.status}</span>
+                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
+                          {post.status === 'falha_publicacao' && '⚠️ '}{STATUS_LABEL[post.status] || post.status}
+                        </span>
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
                       {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
+                      {post.status === 'falha_publicacao' && post.erroPublicacao && (
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#b91c1c' }}>Erro: {post.erroPublicacao}</p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <button onClick={() => iniciarEdicaoPost(post)} style={{
+                        padding: '8px 14px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#111', cursor: 'pointer',
+                      }}>
+                        Editar
+                      </button>
+                      <button onClick={() => router.push(`/aprovar/${post.id}`)} style={{
+                        padding: '8px 14px', background: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#ffc00f', cursor: 'pointer',
+                      }}>
+                        Ver
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -547,6 +702,9 @@ function Dashboard() {
                       </p>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        Editar
+                      </button>
                       <button onClick={() => {
                         const cliente = clientes.find(c => c.nome === postPreview.clienteNome)
                         setComposerPrefill({
@@ -560,7 +718,7 @@ function Dashboard() {
                         setPostPreview(null)
                         setAba('novo-post')
                       }} style={{ flex: 1, padding: '10px 0', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        Reaproveitar conteúdo
+                        Reaproveitar
                       </button>
                       <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Fechar
@@ -576,7 +734,14 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <h2 style={{ margin: '0 0 24px', fontSize: 18, color: '#111' }}>Criar novo post</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
+              {editandoPostId && (
+                <button onClick={cancelarEdicaoPost} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                  Cancelar edição
+                </button>
+              )}
+            </div>
 
             {linkGerado ? (
               <div style={{ background: '#f0fdf4', border: '2px solid #22c55e', borderRadius: 14, padding: 24, textAlign: 'center' }}>
@@ -597,9 +762,9 @@ function Dashboard() {
                 key={composerKey}
                 clientes={clientes}
                 valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
-                onSubmit={criarPost}
+                onSubmit={editandoPostId ? salvarEdicaoPost : criarPost}
                 enviando={criandoPost}
-                textoBotao="Criar post e gerar link de aprovação"
+                textoBotao={editandoPostId ? 'Salvar alterações' : 'Criar post e gerar link de aprovação'}
               />
             )}
           </div>
@@ -705,7 +870,10 @@ function Dashboard() {
                     <input type="color" value={novoCliente.corSecundaria || '#111111'} onChange={e => setNovoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
                       style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
-                  <button onClick={criarCliente} style={{ marginLeft: 'auto', padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar cliente</button>
+                  <button onClick={criarCliente} disabled={!clienteFormValido} style={{
+                    marginLeft: 'auto', padding: '10px 18px', background: clienteFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 8,
+                    fontWeight: 700, fontSize: 13, cursor: clienteFormValido ? 'pointer' : 'not-allowed', color: clienteFormValido ? '#111' : '#bbb',
+                  }}>Adicionar cliente</button>
                 </div>
                 <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>
                   Informe o e-mail para gerar automaticamente um login e senha para o cliente acessar o portal de aprovação.
@@ -888,8 +1056,19 @@ function Dashboard() {
                     <option value="gerente">Gerente</option>
                     <option value="admin">Admin</option>
                   </select>
-                  <button onClick={criarUsuario} style={{ padding: '10px 20px', background: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>Adicionar</button>
+                  <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
+                    padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
+                    fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
+                  }}>Adicionar</button>
                 </div>
+                {erroUsuario && (
+                  <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
+                )}
+                {!erroUsuario && (novoUsuario.nome || novoUsuario.email || novoUsuario.senha) && !usuarioFormValido && (
+                  <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>
+                    Preencha nome, e-mail válido, senha (mín. 6 caracteres) e nível de acesso para continuar.
+                  </p>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
