@@ -50,6 +50,8 @@ const IconTrash = (p: any) => <Icon {...p}><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h
 const IconImageOff = (p: any) => <Icon {...p}><path d="M10.5 8.5a2 2 0 1 0 0-.001M3 3l18 18" /><path d="M21 15l-5-5L5 21M3 7v12a2 2 0 0 0 2 2h12M21 17V5a2 2 0 0 0-2-2H9" /></Icon>
 const IconChart = (p: any) => <Icon {...p}><path d="M3 3v18h18" /><rect x="7" y="13" width="3" height="5" rx="0.5" /><rect x="12" y="9" width="3" height="9" rx="0.5" /><rect x="17" y="6" width="3" height="12" rx="0.5" /></Icon>
 const IconDownload = (p: any) => <Icon {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 19h16" /></Icon>
+const IconSun = (p: any) => <Icon {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></Icon>
+const IconMoon = (p: any) => <Icon {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></Icon>
 
 // Miniatura de mídia do post — exibe um placeholder profissional quando a imagem não carrega
 function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: number; radius?: number }) {
@@ -109,6 +111,20 @@ function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics'>('posts')
+  // Tema (claro/escuro) — persistido no navegador
+  const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
+  useEffect(() => {
+    const salvo = typeof window !== 'undefined' ? localStorage.getItem('soma10-tema') : null
+    if (salvo === 'escuro' || salvo === 'claro') setTema(salvo)
+  }, [])
+  function alternarTema() {
+    setTema(t => {
+      const novo = t === 'claro' ? 'escuro' : 'claro'
+      if (typeof window !== 'undefined') localStorage.setItem('soma10-tema', novo)
+      return novo
+    })
+  }
+
   // Analytics
   const [analyticsClienteId, setAnalyticsClienteId] = useState('')
   const [analyticsDesde, setAnalyticsDesde] = useState(() => {
@@ -599,7 +615,13 @@ function Dashboard() {
   if (status === 'loading') return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'Inter, sans-serif' }}>
+    <div className={tema === 'escuro' ? 'soma10-tema-escuro' : ''} style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'Inter, sans-serif', ...(tema === 'escuro' ? { filter: 'invert(1) hue-rotate(180deg)' } : {}) }}>
+      {/* Inverte de volta imagens, vídeos e miniaturas para que continuem com cores naturais no modo escuro (técnica de inversão = "cores opostas") */}
+      <style jsx global>{`
+        .soma10-tema-escuro img, .soma10-tema-escuro video, .soma10-tema-escuro iframe {
+          filter: invert(1) hue-rotate(180deg);
+        }
+      `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div onClick={() => { setVerComoClienteId(''); setAba('posts'); router.push('/dashboard') }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o início">
@@ -609,6 +631,14 @@ function Dashboard() {
           <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Alternar modo claro/escuro */}
+          <button onClick={alternarTema} title={tema === 'escuro' ? 'Mudar para modo claro' : 'Mudar para modo escuro'} style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: '#fff',
+            width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {tema === 'escuro' ? <IconSun size={18} /> : <IconMoon size={18} />}
+          </button>
+
           {/* Sininho de notificações */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setInboxAberto(v => !v)} title="Notificações" style={{
@@ -1683,6 +1713,29 @@ function Dashboard() {
         {aba === 'config' && role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
             <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Configurações</h2>
+
+            {/* Aparência — modo claro/escuro */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Aparência</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Escolha como o painel é exibido para você neste navegador.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {(['claro', 'escuro'] as const).map(opcao => (
+                  <button key={opcao} onClick={() => { if (tema !== opcao) alternarTema() }} style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '14px 0', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                    border: tema === opcao ? '2px solid #111' : '1.5px solid #e0e0e0',
+                    background: tema === opcao ? '#111' : '#fff',
+                    color: tema === opcao ? '#ffc00f' : '#888',
+                  }}>
+                    {opcao === 'claro' ? <IconSun size={16} /> : <IconMoon size={16} />}
+                    {opcao === 'claro' ? 'Modo claro' : 'Modo escuro'}
+                  </button>
+                ))}
+              </div>
+              <p style={{ margin: '12px 0 0', fontSize: 11, color: '#bbb' }}>
+                No modo escuro, as cores da interface são invertidas — fundo escuro e textos claros — enquanto fotos e vídeos continuam exibidos com as cores naturais.
+              </p>
+            </div>
 
             {/* Dados gerais da agência */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
