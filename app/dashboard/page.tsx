@@ -48,6 +48,8 @@ const IconLock = (p: any) => <Icon {...p}><rect x="3" y="11" width="18" height="
 const IconSave = (p: any) => <Icon {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></Icon>
 const IconTrash = (p: any) => <Icon {...p}><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" /><path d="M10 11v6M14 11v6" /></Icon>
 const IconImageOff = (p: any) => <Icon {...p}><path d="M10.5 8.5a2 2 0 1 0 0-.001M3 3l18 18" /><path d="M21 15l-5-5L5 21M3 7v12a2 2 0 0 0 2 2h12M21 17V5a2 2 0 0 0-2-2H9" /></Icon>
+const IconChart = (p: any) => <Icon {...p}><path d="M3 3v18h18" /><rect x="7" y="13" width="3" height="5" rx="0.5" /><rect x="12" y="9" width="3" height="9" rx="0.5" /><rect x="17" y="6" width="3" height="12" rx="0.5" /></Icon>
+const IconDownload = (p: any) => <Icon {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 19h16" /></Icon>
 
 // Miniatura de mídia do post — exibe um placeholder profissional quando a imagem não carrega
 function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: number; radius?: number }) {
@@ -106,7 +108,19 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config'>('posts')
+  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics'>('posts')
+  // Analytics
+  const [analyticsClienteId, setAnalyticsClienteId] = useState('')
+  const [analyticsDesde, setAnalyticsDesde] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 30)
+    return d.toISOString().slice(0, 10)
+  })
+  const [analyticsAte, setAnalyticsAte] = useState(() => new Date().toISOString().slice(0, 10))
+  const [analyticsData, setAnalyticsData] = useState<any | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsErro, setAnalyticsErro] = useState('')
+  const [exportandoPdf, setExportandoPdf] = useState(false)
+
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   const [configMsg, setConfigMsg] = useState('')
@@ -214,6 +228,88 @@ function Dashboard() {
   const role = (session?.user as any)?.role
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
   const postsView = verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts
+
+  // Quando estamos numa área travada de cliente (ou o usuário é cliente), o Analytics deve sempre se referir a ele
+  useEffect(() => {
+    if (role === 'cliente' && (session?.user as any)?.clienteId) {
+      setAnalyticsClienteId((session?.user as any).clienteId)
+    } else if (verComoClienteId) {
+      setAnalyticsClienteId(verComoClienteId)
+    }
+  }, [verComoClienteId, role, session])
+
+  async function buscarAnalytics() {
+    if (!analyticsClienteId) { setAnalyticsErro('Selecione um cliente para ver o desempenho.'); return }
+    setAnalyticsLoading(true)
+    setAnalyticsErro('')
+    setAnalyticsData(null)
+    try {
+      const params = new URLSearchParams({ clienteId: analyticsClienteId, desde: analyticsDesde, ate: analyticsAte })
+      const res = await fetch(`/api/analytics?${params.toString()}`)
+      const data = await res.json()
+      if (!res.ok || data?.error) {
+        setAnalyticsErro(data?.error || 'Não foi possível carregar os dados de desempenho.')
+      } else if (data?.conectado === false) {
+        setAnalyticsErro(data?.error || 'Este cliente ainda não tem a conta do Instagram conectada via Meta.')
+      } else {
+        setAnalyticsData(data)
+      }
+    } catch (e) {
+      setAnalyticsErro('Erro de comunicação ao buscar os dados de desempenho.')
+    }
+    setAnalyticsLoading(false)
+  }
+
+  async function exportarAnalyticsPdf() {
+    if (!analyticsData) return
+    setExportandoPdf(true)
+    try {
+      const [{ default: jsPDF }] = await Promise.all([import('jspdf')])
+      await import('jspdf-autotable')
+      const cliente = clientes.find(c => c.id === analyticsClienteId)
+      const doc = new jsPDF()
+      const totais = analyticsData.totais || {}
+
+      doc.setFontSize(16)
+      doc.text(`Relatório de desempenho — ${cliente?.nome || analyticsData.instagramUsername || 'Cliente'}`, 14, 18)
+      doc.setFontSize(10)
+      doc.setTextColor(120)
+      doc.text(`Período: ${analyticsDesde} a ${analyticsAte}${analyticsData.instagramUsername ? '  ·  @' + analyticsData.instagramUsername : ''}`, 14, 25)
+      doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 30)
+
+      ;(doc as any).autoTable({
+        startY: 38,
+        head: [['Posts', 'Curtidas', 'Comentários', 'Alcance', 'Impressões', 'Salvamentos', 'Compartilhamentos']],
+        body: [[
+          totais.posts ?? 0, totais.curtidas ?? 0, totais.comentarios ?? 0,
+          totais.alcance ?? 0, totais.impressoes ?? 0, totais.salvamentos ?? 0, totais.compartilhamentos ?? 0,
+        ]],
+        theme: 'grid',
+        headStyles: { fillColor: [17, 17, 17], textColor: [255, 192, 15] },
+      })
+
+      const posts: any[] = analyticsData.posts || []
+      ;(doc as any).autoTable({
+        startY: (doc as any).lastAutoTable.finalY + 12,
+        head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Comentários', 'Alcance', 'Impressões']],
+        body: posts.map(p => [
+          p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
+          p.tipo || '—',
+          (p.legenda || '').slice(0, 60) + ((p.legenda || '').length > 60 ? '…' : ''),
+          p.curtidas ?? 0, p.comentarios ?? 0, p.alcance ?? 0, p.impressoes ?? 0,
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [17, 17, 17], textColor: [255, 192, 15] },
+        styles: { fontSize: 8 },
+        columnStyles: { 2: { cellWidth: 70 } },
+      })
+
+      doc.save(`analytics-${(cliente?.nome || 'cliente').toLowerCase().replace(/\s+/g, '-')}-${analyticsDesde}-a-${analyticsAte}.pdf`)
+    } catch (e) {
+      alert('Não foi possível gerar o PDF. Tente novamente.')
+    }
+    setExportandoPdf(false)
+  }
 
   async function criarPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
     setCriandoPost(true)
@@ -670,14 +766,14 @@ function Dashboard() {
               Conteúdo
             </p>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(['novo-post', 'calendario', 'biblioteca'] as const).map(a => (
+              {(['novo-post', 'calendario', 'biblioteca', 'analytics'] as const).map(a => (
                 <button key={a} onClick={() => setAba(a as any)} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                   background: aba === a ? '#ffc00f' : 'transparent',
                   fontSize: 14, transition: 'all 0.15s',
                 }}>
-                  {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : 'Biblioteca'}
+                  {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : 'Analytics'}
                 </button>
               ))}
             </nav>
@@ -994,6 +1090,200 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ANALYTICS */}
+        {aba === 'analytics' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <IconChart size={20} />
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Desempenho {clienteEmVisualizacao ? `de ${clienteEmVisualizacao.nome}` : ''}</h2>
+            </div>
+
+            {/* Filtros */}
+            <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
+              {!clienteEmVisualizacao && role !== 'cliente' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente</label>
+                  <select value={analyticsClienteId} onChange={e => { setAnalyticsClienteId(e.target.value); setAnalyticsData(null); setAnalyticsErro('') }}
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}>
+                    <option value="">Selecione...</option>
+                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>De</label>
+                <input type="date" value={analyticsDesde} onChange={e => setAnalyticsDesde(e.target.value)}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Até</label>
+                <input type="date" value={analyticsAte} onChange={e => setAnalyticsAte(e.target.value)}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+              </div>
+              <button onClick={buscarAnalytics} disabled={analyticsLoading || !analyticsClienteId} style={{
+                padding: '11px 22px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
+                cursor: (analyticsLoading || !analyticsClienteId) ? 'not-allowed' : 'pointer', opacity: (analyticsLoading || !analyticsClienteId) ? 0.5 : 1,
+              }}>
+                {analyticsLoading ? 'Carregando...' : 'Buscar dados'}
+              </button>
+              {analyticsData && (
+                <button onClick={exportarAnalyticsPdf} disabled={exportandoPdf} style={{
+                  padding: '11px 18px', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                  cursor: exportandoPdf ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}>
+                  <IconDownload size={14} /> {exportandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+                </button>
+              )}
+            </div>
+
+            {analyticsErro && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 18, color: '#b91c1c', fontSize: 13 }}>
+                <IconAlert size={16} /> {analyticsErro}
+              </div>
+            )}
+
+            {!analyticsData && !analyticsErro && !analyticsLoading && (
+              <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
+                <IconChart size={32} />
+                <p style={{ marginTop: 10 }}>Selecione um cliente e um período, depois clique em "Buscar dados" para ver o desempenho real do Instagram (via API do Meta).</p>
+              </div>
+            )}
+
+            {analyticsData && (
+              <>
+                {/* Cartões de totais */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>
+                  {[
+                    { label: 'Posts no período', valor: analyticsData.totais?.posts },
+                    { label: 'Curtidas', valor: analyticsData.totais?.curtidas },
+                    { label: 'Comentários', valor: analyticsData.totais?.comentarios },
+                    { label: 'Alcance', valor: analyticsData.totais?.alcance },
+                    { label: 'Impressões', valor: analyticsData.totais?.impressoes },
+                    { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos },
+                    { label: 'Compartilhamentos', valor: analyticsData.totais?.compartilhamentos },
+                  ].map(card => (
+                    <div key={card.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
+                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{(card.valor ?? 0).toLocaleString('pt-BR')}</p>
+                    </div>
+                  ))}
+                  {analyticsData.perfil?.followers_count != null && (
+                    <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
+                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{Number(analyticsData.perfil.followers_count).toLocaleString('pt-BR')}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Série de alcance/visitas ao perfil por dia */}
+                {Array.isArray(analyticsData.insightsConta) && analyticsData.insightsConta.length > 0 && (
+                  <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+                    <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: '#111' }}>Evolução diária</p>
+                    {analyticsData.insightsConta.map((serie: any) => {
+                      const valores = (serie.values || []).map((v: any) => Number(v.value) || 0)
+                      const max = Math.max(1, ...valores)
+                      return (
+                        <div key={serie.name} style={{ marginBottom: 16 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'capitalize' }}>
+                            {serie.name === 'reach' ? 'Alcance' : serie.name === 'profile_views' ? 'Visitas ao perfil' : serie.name}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 70 }}>
+                            {(serie.values || []).map((v: any, i: number) => (
+                              <div key={i} title={`${new Date(v.end_time).toLocaleDateString('pt-BR')}: ${v.value}`} style={{
+                                flex: 1, minWidth: 4, borderRadius: '3px 3px 0 0', background: '#ffc00f',
+                                height: `${Math.max(4, (Number(v.value) / max) * 100)}%`,
+                              }} />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {analyticsData.erroInsightsConta && (
+                  <p style={{ fontSize: 12, color: '#bbb', margin: '-12px 0 16px' }}>Série diária indisponível: {analyticsData.erroInsightsConta}</p>
+                )}
+
+                {/* Demografia */}
+                {(analyticsData.demografia?.genero || analyticsData.demografia?.idade) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
+                    {analyticsData.demografia.genero && (
+                      <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#111' }}>Gênero dos seguidores</p>
+                        {analyticsData.demografia.genero.map((g: any) => {
+                          const total = analyticsData.demografia.genero.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
+                          const pct = Math.round((Number(g.value) / total) * 100)
+                          return (
+                            <div key={g.dimension_values?.[0]} style={{ marginBottom: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 4 }}>
+                                <span style={{ textTransform: 'capitalize' }}>{g.dimension_values?.[0]}</span>
+                                <span style={{ fontWeight: 700 }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999 }}>
+                                <div style={{ height: 8, width: `${pct}%`, background: '#ffc00f', borderRadius: 999 }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {analyticsData.demografia.idade && (
+                      <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#111' }}>Faixa etária dos seguidores</p>
+                        {analyticsData.demografia.idade.map((g: any) => {
+                          const total = analyticsData.demografia.idade.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
+                          const pct = Math.round((Number(g.value) / total) * 100)
+                          return (
+                            <div key={g.dimension_values?.[0]} style={{ marginBottom: 8 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 4 }}>
+                                <span>{g.dimension_values?.[0]}</span>
+                                <span style={{ fontWeight: 700 }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999 }}>
+                                <div style={{ height: 8, width: `${pct}%`, background: '#111', borderRadius: 999 }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tabela de posts no período */}
+                <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: '#111', borderBottom: '1px solid #f0f0f0' }}>
+                    Posts publicados no período ({analyticsData.posts?.length || 0})
+                  </p>
+                  {(!analyticsData.posts || analyticsData.posts.length === 0) ? (
+                    <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhum post encontrado no período selecionado.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {analyticsData.posts.map((p: any) => (
+                        <a key={p.id} href={p.link} target="_blank" rel="noreferrer" style={{
+                          display: 'flex', gap: 14, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #f5f5f5', textDecoration: 'none', color: 'inherit',
+                        }}>
+                          <PostThumb src={p.midiaUrl} size={48} radius={8} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda || '(sem legenda)'}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : ''}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 16, flexShrink: 0, fontSize: 12, color: '#666' }}>
+                            <span><strong>{p.curtidas}</strong> curtidas</span>
+                            <span><strong>{p.comentarios}</strong> coment.</span>
+                            <span><strong>{p.alcance}</strong> alcance</span>
+                            <span><strong>{p.impressoes}</strong> impr.</span>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}
