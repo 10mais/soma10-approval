@@ -1,7 +1,5 @@
 'use client'
 import { useRef, useState } from 'react'
-import { upload } from '@vercel/blob/client'
-import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string; instagram: string }
 type Midia = { url: string; tipo: 'imagem' | 'video' }
@@ -56,18 +54,17 @@ export default function PostComposer({
     setEnviandoArquivo(true)
     for (const arquivo of Array.from(arquivos)) {
       try {
-        const ext = arquivo.name.split('.').pop() || 'bin'
-        const caminho = `midia/${uuid()}.${ext}`
-        // Upload direto do navegador para o Vercel Blob (token de cliente gerado em /api/upload).
-        // Isso evita o limite de tamanho de payload das funções serverless da Vercel.
-        const blob = await upload(caminho, arquivo, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
-          contentType: arquivo.type,
-        })
-        setMidias(m => [...m, { url: blob.url, tipo: arquivo.type.startsWith('video') ? 'video' : 'imagem' }])
-      } catch (e: any) {
-        setErroUpload(e?.message || 'Erro ao enviar arquivo. Tente novamente.')
+        const form = new FormData()
+        form.append('arquivo', arquivo)
+        const res = await fetch('/api/upload', { method: 'POST', body: form })
+        const data = await res.json()
+        if (!res.ok) {
+          setErroUpload(data?.error || 'Erro ao enviar arquivo.')
+          continue
+        }
+        setMidias(m => [...m, { url: data.url, tipo: data.tipo }])
+      } catch {
+        setErroUpload('Erro de conexão ao enviar arquivo. Tente novamente.')
       }
     }
     setEnviandoArquivo(false)
