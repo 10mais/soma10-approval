@@ -22,7 +22,13 @@ export async function GET(req: NextRequest) {
 
   const ids = await redis.smembers('posts')
   const posts = await Promise.all(ids.map(id => redis.get<Post>(`post:${id}`)))
-  const filtrados = posts.filter(Boolean).filter(p => !clienteId || p!.clienteId === clienteId)
+  let filtrados = posts.filter(Boolean).filter(p => !clienteId || p!.clienteId === clienteId)
+
+  // Rascunhos internos não devem ser visíveis para o cliente
+  if (role === 'cliente') {
+    filtrados = filtrados.filter(p => !p!.rascunhoInterno)
+  }
+
   return NextResponse.json(filtrados)
 }
 
@@ -30,7 +36,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno } = await req.json()
   const post: Post = {
     id: uuid(),
     clienteId,
@@ -44,6 +50,7 @@ export async function POST(req: NextRequest) {
     criadoPor: session.user?.name || '',
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
+    ...(rascunhoInterno ? { rascunhoInterno: true } : {}),
   }
 
   await redis.set(`post:${post.id}`, post)

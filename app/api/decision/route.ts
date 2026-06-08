@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
 import { list, put } from '@vercel/blob'
 import nodemailer from 'nodemailer'
+import { notificarEquipe } from '@/lib/notificacoes'
 
 const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
@@ -39,6 +40,18 @@ export async function POST(req: NextRequest) {
   const novoStatus = type === 'approved' ? 'aprovado' : type === 'corrected' ? 'corrigir' : 'reprovado'
   const atualizado = { ...post, status: novoStatus, anotacoes: annotations, motivoReprovacao: rejectReason, atualizadoEm: new Date().toISOString() }
   await redis.set(`post:${id}`, atualizado)
+
+  // Notificar a equipe interna sobre a decisão do cliente
+  try {
+    const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
+    const notifInfo: Record<string, { tipo: any; titulo: string; mensagem: string }> = {
+      approved: { tipo: 'post_aprovado', titulo: `Post aprovado — ${clienteNome}`, mensagem: `${clienteNome} aprovou um post. A publicação será iniciada automaticamente.` },
+      corrected: { tipo: 'post_corrigir', titulo: `Correção solicitada — ${clienteNome}`, mensagem: `${clienteNome} pediu ajustes em um post.${rejectReason ? ' Motivo: ' + rejectReason : ''}` },
+      rejected: { tipo: 'post_reprovado', titulo: `Post reprovado — ${clienteNome}`, mensagem: `${clienteNome} reprovou um post.${rejectReason ? ' Motivo: ' + rejectReason : ''}` },
+    }
+    const info = notifInfo[type]
+    if (info) await notificarEquipe(info.tipo, info.titulo, info.mensagem, id)
+  } catch (e) { console.error('Erro ao notificar equipe:', e) }
 
   // Email
   try {
@@ -77,19 +90,31 @@ export async function POST(req: NextRequest) {
     })
   } catch (e) { console.error('Erro email:', e) }
 
-  // Publicar no Instagram se aprovado
+  // Publicar no Instagram se aprovado — registra sucesso/falha no próprio post e notifica a equipe
   if (type === 'approved') {
+    const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
     try {
-      // Buscar dados de integração do cliente
       const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
-      await publishToInstagram(post as Post, cliente)
-    } catch (e) { console.error('Erro Instagram:', e) }
+      const resultado = await publishToInstagram(post as Post, cliente)
+      if (resultado.ok) {
+        await redis.set(`post:${id}`, { ...atualizado, status: 'publicado', erroPublicacao: undefined, atualizadoEm: new Date().toISOString() })
+        await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado com sucesso no Instagram.`, id)
+      } else {
+        await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: resultado.error, atualizadoEm: new Date().toISOString() })
+        await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome} no Instagram. ${resultado.error ? 'Erro: ' + resultado.error : ''}`, id)
+      }
+    } catch (e: any) {
+      console.error('Erro Instagram:', e)
+      const erro = e?.message || 'Erro desconhecido ao publicar.'
+      await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: erro, atualizadoEm: new Date().toISOString() })
+      await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome} no Instagram. Erro: ${erro}`, id)
+    }
   }
 
   return NextResponse.json({ ok: true })
 }
 
-async function publishToInstagram(post: Post, cliente?: any) {
+async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
   const VERSION = process.env.META_API_VERSION || 'v19.0'
   const BASE = `https://graph.facebook.com/${VERSION}`
 
@@ -101,16 +126,30 @@ async function publishToInstagram(post: Post, cliente?: any) {
     ? cliente.instagramBusinessId
     : process.env.INSTAGRAM_BUSINESS_ID
 
-  if (!TOKEN || !IG_ID) return
+  if (!TOKEN || !IG_ID) return { ok: false, error: 'Conta do Instagram não conectada para este cliente.' }
 
-  const imagens = post.imagens || []
-  if (imagens.length === 1) {
-    const c = await fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, image_url: imagens[0], caption: post.legenda }) }).then(r => r.json())
-    await fetch(`${BASE}/${IG_ID}/media_publish`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, creation_id: c.id }) })
-  } else {
-    const ids = await Promise.all(imagens.map(img => fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, image_url: img, is_carousel_item: 'true' }) }).then(r => r.json()).then(d => d.id)))
-    const carousel = await fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, media_type: 'CAROUSEL', children: ids.join(','), caption: post.legenda }) }).then(r => r.json())
-    await new Promise(r => setTimeout(r, 5000))
-    await fetch(`${BASE}/${IG_ID}/media_publish`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, creation_id: carousel.id }) })
+  try {
+    const imagens = post.imagens || []
+    if (imagens.length === 0) return { ok: false, error: 'O post não possui imagens para publicar.' }
+
+    if (imagens.length === 1) {
+      const c = await fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, image_url: imagens[0], caption: post.legenda }) }).then(r => r.json())
+      if (c?.error) return { ok: false, error: c.error.message || 'Erro ao criar mídia.' }
+      const pub = await fetch(`${BASE}/${IG_ID}/media_publish`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, creation_id: c.id }) }).then(r => r.json())
+      if (pub?.error) return { ok: false, error: pub.error.message || 'Erro ao publicar mídia.' }
+    } else {
+      const itens = await Promise.all(imagens.map(img => fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, image_url: img, is_carousel_item: 'true' }) }).then(r => r.json())))
+      const erroItem = itens.find((d: any) => d?.error)
+      if (erroItem) return { ok: false, error: erroItem.error.message || 'Erro ao preparar imagens do carrossel.' }
+      const ids = itens.map((d: any) => d.id)
+      const carousel = await fetch(`${BASE}/${IG_ID}/media`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, media_type: 'CAROUSEL', children: ids.join(','), caption: post.legenda }) }).then(r => r.json())
+      if (carousel?.error) return { ok: false, error: carousel.error.message || 'Erro ao criar carrossel.' }
+      await new Promise(r => setTimeout(r, 5000))
+      const pub = await fetch(`${BASE}/${IG_ID}/media_publish`, { method: 'POST', body: new URLSearchParams({ access_token: TOKEN, creation_id: carousel.id }) }).then(r => r.json())
+      if (pub?.error) return { ok: false, error: pub.error.message || 'Erro ao publicar carrossel.' }
+    }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro de comunicação com o Instagram.' }
   }
 }

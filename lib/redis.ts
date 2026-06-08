@@ -46,6 +46,25 @@ export type ConfigAgencia = {
   atualizadoEm?: string
 }
 
+export type TipoNotificacao =
+  | 'post_aprovado'
+  | 'post_corrigir'
+  | 'post_reprovado'
+  | 'post_publicado'
+  | 'post_falha_publicacao'
+  | 'geral'
+
+export type Notificacao = {
+  id: string
+  destinatarioEmail: string
+  tipo: TipoNotificacao
+  titulo: string
+  mensagem: string
+  postId?: string
+  lida: boolean
+  criadoEm: string
+}
+
 export type PostStatus ='rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
 export type Post = {
@@ -64,4 +83,5 @@ export type Post = {
   anotacoes?: any[]
   motivoReprovacao?: string
   erroPublicacao?: string
+  rascunhoInterno?: boolean
 }

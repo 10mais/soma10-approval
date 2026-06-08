@@ -72,11 +72,14 @@ function Dashboard() {
   const [bibStatus, setBibStatus] = useState('')
   const [postPreview, setPostPreview] = useState<Post | null>(null)
   const [verComoClienteId, setVerComoClienteId] = useState('')
+  const [buscaCliente, setBuscaCliente] = useState('')
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)
   const [criandoPost, setCriandoPost] = useState(false)
+  const [salvandoRascunho, setSalvandoRascunho] = useState(false)
+  const [rascunhoMsg, setRascunhoMsg] = useState('')
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
-  const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario'>('lista')
+  const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -96,6 +99,9 @@ function Dashboard() {
   const [vinculos, setVinculos] = useState<Record<string, string>>({}) // pageId -> clienteId
   const [vinculando, setVinculando] = useState(false)
   const [metaErro, setMetaErro] = useState('')
+  // Notificações
+  const [notificacoes, setNotificacoes] = useState<any[]>([])
+  const [inboxAberto, setInboxAberto] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -111,6 +117,25 @@ function Dashboard() {
       }
     }
   }, [status])
+
+  // Notificações: carrega ao autenticar e atualiza periodicamente
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const carregarNotificacoes = () => fetch('/api/notificacoes').then(r => r.json()).then(d => setNotificacoes(Array.isArray(d) ? d : []))
+    carregarNotificacoes()
+    const intervalo = setInterval(carregarNotificacoes, 60000)
+    return () => clearInterval(intervalo)
+  }, [status])
+
+  async function marcarNotificacaoLida(id: string) {
+    setNotificacoes(ns => ns.map(n => n.id === id ? { ...n, lida: true } : n))
+    await fetch('/api/notificacoes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+  }
+
+  async function marcarTodasNotificacoesLidas() {
+    setNotificacoes(ns => ns.map(n => ({ ...n, lida: true })))
+    await fetch('/api/notificacoes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ todasComoLidas: true }) })
+  }
 
   // Ler páginas do cookie após OAuth
   useEffect(() => {
@@ -155,6 +180,24 @@ function Dashboard() {
     fetch('/api/posts').then(r => r.json()).then(setPosts)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
+  }
+
+  async function salvarRascunhoPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
+    if (!valor.clienteId) return
+    setSalvandoRascunho(true)
+    setRascunhoMsg('')
+    const cliente = clientes.find(c => c.id === valor.clienteId)
+    await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...valor, clienteNome: cliente?.nome, rascunhoInterno: true }),
+    })
+    setSalvandoRascunho(false)
+    setRascunhoMsg('Rascunho salvo! Ele fica visível apenas para a equipe — o cliente não recebe nem vê este conteúdo até você publicá-lo para aprovação.')
+    setComposerPrefill(null)
+    setComposerKey(k => k + 1)
+    fetch('/api/posts').then(r => r.json()).then(setPosts)
+    setTimeout(() => setRascunhoMsg(''), 6000)
   }
 
   function iniciarEdicaoPost(post: Post) {
@@ -411,6 +454,63 @@ function Dashboard() {
           <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Sininho de notificações */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setInboxAberto(v => !v)} title="Notificações" style={{
+              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
+              width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              🔔
+              {notificacoes.some(n => !n.lida) && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
+                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
+                }}>
+                  {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
+                </span>
+              )}
+            </button>
+
+            {inboxAberto && (
+              <>
+                <div onClick={() => setInboxAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                <div style={{
+                  position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 440, overflowY: 'auto', background: '#fff',
+                  borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
+                    {notificacoes.some(n => !n.lida) && (
+                      <button onClick={marcarTodasNotificacoesLidas} style={{ background: 'none', border: 'none', color: '#888', fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                        Marcar todas como lidas
+                      </button>
+                    )}
+                  </div>
+                  {notificacoes.length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma notificação por enquanto.</div>
+                  ) : (
+                    notificacoes.map(n => (
+                      <div key={n.id} onClick={() => {
+                        if (!n.lida) marcarNotificacaoLida(n.id)
+                        if (n.postId) { setInboxAberto(false); router.push(`/aprovar/${n.postId}`) }
+                      }} style={{
+                        padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
+                        background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start',
+                      }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
           <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
           <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#fff' }}>Sair</button>
@@ -442,14 +542,41 @@ function Dashboard() {
                 </button>
               </div>
             ) : (
-              <select value={verComoClienteId} onChange={e => setVerComoClienteId(e.target.value)} style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0',
-                fontSize: 13, fontWeight: 700, background: '#f8f8f8',
-                color: '#111', fontFamily: 'inherit', boxSizing: 'border-box', cursor: 'pointer',
-              }}>
-                <option value="">Visão da agência (todos)</option>
-                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
+              <div>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', fontSize: 13, pointerEvents: 'none' }}>🔍</span>
+                  <input
+                    value={buscaCliente}
+                    onChange={e => setBuscaCliente(e.target.value)}
+                    placeholder="Buscar cliente..."
+                    style={{
+                      width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid #e0e0e0',
+                      fontSize: 13, fontWeight: 600, background: '#f8f8f8', color: '#111', fontFamily: 'inherit', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto' }}>
+                  <button onClick={() => { setVerComoClienteId(''); setBuscaCliente('') }} style={{
+                    textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: 'transparent', color: '#888', fontSize: 12, fontWeight: 700,
+                  }}>
+                    Visão da agência (todos)
+                  </button>
+                  {clientes
+                    .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
+                    .map(c => (
+                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente('') }} style={{
+                        textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
+                      }}>
+                        {c.nome}
+                      </button>
+                    ))}
+                  {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
+                    <p style={{ margin: '4px 10px', fontSize: 12, color: '#bbb' }}>Nenhum cliente encontrado.</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -516,13 +643,13 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
               <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 4 }}>
-                {(['lista', 'calendario'] as const).map(v => (
+                {(['lista', 'calendario', 'fluxo'] as const).map(v => (
                   <button key={v} onClick={() => setVisualizacaoPosts(v)} style={{
                     padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                     background: visualizacaoPosts === v ? '#111' : 'transparent',
                     color: visualizacaoPosts === v ? '#ffc00f' : '#888',
                   }}>
-                    {v === 'lista' ? '☰ Lista' : '📅 Calendário'}
+                    {v === 'lista' ? '☰ Lista' : v === 'calendario' ? '📅 Calendário' : '🔀 Fluxo'}
                   </button>
                 ))}
               </div>
@@ -546,6 +673,38 @@ function Dashboard() {
               </div>
             ) : visualizacaoPosts === 'calendario' ? (
               <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
+            ) : visualizacaoPosts === 'fluxo' ? (
+              <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
+                {(['rascunho', 'aguardando_aprovacao', 'corrigir', 'aprovado', 'reprovado', 'publicado', 'falha_publicacao'] as const).map(st => {
+                  const itens = postsView.filter(p => p.status === st)
+                  return (
+                    <div key={st} style={{ flex: '0 0 240px', background: '#fafafa', borderRadius: 14, border: '1px solid #eee', display: 'flex', flexDirection: 'column', maxHeight: 640 }}>
+                      <div style={{ padding: '12px 14px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#333' }}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[st] || '#ddd', display: 'inline-block', border: '1px solid rgba(0,0,0,0.08)' }} />
+                          {STATUS_LABEL[st]}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '2px 8px', border: '1px solid #eee' }}>{itens.length}</span>
+                      </div>
+                      <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+                        {itens.length === 0 ? (
+                          <p style={{ margin: '8px 4px', fontSize: 12, color: '#ccc', textAlign: 'center' }}>Nenhum post</p>
+                        ) : itens.map(post => (
+                          <div key={post.id} onClick={() => router.push(`/aprovar/${post.id}`)} style={{
+                            background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
+                          }}>
+                            {post.imagens?.[0] && <img src={post.imagens[0]} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
+                              <p style={{ margin: 0, fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {postsView.map(post => (
@@ -557,6 +716,11 @@ function Dashboard() {
                         <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
                           {post.status === 'falha_publicacao' && '⚠️ '}{STATUS_LABEL[post.status] || post.status}
                         </span>
+                        {(post as any).rascunhoInterno && (
+                          <span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>
+                            🔒 Interno (cliente não vê)
+                          </span>
+                        )}
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
                       {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
@@ -743,6 +907,12 @@ function Dashboard() {
               )}
             </div>
 
+            {rascunhoMsg && (
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#1d4ed8' }}>
+                {rascunhoMsg}
+              </div>
+            )}
+
             {linkGerado ? (
               <div style={{ background: '#f0fdf4', border: '2px solid #22c55e', borderRadius: 14, padding: 24, textAlign: 'center' }}>
                 <h3 style={{ margin: '0 0 16px', color: '#111' }}>Post criado com sucesso!</h3>
@@ -763,6 +933,8 @@ function Dashboard() {
                 clientes={clientes}
                 valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
                 onSubmit={editandoPostId ? salvarEdicaoPost : criarPost}
+                onSalvarRascunho={editandoPostId ? undefined : salvarRascunhoPost}
+                salvandoRascunho={salvandoRascunho}
                 enviando={criandoPost}
                 textoBotao={editandoPostId ? 'Salvar alterações' : 'Criar post e gerar link de aprovação'}
               />

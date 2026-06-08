@@ -22,13 +22,17 @@ export default function PostComposer({
   clientes,
   valorInicial,
   onSubmit,
+  onSalvarRascunho,
   enviando,
+  salvandoRascunho,
   textoBotao = 'Salvar',
 }: {
   clientes: Cliente[]
   valorInicial?: Partial<ComposerValue>
   onSubmit: (valor: ComposerValue) => void
+  onSalvarRascunho?: (valor: ComposerValue) => void
   enviando?: boolean
+  salvandoRascunho?: boolean
   textoBotao?: string
 }) {
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
@@ -74,7 +78,12 @@ export default function PostComposer({
     onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato })
   }
 
+  function salvarRascunho() {
+    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato })
+  }
+
   const podeEnviar = !!clienteId && !!legenda.trim() && midias.length > 0 && !enviando
+  const podeSalvarRascunho = !!clienteId && !enviando && !salvandoRascunho
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: 24, alignItems: 'start' }}>
@@ -168,10 +177,18 @@ export default function PostComposer({
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>
 
-        <button onClick={enviar} disabled={!podeEnviar}
-          style={{ padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podeEnviar ? 'pointer' : 'not-allowed', opacity: podeEnviar ? 1 : 0.5 }}>
-          {enviando ? 'Salvando...' : textoBotao}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {onSalvarRascunho && (
+            <button onClick={salvarRascunho} disabled={!podeSalvarRascunho} type="button"
+              style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: podeSalvarRascunho ? 'pointer' : 'not-allowed', opacity: podeSalvarRascunho ? 1 : 0.5 }}>
+              {salvandoRascunho ? 'Salvando rascunho...' : '💾 Deixar em rascunho'}
+            </button>
+          )}
+          <button onClick={enviar} disabled={!podeEnviar}
+            style={{ flex: 1.4, padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podeEnviar ? 'pointer' : 'not-allowed', opacity: podeEnviar ? 1 : 0.5 }}>
+            {enviando ? 'Salvando...' : textoBotao}
+          </button>
+        </div>
       </div>
 
       {/* Coluna direita: preview ao vivo */}
