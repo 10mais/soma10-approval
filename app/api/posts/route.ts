@@ -72,3 +72,22 @@ export async function PUT(req: NextRequest) {
   await redis.set(`post:${id}`, atualizado)
   return NextResponse.json({ ok: true, post: atualizado })
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+
+  const role = (session.user as any).role
+  if (role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+
+  const id = req.nextUrl.searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
+
+  const post = await redis.get<Post>(`post:${id}`)
+  if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+
+  await redis.del(`post:${id}`)
+  await redis.srem('posts', id)
+
+  return NextResponse.json({ ok: true })
+}

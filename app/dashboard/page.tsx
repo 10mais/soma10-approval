@@ -30,6 +30,55 @@ const STATUS_COLOR: Record<string, string> = {
   falha_publicacao: '#fee2e2',
 }
 
+// Ícones de contorno (substituem emojis por um visual mais profissional)
+function Icon({ children, size = 16, ...props }: { children: any; size?: number } & Record<string, any>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      {children}
+    </svg>
+  )
+}
+const IconSearch = (p: any) => <Icon {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></Icon>
+const IconCalendar = (p: any) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></Icon>
+const IconList = (p: any) => <Icon {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></Icon>
+const IconFlow = (p: any) => <Icon {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><path d="M10 6.5h4a3 3 0 0 1 3 3V14M14 17.5H8a3 3 0 0 1-3-3V10" /></Icon>
+const IconBell = (p: any) => <Icon {...p}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></Icon>
+const IconAlert = (p: any) => <Icon {...p}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></Icon>
+const IconLock = (p: any) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></Icon>
+const IconSave = (p: any) => <Icon {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></Icon>
+const IconTrash = (p: any) => <Icon {...p}><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" /><path d="M10 11v6M14 11v6" /></Icon>
+const IconImageOff = (p: any) => <Icon {...p}><path d="M10.5 8.5a2 2 0 1 0 0-.001M3 3l18 18" /><path d="M21 15l-5-5L5 21M3 7v12a2 2 0 0 0 2 2h12M21 17V5a2 2 0 0 0-2-2H9" /></Icon>
+
+// Miniatura de mídia do post — exibe um placeholder profissional quando a imagem não carrega
+function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: number; radius?: number }) {
+  const [erro, setErro] = useState(false)
+  if (!src || erro) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: radius, background: '#f4f4f4', border: '1px solid #eee',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', flexShrink: 0,
+      }}>
+        <IconImageOff size={Math.round(size * 0.4)} />
+      </div>
+    )
+  }
+  return <img src={src} alt="" onError={() => setErro(true)} style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover', flexShrink: 0, display: 'block' }} />
+}
+
+// Imagem que ocupa 100% do container, com fallback visual caso a URL não carregue
+function ImagemComFallback({ src }: { src: string }) {
+  const [erro, setErro] = useState(false)
+  if (erro) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, gap: 6, flexDirection: 'column' }}>
+        <IconImageOff size={22} />
+        Imagem indisponível
+      </div>
+    )
+  }
+  return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+}
+
 // Converte uma data ISO para o formato aceito pelo input datetime-local (YYYY-MM-DDTHH:mm)
 function paraDatetimeLocal(iso?: string) {
   if (!iso) return ''
@@ -235,6 +284,16 @@ function Dashboard() {
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
     fetch('/api/posts').then(r => r.json()).then(setPosts)
+  }
+
+  async function excluirPost(post: Post) {
+    if (!confirm(`Excluir definitivamente este post${post.clienteNome ? ' de ' + post.clienteNome : ''}? Esta ação não pode ser desfeita.`)) return
+    setPosts(ps => ps.filter(p => p!.id !== post.id))
+    const res = await fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      fetch('/api/posts').then(r => r.json()).then(setPosts)
+      alert('Não foi possível excluir o post.')
+    }
   }
 
   async function salvarVinculos() {
@@ -460,7 +519,7 @@ function Dashboard() {
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
               width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              🔔
+              <IconBell size={18} />
               {notificacoes.some(n => !n.lida) && (
                 <span style={{
                   position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
@@ -531,9 +590,18 @@ function Dashboard() {
             {verComoClienteId ? (
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
               <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px' }}>
-                <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
-                  {clienteEmVisualizacao?.nome || 'Cliente'}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  {clienteEmVisualizacao?.logo ? (
+                    <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #fde68a' }} />
+                  ) : (
+                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
+                      {(clienteEmVisualizacao?.nome || '?')[0]?.toUpperCase()}
+                    </span>
+                  )}
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                    {clienteEmVisualizacao?.nome || 'Cliente'}
+                  </p>
+                </div>
                 <button onClick={() => setVerComoClienteId('')} style={{
                   background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
                   cursor: 'pointer', textDecoration: 'underline', padding: 0,
@@ -544,7 +612,7 @@ function Dashboard() {
             ) : (
               <div>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', fontSize: 13, pointerEvents: 'none' }}>🔍</span>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
                   <input
                     value={buscaCliente}
                     onChange={e => setBuscaCliente(e.target.value)}
@@ -599,7 +667,7 @@ function Dashboard() {
           {/* Conteúdo agrupado por cliente: Novo Post / Calendário / Biblioteca */}
           <div style={{ marginTop: 18 }}>
             <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Conteúdo'}
+              Conteúdo
             </p>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {(['novo-post', 'calendario', 'biblioteca'] as const).map(a => (
@@ -625,9 +693,13 @@ function Dashboard() {
             display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: 12, padding: '10px 16px', marginBottom: 20,
           }}>
-            <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
-              {clienteEmVisualizacao.nome[0]?.toUpperCase()}
-            </span>
+            {clienteEmVisualizacao.logo ? (
+              <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #fde68a' }} />
+            ) : (
+              <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
+                {clienteEmVisualizacao.nome[0]?.toUpperCase()}
+              </span>
+            )}
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram}) — somente o conteúdo dele é exibido.
             </p>
@@ -648,8 +720,10 @@ function Dashboard() {
                     padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                     background: visualizacaoPosts === v ? '#111' : 'transparent',
                     color: visualizacaoPosts === v ? '#ffc00f' : '#888',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
                   }}>
-                    {v === 'lista' ? '☰ Lista' : v === 'calendario' ? '📅 Calendário' : '🔀 Fluxo'}
+                    {v === 'lista' ? <IconList size={14} /> : v === 'calendario' ? <IconCalendar size={14} /> : <IconFlow size={14} />}
+                    {v === 'lista' ? 'Lista' : v === 'calendario' ? 'Calendário' : 'Fluxo'}
                   </button>
                 ))}
               </div>
@@ -658,7 +732,7 @@ function Dashboard() {
             {/* Aviso de falhas de publicação */}
             {postsView.some(p => p.status === 'falha_publicacao') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
-                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span style={{ color: '#b91c1c', display: 'flex' }}><IconAlert size={18} /></span>
                 <p style={{ margin: 0, fontSize: 13, color: '#b91c1c' }}>
                   {postsView.filter(p => p.status === 'falha_publicacao').length === 1
                     ? 'Há 1 post que falhou ao publicar. Verifique e tente novamente.'
@@ -693,7 +767,7 @@ function Dashboard() {
                           <div key={post.id} onClick={() => router.push(`/aprovar/${post.id}`)} style={{
                             background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
                           }}>
-                            {post.imagens?.[0] && <img src={post.imagens[0]} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                            <PostThumb src={post.imagens?.[0]} size={38} radius={8} />
                             <div style={{ minWidth: 0 }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
                               <p style={{ margin: 0, fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
@@ -709,16 +783,26 @@ function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {postsView.map(post => (
                   <div key={post.id} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', gap: 16, alignItems: 'center' }}>
-                    {post.imagens?.[0] && <img src={post.imagens[0]} alt="" style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />}
+                    <PostThumb src={post.imagens?.[0]} size={60} radius={10} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                        {(() => {
+                          const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
+                          return cli?.logo ? (
+                            <img src={cli.logo} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          ) : (
+                            <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
+                              {(post.clienteNome || '?')[0]?.toUpperCase()}
+                            </span>
+                          )
+                        })()}
                         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{post.clienteNome}</span>
-                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
-                          {post.status === 'falha_publicacao' && '⚠️ '}{STATUS_LABEL[post.status] || post.status}
+                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
                         </span>
                         {(post as any).rascunhoInterno && (
-                          <span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>
-                            🔒 Interno (cliente não vê)
+                          <span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <IconLock size={12} /> Interno (cliente não vê)
                           </span>
                         )}
                       </div>
@@ -739,6 +823,14 @@ function Dashboard() {
                       }}>
                         Ver
                       </button>
+                      {role !== 'cliente' && (
+                        <button onClick={() => excluirPost(post)} title="Excluir post" style={{
+                          padding: '8px 10px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <IconTrash size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -797,9 +889,12 @@ function Dashboard() {
                     }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
                         {post.imagens?.[0] ? (
-                          <img src={post.imagens[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          <ImagemComFallback src={post.imagens[0]} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>Sem imagem</div>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, gap: 6, flexDirection: 'column' }}>
+                            <IconImageOff size={22} />
+                            Sem imagem
+                          </div>
                         )}
                         {post.imagens?.length > 1 && (
                           <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600, borderRadius: 999, padding: '2px 8px' }}>
@@ -887,6 +982,14 @@ function Dashboard() {
                       <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Fechar
                       </button>
+                      {role !== 'cliente' && (
+                        <button onClick={() => { excluirPost(postPreview); setPostPreview(null) }} title="Excluir post" style={{
+                          padding: '10px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 10, color: '#b91c1c', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <IconTrash size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

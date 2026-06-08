@@ -181,7 +181,7 @@ export default function PostComposer({
           {onSalvarRascunho && (
             <button onClick={salvarRascunho} disabled={!podeSalvarRascunho} type="button"
               style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: podeSalvarRascunho ? 'pointer' : 'not-allowed', opacity: podeSalvarRascunho ? 1 : 0.5 }}>
-              {salvandoRascunho ? 'Salvando rascunho...' : '💾 Deixar em rascunho'}
+              {salvandoRascunho ? 'Salvando rascunho...' : 'Deixar em rascunho'}
             </button>
           )}
           <button onClick={enviar} disabled={!podeEnviar}
