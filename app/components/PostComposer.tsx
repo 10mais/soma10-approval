@@ -4,7 +4,7 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string; instagram: string }
-type Midia = { url: string; tipo: 'imagem' | 'video' }
+type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
 type EmEnvio = { id: string; nome: string; progresso: number }
 
 export type ComposerValue = {
@@ -14,6 +14,7 @@ export type ComposerValue = {
   dataAgendada: string
   formato: 'feed' | 'reel' | 'story'
   colaboradores: string[]
+  capasVideo: Record<string, string>
 }
 
 type PerfilColab = { username: string; nome: string; foto: string; seguidores: number | null }
@@ -45,8 +46,13 @@ export default function PostComposer({
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
   const [legenda, setLegenda] = useState(valorInicial?.legenda || '')
   const [midias, setMidias] = useState<Midia[]>(
-    (valorInicial?.imagens || []).map(url => ({ url, tipo: /\.(mp4|mov)(\?|$)/i.test(url) ? 'video' : 'imagem' }))
+    (valorInicial?.imagens || []).map(url => ({
+      url,
+      tipo: /\.(mp4|mov)(\?|$)/i.test(url) ? 'video' as const : 'imagem' as const,
+      capa: valorInicial?.capasVideo?.[url],
+    }))
   )
+  const [enviandoCapa, setEnviandoCapa] = useState<number | null>(null)
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
   const [colaboradores, setColaboradores] = useState<string[]>(valorInicial?.colaboradores || [])
@@ -81,6 +87,7 @@ export default function PostComposer({
         setMidias(m => [...m, { url: blob.url, tipo: arquivo.type.startsWith('video') ? 'video' : 'imagem' }])
       } catch (err: any) {
         setErroUpload(err?.message || 'Erro ao enviar arquivo. Tente novamente.')
+        // (capa de vídeo é tratada em enviarCapa)
       } finally {
         setEmEnvio(lista => lista.filter(e => e.id !== id))
       }
@@ -89,6 +96,31 @@ export default function PostComposer({
 
   function removerMidia(idx: number) {
     setMidias(m => m.filter((_, i) => i !== idx))
+  }
+
+  // Envia uma imagem de capa (thumbnail) para um vídeo específico
+  async function enviarCapa(idx: number, arquivo: File) {
+    setEnviandoCapa(idx)
+    try {
+      const ext = arquivo.name.split('.').pop() || 'jpg'
+      const blob = await upload(`midia/capa-${uuid()}.${ext}`, arquivo, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        contentType: arquivo.type,
+        clientPayload: arquivo.type,
+      })
+      setMidias(m => m.map((mid, i) => i === idx ? { ...mid, capa: blob.url } : mid))
+    } catch (err: any) {
+      setErroUpload(err?.message || 'Erro ao enviar a capa. Tente novamente.')
+    } finally {
+      setEnviandoCapa(null)
+    }
+  }
+
+  function montarCapasVideo(): Record<string, string> {
+    const mapa: Record<string, string> = {}
+    for (const m of midias) if (m.tipo === 'video' && m.capa) mapa[m.url] = m.capa
+    return mapa
   }
 
   function buscarColab(termo: string) {
@@ -147,11 +179,11 @@ export default function PostComposer({
   }
 
   function enviar() {
-    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores })
+    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo() })
   }
 
   function salvarRascunho() {
-    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores })
+    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo() })
   }
 
   const enviandoArquivo = emEnvio.length > 0
@@ -222,7 +254,9 @@ export default function PostComposer({
               {midias.map((m, i) => (
                 <div key={i} style={{ position: 'relative', width: 84, height: 84, borderRadius: 10, overflow: 'hidden', background: '#eee' }}>
                   {m.tipo === 'video' ? (
-                    <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                    m.capa
+                      ? <img src={m.capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      : <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
                   ) : (
                     <img src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   )}
@@ -230,6 +264,14 @@ export default function PostComposer({
                     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%',
                     background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1,
                   }}>×</button>
+                  {m.tipo === 'video' && (
+                    <label onClick={e => e.stopPropagation()} title="Capa do vídeo"
+                      style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '3px 0', cursor: 'pointer' }}>
+                      {enviandoCapa === i ? 'Enviando...' : (m.capa ? 'Trocar capa' : '+ Capa')}
+                      <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoCapa !== null}
+                        onChange={e => { if (e.target.files?.[0]) enviarCapa(i, e.target.files[0]); e.target.value = '' }} />
+                    </label>
+                  )}
                 </div>
               ))}
             </div>
@@ -375,7 +417,7 @@ export default function PostComposer({
               </div>
             ) : midias.map((m, i) => (
               m.tipo === 'video'
-                ? <video key={i} src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} muted controls />
+                ? <video key={i} src={m.url} poster={m.capa} style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} muted controls />
                 : <img key={i} src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} />
             ))}
           </div>

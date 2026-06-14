@@ -375,6 +375,7 @@ function Dashboard() {
       imagens: post.imagens || [],
       formato: (post as any).formato || 'feed',
       colaboradores: (post as any).colaboradores || [],
+      capasVideo: (post as any).capasVideo || {},
     })
     setComposerKey(k => k + 1)
     setPostPreview(null)
@@ -923,7 +924,7 @@ function Dashboard() {
                           <div key={post.id} onClick={() => router.push(`/aprovar/${post.id}`)} style={{
                             background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
                           }}>
-                            <PostThumb src={post.imagens?.[0]} size={38} radius={8} />
+                            <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={38} radius={8} />
                             <div style={{ minWidth: 0 }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
                               <p style={{ margin: 0, fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
@@ -939,7 +940,7 @@ function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {postsView.map(post => (
                   <div key={post.id} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <PostThumb src={post.imagens?.[0]} size={60} radius={10} />
+                    <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={60} radius={10} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                         {(() => {
@@ -1044,8 +1045,8 @@ function Dashboard() {
                       background: '#fff', borderRadius: 14, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer',
                     }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
-                        {post.imagens?.[0] ? (
-                          <ImagemComFallback src={post.imagens[0]} />
+                        {((post as any).thumbnail || post.imagens?.[0]) ? (
+                          <ImagemComFallback src={(post as any).thumbnail || post.imagens[0]} />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, gap: 6, flexDirection: 'column' }}>
                             <IconImageOff size={22} />
@@ -1129,6 +1130,7 @@ function Dashboard() {
                           imagens: postPreview.imagens || [],
                           formato: 'feed',
                           colaboradores: (postPreview as any).colaboradores || [],
+                          capasVideo: (postPreview as any).capasVideo || {},
                         })
                         setComposerKey(k => k + 1)
                         setPostPreview(null)

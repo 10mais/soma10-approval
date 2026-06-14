@@ -85,5 +85,7 @@ export type Post = {
   erroPublicacao?: string
   rascunhoInterno?: boolean
   colaboradores?: string[] // até 4 @usuários marcados em colab
+  capasVideo?: Record<string, string> // URL do vídeo -> URL da capa (thumbnail) escolhida
   midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
+  thumbnail?: string // miniatura mantida após a limpeza (uma imagem leve por post)
 }

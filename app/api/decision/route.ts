@@ -101,13 +101,14 @@ export async function POST(req: NextRequest) {
 
       // Só é PUBLICADO se as duas redes derem certo. Caso contrário, FALHOU com o motivo.
       if (ig.ok && fb.ok) {
-        // Limpeza automática: remove as mídias do Blob (já estão publicadas nas redes)
-        const removidas = await removerMidiasDoBlob(post.imagens || [])
+        // Limpeza automática: remove as mídias pesadas do Blob, mantendo a miniatura
+        const limpeza = await limparMidiasMantendoCapa(post as Post)
         await redis.set(`post:${id}`, {
           ...atualizado,
           status: 'publicado',
           erroPublicacao: undefined,
-          ...(removidas ? { midiaRemovida: true } : {}),
+          ...(limpeza.removidas ? { midiaRemovida: true } : {}),
+          ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
           atualizadoEm: new Date().toISOString(),
         })
         await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado com sucesso no Instagram e no Facebook.`, id)
@@ -133,19 +134,35 @@ const BASE = `https://graph.facebook.com/${VERSION}`
 
 const isVideo = (url: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(url)
 
-// Remove do Vercel Blob as mídias já publicadas, para liberar armazenamento.
+const ehNossoBlob = (u: string) => /blob\.vercel-storage\.com\/.*midia\//.test(u)
+
+// Escolhe a miniatura a manter: primeira imagem; senão a capa do primeiro vídeo.
+function escolherThumbnail(post: Post): string | undefined {
+  const midias = post.imagens || []
+  const img = midias.find(m => !isVideo(m))
+  if (img) return img
+  const vid = midias.find(isVideo)
+  if (vid && post.capasVideo?.[vid]) return post.capasVideo[vid]
+  return undefined
+}
+
+// Remove do Vercel Blob as mídias já publicadas (libera espaço), mantendo apenas a miniatura.
 // Só apaga URLs do nosso Blob (pasta midia/) — ignora links externos.
-async function removerMidiasDoBlob(urls: string[]): Promise<boolean> {
+async function limparMidiasMantendoCapa(post: Post): Promise<{ removidas: boolean; thumbnail?: string }> {
   const token = process.env.BLOB_READ_WRITE_TOKEN
-  if (!token) return false
-  const doBlob = urls.filter(u => /\.public\.blob\.vercel-storage\.com\/midia\//.test(u) || /blob\.vercel-storage\.com\/.*midia\//.test(u))
-  if (doBlob.length === 0) return false
+  const thumbnail = escolherThumbnail(post)
+  if (!token) return { removidas: false, thumbnail }
+
+  const todas = [...(post.imagens || []), ...Object.values(post.capasVideo || {})]
+  const apagar = todas.filter(u => ehNossoBlob(u) && u !== thumbnail)
+  if (apagar.length === 0) return { removidas: false, thumbnail }
+
   try {
-    await del(doBlob, { token })
-    return true
+    await del(apagar, { token })
+    return { removidas: true, thumbnail }
   } catch (e) {
     console.error('[limpeza] Falha ao remover mídias do Blob:', e)
-    return false
+    return { removidas: false, thumbnail }
   }
 }
 
@@ -189,11 +206,13 @@ async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: bool
       return { ok: true }
     }
 
+    const capas = post.capasVideo || {}
+
     // Mídia única (imagem ou vídeo/reel)
     if (midias.length === 1) {
       const m = midias[0]
       const params = isVideo(m)
-        ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...colabParam }
+        ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}), ...colabParam }
         : { access_token: TOKEN, image_url: m, caption: post.legenda, ...colabParam }
       const c = await postForm(`${BASE}/${IG_ID}/media`, params)
       if (c?.error) return { ok: false, error: c.error.message }
@@ -207,7 +226,7 @@ async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: bool
     const itensIds: string[] = []
     for (const m of midias) {
       const item = await postForm(`${BASE}/${IG_ID}/media`, isVideo(m)
-        ? { access_token: TOKEN, media_type: 'VIDEO', video_url: m, is_carousel_item: 'true' }
+        ? { access_token: TOKEN, media_type: 'VIDEO', video_url: m, is_carousel_item: 'true', ...(capas[m] ? { cover_url: capas[m] } : {}) }
         : { access_token: TOKEN, image_url: m, is_carousel_item: 'true' })
       if (item?.error) return { ok: false, error: item.error.message }
       if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
