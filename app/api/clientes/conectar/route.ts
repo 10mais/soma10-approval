@@ -61,6 +61,16 @@ export async function POST(req: NextRequest) {
     const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
     if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
 
+    // Busca a foto de perfil do Instagram para usar como imagem do cliente automaticamente
+    let fotoPerfil: string | undefined
+    try {
+      if (igId && pageToken) {
+        const fotoRes = await fetch(`${BASE}/${igId}?fields=profile_picture_url&access_token=${pageToken}`)
+        const fotoData = await fotoRes.json()
+        if (fotoData?.profile_picture_url) fotoPerfil = fotoData.profile_picture_url
+      }
+    } catch {}
+
     const clienteAtualizado: Cliente = {
       ...cliente,
       facebookPageId,
@@ -68,6 +78,7 @@ export async function POST(req: NextRequest) {
       instagramBusinessId: igId,
       instagramUsername: igUsername,
       metaConectado: true,
+      ...(fotoPerfil ? { logo: fotoPerfil } : {}),
     }
 
     await redis.set(`cliente:${clienteId}`, clienteAtualizado)
