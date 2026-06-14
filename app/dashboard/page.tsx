@@ -1856,6 +1856,57 @@ function Dashboard() {
               </div>
             </div>
 
+            {/* Contas sociais conectadas */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Contas sociais conectadas</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: '#999' }}>Perfis de Facebook e Instagram vinculados aos clientes.</p>
+                </div>
+                <button onClick={() => setConectarRedesCliente('')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Conectar redes
+                </button>
+              </div>
+
+              {clientes.filter(c => c.metaConectado).length === 0 ? (
+                <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma conta conectada ainda. Use "Conectar redes" para vincular um perfil.</p>
+              ) : (
+                <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, padding: '10px 14px', background: '#fafafa', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <span>Conta social</span><span>Status</span><span>Tipo</span><span></span>
+                  </div>
+                  {clientes.filter(c => c.metaConectado).flatMap(c => ([
+                    { c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' },
+                    { c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' },
+                  ])).map((row, i) => (
+                    <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#bbb', fontSize: 13 }}>
+                          {row.c.logo ? <img src={row.c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (row.c.nome[0]?.toUpperCase())}
+                          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%', background: row.rede === 'facebook' ? '#1877f2' : '#dc2743', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
+                            <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff">{row.rede === 'facebook'
+                              ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                              : <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/>}</svg>
+                          </span>
+                        </span>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: '#aaa' }}>{row.sub} · {row.c.nome}</p>
+                        </div>
+                      </div>
+                      <span><span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
+                      <span style={{ fontSize: 13, color: '#666' }}>{row.tipo}</span>
+                      {row.rede === 'facebook' ? (
+                        <button onClick={() => { if (confirm(`Desconectar as contas de ${row.c.nome}?`)) desconectarInstagram(row.c.id) }} title="Desconectar"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, padding: 4 }}>🗑</button>
+                      ) : <span />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Notificações */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações por e-mail</h3>
