@@ -1,8 +1,11 @@
 'use client'
 import { useRef, useState } from 'react'
+import { upload } from '@vercel/blob/client'
+import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string; instagram: string }
 type Midia = { url: string; tipo: 'imagem' | 'video' }
+type EmEnvio = { id: string; nome: string; progresso: number }
 
 export type ComposerValue = {
   clienteId: string
@@ -10,6 +13,7 @@ export type ComposerValue = {
   imagens: string[]
   dataAgendada: string
   formato: 'feed' | 'reel' | 'story'
+  colaboradorInstagram: string
 }
 
 const FORMATOS: { key: ComposerValue['formato']; label: string }[] = [
@@ -42,8 +46,9 @@ export default function PostComposer({
   )
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
+  const [colaboradorInstagram, setColaboradorInstagram] = useState(valorInicial?.colaboradorInstagram || '')
   const [arrastando, setArrastando] = useState(false)
-  const [enviandoArquivo, setEnviandoArquivo] = useState(false)
+  const [emEnvio, setEmEnvio] = useState<EmEnvio[]>([])
   const [erroUpload, setErroUpload] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -51,23 +56,27 @@ export default function PostComposer({
 
   async function enviarArquivos(arquivos: FileList | File[]) {
     setErroUpload('')
-    setEnviandoArquivo(true)
     for (const arquivo of Array.from(arquivos)) {
+      const id = uuid()
+      const ext = arquivo.name.split('.').pop() || 'bin'
+      setEmEnvio(lista => [...lista, { id, nome: arquivo.name, progresso: 0 }])
       try {
-        const form = new FormData()
-        form.append('arquivo', arquivo)
-        const res = await fetch('/api/upload', { method: 'POST', body: form })
-        const data = await res.json()
-        if (!res.ok) {
-          setErroUpload(data?.error || 'Erro ao enviar arquivo.')
-          continue
-        }
-        setMidias(m => [...m, { url: data.url, tipo: data.tipo }])
-      } catch {
-        setErroUpload('Erro de conexão ao enviar arquivo. Tente novamente.')
+        const blob = await upload(`midia/${id}.${ext}`, arquivo, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+          contentType: arquivo.type,
+          clientPayload: arquivo.type,
+          onUploadProgress: ({ percentage }) => {
+            setEmEnvio(lista => lista.map(e => e.id === id ? { ...e, progresso: percentage } : e))
+          },
+        })
+        setMidias(m => [...m, { url: blob.url, tipo: arquivo.type.startsWith('video') ? 'video' : 'imagem' }])
+      } catch (err: any) {
+        setErroUpload(err?.message || 'Erro ao enviar arquivo. Tente novamente.')
+      } finally {
+        setEmEnvio(lista => lista.filter(e => e.id !== id))
       }
     }
-    setEnviandoArquivo(false)
   }
 
   function removerMidia(idx: number) {
@@ -75,14 +84,15 @@ export default function PostComposer({
   }
 
   function enviar() {
-    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato })
+    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradorInstagram: colaboradorInstagram.trim().replace(/^@/, '') })
   }
 
   function salvarRascunho() {
-    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato })
+    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradorInstagram: colaboradorInstagram.trim().replace(/^@/, '') })
   }
 
-  const podeEnviar = !!clienteId && !!legenda.trim() && midias.length > 0 && !enviando
+  const enviandoArquivo = emEnvio.length > 0
+  const podeEnviar = !!clienteId && !!legenda.trim() && midias.length > 0 && !enviando && !enviandoArquivo
   const podeSalvarRascunho = !!clienteId && !enviando && !salvandoRascunho
 
   return (
@@ -123,6 +133,22 @@ export default function PostComposer({
             </p>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>JPG, PNG, WEBP, GIF, MP4, MOV — até 200MB</p>
           </div>
+
+          {emEnvio.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              {emEnvio.map(e => (
+                <div key={e.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 4 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{e.nome}</span>
+                    <span>{Math.round(e.progresso)}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 999, background: '#eee', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${e.progresso}%`, background: '#ffc00f', transition: 'width .2s' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {erroUpload && (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#ef4444' }}>{erroUpload}</p>
@@ -171,6 +197,17 @@ export default function PostComposer({
           </div>
         </div>
 
+        {/* Colaboração (collab) */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Marcar em colab com outro perfil</label>
+          <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e0e0e0', borderRadius: 10, background: '#fff', padding: '0 14px', boxSizing: 'border-box' }}>
+            <span style={{ fontSize: 14, color: '#bbb' }}>@</span>
+            <input value={colaboradorInstagram} onChange={e => setColaboradorInstagram(e.target.value.replace(/^@/, ''))}
+              placeholder="usuario_parceiro (opcional)"
+              style={{ flex: 1, padding: '12px 8px', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }} />
+          </div>
+        </div>
+
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data agendada</label>
           <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)}
@@ -201,7 +238,12 @@ export default function PostComposer({
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
               {(cliente?.nome || '?')[0]?.toUpperCase()}
             </div>
-            <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}</span>
+            <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>
+              {cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}
+              {colaboradorInstagram.trim() && (
+                <span style={{ fontWeight: 400, color: '#888' }}> e {colaboradorInstagram.trim().replace(/^@/, '')}</span>
+              )}
+            </span>
             {formato !== 'feed' && (
               <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#888', background: '#f5f5f5', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>
                 {formato === 'reel' ? 'Reel' : 'Story'}

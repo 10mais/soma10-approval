@@ -84,4 +84,5 @@ export type Post = {
   motivoReprovacao?: string
   erroPublicacao?: string
   rascunhoInterno?: boolean
+  colaboradorInstagram?: string
 }

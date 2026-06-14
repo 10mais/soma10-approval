@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradorInstagram } = await req.json()
   const post: Post = {
     id: uuid(),
     clienteId,
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
     ...(rascunhoInterno ? { rascunhoInterno: true } : {}),
+    ...(colaboradorInstagram ? { colaboradorInstagram } : {}),
   }
 
   await redis.set(`post:${post.id}`, post)
