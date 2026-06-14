@@ -99,20 +99,14 @@ export async function POST(req: NextRequest) {
       const ig = await publishToInstagram(post as Post, cliente)
       const fb = await publishToFacebook(post as Post, cliente)
 
-      const okGeral = ig.ok || fb.ok
-      const redesOk = [ig.ok ? 'Instagram' : null, fb.ok ? 'Facebook' : null].filter(Boolean).join(' e ')
-      const falhas = [!ig.ok ? `Instagram: ${ig.error}` : null, !fb.ok ? `Facebook: ${fb.error}` : null].filter(Boolean).join(' | ')
-
+      // Só é PUBLICADO se as duas redes derem certo. Caso contrário, FALHOU com o motivo.
       if (ig.ok && fb.ok) {
         await redis.set(`post:${id}`, { ...atualizado, status: 'publicado', erroPublicacao: undefined, atualizadoEm: new Date().toISOString() })
         await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado com sucesso no Instagram e no Facebook.`, id)
-      } else if (okGeral) {
-        // Publicou em parte das redes
-        await redis.set(`post:${id}`, { ...atualizado, status: 'publicado', erroPublicacao: falhas, atualizadoEm: new Date().toISOString() })
-        await notificarEquipe('post_publicado', `Post publicado parcialmente — ${clienteNome}`, `Publicado em ${redesOk}. Falha em: ${falhas}`, id)
       } else {
-        await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: falhas, atualizadoEm: new Date().toISOString() })
-        await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. ${falhas}`, id)
+        const motivo = [!ig.ok ? `Instagram — ${ig.error}` : null, !fb.ok ? `Facebook — ${fb.error}` : null].filter(Boolean).join(' | ')
+        await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: motivo, atualizadoEm: new Date().toISOString() })
+        await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Motivo: ${motivo}`, id)
       }
     } catch (e: any) {
       console.error('Erro publicação:', e)
