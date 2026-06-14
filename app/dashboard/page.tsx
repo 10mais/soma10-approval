@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
+import ChatInterno from '../components/ChatInterno'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -113,7 +114,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics'>('posts')
+  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('posts')
   // Tema (claro/escuro) — persistido no navegador
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
   useEffect(() => {
@@ -809,14 +810,14 @@ function Dashboard() {
 
           {/* Menu vertical */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(['posts', 'clientes', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+            {(['posts', 'clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
               <button key={a} onClick={() => setAba(a as any)} style={{
                 padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                 fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                 background: aba === a ? '#ffc00f' : 'transparent',
                 fontSize: 14, transition: 'all 0.15s',
               }}>
-                {a === 'posts' ? 'Posts' : a === 'clientes' ? 'Clientes' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                {a === 'posts' ? 'Posts' : a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
               </button>
             ))}
           </nav>
@@ -1401,6 +1402,10 @@ function Dashboard() {
         {/* CLIENTES */}
         {conectarRedesCliente !== null && (
           <ConectarRedesModal clienteId={conectarRedesCliente || null} onClose={() => setConectarRedesCliente(null)} />
+        )}
+
+        {aba === 'mensagens' && (
+          <ChatInterno meuEmail={(session?.user as any)?.email || ''} />
         )}
 
         {aba === 'clientes' && (

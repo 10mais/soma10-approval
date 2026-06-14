@@ -65,6 +65,15 @@ export type Notificacao = {
   criadoEm: string
 }
 
+export type ChatMensagem = {
+  id: string
+  de: string // email de quem enviou
+  deNome: string
+  para: string // email do destinatário, ou 'equipe' para o canal geral
+  texto: string
+  criadoEm: string
+}
+
 export type PostStatus ='rascunho' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
 export type Post = {
