@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradorInstagram } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores } = await req.json()
+  const colaboradoresLimpos = Array.isArray(colaboradores)
+    ? colaboradores.map((c: string) => String(c).trim().replace(/^@/, '')).filter(Boolean).slice(0, 4)
+    : []
   const post: Post = {
     id: uuid(),
     clienteId,
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
     ...(rascunhoInterno ? { rascunhoInterno: true } : {}),
-    ...(colaboradorInstagram ? { colaboradorInstagram } : {}),
+    ...(colaboradoresLimpos.length ? { colaboradores: colaboradoresLimpos } : {}),
   }
 
   await redis.set(`post:${post.id}`, post)

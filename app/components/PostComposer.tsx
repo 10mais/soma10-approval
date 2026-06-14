@@ -13,8 +13,11 @@ export type ComposerValue = {
   imagens: string[]
   dataAgendada: string
   formato: 'feed' | 'reel' | 'story'
-  colaboradorInstagram: string
+  colaboradores: string[]
 }
+
+type PerfilColab = { username: string; nome: string; foto: string; seguidores: number | null }
+const MAX_COLAB = 4
 
 const FORMATOS: { key: ComposerValue['formato']; label: string }[] = [
   { key: 'feed', label: 'Feed' },
@@ -46,7 +49,12 @@ export default function PostComposer({
   )
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
-  const [colaboradorInstagram, setColaboradorInstagram] = useState(valorInicial?.colaboradorInstagram || '')
+  const [colaboradores, setColaboradores] = useState<string[]>(valorInicial?.colaboradores || [])
+  const [colabBusca, setColabBusca] = useState('')
+  const [colabResultado, setColabResultado] = useState<PerfilColab | null>(null)
+  const [colabBuscando, setColabBuscando] = useState(false)
+  const [colabErro, setColabErro] = useState('')
+  const colabTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [arrastando, setArrastando] = useState(false)
   const [emEnvio, setEmEnvio] = useState<EmEnvio[]>([])
   const [erroUpload, setErroUpload] = useState('')
@@ -83,12 +91,63 @@ export default function PostComposer({
     setMidias(m => m.filter((_, i) => i !== idx))
   }
 
+  function buscarColab(termo: string) {
+    setColabBusca(termo)
+    setColabResultado(null)
+    setColabErro('')
+    if (colabTimer.current) clearTimeout(colabTimer.current)
+    const limpo = termo.trim().replace(/^@/, '')
+    if (limpo.length < 2) { setColabBuscando(false); return }
+    if (!clienteId) { setColabBuscando(false); setColabErro('Selecione um cliente primeiro para buscar perfis.'); return }
+    setColabBuscando(true)
+    colabTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/colab?clienteId=${encodeURIComponent(clienteId)}&username=${encodeURIComponent(limpo)}`)
+        const data = await res.json()
+        if (data.encontrado) {
+          setColabResultado(data.perfil)
+          setColabErro('')
+        } else {
+          setColabResultado(null)
+          setColabErro(data.error || 'Perfil não encontrado.')
+        }
+      } catch {
+        setColabErro('Erro ao buscar perfil. Tente novamente.')
+      } finally {
+        setColabBuscando(false)
+      }
+    }, 450)
+  }
+
+  function adicionarColab(username: string) {
+    const limpo = username.trim().replace(/^@/, '')
+    if (!limpo) return
+    setColaboradores(lista => {
+      if (lista.length >= MAX_COLAB || lista.some(c => c.toLowerCase() === limpo.toLowerCase())) return lista
+      return [...lista, limpo]
+    })
+    setColabBusca('')
+    setColabResultado(null)
+    setColabErro('')
+  }
+
+  function removerColab(username: string) {
+    setColaboradores(lista => lista.filter(c => c !== username))
+  }
+
+  function onColabKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (colabResultado) adicionarColab(colabResultado.username)
+    }
+  }
+
   function enviar() {
-    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradorInstagram: colaboradorInstagram.trim().replace(/^@/, '') })
+    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores })
   }
 
   function salvarRascunho() {
-    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradorInstagram: colaboradorInstagram.trim().replace(/^@/, '') })
+    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores })
   }
 
   const enviandoArquivo = emEnvio.length > 0
@@ -199,13 +258,55 @@ export default function PostComposer({
 
         {/* Colaboração (collab) */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Marcar em colab com outro perfil</label>
-          <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e0e0e0', borderRadius: 10, background: '#fff', padding: '0 14px', boxSizing: 'border-box' }}>
-            <span style={{ fontSize: 14, color: '#bbb' }}>@</span>
-            <input value={colaboradorInstagram} onChange={e => setColaboradorInstagram(e.target.value.replace(/^@/, ''))}
-              placeholder="usuario_parceiro (opcional)"
-              style={{ flex: 1, padding: '12px 8px', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }} />
-          </div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>
+            Marcar em colab com outro perfil
+            <span style={{ fontWeight: 400, color: '#aaa', marginLeft: 6 }}>({colaboradores.length}/{MAX_COLAB})</span>
+          </label>
+
+          {/* Tags já selecionadas */}
+          {colaboradores.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {colaboradores.map(c => (
+                <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111', color: '#ffc00f', borderRadius: 999, padding: '5px 6px 5px 12px', fontSize: 13, fontWeight: 700 }}>
+                  @{c}
+                  <button type="button" onClick={() => removerColab(c)} style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {colaboradores.length < MAX_COLAB && (
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e0e0e0', borderRadius: 10, background: '#fff', padding: '0 14px', boxSizing: 'border-box' }}>
+                <span style={{ fontSize: 14, color: '#bbb' }}>@</span>
+                <input value={colabBusca} onChange={e => buscarColab(e.target.value)} onKeyDown={onColabKeyDown}
+                  placeholder="Buscar perfil no Instagram..."
+                  style={{ flex: 1, padding: '12px 8px', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }} />
+                {colabBuscando && <span style={{ fontSize: 11, color: '#bbb' }}>buscando…</span>}
+              </div>
+
+              {/* Resultado da busca (Enter ou clique para selecionar) */}
+              {colabResultado && (
+                <div onClick={() => adicionarColab(colabResultado.username)}
+                  style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.08)', zIndex: 5 }}>
+                  {colabResultado.foto
+                    ? <img src={colabResultado.foto} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>@{colabResultado.username}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {colabResultado.nome}{colabResultado.seguidores != null ? ` · ${colabResultado.seguidores.toLocaleString('pt-BR')} seguidores` : ''}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter ↵</span>
+                </div>
+              )}
+
+              {colabErro && !colabBuscando && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ef4444' }}>{colabErro}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -240,8 +341,8 @@ export default function PostComposer({
             </div>
             <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>
               {cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}
-              {colaboradorInstagram.trim() && (
-                <span style={{ fontWeight: 400, color: '#888' }}> e {colaboradorInstagram.trim().replace(/^@/, '')}</span>
+              {colaboradores.length > 0 && (
+                <span style={{ fontWeight: 400, color: '#888' }}> e {colaboradores.map(c => c).join(', ')}</span>
               )}
             </span>
             {formato !== 'feed' && (

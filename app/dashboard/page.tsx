@@ -370,7 +370,7 @@ function Dashboard() {
       dataAgendada: paraDatetimeLocal(post.dataAgendada),
       imagens: post.imagens || [],
       formato: (post as any).formato || 'feed',
-      colaboradorInstagram: (post as any).colaboradorInstagram || '',
+      colaboradores: (post as any).colaboradores || [],
     })
     setComposerKey(k => k + 1)
     setPostPreview(null)
@@ -1099,7 +1099,7 @@ function Dashboard() {
                           dataAgendada: '',
                           imagens: postPreview.imagens || [],
                           formato: 'feed',
-                          colaboradorInstagram: (postPreview as any).colaboradorInstagram || '',
+                          colaboradores: (postPreview as any).colaboradores || [],
                         })
                         setComposerKey(k => k + 1)
                         setPostPreview(null)

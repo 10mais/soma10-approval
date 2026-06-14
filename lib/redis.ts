@@ -84,5 +84,5 @@ export type Post = {
   motivoReprovacao?: string
   erroPublicacao?: string
   rascunhoInterno?: boolean
-  colaboradorInstagram?: string
+  colaboradores?: string[] // até 4 @usuários marcados em colab
 }
