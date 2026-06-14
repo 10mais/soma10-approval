@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
+import ConectarRedesModal from '../components/ConectarRedesModal'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -179,6 +180,7 @@ function Dashboard() {
   const [metaErro, setMetaErro] = useState('')
   const [metaClienteAlvo, setMetaClienteAlvo] = useState('')
   const [vinculandoPagina, setVinculandoPagina] = useState('')
+  const [conectarRedesCliente, setConectarRedesCliente] = useState<string | null>(null)
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
@@ -1395,15 +1397,19 @@ function Dashboard() {
         )}
 
         {/* CLIENTES */}
+        {conectarRedesCliente !== null && (
+          <ConectarRedesModal clienteId={conectarRedesCliente || null} onClose={() => setConectarRedesCliente(null)} />
+        )}
+
         {aba === 'clientes' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Clientes</h2>
               {role === 'admin' && (
-                <a href="/api/meta/oauth" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#1877f2', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                  Conectar via Facebook
-                </a>
+                <button onClick={() => setConectarRedesCliente('')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+                  Conectar redes sociais
+                </button>
               )}
             </div>
 
@@ -1593,11 +1599,11 @@ function Dashboard() {
                           )}
                         </div>
                       ) : role === 'admin' ? (
-                        <a href={`/api/meta/oauth?cliente=${c.id}`}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1877f2', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                          Conectar via Facebook
-                        </a>
+                        <button onClick={() => setConectarRedesCliente(c.id)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
+                          Conectar redes
+                        </button>
                       ) : (
                         <span style={{ background: '#fff3cd', color: '#b45309', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                           Não conectado
