@@ -96,10 +96,11 @@ export async function POST(req: NextRequest) {
     try {
       const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
 
-      const ig = await publishToInstagram(post as Post, cliente)
-      const fb = await publishToFacebook(post as Post, cliente)
+      const redes = post.redes && post.redes.length ? post.redes : ['instagram', 'facebook']
+      const ig = redes.includes('instagram') ? await publishToInstagram(post as Post, cliente) : { ok: true }
+      const fb = redes.includes('facebook') ? await publishToFacebook(post as Post, cliente) : { ok: true }
 
-      // Só é PUBLICADO se as duas redes derem certo. Caso contrário, FALHOU com o motivo.
+      // Só é PUBLICADO se as redes selecionadas derem certo. Caso contrário, FALHOU com o motivo.
       if (ig.ok && fb.ok) {
         // Limpeza automática: remove as mídias pesadas do Blob, mantendo a miniatura
         const limpeza = await limparMidiasMantendoCapa(post as Post)

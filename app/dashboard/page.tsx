@@ -374,6 +374,7 @@ function Dashboard() {
       formato: (post as any).formato || 'feed',
       colaboradores: (post as any).colaboradores || [],
       capasVideo: (post as any).capasVideo || {},
+      redes: (post as any).redes || ['instagram', 'facebook'],
     })
     setComposerKey(k => k + 1)
     setPostPreview(null)
@@ -868,7 +869,7 @@ function Dashboard() {
               </span>
             )}
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
-              Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram}) — somente o conteúdo dele é exibido.
+              Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram?.replace(/^@/, '')}) — somente o conteúdo dele é exibido.
             </p>
             <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
               Voltar à visão da agência
@@ -1141,6 +1142,7 @@ function Dashboard() {
                           formato: 'feed',
                           colaboradores: (postPreview as any).colaboradores || [],
                           capasVideo: (postPreview as any).capasVideo || {},
+                          redes: (postPreview as any).redes || ['instagram', 'facebook'],
                         })
                         setComposerKey(k => k + 1)
                         setPostPreview(null)
@@ -1402,6 +1404,7 @@ function Dashboard() {
                 onSalvarRascunho={editandoPostId ? undefined : salvarRascunhoPost}
                 salvandoRascunho={salvandoRascunho}
                 enviando={criandoPost}
+                travarCliente={!!verComoClienteId}
                 textoBotao={editandoPostId ? 'Salvar alterações' : 'Criar post e gerar link de aprovação'}
               />
             )}

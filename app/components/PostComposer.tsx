@@ -15,6 +15,7 @@ export type ComposerValue = {
   formato: 'feed' | 'reel' | 'story'
   colaboradores: string[]
   capasVideo: Record<string, string>
+  redes: ('instagram' | 'facebook')[]
 }
 
 type PerfilColab = { username: string; nome: string; foto: string; seguidores: number | null }
@@ -34,6 +35,7 @@ export default function PostComposer({
   enviando,
   salvandoRascunho,
   textoBotao = 'Salvar',
+  travarCliente = false,
 }: {
   clientes: Cliente[]
   valorInicial?: Partial<ComposerValue>
@@ -42,6 +44,7 @@ export default function PostComposer({
   enviando?: boolean
   salvandoRascunho?: boolean
   textoBotao?: string
+  travarCliente?: boolean
 }) {
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
   const [legenda, setLegenda] = useState(valorInicial?.legenda || '')
@@ -53,6 +56,11 @@ export default function PostComposer({
     }))
   )
   const [enviandoCapa, setEnviandoCapa] = useState<number | null>(null)
+  const [redes, setRedes] = useState<('instagram' | 'facebook')[]>(valorInicial?.redes || ['instagram', 'facebook'])
+
+  function alternarRede(rede: 'instagram' | 'facebook') {
+    setRedes(atual => atual.includes(rede) ? atual.filter(r => r !== rede) : [...atual, rede])
+  }
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
   const [colaboradores, setColaboradores] = useState<string[]>(valorInicial?.colaboradores || [])
@@ -179,28 +187,63 @@ export default function PostComposer({
   }
 
   function enviar() {
-    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo() })
+    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes })
   }
 
   function salvarRascunho() {
-    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo() })
+    onSalvarRascunho?.({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes })
   }
 
   const enviandoArquivo = emEnvio.length > 0
-  const podeEnviar = !!clienteId && !!legenda.trim() && midias.length > 0 && !enviando && !enviandoArquivo
+  const podeEnviar = !!clienteId && !!legenda.trim() && midias.length > 0 && redes.length > 0 && !enviando && !enviandoArquivo
   const podeSalvarRascunho = !!clienteId && !enviando && !salvandoRascunho
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: 24, alignItems: 'start' }}>
       {/* Coluna esquerda: formulário/editor */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Cliente — dropdown na agência; travado na visão de cliente */}
+        {!travarCliente && (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Cliente</label>
+            <select value={clienteId} onChange={e => setClienteId(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
+              <option value="">Selecione o cliente...</option>
+              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome} (@{c.instagram?.replace(/^@/, '')})</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Redes onde publicar */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Cliente</label>
-          <select value={clienteId} onChange={e => setClienteId(e.target.value)}
-            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-            <option value="">Selecione o cliente...</option>
-            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome} (@{c.instagram})</option>)}
-          </select>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Publicar em</label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {([
+              { key: 'instagram' as const, nome: 'Instagram', cor: '#dc2743' },
+              { key: 'facebook' as const, nome: 'Facebook', cor: '#1877f2' },
+            ]).map(r => {
+              const ativo = redes.includes(r.key)
+              return (
+                <button key={r.key} type="button" onClick={() => alternarRede(r.key)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                    border: `1.5px solid ${ativo ? r.cor : '#e0e0e0'}`, background: ativo ? `${r.cor}10` : '#fff', fontFamily: 'inherit',
+                  }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${ativo ? r.cor : '#ccc'}`, background: ativo ? r.cor : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0,
+                  }}>{ativo ? '✓' : ''}</span>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: r.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff">{r.key === 'facebook'
+                      ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      : <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/>}</svg>
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{r.nome}</span>
+                </button>
+              )
+            })}
+          </div>
+          {redes.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ef4444' }}>Selecione ao menos uma rede.</p>}
         </div>
 
         {/* Upload de mídia */}
