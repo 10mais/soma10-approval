@@ -139,6 +139,10 @@ export default function PostComposer({
     if (e.key === 'Enter') {
       e.preventDefault()
       if (colabResultado) adicionarColab(colabResultado.username)
+      else {
+        const limpo = colabBusca.trim().replace(/^@/, '')
+        if (/^[A-Za-z0-9._]{1,30}$/.test(limpo)) adicionarColab(limpo)
+      }
     }
   }
 
@@ -302,8 +306,17 @@ export default function PostComposer({
                 </div>
               )}
 
-              {colabErro && !colabBuscando && (
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ef4444' }}>{colabErro}</p>
+              {/* Fallback: adicionar qualquer @ digitado (inclui contas pessoais, que a API do Meta não valida) */}
+              {!colabResultado && !colabBuscando && /^[A-Za-z0-9._]{2,30}$/.test(colabBusca.trim().replace(/^@/, '')) && (
+                <div onClick={() => adicionarColab(colabBusca)}
+                  style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.08)', zIndex: 5 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontWeight: 800 }}>@</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>Adicionar @{colabBusca.trim().replace(/^@/, '')}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#888' }}>{colabErro ? colabErro : 'Perfil não verificado pela API — será marcado mesmo assim.'}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter ↵</span>
+                </div>
               )}
             </div>
           )}

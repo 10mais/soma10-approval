@@ -4,6 +4,8 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
+import { upload } from '@vercel/blob/client'
+import { v4 as uuid } from 'uuid'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
@@ -144,6 +146,7 @@ function Dashboard() {
   const [editandoCliente, setEditandoCliente] = useState<string | null>(null)
   const [edicaoCliente, setEdicaoCliente] = useState<Partial<Cliente>>({})
   const [enviandoLogoCliente, setEnviandoLogoCliente] = useState(false)
+  const [fotoClienteId, setFotoClienteId] = useState<string | null>(null)
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
   const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string }>({ nome: '', role: 'gerente', novaSenha: '' })
   const [bibBusca, setBibBusca] = useState('')
@@ -169,10 +172,6 @@ function Dashboard() {
   const [linkGerado, setLinkGerado] = useState('')
   const [codigoGerado, setCodigoGerado] = useState('')
   // Conexão manual por ID
-  const [conectando, setConectando] = useState<string | null>(null)
-  const [pageIdInput, setPageIdInput] = useState('')
-  const [conectandoLoading, setConectandoLoading] = useState(false)
-  const [conectandoMsg, setConectandoMsg] = useState<{ ok: boolean; msg: string } | null>(null)
   // OAuth Meta
   const [metaPages, setMetaPages] = useState<MetaPage[]>([])
   const [vinculos, setVinculos] = useState<Record<string, string>>({}) // pageId -> clienteId
@@ -433,25 +432,6 @@ function Dashboard() {
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
-  async function conectarInstagram(clienteId: string) {
-    if (!pageIdInput.trim()) return
-    setConectandoLoading(true)
-    setConectandoMsg(null)
-    const res = await fetch('/api/clientes/conectar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clienteId, facebookPageId: pageIdInput.trim() }),
-    }).then(r => r.json())
-    setConectandoLoading(false)
-    if (res.ok) {
-      setConectandoMsg({ ok: true, msg: `Instagram @${res.instagram} conectado com sucesso!` })
-      fetch('/api/clientes').then(r => r.json()).then(setClientes)
-      setTimeout(() => { setConectando(null); setPageIdInput(''); setConectandoMsg(null) }, 2000)
-    } else {
-      setConectandoMsg({ ok: false, msg: res.error + (res.dica ? ' — ' + res.dica : '') })
-    }
-  }
-
   async function desconectarInstagram(clienteId: string) {
     await fetch('/api/clientes/conectar', {
       method: 'DELETE',
@@ -512,11 +492,18 @@ function Dashboard() {
   }
 
   async function enviarImagem(arquivo: File): Promise<string | null> {
-    const form = new FormData()
-    form.append('arquivo', arquivo)
-    const res = await fetch('/api/upload', { method: 'POST', body: form })
-    const data = await res.json()
-    return res.ok ? data.url : null
+    try {
+      const ext = arquivo.name.split('.').pop() || 'bin'
+      const blob = await upload(`midia/${uuid()}.${ext}`, arquivo, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        contentType: arquivo.type,
+        clientPayload: arquivo.type,
+      })
+      return blob.url
+    } catch {
+      return null
+    }
   }
 
   async function salvarConfigAgencia() {
@@ -553,6 +540,20 @@ function Dashboard() {
     const url = await enviarImagem(arquivo)
     if (url) setEdicaoCliente(c => ({ ...c, logo: url }))
     setEnviandoLogoCliente(false)
+  }
+
+  async function uploadFotoCliente(clienteId: string, arquivo: File) {
+    setFotoClienteId(clienteId)
+    const url = await enviarImagem(arquivo)
+    if (url) {
+      await fetch('/api/clientes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: clienteId, logo: url }),
+      })
+      fetch('/api/clientes').then(r => r.json()).then(setClientes)
+    }
+    setFotoClienteId(null)
   }
 
   async function salvarEdicaoCliente(id: string) {
@@ -1545,10 +1546,11 @@ function Dashboard() {
                           )}
                         </div>
                       ) : role === 'admin' ? (
-                        <button onClick={() => { setConectando(c.id); setPageIdInput(''); setConectandoMsg(null) }}
-                          style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                          Conectar Instagram
-                        </button>
+                        <a href="/api/meta/oauth"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1877f2', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                          Conectar via Facebook
+                        </a>
                       ) : (
                         <span style={{ background: '#fff3cd', color: '#b45309', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
                           Não conectado
@@ -1556,40 +1558,6 @@ function Dashboard() {
                       )}
                     </div>
                   </div>
-
-                  {/* Painel de conexão expandido */}
-                  {conectando === c.id && (
-                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa' }}>
-                      <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 13, color: '#111' }}>Conectar Instagram do cliente</p>
-                      <p style={{ margin: '0 0 12px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-                        A conta da 10+ precisa ser <strong>administradora da Página do Facebook</strong> do cliente. Informe o ID da Página abaixo.
-                      </p>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          value={pageIdInput}
-                          onChange={e => setPageIdInput(e.target.value)}
-                          placeholder="ID da Página do Facebook (ex: 123456789)"
-                          style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-                        />
-                        <button onClick={() => conectarInstagram(c.id)} disabled={conectandoLoading || !pageIdInput.trim()}
-                          style={{ padding: '10px 18px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: conectandoLoading ? 0.6 : 1 }}>
-                          {conectandoLoading ? 'Verificando...' : 'Conectar'}
-                        </button>
-                        <button onClick={() => setConectando(null)}
-                          style={{ padding: '10px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#666' }}>
-                          Cancelar
-                        </button>
-                      </div>
-                      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#aaa' }}>
-                        Para encontrar o ID: acesse a Página no Facebook → Sobre → ID da Página
-                      </p>
-                      {conectandoMsg && (
-                        <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 8, background: conectandoMsg.ok ? '#dcfce7' : '#fee2e2', color: conectandoMsg.ok ? '#16a34a' : '#dc2626', fontSize: 13 }}>
-                          {conectandoMsg.msg}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Painel de edição */}
                   {editandoCliente === c.id && (
@@ -1778,6 +1746,34 @@ function Dashboard() {
                   <p style={{ margin: 0, fontSize: 12, color: configMsg.includes('sucesso') ? '#16a34a' : '#ef4444' }}>{configMsg}</p>
                 )}
               </div>
+            </div>
+
+            {/* Imagem de perfil dos clientes */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Imagem de perfil dos clientes</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
+              {clientes.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum cliente cadastrado ainda.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {clientes.map(c => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#fafafa', borderRadius: 10 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#eee', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: '#bbb', fontSize: 16 }}>
+                        {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome || '?')[0]?.toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
+                      </div>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#111', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0, opacity: fotoClienteId === c.id ? 0.6 : 1 }}>
+                        {fotoClienteId === c.id ? 'Enviando...' : (c.logo ? 'Trocar imagem' : 'Enviar imagem')}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} disabled={fotoClienteId === c.id}
+                          onChange={e => { if (e.target.files?.[0]) uploadFotoCliente(c.id, e.target.files[0]); e.target.value = '' }} />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Integrações */}
