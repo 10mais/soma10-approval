@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { redis } from '@/lib/redis'
+import { v4 as uuid } from 'uuid'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -65,17 +67,11 @@ export async function GET(req: NextRequest) {
       })
     )
 
-    // 4. Salvar resultado em cookie temporário e redirecionar para dashboard
-    const payload = encodeURIComponent(JSON.stringify(paginas))
-    const response = NextResponse.redirect(`${BASE_URL}/dashboard?meta_pages=1${sufixoCliente}#clientes`)
-    response.cookies.set('meta_pages', payload, {
-      httpOnly: false, // precisa ser lido pelo client
-      maxAge: 300, // 5 minutos
-      path: '/',
-      sameSite: 'lax',
-    })
-
-    return response
+    // 4. Salvar as páginas no servidor (Redis) — cookie estourava o limite de tamanho com tokens longos.
+    //    O dashboard busca via /api/meta/pages?id=<id>.
+    const pagesId = uuid()
+    await redis.set(`metapages:${pagesId}`, paginas, { ex: 600 }) // expira em 10 min
+    return NextResponse.redirect(`${BASE_URL}/dashboard?meta_pages=${pagesId}${sufixoCliente}#clientes`)
 
   } catch (err: any) {
     console.error('Meta callback error:', err)

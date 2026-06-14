@@ -222,17 +222,14 @@ function Dashboard() {
 
   // Ler páginas do cookie após OAuth
   useEffect(() => {
-    if (searchParams.get('meta_pages')) {
+    const pagesId = searchParams.get('meta_pages')
+    if (pagesId) {
       setAba('clientes')
-      const cookie = document.cookie.split('; ').find(r => r.startsWith('meta_pages='))
-      if (cookie) {
-        try {
-          const pages = JSON.parse(decodeURIComponent(cookie.split('=').slice(1).join('=')))
-          setMetaPages(pages)
-          document.cookie = 'meta_pages=; max-age=0; path=/'
-        } catch {}
-      }
       setMetaClienteAlvo(searchParams.get('meta_cliente') || '')
+      fetch(`/api/meta/pages?id=${encodeURIComponent(pagesId)}`)
+        .then(r => r.json())
+        .then(pages => { if (Array.isArray(pages)) setMetaPages(pages) })
+        .catch(() => {})
     }
     if (searchParams.get('meta_error')) {
       setAba('clientes')
@@ -808,24 +805,30 @@ function Dashboard() {
 
           <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />
 
-          {/* Menu vertical */}
+          {/* NÍVEL AGÊNCIA */}
+          <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Agência
+          </p>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(['posts', 'clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+            {(['clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
               <button key={a} onClick={() => setAba(a as any)} style={{
                 padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                 fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                 background: aba === a ? '#ffc00f' : 'transparent',
                 fontSize: 14, transition: 'all 0.15s',
               }}>
-                {a === 'posts' ? 'Posts' : a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                {a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
               </button>
             ))}
           </nav>
 
-          {/* Conteúdo agrupado por cliente: Novo Post / Calendário / Biblioteca */}
+          {/* NÍVEL CLIENTE (visualização como cliente) */}
           <div style={{ marginTop: 18 }}>
-            <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Conteúdo
+            <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Cliente
+            </p>
+            <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: clienteEmVisualizacao ? '#16a34a' : '#bbb' }}>
+              {clienteEmVisualizacao ? `Vendo como: ${clienteEmVisualizacao.nome}` : 'Selecione um cliente na aba Clientes'}
             </p>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {(['novo-post', 'calendario', 'biblioteca', 'analytics'] as const).map(a => (
