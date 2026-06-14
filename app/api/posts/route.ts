@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     clienteNome,
     imagens,
     legenda,
-    status: 'rascunho',
+    status: statusInicial === 'agendado' ? 'agendado' : 'rascunho',
     formato: formato || 'feed',
     dataAgendada,
     codigo: gerarCodigo(),

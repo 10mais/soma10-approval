@@ -329,38 +329,39 @@ function Dashboard() {
     setExportandoPdf(false)
   }
 
-  async function criarPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
+  async function criarPost(valor: any) {
+    const acao = valor.acao || 'publicar'
+    if (!valor.clienteId) return
     setCriandoPost(true)
+    setRascunhoMsg('')
     const cliente = clientes.find(c => c.id === valor.clienteId)
+    const body: any = { ...valor, clienteNome: cliente?.nome }
+    if (acao === 'rascunho') body.rascunhoInterno = true
+    if (acao === 'agendar') body.statusInicial = 'agendado'
+
     const res = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...valor, clienteNome: cliente?.nome }),
+      body: JSON.stringify(body),
     }).then(r => r.json())
-    setCriandoPost(false)
-    setLinkGerado(res.link)
-    setCodigoGerado(res.post.codigo)
-    fetch('/api/posts').then(r => r.json()).then(setPosts)
-    setComposerPrefill(null)
-    setComposerKey(k => k + 1)
-  }
 
-  async function salvarRascunhoPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
-    if (!valor.clienteId) return
-    setSalvandoRascunho(true)
-    setRascunhoMsg('')
-    const cliente = clientes.find(c => c.id === valor.clienteId)
-    await fetch('/api/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...valor, clienteNome: cliente?.nome, rascunhoInterno: true }),
-    })
-    setSalvandoRascunho(false)
-    setRascunhoMsg('Rascunho salvo! Ele fica visível apenas para a equipe — o cliente não recebe nem vê este conteúdo até você publicá-lo para aprovação.')
+    if (acao === 'publicar') {
+      const pub = await fetch('/api/publicar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: res.post.id }),
+      }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+      setRascunhoMsg(pub.ok ? '✅ Publicado com sucesso nas redes selecionadas!' : `⚠️ Falha ao publicar: ${pub.error}`)
+    } else if (acao === 'agendar') {
+      setRascunhoMsg(`🗓️ Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
+    } else {
+      setRascunhoMsg('💾 Rascunho salvo — visível apenas para a equipe.')
+    }
+
+    setCriandoPost(false)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
     fetch('/api/posts').then(r => r.json()).then(setPosts)
-    setTimeout(() => setRascunhoMsg(''), 6000)
+    setTimeout(() => setRascunhoMsg(''), 8000)
   }
 
   function iniciarEdicaoPost(post: Post) {
@@ -1381,33 +1382,17 @@ function Dashboard() {
               </div>
             )}
 
-            {linkGerado ? (
-              <div style={{ background: '#f0fdf4', border: '2px solid #22c55e', borderRadius: 14, padding: 24, textAlign: 'center' }}>
-                <h3 style={{ margin: '0 0 16px', color: '#111' }}>Post criado com sucesso!</h3>
-                <div style={{ background: '#fff', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid #e0e0e0' }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 13, color: '#888' }}>Link de aprovação:</p>
-                  <p style={{ margin: '0 0 12px', fontWeight: 700, color: '#111', wordBreak: 'break-all', fontSize: 13 }}>{linkGerado}</p>
-                  <p style={{ margin: '0 0 8px', fontSize: 13, color: '#888' }}>Código do cliente:</p>
-                  <p style={{ margin: 0, fontWeight: 900, fontSize: 32, color: '#ffc00f', letterSpacing: 8 }}>{codigoGerado}</p>
-                </div>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: '#666' }}>Envie o link + código para o cliente via WhatsApp ou email (ou peça que ele acesse o portal com login próprio).</p>
-                <button onClick={() => { setLinkGerado(''); setCodigoGerado('') }} style={{ padding: '10px 24px', background: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer' }}>
-                  Criar outro post
-                </button>
-              </div>
-            ) : (
-              <PostComposer
-                key={composerKey}
-                clientes={clientes}
-                valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
-                onSubmit={editandoPostId ? salvarEdicaoPost : criarPost}
-                onSalvarRascunho={editandoPostId ? undefined : salvarRascunhoPost}
-                salvandoRascunho={salvandoRascunho}
-                enviando={criandoPost}
-                travarCliente={!!verComoClienteId}
-                textoBotao={editandoPostId ? 'Salvar alterações' : 'Criar post e gerar link de aprovação'}
-              />
-            )}
+            <PostComposer
+              key={composerKey}
+              clientes={clientes}
+              valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
+              onSubmit={editandoPostId ? salvarEdicaoPost : criarPost}
+              salvandoRascunho={salvandoRascunho}
+              enviando={criandoPost}
+              travarCliente={!!verComoClienteId}
+              modoEdicao={!!editandoPostId}
+              textoBotao={editandoPostId ? 'Salvar alterações' : 'Salvar'}
+            />
           </div>
         )}
 
