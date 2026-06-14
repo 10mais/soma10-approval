@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   const resultado = await processarPublicacao(post, cliente)
 
   await redis.set(`post:${id}`, { ...post, ...resultado.campos })
+  await redis.srem('agendados', id) // se estava agendado, sai do índice
 
   const nome = post.clienteNome || 'Cliente'
   if (resultado.ok) {

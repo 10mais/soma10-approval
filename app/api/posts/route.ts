@@ -64,6 +64,8 @@ export async function POST(req: NextRequest) {
 
   await redis.set(`post:${post.id}`, post)
   await redis.sadd('posts', post.id)
+  // Índice de agendados — o cron lê só este conjunto, não todos os posts
+  if (post.status === 'agendado') await redis.sadd('agendados', post.id)
 
   const link = `${process.env.APPROVAL_BASE_URL}/aprovar/${post.id}`
   return NextResponse.json({ ok: true, post, link })
@@ -79,6 +81,9 @@ export async function PUT(req: NextRequest) {
 
   const atualizado = { ...post, ...updates, atualizadoEm: new Date().toISOString() }
   await redis.set(`post:${id}`, atualizado)
+  // Mantém o índice de agendados em dia
+  if (atualizado.status === 'agendado') await redis.sadd('agendados', id)
+  else await redis.srem('agendados', id)
   return NextResponse.json({ ok: true, post: atualizado })
 }
 
@@ -97,6 +102,7 @@ export async function DELETE(req: NextRequest) {
 
   await redis.del(`post:${id}`)
   await redis.srem('posts', id)
+  await redis.srem('agendados', id)
 
   return NextResponse.json({ ok: true })
 }
