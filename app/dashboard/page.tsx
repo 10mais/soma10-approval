@@ -177,6 +177,8 @@ function Dashboard() {
   const [vinculos, setVinculos] = useState<Record<string, string>>({}) // pageId -> clienteId
   const [vinculando, setVinculando] = useState(false)
   const [metaErro, setMetaErro] = useState('')
+  const [metaClienteAlvo, setMetaClienteAlvo] = useState('')
+  const [vinculandoPagina, setVinculandoPagina] = useState('')
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
@@ -227,6 +229,7 @@ function Dashboard() {
           document.cookie = 'meta_pages=; max-age=0; path=/'
         } catch {}
       }
+      setMetaClienteAlvo(searchParams.get('meta_cliente') || '')
     }
     if (searchParams.get('meta_error')) {
       setAba('clientes')
@@ -429,6 +432,29 @@ function Dashboard() {
     setVinculando(false)
     setMetaPages([])
     setVinculos({})
+    setMetaClienteAlvo('')
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
+  }
+
+  // Vincula UMA página (Facebook + Instagram) diretamente ao cliente-alvo da conexão
+  async function vincularPaginaACliente(page: MetaPage, clienteId: string) {
+    if (!page.instagram) return
+    setVinculandoPagina(page.pageId)
+    await fetch('/api/clientes/conectar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clienteId,
+        facebookPageId: page.pageId,
+        facebookPageToken: page.pageToken,
+        instagramBusinessId: page.instagram.id,
+        instagramUsername: page.instagram.username,
+      }),
+    })
+    setVinculandoPagina('')
+    setMetaPages([])
+    setVinculos({})
+    setMetaClienteAlvo('')
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
@@ -1393,8 +1419,19 @@ function Dashboard() {
             {metaPages.length > 0 && (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e0e0e0', marginBottom: 20, overflow: 'hidden' }}>
                 <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
-                  <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
+                  {metaClienteAlvo ? (
+                    <>
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>
+                        Vincular ao cliente {clientes.find(c => c.id === metaClienteAlvo)?.nome || ''}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Escolha qual Página do Facebook e conta do Instagram pertencem a este cliente.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
+                    </>
+                  )}
                 </div>
                 <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {metaPages.map(page => (
@@ -1411,27 +1448,36 @@ function Dashboard() {
                         )}
                       </div>
                       {page.instagram && (
-                        <select
-                          value={vinculos[page.pageId] || ''}
-                          onChange={e => setVinculos(v => ({ ...v, [page.pageId]: e.target.value }))}
-                          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit', minWidth: 180 }}
-                        >
-                          <option value="">Selecionar cliente...</option>
-                          {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </select>
+                        metaClienteAlvo ? (
+                          <button onClick={() => vincularPaginaACliente(page, metaClienteAlvo)} disabled={!!vinculandoPagina}
+                            style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: vinculandoPagina ? 0.6 : 1, flexShrink: 0 }}>
+                            {vinculandoPagina === page.pageId ? 'Vinculando...' : 'Vincular'}
+                          </button>
+                        ) : (
+                          <select
+                            value={vinculos[page.pageId] || ''}
+                            onChange={e => setVinculos(v => ({ ...v, [page.pageId]: e.target.value }))}
+                            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit', minWidth: 180 }}
+                          >
+                            <option value="">Selecionar cliente...</option>
+                            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                          </select>
+                        )
                       )}
                     </div>
                   ))}
                 </div>
                 <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setMetaPages([]); setVinculos({}) }}
+                  <button onClick={() => { setMetaPages([]); setVinculos({}); setMetaClienteAlvo('') }}
                     style={{ padding: '9px 18px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>
                     Cancelar
                   </button>
-                  <button onClick={salvarVinculos} disabled={vinculando || Object.values(vinculos).every(v => !v)}
-                    style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
-                    {vinculando ? 'Salvando...' : 'Salvar vínculos'}
-                  </button>
+                  {!metaClienteAlvo && (
+                    <button onClick={salvarVinculos} disabled={vinculando || Object.values(vinculos).every(v => !v)}
+                      style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
+                      {vinculando ? 'Salvando...' : 'Salvar vínculos'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1512,7 +1558,7 @@ function Dashboard() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{c.nome}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
                       {c.loginEmail && (
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
                       )}
@@ -1535,8 +1581,9 @@ function Dashboard() {
                       </span>
                       {c.metaConectado ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
-                            Instagram conectado
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            Conectado{c.instagramUsername ? ` · @${c.instagramUsername}` : ''}
                           </span>
                           {role === 'admin' && (
                             <button onClick={() => desconectarInstagram(c.id)}
@@ -1546,7 +1593,7 @@ function Dashboard() {
                           )}
                         </div>
                       ) : role === 'admin' ? (
-                        <a href="/api/meta/oauth"
+                        <a href={`/api/meta/oauth?cliente=${c.id}`}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1877f2', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                           Conectar via Facebook

@@ -4,6 +4,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
   const error = searchParams.get('error')
+  const state = searchParams.get('state') || ''
+  const clienteAlvo = state.startsWith('soma10:') ? state.slice('soma10:'.length) : ''
+  const sufixoCliente = clienteAlvo ? `&meta_cliente=${encodeURIComponent(clienteAlvo)}` : ''
 
   const BASE_URL = process.env.NEXTAUTH_URL || 'https://soma10-approval.vercel.app'
   const REDIRECT_URI = `${BASE_URL}/api/meta/callback`
@@ -64,7 +67,7 @@ export async function GET(req: NextRequest) {
 
     // 4. Salvar resultado em cookie temporário e redirecionar para dashboard
     const payload = encodeURIComponent(JSON.stringify(paginas))
-    const response = NextResponse.redirect(`${BASE_URL}/dashboard?meta_pages=1#clientes`)
+    const response = NextResponse.redirect(`${BASE_URL}/dashboard?meta_pages=1${sufixoCliente}#clientes`)
     response.cookies.set('meta_pages', payload, {
       httpOnly: false, // precisa ser lido pelo client
       maxAge: 300, // 5 minutos

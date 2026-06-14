@@ -12,6 +12,10 @@ export async function GET(req: NextRequest) {
   const BASE_URL = process.env.NEXTAUTH_URL || 'https://soma10-approval.vercel.app'
   const REDIRECT_URI = `${BASE_URL}/api/meta/callback`
 
+  // Cliente-alvo opcional: quando a conexão parte do card de um cliente específico
+  const clienteAlvo = req.nextUrl.searchParams.get('cliente') || ''
+  const state = clienteAlvo ? `soma10:${clienteAlvo}` : 'soma10'
+
   const scopes = [
     'pages_manage_posts',
     'pages_read_engagement',
@@ -21,7 +25,7 @@ export async function GET(req: NextRequest) {
     'business_management',
   ].join(',')
 
-  const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&response_type=code&state=soma10`
+  const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&response_type=code&state=${encodeURIComponent(state)}`
 
   return NextResponse.redirect(oauthUrl)
 }
