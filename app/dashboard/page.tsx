@@ -1401,7 +1401,11 @@ function Dashboard() {
 
         {/* CLIENTES */}
         {conectarRedesCliente !== null && (
-          <ConectarRedesModal clienteId={conectarRedesCliente || null} onClose={() => setConectarRedesCliente(null)} />
+          <ConectarRedesModal
+            clienteId={conectarRedesCliente || null}
+            clienteNome={clientes.find(c => c.id === conectarRedesCliente)?.nome}
+            onClose={() => setConectarRedesCliente(null)}
+          />
         )}
 
         {aba === 'mensagens' && (

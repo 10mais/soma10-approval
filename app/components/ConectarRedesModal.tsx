@@ -32,7 +32,7 @@ const REDES: Rede[] = [
   { key: 'bluesky', nome: 'Bluesky', cor: '#0085ff', ativo: false, icone: <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M5.8 3.2C8.6 5.3 11.6 9.6 12 12c.4-2.4 3.4-6.7 6.2-8.8C20.3 1.7 23 .5 23 3.6c0 .6-.4 5.2-.6 5.9-.7 2.6-3.4 3.2-5.7 2.8 4.1.7 5.1 3 2.9 5.3-4.3 4.4-6.1-1.1-6.6-2.5-.1-.3-.1-.4-.2 0-.5 1.4-2.3 6.9-6.6 2.5-2.2-2.3-1.2-4.6 2.9-5.3-2.4.4-5-.2-5.7-2.8C.4 8.8 0 4.2 0 3.6 0 .5 2.7 1.7 4.8 3.2z"/></svg> },
 ]
 
-export default function ConectarRedesModal({ clienteId, onClose }: { clienteId: string | null; onClose: () => void }) {
+export default function ConectarRedesModal({ clienteId, clienteNome, onClose }: { clienteId: string | null; clienteNome?: string; onClose: () => void }) {
   function conectar(rede: Rede) {
     if (!rede.ativo) return
     // Facebook e Instagram usam o mesmo OAuth da Meta (uma autorização traz Página + Instagram)
@@ -45,8 +45,13 @@ export default function ConectarRedesModal({ clienteId, onClose }: { clienteId: 
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid #f0f0f0' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111' }}>Conectar redes sociais</h3>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid #f0f0f0' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111' }}>Conectar redes sociais</h3>
+            {clienteNome
+              ? <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>Cliente: <strong style={{ color: '#111' }}>{clienteNome}</strong></p>
+              : <p style={{ margin: '4px 0 0', fontSize: 13, color: '#b45309' }}>Conexão geral — você escolherá o cliente de cada conta depois.</p>}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999', cursor: 'pointer' }}>×</button>
         </div>
 
