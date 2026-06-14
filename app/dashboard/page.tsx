@@ -757,7 +757,7 @@ function Dashboard() {
                     {clienteEmVisualizacao?.nome || 'Cliente'}
                   </p>
                 </div>
-                <button onClick={() => setVerComoClienteId('')} style={{
+                <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{
                   background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
                   cursor: 'pointer', textDecoration: 'underline', padding: 0,
                 }}>
@@ -788,7 +788,7 @@ function Dashboard() {
                   {clientes
                     .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
                     .map(c => (
-                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente('') }} style={{
+                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente(''); setAba('novo-post') }} style={{
                         textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
                       }}>
@@ -805,44 +805,50 @@ function Dashboard() {
 
           <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />
 
-          {/* NÍVEL AGÊNCIA */}
-          <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Agência
-          </p>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {(['clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
-              <button key={a} onClick={() => setAba(a as any)} style={{
-                padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                background: aba === a ? '#ffc00f' : 'transparent',
-                fontSize: 14, transition: 'all 0.15s',
-              }}>
-                {a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
-              </button>
-            ))}
-          </nav>
+          {/* NÍVEL AGÊNCIA — oculto na visão de cliente */}
+          {!verComoClienteId && (
+            <>
+              <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Agência
+              </p>
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {(['clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+                  <button key={a} onClick={() => setAba(a as any)} style={{
+                    padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                    background: aba === a ? '#ffc00f' : 'transparent',
+                    fontSize: 14, transition: 'all 0.15s',
+                  }}>
+                    {a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                  </button>
+                ))}
+              </nav>
+            </>
+          )}
 
-          {/* NÍVEL CLIENTE (visualização como cliente) */}
-          <div style={{ marginTop: 18 }}>
-            <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Cliente
-            </p>
-            <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: clienteEmVisualizacao ? '#16a34a' : '#bbb' }}>
-              {clienteEmVisualizacao ? `Vendo como: ${clienteEmVisualizacao.nome}` : 'Selecione um cliente na aba Clientes'}
-            </p>
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(['novo-post', 'calendario', 'biblioteca', 'analytics'] as const).map(a => (
-                <button key={a} onClick={() => setAba(a as any)} style={{
-                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                  background: aba === a ? '#ffc00f' : 'transparent',
-                  fontSize: 14, transition: 'all 0.15s',
-                }}>
-                  {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : 'Analytics'}
-                </button>
-              ))}
-            </nav>
-          </div>
+          {/* NÍVEL CLIENTE — só na visualização como cliente */}
+          {verComoClienteId && (
+            <div>
+              <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Cliente
+              </p>
+              <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>
+                Vendo como: {clienteEmVisualizacao?.nome}
+              </p>
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {(['novo-post', 'calendario', 'biblioteca', 'analytics'] as const).map(a => (
+                  <button key={a} onClick={() => setAba(a as any)} style={{
+                    padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                    background: aba === a ? '#ffc00f' : 'transparent',
+                    fontSize: 14, transition: 'all 0.15s',
+                  }}>
+                    {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : 'Analytics'}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
         </aside>
 
         {/* Conteúdo principal */}
@@ -864,7 +870,7 @@ function Dashboard() {
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram}) — somente o conteúdo dele é exibido.
             </p>
-            <button onClick={() => setVerComoClienteId('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+            <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
               Voltar à visão da agência
             </button>
           </div>
