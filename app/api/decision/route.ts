@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
-import { list, put } from '@vercel/blob'
+import { list, put, del } from '@vercel/blob'
 import nodemailer from 'nodemailer'
 import { notificarEquipe } from '@/lib/notificacoes'
 
@@ -101,7 +101,15 @@ export async function POST(req: NextRequest) {
 
       // Só é PUBLICADO se as duas redes derem certo. Caso contrário, FALHOU com o motivo.
       if (ig.ok && fb.ok) {
-        await redis.set(`post:${id}`, { ...atualizado, status: 'publicado', erroPublicacao: undefined, atualizadoEm: new Date().toISOString() })
+        // Limpeza automática: remove as mídias do Blob (já estão publicadas nas redes)
+        const removidas = await removerMidiasDoBlob(post.imagens || [])
+        await redis.set(`post:${id}`, {
+          ...atualizado,
+          status: 'publicado',
+          erroPublicacao: undefined,
+          ...(removidas ? { midiaRemovida: true } : {}),
+          atualizadoEm: new Date().toISOString(),
+        })
         await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado com sucesso no Instagram e no Facebook.`, id)
       } else {
         const motivo = [!ig.ok ? `Instagram — ${ig.error}` : null, !fb.ok ? `Facebook — ${fb.error}` : null].filter(Boolean).join(' | ')
@@ -124,6 +132,22 @@ const VERSION = process.env.META_API_VERSION_PUBLISH || 'v21.0'
 const BASE = `https://graph.facebook.com/${VERSION}`
 
 const isVideo = (url: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(url)
+
+// Remove do Vercel Blob as mídias já publicadas, para liberar armazenamento.
+// Só apaga URLs do nosso Blob (pasta midia/) — ignora links externos.
+async function removerMidiasDoBlob(urls: string[]): Promise<boolean> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN
+  if (!token) return false
+  const doBlob = urls.filter(u => /\.public\.blob\.vercel-storage\.com\/midia\//.test(u) || /blob\.vercel-storage\.com\/.*midia\//.test(u))
+  if (doBlob.length === 0) return false
+  try {
+    await del(doBlob, { token })
+    return true
+  } catch (e) {
+    console.error('[limpeza] Falha ao remover mídias do Blob:', e)
+    return false
+  }
+}
 
 function postForm(url: string, params: Record<string, string>) {
   return fetch(url, { method: 'POST', body: new URLSearchParams(params) }).then(r => r.json())

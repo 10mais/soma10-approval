@@ -85,4 +85,5 @@ export type Post = {
   erroPublicacao?: string
   rascunhoInterno?: boolean
   colaboradores?: string[] // até 4 @usuários marcados em colab
+  midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
 }
