@@ -7,6 +7,14 @@ const BASE = `https://graph.facebook.com/${VERSION}`
 
 const isVideo = (url: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(url)
 
+// Formata o erro da Graph API com o máximo de detalhe (mensagem + código/subcódigo + msg ao usuário)
+function fmtErro(e: any): string {
+  if (!e) return 'Erro desconhecido'
+  const cod = [e.code, e.error_subcode].filter((v: any) => v !== undefined && v !== null).join('/')
+  const partes = [e.message, e.error_user_msg, cod ? `[${cod}]` : '', e.fbtrace_id ? `trace ${e.fbtrace_id}` : '']
+  return partes.filter(Boolean).join(' — ')
+}
+
 function postForm(url: string, params: Record<string, string>) {
   return fetch(url, { method: 'POST', body: new URLSearchParams(params) }).then(r => r.json())
 }
@@ -38,10 +46,10 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
     if (formato === 'story') {
       const m = midias[0]
       const c = await postForm(`${BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'STORIES', ...(isVideo(m) ? { video_url: m } : { image_url: m }) })
-      if (c?.error) return { ok: false, error: c.error.message }
+      if (c?.error) return { ok: false, error: fmtErro(c.error) }
       if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo do story.' }
       const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
-      if (pub?.error) return { ok: false, error: pub.error.message }
+      if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
       return { ok: true }
     }
 
@@ -51,10 +59,10 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
         ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}), ...colabParam }
         : { access_token: TOKEN, image_url: m, caption: post.legenda, ...colabParam }
       const c = await postForm(`${BASE}/${IG_ID}/media`, params)
-      if (c?.error) return { ok: false, error: c.error.message }
+      if (c?.error) return { ok: false, error: fmtErro(c.error) }
       if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo/reel.' }
       const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
-      if (pub?.error) return { ok: false, error: pub.error.message }
+      if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
       return { ok: true }
     }
 
@@ -63,15 +71,15 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       const item = await postForm(`${BASE}/${IG_ID}/media`, isVideo(m)
         ? { access_token: TOKEN, media_type: 'VIDEO', video_url: m, is_carousel_item: 'true', ...(capas[m] ? { cover_url: capas[m] } : {}) }
         : { access_token: TOKEN, image_url: m, is_carousel_item: 'true' })
-      if (item?.error) return { ok: false, error: item.error.message }
+      if (item?.error) return { ok: false, error: fmtErro(item.error) }
       if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
       itensIds.push(item.id)
     }
     const carousel = await postForm(`${BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda, ...colabParam })
-    if (carousel?.error) return { ok: false, error: carousel.error.message }
+    if (carousel?.error) return { ok: false, error: fmtErro(carousel.error) }
     await aguardarContainer(IG_ID, TOKEN, carousel.id, 10)
     const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: carousel.id })
-    if (pub?.error) return { ok: false, error: pub.error.message }
+    if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e?.message || 'Erro de comunicação com o Instagram.' }
@@ -91,20 +99,20 @@ export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok
   try {
     for (const v of videos) {
       const r = await postForm(`${BASE}/${PAGE_ID}/videos`, { access_token: TOKEN, file_url: v, description: post.legenda })
-      if (r?.error) return { ok: false, error: r.error.message }
+      if (r?.error) return { ok: false, error: fmtErro(r.error) }
     }
     if (imagens.length === 1) {
       const r = await postForm(`${BASE}/${PAGE_ID}/photos`, { access_token: TOKEN, url: imagens[0], caption: post.legenda })
-      if (r?.error) return { ok: false, error: r.error.message }
+      if (r?.error) return { ok: false, error: fmtErro(r.error) }
     } else if (imagens.length > 1) {
       const ids: { media_fbid: string }[] = []
       for (const img of imagens) {
         const r = await postForm(`${BASE}/${PAGE_ID}/photos`, { access_token: TOKEN, url: img, published: 'false' })
-        if (r?.error) return { ok: false, error: r.error.message }
+        if (r?.error) return { ok: false, error: fmtErro(r.error) }
         ids.push({ media_fbid: r.id })
       }
       const feed = await postForm(`${BASE}/${PAGE_ID}/feed`, { access_token: TOKEN, message: post.legenda, attached_media: JSON.stringify(ids) })
-      if (feed?.error) return { ok: false, error: feed.error.message }
+      if (feed?.error) return { ok: false, error: fmtErro(feed.error) }
     }
     return { ok: true }
   } catch (e: any) {
