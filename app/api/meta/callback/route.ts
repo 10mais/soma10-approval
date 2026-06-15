@@ -32,38 +32,55 @@ export async function GET(req: NextRequest) {
     }
 
     const userToken = tokenData.access_token
+    const G = `https://graph.facebook.com/${VERSION}`
+    const PAGE_FIELDS = 'id,name,access_token,instagram_business_account'
 
-    // 2. Buscar todas as páginas que o usuário administra
-    const pagesRes = await fetch(
-      `https://graph.facebook.com/${VERSION}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userToken}`
-    )
-    const pagesData = await pagesRes.json()
+    async function buscarJson(url: string) {
+      try { return await fetch(url).then(r => r.json()) } catch { return {} }
+    }
 
-    if (!pagesData.data || pagesData.data.length === 0) {
+    // 2. Reúne páginas de TODAS as fontes: diretas (/me/accounts) e via Business Manager (owned + client)
+    const brutos: any[] = []
+
+    const contas = await buscarJson(`${G}/me/accounts?fields=${PAGE_FIELDS}&limit=100&access_token=${userToken}`)
+    if (Array.isArray(contas?.data)) brutos.push(...contas.data)
+
+    const negocios = await buscarJson(`${G}/me/businesses?fields=id&limit=100&access_token=${userToken}`)
+    if (Array.isArray(negocios?.data)) {
+      for (const biz of negocios.data) {
+        const owned = await buscarJson(`${G}/${biz.id}/owned_pages?fields=${PAGE_FIELDS}&limit=100&access_token=${userToken}`)
+        if (Array.isArray(owned?.data)) brutos.push(...owned.data)
+        const client = await buscarJson(`${G}/${biz.id}/client_pages?fields=${PAGE_FIELDS}&limit=100&access_token=${userToken}`)
+        if (Array.isArray(client?.data)) brutos.push(...client.data)
+      }
+    }
+
+    // Remove duplicadas por id
+    const unicas = new Map<string, any>()
+    for (const p of brutos) if (p?.id && !unicas.has(p.id)) unicas.set(p.id, p)
+
+    if (unicas.size === 0) {
       return NextResponse.redirect(`${BASE_URL}/dashboard?meta_error=sem_paginas#clientes`)
     }
 
-    // 3. Para cada página, buscar dados do Instagram
+    // 3. Para cada página, garante token e busca dados do Instagram
     const paginas = await Promise.all(
-      pagesData.data.map(async (page: any) => {
+      [...unicas.values()].map(async (page: any) => {
+        // Páginas vindas do Business às vezes não trazem o token — busca individualmente
+        let pageToken = page.access_token
+        let igAccount = page.instagram_business_account
+        if (!pageToken) {
+          const det = await buscarJson(`${G}/${page.id}?fields=access_token,instagram_business_account&access_token=${userToken}`)
+          pageToken = det?.access_token
+          igAccount = igAccount || det?.instagram_business_account
+        }
+
         let instagram = null
-        if (page.instagram_business_account) {
-          const igRes = await fetch(
-            `https://graph.facebook.com/${VERSION}/${page.instagram_business_account.id}?fields=username,profile_picture_url&access_token=${page.access_token}`
-          )
-          const igData = await igRes.json()
-          instagram = {
-            id: page.instagram_business_account.id,
-            username: igData.username,
-            profilePic: igData.profile_picture_url,
-          }
+        if (igAccount?.id && pageToken) {
+          const igData = await buscarJson(`${G}/${igAccount.id}?fields=username,profile_picture_url&access_token=${pageToken}`)
+          instagram = { id: igAccount.id, username: igData?.username, profilePic: igData?.profile_picture_url }
         }
-        return {
-          pageId: page.id,
-          pageName: page.name,
-          pageToken: page.access_token,
-          instagram,
-        }
+        return { pageId: page.id, pageName: page.name, pageToken, instagram }
       })
     )
 
