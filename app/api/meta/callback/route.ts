@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const G = `https://graph.facebook.com/${VERSION}`
     const PAGE_FIELDS = 'id,name,access_token,instagram_business_account'
 
-    async function buscarJson(url: string) {
+    const buscarJson = async (url: string): Promise<any> => {
       try { return await fetch(url).then(r => r.json()) } catch { return {} }
     }
 
@@ -56,16 +56,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Remove duplicadas por id
-    const unicas = new Map<string, any>()
-    for (const p of brutos) if (p?.id && !unicas.has(p.id)) unicas.set(p.id, p)
+    const vistos = new Set<string>()
+    const unicas: any[] = []
+    for (const p of brutos) {
+      if (p?.id && !vistos.has(p.id)) { vistos.add(p.id); unicas.push(p) }
+    }
 
-    if (unicas.size === 0) {
+    if (unicas.length === 0) {
       return NextResponse.redirect(`${BASE_URL}/dashboard?meta_error=sem_paginas#clientes`)
     }
 
     // 3. Para cada página, garante token e busca dados do Instagram
     const paginas = await Promise.all(
-      [...unicas.values()].map(async (page: any) => {
+      unicas.map(async (page: any) => {
         // Páginas vindas do Business às vezes não trazem o token — busca individualmente
         let pageToken = page.access_token
         let igAccount = page.instagram_business_account
