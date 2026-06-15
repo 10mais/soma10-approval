@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
     'business_management',
   ].join(',')
 
-  const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&response_type=code&state=${encodeURIComponent(state)}`
+  // auth_type=rerequest força o Facebook a reabrir a seleção de páginas/permissões
+  // (sem isso, ele reaproveita a escolha anterior e não mostra a página do 10mais).
+  const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&response_type=code&auth_type=rerequest&state=${encodeURIComponent(state)}`
 
   return NextResponse.redirect(oauthUrl)
 }
