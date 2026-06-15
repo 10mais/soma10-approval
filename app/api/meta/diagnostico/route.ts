@@ -14,7 +14,15 @@ export async function GET(req: NextRequest) {
   }
 
   const clienteId = req.nextUrl.searchParams.get('clienteId') || ''
-  if (!clienteId) return NextResponse.json({ error: 'informe ?clienteId=' }, { status: 400 })
+  if (!clienteId) {
+    // Sem clienteId: lista os clientes conectados para você copiar o id
+    const ids = await redis.smembers('clientes')
+    const clientes = (await Promise.all(ids.map(id => redis.get<Cliente>(`cliente:${id}`)))).filter(Boolean) as Cliente[]
+    return NextResponse.json({
+      dica: 'Adicione ?clienteId=<id> na URL para diagnosticar. Lista abaixo:',
+      clientes: clientes.map(c => ({ id: c.id, nome: c.nome, instagram: c.instagramUsername, conectado: !!c.metaConectado })),
+    })
+  }
 
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
