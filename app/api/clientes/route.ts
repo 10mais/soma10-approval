@@ -27,7 +27,9 @@ export async function GET() {
     clientes = clientes.filter(c => c.id === clienteId)
   }
 
-  return NextResponse.json(clientes)
+  // Nunca expor tokens ao frontend — só o status de conexão importa
+  const seguros = clientes.map(({ facebookPageToken, instagramToken, ...resto }) => resto)
+  return NextResponse.json(seguros)
 }
 
 export async function POST(req: NextRequest) {

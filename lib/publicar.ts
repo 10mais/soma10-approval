@@ -29,10 +29,23 @@ async function aguardarContainer(igId: string, token: string, creationId: string
   return false
 }
 
+// Publicação via "API com login do Instagram" (graph.instagram.com)
+const IG_BASE = `https://graph.instagram.com/${VERSION}`
+
+async function aguardarContainerIG(token: string, creationId: string, tentativas = 20): Promise<boolean> {
+  for (let i = 0; i < tentativas; i++) {
+    await new Promise(r => setTimeout(r, 3000))
+    const st = await fetch(`${IG_BASE}/${creationId}?fields=status_code&access_token=${token}`).then(r => r.json())
+    if (st?.status_code === 'FINISHED') return true
+    if (st?.status_code === 'ERROR') return false
+  }
+  return false
+}
+
 export async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
-  const TOKEN = (cliente?.metaConectado && cliente?.facebookPageToken) ? cliente.facebookPageToken : process.env.INSTAGRAM_ACCESS_TOKEN
-  const IG_ID = (cliente?.metaConectado && cliente?.instagramBusinessId) ? cliente.instagramBusinessId : process.env.INSTAGRAM_BUSINESS_ID
-  if (!TOKEN || !IG_ID) return { ok: false, error: 'Conta do Instagram não conectada.' }
+  const TOKEN = cliente?.instagramToken
+  const IG_ID = cliente?.instagramUserId
+  if (!TOKEN || !IG_ID) return { ok: false, error: 'Instagram não conectado (faça a conexão com login do Instagram).' }
 
   const midias = post.imagens || []
   if (midias.length === 0) return { ok: false, error: 'O post não possui mídia para publicar.' }
@@ -45,10 +58,10 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
   try {
     if (formato === 'story') {
       const m = midias[0]
-      const c = await postForm(`${BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'STORIES', ...(isVideo(m) ? { video_url: m } : { image_url: m }) })
+      const c = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'STORIES', ...(isVideo(m) ? { video_url: m } : { image_url: m }) })
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo do story.' }
-      const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
+      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo do story.' }
+      const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
       if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
       return { ok: true }
     }
@@ -58,27 +71,27 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       const params = isVideo(m)
         ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}), ...colabParam }
         : { access_token: TOKEN, image_url: m, caption: post.legenda, ...colabParam }
-      const c = await postForm(`${BASE}/${IG_ID}/media`, params)
+      const c = await postForm(`${IG_BASE}/${IG_ID}/media`, params)
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo/reel.' }
-      const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
+      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo/reel.' }
+      const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
       if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
       return { ok: true }
     }
 
     const itensIds: string[] = []
     for (const m of midias) {
-      const item = await postForm(`${BASE}/${IG_ID}/media`, isVideo(m)
+      const item = await postForm(`${IG_BASE}/${IG_ID}/media`, isVideo(m)
         ? { access_token: TOKEN, media_type: 'VIDEO', video_url: m, is_carousel_item: 'true', ...(capas[m] ? { cover_url: capas[m] } : {}) }
         : { access_token: TOKEN, image_url: m, is_carousel_item: 'true' })
       if (item?.error) return { ok: false, error: fmtErro(item.error) }
-      if (isVideo(m) && !(await aguardarContainer(IG_ID, TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
+      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
       itensIds.push(item.id)
     }
-    const carousel = await postForm(`${BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda, ...colabParam })
+    const carousel = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda, ...colabParam })
     if (carousel?.error) return { ok: false, error: fmtErro(carousel.error) }
-    await aguardarContainer(IG_ID, TOKEN, carousel.id, 10)
-    const pub = await postForm(`${BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: carousel.id })
+    await aguardarContainerIG(TOKEN, carousel.id, 10)
+    const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: carousel.id })
     if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
     return { ok: true }
   } catch (e: any) {
@@ -156,7 +169,12 @@ export type ResultadoPublicacao = {
 
 // Publica nas redes selecionadas do post, faz a limpeza e devolve os campos a salvar.
 export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
-  const redes = post.redes && post.redes.length ? post.redes : ['instagram', 'facebook']
+  const temFB = !!(cliente?.facebookPageToken && cliente?.facebookPageId)
+  let redes = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
+  // Não tenta o Facebook se o cliente não tem Página do Facebook conectada (ex.: conexão só de Instagram)
+  if (!temFB) redes = redes.filter(r => r !== 'facebook')
+  if (redes.length === 0) redes = ['instagram']
+
   const ig = redes.includes('instagram') ? await publishToInstagram(post, cliente) : { ok: true as const }
   const fb = redes.includes('facebook') ? await publishToFacebook(post, cliente) : { ok: true as const }
   const agora = new Date().toISOString()

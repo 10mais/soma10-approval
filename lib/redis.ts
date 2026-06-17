@@ -26,12 +26,16 @@ export type Cliente = {
   corPrimaria?: string
   corSecundaria?: string
   criadoEm: string
-  // Integração Meta
+  // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string
   facebookPageToken?: string
   instagramBusinessId?: string
   instagramUsername?: string
   metaConectado?: boolean
+  // Instagram via "API com login do Instagram" (graph.instagram.com)
+  instagramToken?: string
+  instagramUserId?: string
+  instagramConectado?: boolean
   // Login do cliente
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)

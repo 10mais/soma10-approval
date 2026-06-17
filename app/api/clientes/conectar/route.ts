@@ -10,10 +10,38 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { clienteId, facebookPageId, facebookPageToken, instagramBusinessId, instagramUsername } = body
+  const { clienteId, facebookPageId, facebookPageToken, instagramBusinessId, instagramUsername, igToken, igUserId } = body
 
-  if (!clienteId || !facebookPageId) {
-    return NextResponse.json({ error: 'clienteId e facebookPageId são obrigatórios' }, { status: 400 })
+  if (!clienteId) {
+    return NextResponse.json({ error: 'clienteId é obrigatório' }, { status: 400 })
+  }
+
+  // Conexão via "API com login do Instagram" (graph.instagram.com) — não usa Página do Facebook
+  if (igToken && igUserId) {
+    const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
+    if (!cliente) return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
+
+    let fotoPerfil: string | undefined
+    try {
+      const me = await fetch(`https://graph.instagram.com/me?fields=username,profile_picture_url&access_token=${igToken}`).then(r => r.json())
+      if (me?.profile_picture_url) fotoPerfil = me.profile_picture_url
+    } catch {}
+
+    const atualizado: Cliente = {
+      ...cliente,
+      instagramToken: igToken,
+      instagramUserId: String(igUserId),
+      instagramUsername: instagramUsername || cliente.instagramUsername,
+      instagramConectado: true,
+      metaConectado: true,
+      ...(fotoPerfil ? { logo: fotoPerfil } : {}),
+    }
+    await redis.set(`cliente:${clienteId}`, atualizado)
+    return NextResponse.json({ ok: true, instagram: instagramUsername, tipo: 'instagram-login' })
+  }
+
+  if (!facebookPageId) {
+    return NextResponse.json({ error: 'facebookPageId é obrigatório' }, { status: 400 })
   }
 
   const TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN
@@ -105,6 +133,9 @@ export async function DELETE(req: NextRequest) {
     facebookPageToken: undefined,
     instagramBusinessId: undefined,
     instagramUsername: undefined,
+    instagramToken: undefined,
+    instagramUserId: undefined,
+    instagramConectado: false,
     metaConectado: false,
   }
 

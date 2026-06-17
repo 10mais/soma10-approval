@@ -10,9 +10,9 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
-type MetaPage = { pageId: string; pageName: string; pageToken: string; instagram: { id: string; username: string; profilePic?: string } | null }
+type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: 'Rascunho',
@@ -234,9 +234,11 @@ function Dashboard() {
     if (searchParams.get('meta_error')) {
       setAba('clientes')
       const erros: Record<string, string> = {
-        acesso_negado: 'Acesso negado pelo Facebook.',
+        acesso_negado: 'Acesso negado. Você cancelou a autorização.',
         token_falhou: 'Não foi possível obter o token de acesso.',
         sem_paginas: 'Nenhuma Página do Facebook encontrada. Verifique se você é administrador de alguma página.',
+        sem_conta_ig: 'Não foi possível identificar a conta do Instagram. Use uma conta Profissional (Business/Criador).',
+        ig_nao_configurado: 'Integração do Instagram não configurada (faltam INSTAGRAM_APP_ID/SECRET na Vercel).',
         erro_interno: 'Erro interno. Tente novamente.',
       }
       setMetaErro(erros[searchParams.get('meta_error')!] || 'Erro desconhecido.')
@@ -429,6 +431,8 @@ function Dashboard() {
           facebookPageToken: page.pageToken,
           instagramBusinessId: page.instagram.id,
           instagramUsername: page.instagram.username,
+          igToken: page.igToken,
+          igUserId: page.igUserId,
         }),
       })
     }
@@ -452,6 +456,8 @@ function Dashboard() {
         facebookPageToken: page.pageToken,
         instagramBusinessId: page.instagram.id,
         instagramUsername: page.instagram.username,
+        igToken: page.igToken,
+        igUserId: page.igUserId,
       }),
     })
     setVinculandoPagina('')
@@ -1885,8 +1891,8 @@ function Dashboard() {
                     <span>Conta social</span><span>Status</span><span>Tipo</span><span></span>
                   </div>
                   {clientes.filter(c => c.metaConectado).flatMap(c => ([
-                    { c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' },
-                    { c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' },
+                    ...(c.facebookPageId ? [{ c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' }] : []),
+                    ...((c.instagramConectado || c.instagramUserId || c.instagramUsername) ? [{ c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' }] : []),
                   ])).map((row, i) => (
                     <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -1905,7 +1911,7 @@ function Dashboard() {
                       </div>
                       <span><span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
                       <span style={{ fontSize: 13, color: '#666' }}>{row.tipo}</span>
-                      {row.rede === 'facebook' ? (
+                      {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
                         <button onClick={() => { if (confirm(`Desconectar as contas de ${row.c.nome}?`)) desconectarInstagram(row.c.id) }} title="Desconectar"
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, padding: 4 }}>🗑</button>
                       ) : <span />}

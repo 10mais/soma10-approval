@@ -35,9 +35,10 @@ const REDES: Rede[] = [
 export default function ConectarRedesModal({ clienteId, clienteNome, onClose }: { clienteId: string | null; clienteNome?: string; onClose: () => void }) {
   function conectar(rede: Rede) {
     if (!rede.ativo) return
-    // Facebook e Instagram usam o mesmo OAuth da Meta (uma autorização traz Página + Instagram)
-    const url = clienteId ? `/api/meta/oauth?cliente=${clienteId}` : '/api/meta/oauth'
-    window.location.href = url
+    const sufixo = clienteId ? `?cliente=${clienteId}` : ''
+    // Instagram usa login do Instagram (graph.instagram.com); Facebook usa OAuth da Meta (Página)
+    const base = rede.key === 'instagram' ? '/api/instagram/oauth' : '/api/meta/oauth'
+    window.location.href = `${base}${sufixo}`
   }
 
   return (
