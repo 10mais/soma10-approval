@@ -170,6 +170,7 @@ function Dashboard() {
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
   const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
+  const [avisoFalhaOculto, setAvisoFalhaOculto] = useState(false)
   const [postPreview, setPostPreview] = useState<Post | null>(null)
   const [verComoClienteId, setVerComoClienteId] = useState('')
   const [buscaCliente, setBuscaCliente] = useState('')
@@ -234,6 +235,16 @@ function Dashboard() {
   async function marcarTodasNotificacoesLidas() {
     setNotificacoes(ns => ns.map(n => ({ ...n, lida: true })))
     await fetch('/api/notificacoes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ todasComoLidas: true }) })
+  }
+
+  async function excluirNotificacao(id: string) {
+    setNotificacoes(ns => ns.filter(n => n.id !== id))
+    await fetch('/api/notificacoes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+  }
+
+  async function limparNotificacoes() {
+    setNotificacoes([])
+    await fetch('/api/notificacoes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ todas: true }) })
   }
 
   // Ler páginas do cookie após OAuth
@@ -715,7 +726,7 @@ function Dashboard() {
 
           {/* Sininho de notificações */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setInboxAberto(v => !v)} title="Notificações" style={{
+            <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
               width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -739,9 +750,9 @@ function Dashboard() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
                     <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
-                    {notificacoes.some(n => !n.lida) && (
-                      <button onClick={marcarTodasNotificacoesLidas} style={{ background: 'none', border: 'none', color: '#888', fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-                        Marcar todas como lidas
+                    {notificacoes.length > 0 && (
+                      <button onClick={limparNotificacoes} style={{ background: 'none', border: 'none', color: '#991b1b', fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                        Limpar todas
                       </button>
                     )}
                   </div>
@@ -757,11 +768,12 @@ function Dashboard() {
                         background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start',
                       }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
                           <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
                           <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
+                        <button onClick={(e) => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
                       </div>
                     ))
                   )}
@@ -834,10 +846,14 @@ function Dashboard() {
                     .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
                     .map(c => (
                       <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente(''); setAba('novo-post') }} style={{
-                        textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', gap: 8,
                       }}>
-                        {c.nome}
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
+                          {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome[0]?.toUpperCase())}
+                        </span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
                       </button>
                     ))}
                   {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
@@ -942,14 +958,15 @@ function Dashboard() {
             </div>
 
             {/* Aviso de falhas de publicação */}
-            {postsView.some(p => p.status === 'falha_publicacao') && (
+            {!avisoFalhaOculto && postsView.some(p => p.status === 'falha_publicacao') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
                 <span style={{ color: '#b91c1c', display: 'flex' }}><IconAlert size={18} /></span>
-                <p style={{ margin: 0, fontSize: 13, color: '#b91c1c' }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#b91c1c', flex: 1 }}>
                   {postsView.filter(p => p.status === 'falha_publicacao').length === 1
                     ? 'Há 1 post que falhou ao publicar. Verifique e tente novamente.'
                     : `Há ${postsView.filter(p => p.status === 'falha_publicacao').length} posts que falharam ao publicar. Verifique e tente novamente.`}
                 </p>
+                <button onClick={() => setAvisoFalhaOculto(true)} title="Dispensar" style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
               </div>
             )}
 

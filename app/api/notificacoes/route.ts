@@ -39,3 +39,29 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({ error: 'parâmetros inválidos' }, { status: 400 })
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+
+  const email = session.user.email
+  const { id, todas } = await req.json().catch(() => ({}))
+
+  if (todas) {
+    const ids = await redis.smembers(`notificacoes:${email}`)
+    await Promise.all(ids.flatMap(nid => [redis.del(`notificacao:${nid}`), redis.srem(`notificacoes:${email}`, nid)]))
+    return NextResponse.json({ ok: true })
+  }
+
+  if (id) {
+    const notificacao = await redis.get<Notificacao>(`notificacao:${id}`)
+    if (notificacao && notificacao.destinatarioEmail !== email) {
+      return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+    }
+    await redis.del(`notificacao:${id}`)
+    await redis.srem(`notificacoes:${email}`, id)
+    return NextResponse.json({ ok: true })
+  }
+
+  return NextResponse.json({ error: 'parâmetros inválidos' }, { status: 400 })
+}

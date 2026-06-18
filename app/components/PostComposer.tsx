@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
-type Cliente = { id: string; nome: string; instagram: string }
+type Cliente = { id: string; nome: string; instagram: string; logo?: string }
 type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
 type EmEnvio = { id: string; nome: string; progresso: number }
 
@@ -455,8 +455,8 @@ export default function PostComposer({
         </p>
         <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
-              {(cliente?.nome || '?')[0]?.toUpperCase()}
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0, overflow: 'hidden' }}>
+              {cliente?.logo ? <img src={cliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (cliente?.nome || '?')[0]?.toUpperCase()}
             </div>
             <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>
               {cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}
