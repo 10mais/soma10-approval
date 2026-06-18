@@ -80,7 +80,8 @@ export async function PUT(req: NextRequest) {
   const cliente = await redis.get<Cliente>(`cliente:${id}`)
   if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria']
+  const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria',
+    'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos']
   const atualizado = { ...cliente }
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]

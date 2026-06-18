@@ -5,7 +5,13 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
 export const runtime = 'nodejs'
 
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime']
+const TIPOS_PERMITIDOS = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime',
+  // Documentos do Brands Board
+  'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/ogg',
+]
 // Limite generoso — o upload vai direto do navegador para o Blob, sem passar pelo servidor.
 const TAMANHO_MAX = 200 * 1024 * 1024 // 200 MB por arquivo
 

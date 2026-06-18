@@ -40,6 +40,14 @@ export type Cliente = {
   // Login do cliente
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
+  // Brands Board — identidade e DNA do cliente
+  segmento?: string // nicho (ex.: Cardiologia)
+  palavrasChave?: string // palavras-chave separadas por vírgula
+  descricao?: string
+  publicoAlvo?: string
+  tomDeVoz?: string
+  preferencias?: string
+  documentos?: { nome: string; url: string }[]
 }
 
 export type ConfigAgencia = {

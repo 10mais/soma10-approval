@@ -10,7 +10,7 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -133,7 +133,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('clientes')
+  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca'>('clientes')
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
   // Tema (claro/escuro) — persistido no navegador
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
@@ -169,6 +169,10 @@ function Dashboard() {
   const [edicaoCliente, setEdicaoCliente] = useState<Partial<Cliente>>({})
   const [enviandoLogoCliente, setEnviandoLogoCliente] = useState(false)
   const [fotoClienteId, setFotoClienteId] = useState<string | null>(null)
+  const [brandForm, setBrandForm] = useState<any>({})
+  const [salvandoBrand, setSalvandoBrand] = useState(false)
+  const [brandMsg, setBrandMsg] = useState('')
+  const [enviandoDoc, setEnviandoDoc] = useState(false)
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
   const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string }>({ nome: '', role: 'gerente', novaSenha: '' })
   const [bibBusca, setBibBusca] = useState('')
@@ -695,6 +699,31 @@ function Dashboard() {
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
+  // ---- Brands Board ----
+  async function salvarBrand() {
+    if (!verComoClienteId) return
+    setSalvandoBrand(true); setBrandMsg('')
+    await fetch('/api/clientes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: verComoClienteId, ...brandForm }),
+    })
+    await fetch('/api/clientes').then(r => r.json()).then(setClientes)
+    setSalvandoBrand(false)
+    setBrandMsg('Identidade da marca salva!')
+    setTimeout(() => setBrandMsg(''), 4000)
+  }
+
+  async function enviarDocBrand(arquivo: File) {
+    setEnviandoDoc(true)
+    const url = await enviarImagem(arquivo) // mesmo fluxo de upload (aceita documentos)
+    if (url) setBrandForm((b: any) => ({ ...b, documentos: [...(b.documentos || []), { nome: arquivo.name, url }] }))
+    setEnviandoDoc(false)
+  }
+
+  function removerDocBrand(idx: number) {
+    setBrandForm((b: any) => ({ ...b, documentos: (b.documentos || []).filter((_: any, i: number) => i !== idx) }))
+  }
+
   async function excluirCliente(id: string, nome: string) {
     if (!confirm(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`)) return
     await fetch('/api/clientes', {
@@ -891,7 +920,10 @@ function Dashboard() {
                   {clientes
                     .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
                     .map(c => (
-                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente(''); setAba('planner') }} style={{
+                      <button key={c.id} onClick={() => {
+                        setVerComoClienteId(c.id); setBuscaCliente(''); setAba('planner')
+                        setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [] })
+                      }} style={{
                         textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 8,
@@ -943,17 +975,18 @@ function Dashboard() {
                 Vendo como: {clienteEmVisualizacao?.nome}
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['planner', 'analytics'] as const).map(a => (
+                {(['planner', 'marca', 'analytics'] as const).map(a => {
+                  const ativo = aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))
+                  return (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    fontWeight: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? 700 : 500,
-                    color: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? '#111' : '#888',
-                    background: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? '#ffc00f' : 'transparent',
+                    fontWeight: ativo ? 700 : 500, color: ativo ? '#111' : '#888',
+                    background: ativo ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'planner' ? 'Planner' : 'Analytics'}
+                    {a === 'planner' ? 'Planner' : a === 'marca' ? 'Marca (Brand Board)' : 'Analytics'}
                   </button>
-                ))}
+                )})}
               </nav>
             </div>
           )}
@@ -1320,6 +1353,83 @@ function Dashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* MARCA — Brands Board */}
+        {aba === 'marca' && (
+          <div style={{ maxWidth: 820 }}>
+            <h2 style={{ margin: '0 0 4px', fontSize: 18, color: '#111' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
+
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Segmento / Nicho</label>
+                  <input value={brandForm.segmento || ''} onChange={e => setBrandForm((b: any) => ({ ...b, segmento: e.target.value }))} placeholder="Ex.: Cardiologia, Restaurante, Turismo..."
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Palavras-chave (vírgula)</label>
+                  <input value={brandForm.palavrasChave || ''} onChange={e => setBrandForm((b: any) => ({ ...b, palavrasChave: e.target.value }))} placeholder="saúde do coração, exames, prevenção..."
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Descrição da empresa</label>
+                <textarea value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder="O que a empresa faz, diferenciais, serviços..."
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Público-alvo</label>
+                  <textarea value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder="Quem é o cliente ideal..."
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Tom de voz</label>
+                  <textarea value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder="Formal, acolhedor, descontraído..."
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Preferências / O que evitar</label>
+                <textarea value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder="Hashtags padrão, temas a evitar, regras da marca..."
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Documentos */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Documentos (briefing, manual da marca, etc.)</label>
+                {(brandForm.documentos || []).length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                    {(brandForm.documentos || []).map((d: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa', borderRadius: 8, padding: '8px 12px' }}>
+                        <span style={{ fontSize: 13 }}>📄</span>
+                        <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, color: '#1d4ed8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nome}</a>
+                        <button onClick={() => removerDocBrand(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: '#444' }}>
+                  {enviandoDoc ? 'Enviando...' : '+ Adicionar documento'}
+                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,audio/*" style={{ display: 'none' }} disabled={enviandoDoc}
+                    onChange={e => { if (e.target.files?.[0]) enviarDocBrand(e.target.files[0]); e.target.value = '' }} />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <button onClick={salvarBrand} disabled={salvandoBrand}
+                  style={{ padding: '12px 28px', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: salvandoBrand ? 0.6 : 1 }}>
+                  {salvandoBrand ? 'Salvando...' : 'Salvar identidade'}
+                </button>
+                {brandMsg && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
+              </div>
+            </div>
           </div>
         )}
 
