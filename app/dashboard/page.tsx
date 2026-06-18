@@ -133,7 +133,9 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca'>('clientes')
+  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening'>('clientes')
+  const [listeningData, setListeningData] = useState<any>(null)
+  const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
   // Tema (claro/escuro) — persistido no navegador
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
@@ -255,6 +257,12 @@ function Dashboard() {
     setNotificacoes([])
     await fetch('/api/notificacoes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ todas: true }) })
   }
+
+  // Carrega o Social Listening ao abrir a aba (uma vez por cliente)
+  useEffect(() => {
+    if (aba === 'listening' && verComoClienteId) carregarListening()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aba, verComoClienteId])
 
   // Ler páginas do cookie após OAuth
   useEffect(() => {
@@ -724,6 +732,14 @@ function Dashboard() {
     setBrandForm((b: any) => ({ ...b, documentos: (b.documentos || []).filter((_: any, i: number) => i !== idx) }))
   }
 
+  async function carregarListening() {
+    if (!verComoClienteId) return
+    setListeningLoading(true); setListeningData(null)
+    const data = await fetch(`/api/social-listening?clienteId=${verComoClienteId}`).then(r => r.json()).catch(() => null)
+    setListeningData(data)
+    setListeningLoading(false)
+  }
+
   async function excluirCliente(id: string, nome: string) {
     if (!confirm(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`)) return
     await fetch('/api/clientes', {
@@ -975,7 +991,7 @@ function Dashboard() {
                 Vendo como: {clienteEmVisualizacao?.nome}
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['planner', 'marca', 'analytics'] as const).map(a => {
+                {(['planner', 'marca', 'listening', 'analytics'] as const).map(a => {
                   const ativo = aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))
                   return (
                   <button key={a} onClick={() => setAba(a as any)} style={{
@@ -984,7 +1000,7 @@ function Dashboard() {
                     background: ativo ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'planner' ? 'Planner' : a === 'marca' ? 'Marca (Brand Board)' : 'Analytics'}
+                    {a === 'planner' ? 'Planner' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
                   </button>
                 )})}
               </nav>
@@ -1430,6 +1446,80 @@ function Dashboard() {
                 {brandMsg && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* SOCIAL LISTENING */}
+        {aba === 'listening' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+              <button onClick={carregarListening} disabled={listeningLoading}
+                style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1 }}>
+                {listeningLoading ? 'Buscando...' : '↻ Atualizar'}
+              </button>
+            </div>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: '#999' }}>Tendências e conteúdos em alta sobre o nicho do cliente (definido no Brand Board).</p>
+
+            {listeningLoading && <div style={{ padding: 50, textAlign: 'center', color: '#aaa' }}>Buscando tendências do nicho...</div>}
+
+            {!listeningLoading && listeningData?.semNicho && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 20, color: '#92400e', fontSize: 14 }}>
+                {listeningData.mensagem} <button onClick={() => setAba('marca')} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#92400e', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Ir para o Brand Board</button>
+              </div>
+            )}
+
+            {!listeningLoading && listeningData && !listeningData.semNicho && (
+              <>
+                <p style={{ margin: '0 0 16px', fontSize: 12, color: '#aaa' }}>Termos do nicho: <strong style={{ color: '#666' }}>{(listeningData.termos || []).join(', ')}</strong></p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
+                  {/* YouTube */}
+                  <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                      YouTube — mais vistos do nicho
+                    </h3>
+                    {!listeningData.youtubeConfigurado && (
+                      <p style={{ fontSize: 13, color: '#b45309', background: '#fffbeb', borderRadius: 8, padding: 12 }}>A chave do YouTube (YOUTUBE_API_KEY) ainda não está ativa na Vercel.</p>
+                    )}
+                    {listeningData.youtubeConfigurado && (listeningData.youtube || []).length === 0 && (
+                      <p style={{ fontSize: 13, color: '#aaa' }}>Nenhum vídeo encontrado para esses termos.</p>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {(listeningData.youtube || []).map((v: any) => (
+                        <a key={v.id} href={v.url} target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 12, textDecoration: 'none', color: 'inherit' }}>
+                          <img src={v.thumb} alt="" style={{ width: 120, height: 68, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.titulo}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#888' }}>{v.canal}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{v.views.toLocaleString('pt-BR')} views · {v.curtidas.toLocaleString('pt-BR')} curtidas</p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Google Trends */}
+                  <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 800, color: '#4285f4' }}>G</span> Google Trends — em alta (BR, 7 dias)
+                    </h3>
+                    {(listeningData.trends || []).length === 0 ? (
+                      <p style={{ fontSize: 13, color: '#aaa' }}>Sem buscas relacionadas em alta no momento (o Google Trends pode limitar consultas automáticas).</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {(listeningData.trends || []).map((t: any, i: number) => (
+                          <a key={i} href={t.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: '#fafafa', borderRadius: 8, textDecoration: 'none' }}>
+                            <span style={{ fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.termo}</span>
+                            <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>{typeof t.valor === 'number' ? (t.valor >= 5000 ? '🔥' : '↑') : t.valor}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
