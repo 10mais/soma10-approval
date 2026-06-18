@@ -422,6 +422,36 @@ function Dashboard() {
     setComposerKey(k => k + 1)
   }
 
+  // Calendário → "+" no dia: abre o Novo Post já com a data daquele dia
+  function novoPostNoDia(date: Date) {
+    const dl = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    setEditandoPostId(null)
+    setComposerPrefill({
+      clienteId: verComoClienteId || '',
+      legenda: '', dataAgendada: dl, imagens: [], formato: 'feed',
+      colaboradores: [], capasVideo: {}, redes: ['instagram', 'facebook'],
+    })
+    setComposerKey(k => k + 1)
+    setAba('novo-post')
+  }
+
+  // Calendário → arrastar post para outro dia: muda a data (mantém o horário original)
+  async function moverPostData(post: Post, date: Date) {
+    const nova = new Date(date)
+    if (post.dataAgendada) {
+      const orig = new Date(post.dataAgendada)
+      nova.setHours(orig.getHours(), orig.getMinutes(), 0, 0)
+    }
+    const novaISO = nova.toISOString()
+    const status = post.status === 'publicado' ? post.status : 'agendado'
+    setPosts(ps => ps.map(p => p && p.id === post.id ? { ...p, dataAgendada: novaISO, status } : p))
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: post.id, dataAgendada: novaISO, status }),
+    })
+    fetch('/api/posts').then(r => r.json()).then(setPosts)
+  }
+
   async function salvarEdicaoPost(valor: any) {
     if (!editandoPostId) return
     setCriandoPost(true)
@@ -989,7 +1019,7 @@ function Dashboard() {
                 <p>Nenhum post {clienteEmVisualizacao ? 'para este cliente ainda' : 'criado ainda. Clique em "Novo Post" para começar'}.</p>
               </div>
             ) : visualizacaoPosts === 'calendario' ? (
-              <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
+              <Calendar posts={postsView as any} onSelectPost={(p: any) => setPostPreview(p)} onAddPost={novoPostNoDia} onMovePost={moverPostData} />
             ) : visualizacaoPosts === 'fluxo' ? (
               <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
                 {(['rascunho', 'aguardando_aprovacao', 'corrigir', 'aprovado', 'reprovado', 'publicado', 'falha_publicacao'] as const).map(st => {
@@ -1107,7 +1137,7 @@ function Dashboard() {
         {(aba === 'calendario' || (aba === 'planner' && plannerView === 'calendario')) && (
           <div>
             {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>}
-            <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
+            <Calendar posts={postsView as any} onSelectPost={(p: any) => setPostPreview(p)} onAddPost={novoPostNoDia} onMovePost={moverPostData} />
           </div>
         )}
 

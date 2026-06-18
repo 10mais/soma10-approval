@@ -4,28 +4,39 @@ import { useState } from 'react'
 type Post = { id: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[] }
 
 const STATUS_COLOR: Record<string, string> = {
-  rascunho: '#e0e0e0',
+  rascunho: '#eeeeee',
+  agendado: '#fef9c3',
   aguardando_aprovacao: '#fef3c7',
   aprovado: '#dcfce7',
   corrigir: '#fff3cd',
   reprovado: '#fee2e2',
-  publicado: '#dbeafe',
+  publicado: '#dcfce7',
+  falha_publicacao: '#fde2e2',
 }
 
 const STATUS_DOT: Record<string, string> = {
   rascunho: '#aaa',
+  agendado: '#a16207',
   aguardando_aprovacao: '#f59e0b',
   aprovado: '#16a34a',
   corrigir: '#d97706',
   reprovado: '#dc2626',
-  publicado: '#2563eb',
+  publicado: '#16a34a',
+  falha_publicacao: '#991b1b',
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-export default function Calendar({ posts, onSelectPost }: { posts: Post[]; onSelectPost?: (post: Post) => void }) {
+export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }: {
+  posts: Post[]
+  onSelectPost?: (post: Post) => void
+  onAddPost?: (date: Date) => void
+  onMovePost?: (post: Post, date: Date) => void
+}) {
   const [refDate, setRefDate] = useState(new Date())
+  const [hoverDay, setHoverDay] = useState<number | null>(null)
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null)
 
   const year = refDate.getFullYear()
   const month = refDate.getMonth()
@@ -85,26 +96,49 @@ export default function Calendar({ posts, onSelectPost }: { posts: Post[]; onSel
         {cells.map((day, i) => {
           const dayPosts = day ? postsForDay(day) : []
           return (
-            <div key={i} style={{
-              minHeight: 92, padding: 8, borderRight: (i + 1) % 7 !== 0 ? '1px solid #f5f5f5' : 'none',
-              borderBottom: '1px solid #f5f5f5', background: day ? '#fff' : '#fafafa',
-            }}>
+            <div key={i}
+              onMouseEnter={() => day && setHoverDay(day)}
+              onMouseLeave={() => setHoverDay(h => (h === day ? null : h))}
+              onDragOver={day && onMovePost ? (e) => { e.preventDefault(); setDragOverDay(day) } : undefined}
+              onDragLeave={() => setDragOverDay(d => (d === day ? null : d))}
+              onDrop={day && onMovePost ? (e) => {
+                e.preventDefault(); setDragOverDay(null)
+                const id = e.dataTransfer.getData('postId')
+                const post = posts.find(p => p.id === id)
+                if (post) onMovePost(post, new Date(year, month, day, 9, 0))
+              } : undefined}
+              style={{
+                position: 'relative', minHeight: 92, padding: 8, borderRight: (i + 1) % 7 !== 0 ? '1px solid #f5f5f5' : 'none',
+                borderBottom: '1px solid #f5f5f5',
+                background: dragOverDay === day ? '#fffbeb' : (day ? '#fff' : '#fafafa'),
+                outline: dragOverDay === day ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+              }}>
               {day && (
                 <>
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 600,
-                    color: isToday(day) ? '#111' : '#888',
-                    background: isToday(day) ? '#ffc00f' : 'transparent',
-                    marginBottom: 4,
-                  }}>
-                    {day}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 600,
+                      color: isToday(day) ? '#111' : '#888',
+                      background: isToday(day) ? '#ffc00f' : 'transparent', marginBottom: 4,
+                    }}>
+                      {day}
+                    </div>
+                    {onAddPost && hoverDay === day && (
+                      <button onClick={() => onAddPost(new Date(year, month, day, 9, 0))} title="Criar post neste dia"
+                        style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#111', color: '#ffc00f', fontSize: 14, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        +
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {dayPosts.slice(0, 3).map(p => (
-                      <div key={p.id} onClick={() => onSelectPost?.(p)} title={p.legenda} style={{
+                      <div key={p.id}
+                        draggable={!!onMovePost}
+                        onDragStart={(e) => e.dataTransfer.setData('postId', p.id)}
+                        onClick={() => onSelectPost?.(p)} title={p.legenda} style={{
                         display: 'flex', alignItems: 'center', gap: 5, padding: '3px 6px', borderRadius: 5,
-                        background: STATUS_COLOR[p.status] || '#f0f0f0', cursor: onSelectPost ? 'pointer' : 'default',
+                        background: STATUS_COLOR[p.status] || '#f0f0f0', cursor: onMovePost ? 'grab' : (onSelectPost ? 'pointer' : 'default'),
                         fontSize: 11, overflow: 'hidden',
                       }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[p.status] || '#999', flexShrink: 0 }} />
