@@ -129,7 +129,8 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('posts')
+  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('posts')
+  const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
   // Tema (claro/escuro) — persistido no navegador
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
   useEffect(() => {
@@ -845,7 +846,7 @@ function Dashboard() {
                   {clientes
                     .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
                     .map(c => (
-                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente(''); setAba('novo-post') }} style={{
+                      <button key={c.id} onClick={() => { setVerComoClienteId(c.id); setBuscaCliente(''); setAba('planner') }} style={{
                         textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
                         display: 'flex', alignItems: 'center', gap: 8,
@@ -897,14 +898,15 @@ function Dashboard() {
                 Vendo como: {clienteEmVisualizacao?.nome}
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['novo-post', 'calendario', 'biblioteca', 'analytics'] as const).map(a => (
+                {(['planner', 'analytics'] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                    background: aba === a ? '#ffc00f' : 'transparent',
+                    fontWeight: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? 700 : 500,
+                    color: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? '#111' : '#888',
+                    background: (aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))) ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'novo-post' ? 'Novo Post' : a === 'calendario' ? 'Calendário' : a === 'biblioteca' ? 'Biblioteca' : 'Analytics'}
+                    {a === 'planner' ? 'Planner' : 'Analytics'}
                   </button>
                 ))}
               </nav>
@@ -1068,18 +1070,39 @@ function Dashboard() {
           </div>
         )}
 
-        {/* CALENDÁRIO */}
-        {aba === 'calendario' && (
+        {/* PLANNER — cabeçalho (Novo Post + alternância Lista/Calendário) */}
+        {aba === 'planner' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+            <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Planner{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+                {(['lista', 'calendario'] as const).map(v => (
+                  <button key={v} onClick={() => setPlannerView(v)} style={{
+                    padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                    background: plannerView === v ? '#fff' : 'transparent', color: plannerView === v ? '#111' : '#888',
+                    boxShadow: plannerView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                  }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
+                ))}
+              </div>
+              <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Novo Post
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* CALENDÁRIO (avulso ou dentro do Planner) */}
+        {(aba === 'calendario' || (aba === 'planner' && plannerView === 'calendario')) && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>}
             <Calendar posts={postsView as any} onSelectPost={(p: any) => router.push(`/aprovar/${p.id}`)} />
           </div>
         )}
 
-        {/* BIBLIOTECA */}
-        {aba === 'biblioteca' && (
+        {/* BIBLIOTECA / LISTA do Planner */}
+        {(aba === 'biblioteca' || (aba === 'planner' && plannerView === 'lista')) && (
           <div>
-            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Biblioteca de Conteúdo</h2>
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Biblioteca de Conteúdo</h2>}
 
             {/* Filtros */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -1470,6 +1493,9 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba('planner') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
+              ← Voltar ao Planner
+            </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
               {editandoPostId && (
@@ -1607,8 +1633,7 @@ function Dashboard() {
                     style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
                     style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                  <input value={novoCliente.loginEmail} onChange={e => setNovoCliente(p => ({ ...p, loginEmail: e.target.value }))} placeholder="E-mail de acesso do cliente (opcional)" type="email"
-                    style={{ flex: 1.4, minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  {/* Acesso/portal do cliente desativado por enquanto (processo de aprovação removido) */}
                 </div>
 
                 {/* Identidade visual do cliente */}
