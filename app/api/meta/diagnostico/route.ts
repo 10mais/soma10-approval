@@ -61,11 +61,26 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 4. Conexão via login do Instagram (graph.instagram.com) — qual conta e últimas publicações
+  let instagramLogin: any = { conectado: false }
+  if (cliente.instagramToken && cliente.instagramUserId) {
+    const IG_BASE = `https://graph.instagram.com/${VERSION}`
+    const me = await buscar(`${IG_BASE}/me?fields=user_id,username,account_type,profile_picture_url&access_token=${cliente.instagramToken}`)
+    const midias = await buscar(`${IG_BASE}/me/media?fields=id,caption,media_type,permalink,timestamp&limit=5&access_token=${cliente.instagramToken}`)
+    instagramLogin = {
+      conectado: true,
+      instagramUserId: cliente.instagramUserId,
+      conta: me,
+      ultimasPublicacoes: midias?.data || midias,
+    }
+  }
+
   return NextResponse.json({
     cliente: cliente.nome,
-    instagram: ig,
+    instagramLogin,
+    instagram_classico: ig,
     pagina,
     token: escopos,
-    dica: 'Para publicar pela API clássica, instagram.account_type precisa ser BUSINESS e o token deve conter instagram_content_publish.',
+    dica: 'Veja instagramLogin.conta.username (conta conectada) e instagramLogin.ultimasPublicacoes (se o post saiu, aparece aqui com permalink).',
   }, { status: 200 })
 }
