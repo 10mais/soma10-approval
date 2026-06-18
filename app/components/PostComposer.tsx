@@ -110,9 +110,36 @@ export default function PostComposer({
 
   const cliente = clientes.find(c => c.id === clienteId)
 
+  // Comprime imagens grandes (reduz para máx. 1440px, JPEG) — evita limite do Facebook e economiza armazenamento
+  async function comprimirImagem(file: File): Promise<File> {
+    if (!file.type.startsWith('image/') || /gif/i.test(file.type) || file.size < 1.2 * 1024 * 1024) return file
+    try {
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file)
+      })
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = dataUrl
+      })
+      const maxLado = 1440
+      let { width, height } = img
+      if (Math.max(width, height) > maxLado) {
+        const esc = maxLado / Math.max(width, height)
+        width = Math.round(width * esc); height = Math.round(height * esc)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      const ctx = canvas.getContext('2d'); if (!ctx) return file
+      ctx.drawImage(img, 0, 0, width, height)
+      const blob = await new Promise<Blob | null>(r => canvas.toBlob(b => r(b), 'image/jpeg', 0.9))
+      if (!blob || blob.size >= file.size) return file
+      return new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })
+    } catch { return file }
+  }
+
   async function enviarArquivos(arquivos: FileList | File[]) {
     setErroUpload('')
-    for (const arquivo of Array.from(arquivos)) {
+    for (const original of Array.from(arquivos)) {
+      const arquivo = await comprimirImagem(original)
       const id = uuid()
       const ext = arquivo.name.split('.').pop() || 'bin'
       setEmEnvio(lista => [...lista, { id, nome: arquivo.name, progresso: 0 }])
@@ -141,9 +168,10 @@ export default function PostComposer({
   }
 
   // Envia uma imagem de capa (thumbnail) para um vídeo específico
-  async function enviarCapa(idx: number, arquivo: File) {
+  async function enviarCapa(idx: number, arquivoOriginal: File) {
     setEnviandoCapa(idx)
     try {
+      const arquivo = await comprimirImagem(arquivoOriginal)
       const ext = arquivo.name.split('.').pop() || 'jpg'
       const blob = await upload(`midia/capa-${uuid()}.${ext}`, arquivo, {
         access: 'public',
