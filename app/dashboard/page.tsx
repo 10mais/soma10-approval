@@ -369,7 +369,9 @@ function Dashboard() {
     setCriandoPost(true)
     setRascunhoMsg('')
     const cliente = clientes.find(c => c.id === valor.clienteId)
-    const body: any = { ...valor, clienteNome: cliente?.nome }
+    // Converte a data local (datetime-local) para ISO absoluto, evitando erro de fuso no servidor
+    const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
+    const body: any = { ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome }
     if (acao === 'rascunho') body.rascunhoInterno = true
     if (acao === 'agendar') body.statusInicial = 'agendado'
 
@@ -463,10 +465,11 @@ function Dashboard() {
     if (postAtual?.status !== 'publicado') {
       status = valor.dataAgendada ? 'agendado' : 'rascunho'
     }
+    const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
     await fetch('/api/posts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editandoPostId, ...valor, clienteNome: cliente?.nome, status }),
+      body: JSON.stringify({ id: editandoPostId, ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome, status }),
     })
     setCriandoPost(false)
     setEditandoPostId(null)
