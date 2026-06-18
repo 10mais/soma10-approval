@@ -60,6 +60,8 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
 
   const today = new Date()
   const isToday = (day: number) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === day
+  const inicioHoje = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const ehPassado = (day: number) => new Date(year, month, day) < inicioHoje
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
@@ -99,9 +101,9 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
             <div key={i}
               onMouseEnter={() => day && setHoverDay(day)}
               onMouseLeave={() => setHoverDay(h => (h === day ? null : h))}
-              onDragOver={day && onMovePost ? (e) => { e.preventDefault(); setDragOverDay(day) } : undefined}
+              onDragOver={day && onMovePost && !ehPassado(day) ? (e) => { e.preventDefault(); setDragOverDay(day) } : undefined}
               onDragLeave={() => setDragOverDay(d => (d === day ? null : d))}
-              onDrop={day && onMovePost ? (e) => {
+              onDrop={day && onMovePost && !ehPassado(day) ? (e) => {
                 e.preventDefault(); setDragOverDay(null)
                 const id = e.dataTransfer.getData('postId')
                 const post = posts.find(p => p.id === id)
@@ -124,7 +126,7 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                     }}>
                       {day}
                     </div>
-                    {onAddPost && hoverDay === day && (
+                    {onAddPost && hoverDay === day && !ehPassado(day) && (
                       <button onClick={() => onAddPost(new Date(year, month, day, 9, 0))} title="Criar post neste dia"
                         style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#111', color: '#ffc00f', fontSize: 14, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         +
