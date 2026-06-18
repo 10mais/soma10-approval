@@ -42,6 +42,19 @@ async function aguardarContainerIG(token: string, creationId: string, tentativas
   return false
 }
 
+// Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027)
+async function publicarMidiaIG(igId: string, token: string, creationId: string): Promise<{ ok: boolean; error?: string }> {
+  await aguardarContainerIG(token, creationId, 20)
+  for (let i = 0; i < 6; i++) {
+    const pub = await postForm(`${IG_BASE}/${igId}/media_publish`, { access_token: token, creation_id: creationId })
+    if (!pub?.error) return { ok: true }
+    const naoPronta = pub.error.code === 9007 || pub.error.error_subcode === 2207027
+    if (naoPronta) { await new Promise(r => setTimeout(r, 4000)); continue }
+    return { ok: false, error: fmtErro(pub.error) }
+  }
+  return { ok: false, error: 'A mídia não ficou pronta a tempo no Instagram. Tente publicar novamente.' }
+}
+
 export async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
   const TOKEN = cliente?.instagramToken
   const IG_ID = cliente?.instagramUserId
@@ -60,10 +73,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       const m = midias[0]
       const c = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'STORIES', ...(isVideo(m) ? { video_url: m } : { image_url: m }) })
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo do story.' }
-      const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
-      if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
-      return { ok: true }
+      return await publicarMidiaIG(IG_ID, TOKEN, c.id)
     }
 
     if (midias.length === 1) {
@@ -73,10 +83,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
         : { access_token: TOKEN, image_url: m, caption: post.legenda, ...colabParam }
       const c = await postForm(`${IG_BASE}/${IG_ID}/media`, params)
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, c.id))) return { ok: false, error: 'Falha no processamento do vídeo/reel.' }
-      const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: c.id })
-      if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
-      return { ok: true }
+      return await publicarMidiaIG(IG_ID, TOKEN, c.id)
     }
 
     const itensIds: string[] = []
@@ -90,10 +97,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
     }
     const carousel = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda, ...colabParam })
     if (carousel?.error) return { ok: false, error: fmtErro(carousel.error) }
-    await aguardarContainerIG(TOKEN, carousel.id, 10)
-    const pub = await postForm(`${IG_BASE}/${IG_ID}/media_publish`, { access_token: TOKEN, creation_id: carousel.id })
-    if (pub?.error) return { ok: false, error: fmtErro(pub.error) }
-    return { ok: true }
+    return await publicarMidiaIG(IG_ID, TOKEN, carousel.id)
   } catch (e: any) {
     return { ok: false, error: e?.message || 'Erro de comunicação com o Instagram.' }
   }
