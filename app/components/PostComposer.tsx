@@ -59,6 +59,36 @@ export default function PostComposer({
     }))
   )
   const [enviandoCapa, setEnviandoCapa] = useState<number | null>(null)
+  const [frameModal, setFrameModal] = useState<{ idx: number; url: string } | null>(null)
+  const [capturandoFrame, setCapturandoFrame] = useState(false)
+  const videoFrameRef = useRef<HTMLVideoElement>(null)
+
+  async function capturarFrameDoVideo() {
+    if (!frameModal) return
+    const video = videoFrameRef.current
+    if (!video) return
+    setCapturandoFrame(true)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 1080
+      canvas.height = video.videoHeight || 1350
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('canvas')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const blob: Blob | null = await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.9))
+      if (!blob) throw new Error('frame')
+      const file = new File([blob], `frame-${uuid()}.jpg`, { type: 'image/jpeg' })
+      const up = await upload(`midia/capa-${uuid()}.jpg`, file, { access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/jpeg', clientPayload: 'image/jpeg' })
+      const idx = frameModal.idx
+      setMidias(m => m.map((mid, i) => i === idx ? { ...mid, capa: up.url } : mid))
+      setFrameModal(null)
+    } catch {
+      setErroUpload('Não foi possível capturar o frame deste vídeo. Tente enviar uma capa manualmente.')
+      setFrameModal(null)
+    } finally {
+      setCapturandoFrame(false)
+    }
+  }
   const [redes, setRedes] = useState<('instagram' | 'facebook')[]>(valorInicial?.redes || ['instagram', 'facebook'])
   const [modoAgendar, setModoAgendar] = useState(false)
 
@@ -309,12 +339,18 @@ export default function PostComposer({
                     background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1,
                   }}>×</button>
                   {m.tipo === 'video' && (
-                    <label onClick={e => e.stopPropagation()} title="Capa do vídeo"
-                      style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '3px 0', cursor: 'pointer' }}>
-                      {enviandoCapa === i ? 'Enviando...' : (m.capa ? 'Trocar capa' : '+ Capa')}
-                      <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoCapa !== null}
-                        onChange={e => { if (e.target.files?.[0]) enviarCapa(i, e.target.files[0]); e.target.value = '' }} />
-                    </label>
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                      <button onClick={() => setFrameModal({ idx: i, url: m.url })} title="Escolher um frame do vídeo como capa"
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, border: 'none', padding: '4px 0', cursor: 'pointer' }}>
+                        🎞 Frame
+                      </button>
+                      <label title="Enviar uma imagem de capa"
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '4px 0', cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
+                        {enviandoCapa === i ? '...' : '🖼 Capa'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoCapa !== null}
+                          onChange={e => { if (e.target.files?.[0]) enviarCapa(i, e.target.files[0]); e.target.value = '' }} />
+                      </label>
+                    </div>
                   )}
                 </div>
               ))}
@@ -507,6 +543,29 @@ export default function PostComposer({
           </div>
         </div>
       </div>
+
+      {/* Modal: escolher um frame do vídeo como capa */}
+      {frameModal && (
+        <div onClick={() => !capturandoFrame && setFrameModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 18, width: '100%', maxWidth: 480 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#111' }}>Escolher capa do vídeo</h3>
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: '#888' }}>Dê play e pause no momento que quiser — depois clique em "Usar este frame".</p>
+            <video ref={videoFrameRef} src={frameModal.url} crossOrigin="anonymous" controls playsInline
+              style={{ width: '100%', borderRadius: 10, background: '#000', maxHeight: '60vh' }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button onClick={() => setFrameModal(null)} disabled={capturandoFrame}
+                style={{ flex: 1, padding: '12px 0', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={capturarFrameDoVideo} disabled={capturandoFrame}
+                style={{ flex: 1.4, padding: '12px 0', background: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: capturandoFrame ? 0.6 : 1 }}>
+                {capturandoFrame ? 'Capturando...' : 'Usar este frame'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
