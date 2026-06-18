@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
-  const APP_ID = process.env.INSTAGRAM_APP_ID
+  const APP_ID = process.env.INSTAGRAM_APP_ID?.trim()
   if (!APP_ID) {
     return NextResponse.json({ error: 'INSTAGRAM_APP_ID não configurado na Vercel.' }, { status: 500 })
   }

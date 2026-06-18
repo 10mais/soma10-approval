@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
 
   const BASE_URL = process.env.NEXTAUTH_URL || 'https://approval.soma10.com.br'
   const REDIRECT_URI = `${BASE_URL}/api/instagram/callback`
-  const APP_ID = process.env.INSTAGRAM_APP_ID!
-  const APP_SECRET = process.env.INSTAGRAM_APP_SECRET!
+  const APP_ID = (process.env.INSTAGRAM_APP_ID || '').trim()
+  const APP_SECRET = (process.env.INSTAGRAM_APP_SECRET || '').trim()
 
   if (error || !code) {
     return NextResponse.redirect(`${BASE_URL}/dashboard?meta_error=acesso_negado#clientes`)
