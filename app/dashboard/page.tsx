@@ -16,6 +16,7 @@ type MetaPage = { pageId: string; pageName: string; pageToken: string | null; ig
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: 'Rascunho',
+  agendado: 'Agendado',
   aguardando_aprovacao: 'Aguardando',
   aprovado: 'Aprovado',
   corrigir: 'Corrigir',
@@ -24,14 +25,28 @@ const STATUS_LABEL: Record<string, string> = {
   falha_publicacao: 'Falha ao publicar',
 }
 
+// Cor de fundo (clara) do selo / bolinha
 const STATUS_COLOR: Record<string, string> = {
-  rascunho: '#e0e0e0',
+  rascunho: '#eeeeee',
+  agendado: '#fef9c3',
   aguardando_aprovacao: '#fef3c7',
   aprovado: '#dcfce7',
   corrigir: '#fff3cd',
   reprovado: '#fee2e2',
-  publicado: '#dbeafe',
-  falha_publicacao: '#fee2e2',
+  publicado: '#dcfce7',
+  falha_publicacao: '#fde2e2',
+}
+
+// Cor do texto do selo
+const STATUS_TEXT: Record<string, string> = {
+  rascunho: '#666666',
+  agendado: '#a16207',       // amarelo/âmbar
+  aguardando_aprovacao: '#92400e',
+  aprovado: '#16a34a',
+  corrigir: '#b45309',
+  reprovado: '#b91c1c',
+  publicado: '#16a34a',      // verde
+  falha_publicacao: '#991b1b', // vermelho escuro
 }
 
 // Ícones de contorno (substituem emojis por um visual mais profissional)
@@ -972,7 +987,7 @@ function Dashboard() {
                           )
                         })()}
                         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{post.clienteNome}</span>
-                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, color: '#333', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || '#555', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
                         </span>
                         {(post as any).rascunhoInterno && (
@@ -1044,11 +1059,21 @@ function Dashboard() {
             </div>
 
             {(() => {
-              const filtrados = postsView.filter(p =>
-                (!bibBusca || p.legenda?.toLowerCase().includes(bibBusca.toLowerCase())) &&
-                (!bibCliente || p.clienteNome === bibCliente) &&
-                (!bibStatus || p.status === bibStatus)
-              )
+              const fmtData = (iso?: string) => {
+                if (!iso) return ''
+                const d = new Date(iso)
+                if (isNaN(d.getTime())) return ''
+                return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+              }
+              const quando = (p: any) => p.atualizadoEm || p.dataAgendada || p.criadoEm || ''
+              const filtrados = postsView
+                .filter(p =>
+                  (!bibBusca || p.legenda?.toLowerCase().includes(bibBusca.toLowerCase())) &&
+                  (!bibCliente || p.clienteNome === bibCliente) &&
+                  (!bibStatus || p.status === bibStatus)
+                )
+                // Cronológico — mais recente primeiro
+                .sort((a, b) => new Date(quando(b)).getTime() - new Date(quando(a)).getTime())
               if (filtrados.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
@@ -1057,42 +1082,47 @@ function Dashboard() {
                 )
               }
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
-                  {filtrados.map(post => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+                  {filtrados.map(post => {
+                    const dataMostrar = post.status === 'agendado' ? (post.dataAgendada || post.criadoEm) : (post.atualizadoEm || post.criadoEm)
+                    return (
                     <div key={post.id} onClick={() => setPostPreview(post)} style={{
-                      background: '#fff', borderRadius: 14, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer',
+                      background: '#fff', borderRadius: 12, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer',
                     }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
                         {((post as any).thumbnail || post.imagens?.[0]) ? (
                           <ImagemComFallback src={(post as any).thumbnail || post.imagens[0]} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, gap: 6, flexDirection: 'column' }}>
-                            <IconImageOff size={22} />
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11, gap: 4, flexDirection: 'column' }}>
+                            <IconImageOff size={18} />
                             Sem imagem
                           </div>
                         )}
                         {post.imagens?.length > 1 && (
-                          <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 600, borderRadius: 999, padding: '2px 8px' }}>
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 600, borderRadius: 999, padding: '1px 7px' }}>
                             {post.imagens.length}
                           </span>
                         )}
                       </div>
-                      <div style={{ padding: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{post.clienteNome}</span>
-                          <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 999, padding: '2px 9px', fontSize: 10, fontWeight: 600, color: '#333' }}>
+                      <div style={{ padding: 9 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
+                          <span style={{ background: STATUS_COLOR[post.status] || '#eee', color: STATUS_TEXT[post.status] || '#555', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {STATUS_LABEL[post.status] || post.status}
                           </span>
                         </div>
+                        <p style={{ margin: '0 0 5px', fontSize: 10, color: '#aaa', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {post.status === 'agendado' ? '🗓 ' : ''}{fmtData(dataMostrar)}
+                        </p>
                         <p style={{
-                          margin: 0, fontSize: 12, color: '#888', lineHeight: 1.4,
+                          margin: 0, fontSize: 11, color: '#888', lineHeight: 1.35,
                           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>
                           {post.legenda}
                         </p>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )
             })()}
