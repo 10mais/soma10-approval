@@ -129,7 +129,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('posts')
+  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens'>('clientes')
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
   // Tema (claro/escuro) — persistido no navegador
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
@@ -718,7 +718,7 @@ function Dashboard() {
       `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => { setVerComoClienteId(''); setAba('posts'); router.push('/dashboard') }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o início">
+        <div onClick={() => { setVerComoClienteId(''); setAba('clientes'); router.push('/dashboard') }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o início">
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
