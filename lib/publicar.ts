@@ -42,6 +42,21 @@ async function aguardarContainerIG(token: string, creationId: string, tentativas
   return false
 }
 
+// Erro de colaborador inválido (110/2207018 — "cannot be accessed")
+function ehErroColab(e: any): boolean {
+  if (!e) return false
+  return e.code === 110 || e.error_subcode === 2207018 || /cannot be accessed/i.test(e.message || '')
+}
+
+// Cria o container de mídia; se o colaborador for inválido, tenta de novo SEM a tag de colab
+async function criarMidiaIG(igId: string, token: string, params: Record<string, string>, colabParam: Record<string, string>): Promise<any> {
+  const c = await postForm(`${IG_BASE}/${igId}/media`, { ...params, ...colabParam })
+  if (c?.error && Object.keys(colabParam).length && ehErroColab(c.error)) {
+    return await postForm(`${IG_BASE}/${igId}/media`, params)
+  }
+  return c
+}
+
 // Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027)
 async function publicarMidiaIG(igId: string, token: string, creationId: string): Promise<{ ok: boolean; error?: string }> {
   await aguardarContainerIG(token, creationId, 20)
@@ -79,9 +94,9 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
     if (midias.length === 1) {
       const m = midias[0]
       const params = isVideo(m)
-        ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}), ...colabParam }
-        : { access_token: TOKEN, image_url: m, caption: post.legenda, ...colabParam }
-      const c = await postForm(`${IG_BASE}/${IG_ID}/media`, params)
+        ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}) }
+        : { access_token: TOKEN, image_url: m, caption: post.legenda }
+      const c = await criarMidiaIG(IG_ID, TOKEN, params, colabParam)
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
       return await publicarMidiaIG(IG_ID, TOKEN, c.id)
     }
@@ -95,7 +110,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       if (isVideo(m) && !(await aguardarContainerIG(TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
       itensIds.push(item.id)
     }
-    const carousel = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda, ...colabParam })
+    const carousel = await criarMidiaIG(IG_ID, TOKEN, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda }, colabParam)
     if (carousel?.error) return { ok: false, error: fmtErro(carousel.error) }
     return await publicarMidiaIG(IG_ID, TOKEN, carousel.id)
   } catch (e: any) {
