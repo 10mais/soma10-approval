@@ -99,6 +99,10 @@ function ImagemComFallback({ src }: { src: string }) {
       </div>
     )
   }
+  // Vídeo: renderiza um <video> (mostra o primeiro frame) em vez de tentar carregar como imagem
+  if (/\.(mp4|mov|m4v)(\?|$)/i.test(src || '')) {
+    return <video src={src} muted playsInline preload="metadata" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+  }
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
@@ -1170,8 +1174,8 @@ function Dashboard() {
                       border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid #eee',
                     }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
-                        {((post as any).thumbnail || post.imagens?.[0]) ? (
-                          <ImagemComFallback src={(post as any).thumbnail || post.imagens[0]} />
+                        {((post as any).thumbnail || ((post as any).capasVideo || {})[post.imagens?.[0]] || post.imagens?.[0]) ? (
+                          <ImagemComFallback src={(post as any).thumbnail || ((post as any).capasVideo || {})[post.imagens?.[0]] || post.imagens[0]} />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11, gap: 4, flexDirection: 'column' }}>
                             <IconImageOff size={18} />
