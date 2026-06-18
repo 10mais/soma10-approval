@@ -410,10 +410,18 @@ export default function PostComposer({
 
         {/* Ações */}
         {modoEdicao ? (
-          <button onClick={() => submeter('salvar')} disabled={!podePublicar}
-            style={{ width: '100%', padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
-            {enviando ? 'Salvando...' : (textoBotao || 'Salvar alterações')}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data de programação</label>
+              <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={new Date().toISOString().slice(0, 16)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>Deixe em branco para tirar o agendamento (vira rascunho ao salvar).</p>
+            </div>
+            <button onClick={() => submeter('salvar')} disabled={!podePublicar}
+              style={{ width: '100%', padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+              {enviando ? 'Salvando...' : (textoBotao || 'Salvar alterações')}
+            </button>
+          </div>
         ) : modoAgendar ? (
           <div style={{ background: '#fafafa', border: '1.5px solid #e0e0e0', borderRadius: 12, padding: 16 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 8 }}>Agendar publicação</label>

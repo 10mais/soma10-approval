@@ -418,19 +418,27 @@ function Dashboard() {
     setComposerKey(k => k + 1)
   }
 
-  async function salvarEdicaoPost(valor: { clienteId: string; legenda: string; imagens: string[]; dataAgendada: string; formato: string }) {
+  async function salvarEdicaoPost(valor: any) {
     if (!editandoPostId) return
     setCriandoPost(true)
     const cliente = clientes.find(c => c.id === valor.clienteId)
+    const postAtual = posts.find(p => p?.id === editandoPostId)
+    // Ajusta o status pela data: com data futura = agendado; sem data = rascunho.
+    // Posts já publicados mantêm o status (editar não republica).
+    let status = postAtual?.status
+    if (postAtual?.status !== 'publicado') {
+      status = valor.dataAgendada ? 'agendado' : 'rascunho'
+    }
     await fetch('/api/posts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editandoPostId, ...valor, clienteNome: cliente?.nome }),
+      body: JSON.stringify({ id: editandoPostId, ...valor, clienteNome: cliente?.nome, status }),
     })
     setCriandoPost(false)
     setEditandoPostId(null)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
+    setAba('planner')
     fetch('/api/posts').then(r => r.json()).then(setPosts)
   }
 
@@ -1258,24 +1266,6 @@ function Dashboard() {
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Editar
-                      </button>
-                      <button onClick={() => {
-                        const cliente = clientes.find(c => c.nome === postPreview.clienteNome)
-                        setComposerPrefill({
-                          clienteId: cliente?.id || '',
-                          legenda: postPreview.legenda || '',
-                          dataAgendada: '',
-                          imagens: postPreview.imagens || [],
-                          formato: 'feed',
-                          colaboradores: (postPreview as any).colaboradores || [],
-                          capasVideo: (postPreview as any).capasVideo || {},
-                          redes: (postPreview as any).redes || ['instagram', 'facebook'],
-                        })
-                        setComposerKey(k => k + 1)
-                        setPostPreview(null)
-                        setAba('novo-post')
-                      }} style={{ flex: 1, padding: '10px 0', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        Reaproveitar
                       </button>
                       <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Fechar
