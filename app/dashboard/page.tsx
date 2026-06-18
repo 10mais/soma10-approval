@@ -169,6 +169,7 @@ function Dashboard() {
   const [bibBusca, setBibBusca] = useState('')
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
+  const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
   const [postPreview, setPostPreview] = useState<Post | null>(null)
   const [verComoClienteId, setVerComoClienteId] = useState('')
   const [buscaCliente, setBuscaCliente] = useState('')
@@ -429,6 +430,27 @@ function Dashboard() {
       fetch('/api/posts').then(r => r.json()).then(setPosts)
       alert('Não foi possível excluir o post.')
     }
+  }
+
+  function alternarSelecaoPost(id: string) {
+    setBibSelecionados(lista => lista.includes(id) ? lista.filter(x => x !== id) : [...lista, id])
+  }
+
+  async function excluirPostDireto(id: string) {
+    setPosts(ps => ps.filter(p => p!.id !== id))
+    setBibSelecionados(lista => lista.filter(x => x !== id))
+    const res = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' })
+    if (!res.ok) { fetch('/api/posts').then(r => r.json()).then(setPosts); alert('Não foi possível excluir o post.') }
+  }
+
+  async function excluirSelecionados() {
+    const ids = [...bibSelecionados]
+    if (ids.length === 0) return
+    if (!confirm(`Excluir definitivamente ${ids.length} post(s)? Esta ação não pode ser desfeita.`)) return
+    setPosts(ps => ps.filter(p => !ids.includes(p!.id)))
+    setBibSelecionados([])
+    await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
+    fetch('/api/posts').then(r => r.json()).then(setPosts)
   }
 
   async function salvarVinculos() {
@@ -1082,12 +1104,22 @@ function Dashboard() {
                 )
               }
               return (
+                <>
+                {bibSelecionados.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{bibSelecionados.length} selecionado(s)</span>
+                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Selecionar todos</button>
+                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
+                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>🗑 Apagar selecionados</button>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                   {filtrados.map(post => {
                     const dataMostrar = post.status === 'agendado' ? (post.dataAgendada || post.criadoEm) : (post.atualizadoEm || post.criadoEm)
                     return (
                     <div key={post.id} onClick={() => setPostPreview(post)} style={{
-                      background: '#fff', borderRadius: 12, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer',
+                      background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                      border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid #eee',
                     }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
                         {((post as any).thumbnail || post.imagens?.[0]) ? (
@@ -1098,6 +1130,23 @@ function Dashboard() {
                             Sem imagem
                           </div>
                         )}
+
+                        {/* Caixinha de seleção — canto superior esquerdo */}
+                        <span onClick={(e) => { e.stopPropagation(); alternarSelecaoPost(post.id) }}
+                          style={{
+                            position: 'absolute', top: 6, left: 6, width: 20, height: 20, borderRadius: 5, cursor: 'pointer',
+                            background: bibSelecionados.includes(post.id) ? '#1877f2' : 'rgba(255,255,255,0.9)',
+                            border: bibSelecionados.includes(post.id) ? '1px solid #1877f2' : '1px solid #ccc',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 800,
+                          }}>{bibSelecionados.includes(post.id) ? '✓' : ''}</span>
+
+                        {/* Lixeira — canto inferior direito */}
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir este post? Esta ação não pode ser desfeita.')) excluirPostDireto(post.id) }} title="Excluir"
+                          style={{
+                            position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: '50%', cursor: 'pointer',
+                            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, lineHeight: 1,
+                          }}>🗑</button>
+
                         {post.imagens?.length > 1 && (
                           <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 600, borderRadius: 999, padding: '1px 7px' }}>
                             {post.imagens.length}
@@ -1124,6 +1173,7 @@ function Dashboard() {
                     </div>
                   )})}
                 </div>
+                </>
               )
             })()}
 
