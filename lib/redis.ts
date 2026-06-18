@@ -36,6 +36,7 @@ export type Cliente = {
   instagramToken?: string
   instagramUserId?: string
   instagramConectado?: boolean
+  instagramTokenAtualizadoEm?: string
   // Login do cliente
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)

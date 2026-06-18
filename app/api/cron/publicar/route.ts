@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { redis, Post } from '@/lib/redis'
+import { redis, Post, Cliente } from '@/lib/redis'
 import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
+
+// Renova os tokens de longa duração do Instagram (no máx. 1x por dia).
+// Tokens do graph.instagram.com duram ~60 dias e podem ser renovados por mais 60.
+async function renovarTokensInstagram(agora: number) {
+  const ultima = await redis.get<number>('tokens:ultimaRenovacao')
+  if (ultima && agora - ultima < 12 * 60 * 60 * 1000) return // já renovou nas últimas 12h
+  await redis.set('tokens:ultimaRenovacao', agora)
+
+  const ids = await redis.smembers('clientes')
+  for (const id of ids) {
+    const c = await redis.get<Cliente>(`cliente:${id}`)
+    if (!c?.instagramToken) continue
+    try {
+      const r = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${c.instagramToken}`).then(x => x.json())
+      if (r?.access_token) {
+        await redis.set(`cliente:${id}`, { ...c, instagramToken: r.access_token, instagramTokenAtualizadoEm: new Date().toISOString() })
+      }
+    } catch { /* segue para o próximo */ }
+  }
+}
 
 // Publica automaticamente os posts agendados cuja data já chegou.
 // Protegido pelo CRON_SECRET (a Vercel envia Authorization: Bearer <CRON_SECRET>).
@@ -16,6 +36,10 @@ export async function GET(req: NextRequest) {
   }
 
   const agora = Date.now()
+
+  // Mantém os tokens do Instagram sempre válidos (renova no máx. 1x/dia)
+  await renovarTokensInstagram(agora)
+
   // Lê apenas o índice de agendados (barato — permite rodar a cada 1 min sem estourar o Redis)
   const ids = await redis.smembers('agendados')
   if (!ids.length) return NextResponse.json({ ok: true, verificados: 0, publicados: 0, falhas: 0 })
