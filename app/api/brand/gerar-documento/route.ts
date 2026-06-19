@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
@@ -76,6 +77,7 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
     const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 } as any]
 
     let documento = ''
+    let custoTotal = 0
     // Loop para lidar com pause_turn quando a busca na web ultrapassa o limite de iterações
     for (let i = 0; i < 5; i++) {
       const stream = client.messages.stream({
@@ -87,12 +89,16 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
         messages,
       } as any)
       const msg = await stream.finalMessage()
+      custoTotal += custoEstimado(msg.usage)
 
       documento = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n')
 
       if (msg.stop_reason !== 'pause_turn') break
       messages = [...messages, { role: 'assistant', content: msg.content }]
     }
+
+    // Desconta o custo estimado do saldo e alerta os admins se estiver acabando
+    await registrarGasto(custoTotal).catch(() => {})
 
     if (!documento.trim()) {
       return NextResponse.json({ error: 'A IA não retornou conteúdo. Tente novamente.' }, { status: 502 })

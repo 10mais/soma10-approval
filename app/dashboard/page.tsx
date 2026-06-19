@@ -167,6 +167,9 @@ function Dashboard() {
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   const [configMsg, setConfigMsg] = useState('')
   const [enviandoLogoAgencia, setEnviandoLogoAgencia] = useState(false)
+  const [saldoIA, setSaldoIA] = useState<{ saldo: number; limite: number; alertado?: boolean }>({ saldo: 0, limite: 1 })
+  const [salvandoSaldoIA, setSalvandoSaldoIA] = useState(false)
+  const [saldoIAMsg, setSaldoIAMsg] = useState('')
   const [editandoCliente, setEditandoCliente] = useState<string | null>(null)
   const [edicaoCliente, setEdicaoCliente] = useState<Partial<Cliente>>({})
   const [enviandoLogoCliente, setEnviandoLogoCliente] = useState(false)
@@ -227,6 +230,7 @@ function Dashboard() {
       if ((session?.user as any)?.role === 'admin') {
         fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
         fetch('/api/config').then(r => r.json()).then(setConfigAgencia)
+        fetch('/api/anthropic-saldo').then(r => r.json()).then(d => { if (d && typeof d.saldo === 'number') setSaldoIA(d) }).catch(() => {})
       }
     }
   }, [status])
@@ -664,6 +668,18 @@ function Dashboard() {
     } else {
       setConfigMsg('Erro ao salvar configurações.')
     }
+  }
+
+  async function salvarSaldoIA() {
+    setSalvandoSaldoIA(true); setSaldoIAMsg('')
+    const res = await fetch('/api/anthropic-saldo', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ saldo: Number(saldoIA.saldo) || 0, limite: Number(saldoIA.limite) || 0 }),
+    })
+    const d = await res.json().catch(() => null)
+    setSalvandoSaldoIA(false)
+    if (res.ok && d) { setSaldoIA(d); setSaldoIAMsg('Saldo atualizado!'); setTimeout(() => setSaldoIAMsg(''), 3000) }
+    else setSaldoIAMsg('Erro ao salvar.')
   }
 
   async function uploadLogoAgencia(arquivo: File) {
@@ -2250,6 +2266,38 @@ function Dashboard() {
                 {configMsg && (
                   <p style={{ margin: 0, fontSize: 12, color: configMsg.includes('sucesso') ? '#16a34a' : '#ef4444' }}>{configMsg}</p>
                 )}
+              </div>
+            </div>
+
+            {/* Créditos da IA (Anthropic) */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Créditos da IA (Anthropic)</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>
+                Saldo estimado da API usada na geração de documentos. A Anthropic não informa o saldo real — cadastre aqui o valor atual (veja em console.anthropic.com) e o sistema desconta automaticamente a cada documento gerado, avisando só os ADMINs quando estiver acabando.
+              </p>
+              {saldoIA.saldo <= saldoIA.limite && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#b91c1c', fontWeight: 600 }}>
+                  ⚠️ Saldo estimado baixo (US$ {Number(saldoIA.saldo).toFixed(2)}). Adicione créditos e atualize o valor abaixo.
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Saldo atual (US$)</label>
+                  <input type="number" step="0.01" min="0" value={saldoIA.saldo}
+                    onChange={e => setSaldoIA(s => ({ ...s, saldo: parseFloat(e.target.value) }))}
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Avisar abaixo de (US$)</label>
+                  <input type="number" step="0.01" min="0" value={saldoIA.limite}
+                    onChange={e => setSaldoIA(s => ({ ...s, limite: parseFloat(e.target.value) }))}
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
+                </div>
+                <button onClick={salvarSaldoIA} disabled={salvandoSaldoIA}
+                  style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoSaldoIA ? 0.6 : 1 }}>
+                  {salvandoSaldoIA ? 'Salvando...' : 'Salvar saldo'}
+                </button>
+                {saldoIAMsg && <span style={{ fontSize: 12, color: saldoIAMsg.includes('Erro') ? '#ef4444' : '#16a34a', fontWeight: 600 }}>{saldoIAMsg}</span>}
               </div>
             </div>
 
