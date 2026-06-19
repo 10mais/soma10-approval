@@ -1450,7 +1450,7 @@ function Dashboard() {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
-                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · DNA da marca gerado ✓' : ''}
+                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado ✓' : ''}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -1492,9 +1492,9 @@ function Dashboard() {
                 )}
                 <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111', flex: 1, minWidth: 200 }}>🧬 DNA da marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: '#111', flex: 1, minWidth: 200 }}>Documento de marca (IA)</h3>
                     <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
-                      {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar DNA' : 'Gerar DNA da marca')}
+                      {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
                     </button>
                   </div>
                   {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
@@ -1504,7 +1504,7 @@ function Dashboard() {
                       <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
                     </div>
                   ) : (
-                    <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>Ainda não há DNA da marca gerado. Clique em "Gerar DNA da marca" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
+                    <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>Ainda não há documento gerado. Clique em "Gerar documento completo" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
                   )}
                 </div>
               </div>
@@ -1588,14 +1588,14 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>🧬 DNA da marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Documento de marca (IA)</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
                       A IA estuda todas as informações e pesquisa o nicho na internet para gerar uma referência editorial completa.
                     </p>
                   </div>
                   <button onClick={gerarDocumentoIA} disabled={gerandoDocIA}
                     style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
-                    {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar DNA' : 'Gerar DNA da marca')}
+                    {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
                   </button>
                 </div>
                 {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}

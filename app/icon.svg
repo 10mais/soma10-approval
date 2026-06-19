@@ -1,5 +1,8 @@
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="14" fill="#ffc00f"/>
-  <text x="32" y="33" text-anchor="middle" dominant-baseline="central"
-    font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="30" fill="#111111">10+</text>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Barra superior inclinada (acento da marca) -->
+  <rect x="300" y="212" width="425" height="112" rx="50" transform="rotate(-8 512 268)" fill="#F8B311"/>
+  <!-- Anel (0) com furo transparente -->
+  <path fill="#F8B311" fill-rule="evenodd"
+    d="M280,604 a232,232 0 1,0 464,0 a232,232 0 1,0 -464,0 Z
+       M387,616 a126,99 0 1,0 252,0 a126,99 0 1,0 -252,0 Z"/>
 </svg>

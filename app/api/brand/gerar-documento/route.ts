@@ -74,7 +74,7 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
     const client = new Anthropic({ apiKey: KEY })
 
     let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
-    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 } as any]
+    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 12 } as any]
 
     let documento = ''
     let custoTotal = 0
