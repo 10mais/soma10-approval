@@ -67,24 +67,35 @@ export default function PostComposer({
     if (!frameModal) return
     const video = videoFrameRef.current
     if (!video) return
+    setErroUpload('')
+    // Precisa de um frame decodificado: o usuário deve dar play e pausar antes
+    if (!video.videoWidth || video.readyState < 2) {
+      setErroUpload('Dê play e pause no momento desejado do vídeo antes de capturar o frame.')
+      return
+    }
     setCapturandoFrame(true)
     try {
       const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth || 1080
-      canvas.height = video.videoHeight || 1350
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('canvas')
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const blob: Blob | null = await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', 0.9))
-      if (!blob) throw new Error('frame')
+      let blob: Blob | null = null
+      try {
+        blob = await new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('frame')), 'image/jpeg', 0.9))
+      } catch {
+        // canvas "contaminado" por CORS — não é possível extrair a imagem
+        throw new Error('Este vídeo não permite captura automática (restrição de origem). Envie uma capa manualmente em "Capa".')
+      }
       const file = new File([blob], `frame-${uuid()}.jpg`, { type: 'image/jpeg' })
       const up = await upload(`midia/capa-${uuid()}.jpg`, file, { access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/jpeg', clientPayload: 'image/jpeg' })
       const idx = frameModal.idx
       setMidias(m => m.map((mid, i) => i === idx ? { ...mid, capa: up.url } : mid))
       setFrameModal(null)
-    } catch {
-      setErroUpload('Não foi possível capturar o frame deste vídeo. Tente enviar uma capa manualmente.')
-      setFrameModal(null)
+    } catch (e: any) {
+      // Mantém o modal aberto para o usuário tentar de novo
+      setErroUpload(e?.message || 'Não foi possível capturar o frame deste vídeo. Tente enviar uma capa manualmente.')
     } finally {
       setCapturandoFrame(false)
     }
@@ -368,7 +379,7 @@ export default function PostComposer({
                   }}>×</button>
                   {m.tipo === 'video' && (
                     <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                      <button onClick={() => setFrameModal({ idx: i, url: m.url })} title="Escolher um frame do vídeo como capa"
+                      <button onClick={() => { setErroUpload(''); setFrameModal({ idx: i, url: m.url }) }} title="Escolher um frame do vídeo como capa"
                         style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, border: 'none', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 3v18M17 3v18M3 12h18" /></svg> Frame
                       </button>
@@ -579,8 +590,9 @@ export default function PostComposer({
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 18, width: '100%', maxWidth: 480 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#111' }}>Escolher capa do vídeo</h3>
             <p style={{ margin: '0 0 12px', fontSize: 12, color: '#888' }}>Dê play e pause no momento que quiser — depois clique em "Usar este frame".</p>
-            <video ref={videoFrameRef} src={frameModal.url} crossOrigin="anonymous" controls playsInline
+            <video ref={videoFrameRef} src={`${frameModal.url}${frameModal.url.includes('?') ? '&' : '?'}cors=1`} crossOrigin="anonymous" controls playsInline muted
               style={{ width: '100%', borderRadius: 10, background: '#000', maxHeight: '60vh' }} />
+            {erroUpload && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#dc2626', fontWeight: 600 }}>{erroUpload}</p>}
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
               <button onClick={() => setFrameModal(null)} disabled={capturandoFrame}
                 style={{ flex: 1, padding: '12px 0', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
