@@ -178,6 +178,19 @@ export default function PostComposer({
     setMidias(m => m.filter((_, i) => i !== idx))
   }
 
+  // Reordenar mídias do carrossel (arrastar e soltar)
+  const [dragMidia, setDragMidia] = useState<number | null>(null)
+  const [overMidia, setOverMidia] = useState<number | null>(null)
+  function moverMidia(de: number, para: number) {
+    if (de === para || de < 0 || para < 0) return
+    setMidias(arr => {
+      const novo = [...arr]
+      const [item] = novo.splice(de, 1)
+      novo.splice(para, 0, item)
+      return novo
+    })
+  }
+
   // Envia uma imagem de capa (thumbnail) para um vídeo específico
   async function enviarCapa(idx: number, arquivoOriginal: File) {
     setEnviandoCapa(idx)
@@ -362,16 +375,34 @@ export default function PostComposer({
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#ef4444' }}>{erroUpload}</p>
           )}
 
+          {midias.length > 1 && (
+            <p style={{ margin: '12px 0 0', fontSize: 11, color: '#aaa' }}>Arraste as mídias para reordenar o carrossel (a ordem abaixo é a ordem da publicação).</p>
+          )}
           {midias.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
               {midias.map((m, i) => (
-                <div key={i} style={{ position: 'relative', width: 84, height: 84, borderRadius: 10, overflow: 'hidden', background: '#eee' }}>
+                <div key={i}
+                  draggable={midias.length > 1}
+                  onDragStart={() => setDragMidia(i)}
+                  onDragOver={(e) => { if (dragMidia !== null) { e.preventDefault(); setOverMidia(i) } }}
+                  onDragLeave={() => setOverMidia(o => (o === i ? null : o))}
+                  onDrop={(e) => { e.preventDefault(); if (dragMidia !== null) moverMidia(dragMidia, i); setDragMidia(null); setOverMidia(null) }}
+                  onDragEnd={() => { setDragMidia(null); setOverMidia(null) }}
+                  style={{
+                    position: 'relative', width: 84, height: 84, borderRadius: 10, overflow: 'hidden', background: '#eee',
+                    cursor: midias.length > 1 ? 'grab' : 'default',
+                    opacity: dragMidia === i ? 0.4 : 1,
+                    outline: overMidia === i && dragMidia !== i ? '2px solid #ffc00f' : 'none', outlineOffset: -2,
+                  }}>
                   {m.tipo === 'video' ? (
                     m.capa
                       ? <img src={m.capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       : <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
                   ) : (
                     <img src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  )}
+                  {midias.length > 1 && (
+                    <span style={{ position: 'absolute', top: 4, left: 4, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                   )}
                   <button onClick={(e) => { e.stopPropagation(); removerMidia(i) }} style={{
                     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%',
