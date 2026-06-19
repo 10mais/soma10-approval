@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
   const brief = await req.json()
   const { id } = brief
 
-  const token = 'vercel_blob_rw_s2mVFZe3Gz5dvopb_pGDnFIY8NJW2EEjSnBkU4nSlcLzsl8'
+  const token = process.env.BLOB_READ_WRITE_TOKEN
+  if (!token) return NextResponse.json({ error: 'armazenamento não configurado' }, { status: 500 })
   await put(`briefings/${id}.json`, JSON.stringify(brief, null, 2), {
     access: 'private',
     contentType: 'application/json',
