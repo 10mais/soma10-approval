@@ -1431,9 +1431,11 @@ function Dashboard() {
                 </>
               )
             })()}
+          </div>
+        )}
 
-            {/* Modal de preview */}
-            {postPreview && (
+        {/* Modal de preview do post (vale para a lista e o calendário) */}
+        {postPreview && (
               <div onClick={() => setPostPreview(null)} style={{
                 position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
@@ -1490,8 +1492,6 @@ function Dashboard() {
                 </div>
               </div>
             )}
-          </div>
-        )}
 
         {/* MARCA — Brands Board */}
         {aba === 'marca' && (
