@@ -14,6 +14,7 @@ export type Usuario = {
   email: string
   senha: string
   role: Role
+  cargo?: string // função/cargo da pessoa (ex.: Social Media, Designer)
   clienteId?: string // presente quando role === 'cliente', vincula ao Cliente
   criadoEm: string
 }

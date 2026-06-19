@@ -39,14 +39,26 @@ export async function GET(req: NextRequest) {
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
 
+  // IMPORTANTE: usar SEMPRE as credenciais do próprio cliente. Nunca cair em uma
+  // conta global de ambiente — isso faria todos os clientes mostrarem os mesmos dados.
   const VERSION = process.env.META_API_VERSION || 'v19.0'
-  const BASE = `https://graph.facebook.com/${VERSION}`
-  const TOKEN = (cliente.metaConectado && cliente.facebookPageToken) ? cliente.facebookPageToken : process.env.INSTAGRAM_ACCESS_TOKEN
-  const IG_ID = (cliente.metaConectado && cliente.instagramBusinessId) ? cliente.instagramBusinessId : process.env.INSTAGRAM_BUSINESS_ID
+  let BASE: string
+  let TOKEN: string | undefined
+  let IG_ID: string | undefined
 
-  if (!TOKEN || !IG_ID) {
+  if (cliente.instagramConectado && cliente.instagramToken && cliente.instagramUserId) {
+    // Conectado via "API com login do Instagram" (graph.instagram.com)
+    BASE = 'https://graph.instagram.com/v21.0'
+    TOKEN = cliente.instagramToken
+    IG_ID = cliente.instagramUserId
+  } else if (cliente.metaConectado && cliente.facebookPageToken && cliente.instagramBusinessId) {
+    // Conectado via Página do Facebook (graph.facebook.com)
+    BASE = `https://graph.facebook.com/${VERSION}`
+    TOKEN = cliente.facebookPageToken
+    IG_ID = cliente.instagramBusinessId
+  } else {
     return NextResponse.json({
-      error: 'Conta do Instagram não conectada para este cliente.',
+      error: 'Conta do Instagram não conectada para este cliente. Conecte as redes deste cliente para ver o desempenho.',
       conectado: false,
     }, { status: 200 })
   }

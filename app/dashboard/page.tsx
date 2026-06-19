@@ -191,7 +191,7 @@ function Dashboard() {
   const [docIAMsg, setDocIAMsg] = useState('')
   const [brandModo, setBrandModo] = useState<'card' | 'editar' | 'ver'>('editar')
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
-  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string }>({ nome: '', role: 'gerente', novaSenha: '' })
+  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '' })
   const [bibBusca, setBibBusca] = useState('')
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
@@ -211,7 +211,7 @@ function Dashboard() {
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
-  const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
+  const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente', cargo: '' })
   const [mostrarFormUsuario, setMostrarFormUsuario] = useState(false)
   const [verSenhaNovo, setVerSenhaNovo] = useState(false)
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
@@ -248,10 +248,16 @@ function Dashboard() {
     }
   }, [status])
 
-  // Brand Board: ao trocar de cliente, mostra o bloco fechado se já houver dados
+  // Brand Board: ao trocar de cliente, recarrega os dados DAQUELE cliente (evita
+  // misturar o documento/identidade de um cliente com outro) e define o modo.
   useEffect(() => {
-    if (!verComoClienteId) return
+    if (!verComoClienteId) { setBrandForm({}); return }
     const c: any = clientes.find(x => x.id === verComoClienteId)
+    setBrandForm({
+      segmento: c?.segmento || '', palavrasChave: c?.palavrasChave || '', descricao: c?.descricao || '',
+      publicoAlvo: c?.publicoAlvo || '', tomDeVoz: c?.tomDeVoz || '', preferencias: c?.preferencias || '',
+      documentos: c?.documentos || [], documentoMarca: c?.documentoMarca || '', documentoMarcaGeradoEm: c?.documentoMarcaGeradoEm || '',
+    })
     const tem = !!(c && (c.segmento || c.palavrasChave || c.descricao || c.publicoAlvo || c.tomDeVoz || c.preferencias))
     setBrandModo(tem ? 'card' : 'editar')
   }, [verComoClienteId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -355,8 +361,8 @@ function Dashboard() {
     if (!analyticsData) return
     setExportandoPdf(true)
     try {
-      const [{ default: jsPDF }] = await Promise.all([import('jspdf')])
-      await import('jspdf-autotable')
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
       const cliente = clientes.find(c => c.id === analyticsClienteId)
       const doc = new jsPDF()
       const totais = analyticsData.totais || {}
@@ -368,7 +374,7 @@ function Dashboard() {
       doc.text(`Período: ${analyticsDesde} a ${analyticsAte}${analyticsData.instagramUsername ? '  ·  @' + analyticsData.instagramUsername : ''}`, 14, 25)
       doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 30)
 
-      ;(doc as any).autoTable({
+      autoTable(doc, {
         startY: 38,
         head: [['Posts', 'Curtidas', 'Comentários', 'Alcance', 'Impressões', 'Salvamentos', 'Compartilhamentos']],
         body: [[
@@ -380,8 +386,8 @@ function Dashboard() {
       })
 
       const posts: any[] = analyticsData.posts || []
-      ;(doc as any).autoTable({
-        startY: (doc as any).lastAutoTable.finalY + 12,
+      autoTable(doc, {
+        startY: ((doc as any).lastAutoTable?.finalY || 38) + 12,
         head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Comentários', 'Alcance', 'Impressões']],
         body: posts.map(p => [
           p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
@@ -396,8 +402,9 @@ function Dashboard() {
       })
 
       doc.save(`analytics-${(cliente?.nome || 'cliente').toLowerCase().replace(/\s+/g, '-')}-${analyticsDesde}-a-${analyticsAte}.pdf`)
-    } catch (e) {
-      alert('Não foi possível gerar o PDF. Tente novamente.')
+    } catch (e: any) {
+      console.error('[pdf] erro:', e)
+      alert(`Não foi possível gerar o PDF: ${e?.message || 'erro desconhecido'}`)
     }
     setExportandoPdf(false)
   }
@@ -656,7 +663,7 @@ function Dashboard() {
       return
     }
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
-    setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente' })
+    setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente', cargo: '' })
     setMostrarFormUsuario(false)
     setVerSenhaNovo(false)
   }
@@ -830,7 +837,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '' })
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '' })
     setVerSenhaEdicao(false)
   }
 
@@ -838,7 +845,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -2256,6 +2263,8 @@ function Dashboard() {
                     <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   </div>
+                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)"
+                    style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
@@ -2287,11 +2296,14 @@ function Dashboard() {
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {usuarios.map(u => (
+              {[...usuarios].sort((a, b) => {
+                const ordem: Record<string, number> = { admin: 0, gerente: 1, cliente: 2 }
+                return (ordem[a.role] ?? 9) - (ordem[b.role] ?? 9) || a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' })
+              }).map(u => (
                 <div key={u.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}</p>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}{(u as any).cargo ? <span style={{ fontWeight: 500, fontSize: 13, color: '#888' }}> · {(u as any).cargo}</span> : null}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
                     </div>
                     <span style={{ background: u.role === 'admin' ? '#fef3c7' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#333' }}>{u.role}</span>
@@ -2308,6 +2320,8 @@ function Dashboard() {
                     <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <input value={edicaoUsuario.cargo} onChange={e => setEdicaoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo"
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>

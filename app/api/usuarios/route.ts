@@ -18,12 +18,12 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { nome, email, senha, role } = await req.json()
+  const { nome, email, senha, role, cargo } = await req.json()
   const jaExiste = await redis.get(`usuario:${email}`)
   if (jaExiste) return NextResponse.json({ error: 'email já cadastrado' }, { status: 400 })
 
   const hash = await bcrypt.hash(senha, 10)
-  const usuario: Usuario = { id: uuid(), nome, email, senha: hash, role, criadoEm: new Date().toISOString() }
+  const usuario: Usuario = { id: uuid(), nome, email, senha: hash, role, cargo: cargo || '', criadoEm: new Date().toISOString() }
 
   await redis.set(`usuario:${email}`, usuario)
   await redis.sadd('usuarios', email)
@@ -35,12 +35,13 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { email, nome, role, novaSenha } = await req.json()
+  const { email, nome, role, novaSenha, cargo } = await req.json()
   const usuario = await redis.get<Usuario>(`usuario:${email}`)
   if (!usuario) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
   if (nome) usuario.nome = nome
   if (role) usuario.role = role
+  if (cargo !== undefined) usuario.cargo = cargo
   if (novaSenha) usuario.senha = await bcrypt.hash(novaSenha, 10)
 
   await redis.set(`usuario:${email}`, usuario)

@@ -74,7 +74,7 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
     const client = new Anthropic({ apiKey: KEY })
 
     let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
-    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 12 } as any]
+    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 } as any]
 
     let documento = ''
     let custoTotal = 0
@@ -82,9 +82,9 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
     for (let i = 0; i < 5; i++) {
       const stream = client.messages.stream({
         model: 'claude-opus-4-8',
-        max_tokens: 16000,
+        max_tokens: 8000,
         thinking: { type: 'adaptive' },
-        output_config: { effort: 'high' } as any,
+        output_config: { effort: 'medium' } as any,
         tools,
         messages,
       } as any)
