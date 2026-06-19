@@ -180,6 +180,7 @@ function Dashboard() {
   const [enviandoDoc, setEnviandoDoc] = useState(false)
   const [gerandoDocIA, setGerandoDocIA] = useState(false)
   const [docIAMsg, setDocIAMsg] = useState('')
+  const [brandModo, setBrandModo] = useState<'card' | 'editar' | 'ver'>('editar')
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
   const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string }>({ nome: '', role: 'gerente', novaSenha: '' })
   const [bibBusca, setBibBusca] = useState('')
@@ -234,6 +235,14 @@ function Dashboard() {
       }
     }
   }, [status])
+
+  // Brand Board: ao trocar de cliente, mostra o bloco fechado se já houver dados
+  useEffect(() => {
+    if (!verComoClienteId) return
+    const c: any = clientes.find(x => x.id === verComoClienteId)
+    const tem = !!(c && (c.segmento || c.palavrasChave || c.descricao || c.publicoAlvo || c.tomDeVoz || c.preferencias))
+    setBrandModo(tem ? 'card' : 'editar')
+  }, [verComoClienteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Notificações: carrega ao autenticar e atualiza periodicamente
   useEffect(() => {
@@ -736,7 +745,21 @@ function Dashboard() {
     await fetch('/api/clientes').then(r => r.json()).then(setClientes)
     setSalvandoBrand(false)
     setBrandMsg('Identidade da marca salva!')
+    setBrandModo('card')
     setTimeout(() => setBrandMsg(''), 4000)
+  }
+
+  async function excluirBrand() {
+    if (!verComoClienteId) return
+    if (!confirm('Excluir o Brand Board deste cliente? As informações e o DNA da marca serão apagados.')) return
+    const vazio = { segmento: '', palavrasChave: '', descricao: '', publicoAlvo: '', tomDeVoz: '', preferencias: '', documentos: [], documentoMarca: '', documentoMarcaGeradoEm: '' }
+    await fetch('/api/clientes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: verComoClienteId, ...vazio }),
+    })
+    setBrandForm(vazio)
+    await fetch('/api/clientes').then(r => r.json()).then(setClientes)
+    setBrandModo('editar')
   }
 
   async function enviarDocBrand(arquivo: File) {
@@ -1420,6 +1443,75 @@ function Dashboard() {
             <h2 style={{ margin: '0 0 4px', fontSize: 18, color: '#111' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
 
+            {/* BLOCO FECHADO */}
+            {brandModo === 'card' && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fff7db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🎯</div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
+                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · DNA da marca gerado ✓' : ''}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={excluirBrand} title="Excluir Brand Board" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
+                </div>
+              </div>
+            )}
+
+            {/* VISUALIZAÇÃO (somente leitura) */}
+            {brandModo === 'ver' && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1 }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: '#ffc00f', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                </div>
+                {([
+                  ['Segmento / Nicho', brandForm.segmento],
+                  ['Palavras-chave', brandForm.palavrasChave],
+                  ['Descrição da empresa', brandForm.descricao],
+                  ['Público-alvo', brandForm.publicoAlvo],
+                  ['Tom de voz', brandForm.tomDeVoz],
+                  ['Preferências / O que evitar', brandForm.preferencias],
+                ] as [string, string][]).map(([l, v]) => v ? (
+                  <div key={l}>
+                    <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: '#888' }}>{l}</p>
+                    <p style={{ margin: 0, fontSize: 14, color: '#222', whiteSpace: 'pre-wrap' }}>{v}</p>
+                  </div>
+                ) : null)}
+                {(brandForm.documentos || []).length > 0 && (
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#888' }}>Documentos</p>
+                    {(brandForm.documentos || []).map((d: any, i: number) => (
+                      <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: 13, color: '#1d4ed8' }}>📄 {d.nome}</a>
+                    ))}
+                  </div>
+                )}
+                <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, color: '#111', flex: 1, minWidth: 200 }}>🧬 DNA da marca (IA)</h3>
+                    <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
+                      {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar DNA' : 'Gerar DNA da marca')}
+                    </button>
+                  </div>
+                  {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
+                  {brandForm.documentoMarca ? (
+                    <div>
+                      {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: '#999', margin: '0 0 8px' }}>Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
+                      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>Ainda não há DNA da marca gerado. Clique em "Gerar DNA da marca" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* FORMULÁRIO (edição) */}
+            {brandModo === 'editar' && (
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
@@ -1485,6 +1577,10 @@ function Dashboard() {
                   style={{ padding: '12px 28px', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: salvandoBrand ? 0.6 : 1 }}>
                   {salvandoBrand ? 'Salvando...' : 'Salvar identidade'}
                 </button>
+                <button onClick={() => setBrandModo('card')}
+                  style={{ padding: '12px 22px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  Voltar
+                </button>
                 {brandMsg && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
               </div>
 
@@ -1492,14 +1588,14 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>📑 Documento de marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>🧬 DNA da marca (IA)</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
-                      A IA pesquisa o nicho e gera uma referência editorial completa para a produção de criativos.
+                      A IA estuda todas as informações e pesquisa o nicho na internet para gerar uma referência editorial completa.
                     </p>
                   </div>
                   <button onClick={gerarDocumentoIA} disabled={gerandoDocIA}
                     style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
-                    {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
+                    {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar DNA' : 'Gerar DNA da marca')}
                   </button>
                 </div>
                 {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}
@@ -1515,6 +1611,7 @@ function Dashboard() {
                 )}
               </div>
             </div>
+            )}
           </div>
         )}
 
