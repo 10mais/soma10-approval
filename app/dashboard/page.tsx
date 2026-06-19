@@ -976,6 +976,7 @@ function Dashboard() {
                   </button>
                   {clientes
                     .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
                     .map(c => (
                       <button key={c.id} onClick={() => {
                         setVerComoClienteId(c.id); setBuscaCliente(''); setAba('planner')

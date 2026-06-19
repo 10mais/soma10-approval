@@ -28,7 +28,9 @@ export async function GET() {
   }
 
   // Nunca expor tokens ao frontend — só o status de conexão importa
-  const seguros = clientes.map(({ facebookPageToken, instagramToken, ...resto }) => resto)
+  const seguros = clientes
+    .map(({ facebookPageToken, instagramToken, ...resto }) => resto)
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }))
   return NextResponse.json(seguros)
 }
 
