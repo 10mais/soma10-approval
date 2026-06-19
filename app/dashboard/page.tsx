@@ -792,6 +792,8 @@ function Dashboard() {
 
   async function gerarDocumentoIA() {
     if (!verComoClienteId) return
+    // Regenerar consome créditos da IA — confirmar antes
+    if (brandForm.documentoMarca && !confirm('Regenerar o documento vai consumir créditos da IA e substituir o documento atual. Deseja continuar?')) return
     // Garante que o Brand Board atual está salvo antes de gerar
     await salvarBrand()
     setGerandoDocIA(true); setDocIAMsg('Pesquisando o nicho e gerando o documento... (pode levar até 1 minuto)')
