@@ -4,7 +4,7 @@ import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 // Renova os tokens de longa duração do Instagram (no máx. 1x por dia).
 // Tokens do graph.instagram.com duram ~60 dias e podem ser renovados por mais 60.

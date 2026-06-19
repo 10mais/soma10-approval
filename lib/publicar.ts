@@ -118,6 +118,24 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
   }
 }
 
+// Envia o vídeo à Página do Facebook (file_url). O FB baixa o vídeo da URL e às
+// vezes falha de forma transitória (389/1363057 "Unable to fetch video file from
+// URL"); por isso, repetimos algumas vezes com espera crescente.
+async function publicarVideoFB(pageId: string, token: string, fileUrl: string, descricao: string): Promise<any> {
+  let ultimo: any = null
+  for (let i = 0; i < 4; i++) {
+    const r = await postForm(`${BASE}/${pageId}/videos`, { access_token: token, file_url: fileUrl, description: descricao })
+    if (!r?.error) return r
+    ultimo = r
+    const code = r.error?.code
+    const sub = r.error?.error_subcode
+    const ehFalhaDeFetch = code === 389 || sub === 1363057 || sub === 1363019 || sub === 1363030 || sub === 1363037
+    if (!ehFalhaDeFetch) break // erro definitivo (formato, permissão, etc.) — não adianta repetir
+    await new Promise(res => setTimeout(res, 5000 * (i + 1))) // 5s, 10s, 15s
+  }
+  return ultimo
+}
+
 export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
   const TOKEN = cliente?.metaConectado && cliente?.facebookPageToken ? cliente.facebookPageToken : undefined
   const PAGE_ID = cliente?.metaConectado && cliente?.facebookPageId ? cliente.facebookPageId : undefined
@@ -130,7 +148,7 @@ export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok
 
   try {
     for (const v of videos) {
-      const r = await postForm(`${BASE}/${PAGE_ID}/videos`, { access_token: TOKEN, file_url: v, description: post.legenda })
+      const r = await publicarVideoFB(PAGE_ID, TOKEN, v, post.legenda)
       if (r?.error) return { ok: false, error: fmtErro(r.error) }
     }
     if (imagens.length === 1) {

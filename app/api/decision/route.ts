@@ -7,6 +7,9 @@ import nodemailer from 'nodemailer'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { processarPublicacao } from '@/lib/publicar'
 
+export const runtime = 'nodejs'
+export const maxDuration = 300
+
 const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {

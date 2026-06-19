@@ -6,7 +6,7 @@ import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 // Publica um post imediatamente nas redes selecionadas.
 export async function POST(req: NextRequest) {
