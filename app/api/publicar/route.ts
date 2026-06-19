@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     await notificarEquipe('post_publicado', `Post publicado — ${nome}`, `O post de ${nome} foi publicado em ${resultado.redesOk}.`, id)
     return NextResponse.json({ ok: true })
   } else {
-    await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${nome}`, `Não foi possível publicar o post de ${nome}. Motivo: ${resultado.motivo}`, id)
+    await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${nome}`, `Não foi possível publicar o post de ${nome}. Motivo: ${resultado.motivo}`, id)
     return NextResponse.json({ ok: false, error: resultado.motivo }, { status: 502 })
   }
 }

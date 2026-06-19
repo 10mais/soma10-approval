@@ -291,7 +291,7 @@ export default function PostComposer({
                   <span style={{
                     width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${ativo ? sel : '#ccc'}`, background: ativo ? sel : '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0,
-                  }}>{ativo ? '✓' : ''}</span>
+                  }}>{ativo ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg> : null}</span>
                   <span style={{ width: 22, height: 22, borderRadius: '50%', background: r.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff">{r.key === 'facebook'
                       ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -369,12 +369,12 @@ export default function PostComposer({
                   {m.tipo === 'video' && (
                     <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
                       <button onClick={() => setFrameModal({ idx: i, url: m.url })} title="Escolher um frame do vídeo como capa"
-                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, border: 'none', padding: '4px 0', cursor: 'pointer' }}>
-                        🎞 Frame
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, border: 'none', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 3v18M17 3v18M3 12h18" /></svg> Frame
                       </button>
                       <label title="Enviar uma imagem de capa"
-                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '4px 0', cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
-                        {enviandoCapa === i ? '...' : '🖼 Capa'}
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '4px 0', cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        {enviandoCapa === i ? '...' : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg> Capa</>}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoCapa !== null}
                           onChange={e => { if (e.target.files?.[0]) enviarCapa(i, e.target.files[0]); e.target.value = '' }} />
                       </label>
@@ -452,7 +452,7 @@ export default function PostComposer({
                       {colabResultado.nome}{colabResultado.seguidores != null ? ` · ${colabResultado.seguidores.toLocaleString('pt-BR')} seguidores` : ''}
                     </p>
                   </div>
-                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter ↵</span>
+                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter</span>
                 </div>
               )}
 
@@ -465,7 +465,7 @@ export default function PostComposer({
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>Adicionar @{colabBusca.trim().replace(/^@/, '')}</p>
                     <p style={{ margin: 0, fontSize: 11, color: '#888' }}>{colabErro ? colabErro : 'Perfil não verificado pela API — será marcado mesmo assim.'}</p>
                   </div>
-                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter ↵</span>
+                  <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>Enter</span>
                 </div>
               )}
             </div>

@@ -41,7 +41,7 @@ export async function registrarGasto(custoUSD: number): Promise<number> {
     const admins = usuarios.filter(u => u.role === 'admin')
     await Promise.all(admins.map(u => notificar(
       u.email, 'geral',
-      '⚠️ Créditos da IA acabando',
+      'Créditos da IA acabando',
       `O saldo estimado da API da Anthropic está em US$ ${saldo.toFixed(2)} (alerta abaixo de US$ ${atual.limite.toFixed(2)}). Adicione créditos em console.anthropic.com e atualize o valor em Configurações.`,
     )))
   }

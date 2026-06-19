@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       await notificarEquipe('post_publicado', `Post agendado publicado — ${nome}`, `O post agendado de ${nome} foi publicado em ${resultado.redesOk}.`, id)
     } else {
       falhas++
-      await notificarEquipe('post_falha_publicacao', `⚠️ Falha no agendamento — ${nome}`, `Não foi possível publicar o post agendado de ${nome}. Motivo: ${resultado.motivo}`, id)
+      await notificarEquipe('post_falha_publicacao', `Falha no agendamento — ${nome}`, `Não foi possível publicar o post agendado de ${nome}. Motivo: ${resultado.motivo}`, id)
     }
   }
 

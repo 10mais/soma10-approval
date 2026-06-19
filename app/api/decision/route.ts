@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     })
 
-    const labels: Record<string, string> = { approved: '✅ APROVADO', corrected: '✏️ CORREÇÃO SOLICITADA', rejected: '❌ REPROVADO' }
+    const labels: Record<string, string> = { approved: 'APROVADO', corrected: 'CORREÇÃO SOLICITADA', rejected: 'REPROVADO' }
     const colors: Record<string, string> = { approved: '#22c55e', corrected: '#ffc00f', rejected: '#ef4444' }
 
     const annotationsHtml = annotations?.length > 0
@@ -101,13 +101,13 @@ export async function POST(req: NextRequest) {
       if (resultado.ok) {
         await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado em ${resultado.redesOk}.`, id)
       } else {
-        await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Motivo: ${resultado.motivo}`, id)
+        await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Motivo: ${resultado.motivo}`, id)
       }
     } catch (e: any) {
       console.error('Erro publicação:', e)
       const erro = e?.message || 'Erro desconhecido ao publicar.'
       await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: erro, atualizadoEm: new Date().toISOString() })
-      await notificarEquipe('post_falha_publicacao', `⚠️ Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Erro: ${erro}`, id)
+      await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Erro: ${erro}`, id)
     }
   }
 

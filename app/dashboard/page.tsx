@@ -71,6 +71,15 @@ const IconChart = (p: any) => <Icon {...p}><path d="M3 3v18h18" /><rect x="7" y=
 const IconDownload = (p: any) => <Icon {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 19h16" /></Icon>
 const IconSun = (p: any) => <Icon {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></Icon>
 const IconMoon = (p: any) => <Icon {...p}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></Icon>
+const IconEye = (p: any) => <Icon {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></Icon>
+const IconEyeOff = (p: any) => <Icon {...p}><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.39-1.61" /><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22" /></Icon>
+const IconCheck = (p: any) => <Icon {...p}><path d="M20 6 9 17l-5-5" /></Icon>
+const IconDoc = (p: any) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2" /></Icon>
+const IconRefresh = (p: any) => <Icon {...p}><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" /></Icon>
+const IconBack = (p: any) => <Icon {...p}><path d="M19 12H5M12 19l-7-7 7-7" /></Icon>
+const IconImage = (p: any) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></Icon>
+const IconFilm = (p: any) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 3v18M17 3v18M3 7.5h4M17 7.5h4M3 12h18M3 16.5h4M17 16.5h4" /></Icon>
+const IconTrend = (p: any) => <Icon {...p}><path d="m23 6-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /></Icon>
 
 // Miniatura de mídia do post — exibe um placeholder profissional quando a imagem não carrega
 function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: number; radius?: number }) {
@@ -416,11 +425,11 @@ function Dashboard() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: res.post.id }),
       }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
-      setRascunhoMsg(pub.ok ? '✅ Publicado com sucesso nas redes selecionadas!' : `⚠️ Falha ao publicar: ${pub.error}`)
+      setRascunhoMsg(pub.ok ? 'Publicado com sucesso nas redes selecionadas!' : `Falha ao publicar: ${pub.error}`)
     } else if (acao === 'agendar') {
-      setRascunhoMsg(`🗓️ Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
+      setRascunhoMsg(`Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
     } else {
-      setRascunhoMsg('💾 Rascunho salvo — visível apenas para a equipe.')
+      setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }
 
     setCriandoPost(false)
@@ -977,9 +986,9 @@ function Dashboard() {
                 </div>
                 <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{
                   background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
-                  cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                  cursor: 'pointer', textDecoration: 'underline', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
                 }}>
-                  ← Voltar para a visão da agência
+                  <IconBack size={13} /> Voltar para a visão da agência
                 </button>
               </div>
             ) : (
@@ -1315,7 +1324,7 @@ function Dashboard() {
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{bibSelecionados.length} selecionado(s)</span>
                     <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Selecionar todos</button>
                     <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
-                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>🗑 Apagar selecionados</button>
+                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} /> Apagar selecionados</button>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
@@ -1343,14 +1352,14 @@ function Dashboard() {
                             background: bibSelecionados.includes(post.id) ? '#1877f2' : 'rgba(255,255,255,0.9)',
                             border: bibSelecionados.includes(post.id) ? '1px solid #1877f2' : '1px solid #ccc',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 800,
-                          }}>{bibSelecionados.includes(post.id) ? '✓' : ''}</span>
+                          }}>{bibSelecionados.includes(post.id) ? <IconCheck size={13} /> : null}</span>
 
                         {/* Lixeira — canto inferior direito */}
                         <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir este post? Esta ação não pode ser desfeita.')) excluirPostDireto(post.id) }} title="Excluir"
                           style={{
                             position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: '50%', cursor: 'pointer',
-                            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, lineHeight: 1,
-                          }}>🗑</button>
+                            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                          }}><IconTrash size={13} /></button>
 
                         {post.imagens?.length > 1 && (
                           <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 600, borderRadius: 999, padding: '1px 7px' }}>
@@ -1366,7 +1375,7 @@ function Dashboard() {
                           </span>
                         </div>
                         <p style={{ margin: '0 0 5px', fontSize: 10, color: '#aaa', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {post.status === 'agendado' ? '🗓 ' : ''}{fmtData(dataMostrar)}
+                          {post.status === 'agendado' ? <IconCalendar size={11} /> : null}{fmtData(dataMostrar)}
                         </p>
                         <p style={{
                           margin: 0, fontSize: 11, color: '#888', lineHeight: 1.35,
@@ -1458,7 +1467,7 @@ function Dashboard() {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
-                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado ✓' : ''}
+                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado' : ''}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -1494,7 +1503,7 @@ function Dashboard() {
                   <div>
                     <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#888' }}>Documentos</p>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
-                      <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: 13, color: '#1d4ed8' }}>📄 {d.nome}</a>
+                      <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1d4ed8' }}><IconDoc size={14} /> {d.nome}</a>
                     ))}
                   </div>
                 )}
@@ -1566,7 +1575,7 @@ function Dashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa', borderRadius: 8, padding: '8px 12px' }}>
-                        <span style={{ fontSize: 13 }}>📄</span>
+                        <span style={{ display: 'flex', color: '#888' }}><IconDoc size={15} /></span>
                         <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, color: '#1d4ed8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nome}</a>
                         <button onClick={() => removerDocBrand(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}>×</button>
                       </div>
@@ -1629,8 +1638,8 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
               <button onClick={carregarListening} disabled={listeningLoading}
-                style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1 }}>
-                {listeningLoading ? 'Buscando...' : '↻ Atualizar'}
+                style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {listeningLoading ? 'Buscando...' : (<><IconRefresh size={14} /> Atualizar</>)}
               </button>
             </div>
             <p style={{ margin: '0 0 18px', fontSize: 13, color: '#999' }}>Tendências e conteúdos em alta sobre o nicho do cliente (definido no Brand Board).</p>
@@ -1685,7 +1694,7 @@ function Dashboard() {
                         {(listeningData.trends || []).map((t: any, i: number) => (
                           <a key={i} href={t.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: '#fafafa', borderRadius: 8, textDecoration: 'none' }}>
                             <span style={{ fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.termo}</span>
-                            <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>{typeof t.valor === 'number' ? (t.valor >= 5000 ? '🔥' : '↑') : t.valor}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', color: '#16a34a', flexShrink: 0 }}>{typeof t.valor === 'number' ? <IconTrend size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{t.valor}</span>}</span>
                           </a>
                         ))}
                       </div>
@@ -1918,8 +1927,8 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba('planner') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
-              ← Voltar ao Planner
+            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba('planner') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <IconBack size={14} /> Voltar ao Planner
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
@@ -2252,8 +2261,8 @@ function Dashboard() {
                       <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
                         style={{ width: '100%', padding: '10px 42px 10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                       <button type="button" onClick={() => setVerSenhaNovo(v => !v)} title={verSenhaNovo ? 'Ocultar senha' : 'Mostrar senha'}
-                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
-                        {verSenhaNovo ? '🙈' : '👁️'}
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', padding: 0 }}>
+                        {verSenhaNovo ? <IconEyeOff size={17} /> : <IconEye size={17} />}
                       </button>
                     </div>
                     <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
@@ -2309,8 +2318,8 @@ function Dashboard() {
                           <input type={verSenhaEdicao ? 'text' : 'password'} value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Redefinir senha (vazio = manter)"
                             style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                           <button type="button" onClick={() => setVerSenhaEdicao(v => !v)} title={verSenhaEdicao ? 'Ocultar senha' : 'Mostrar senha'}
-                            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>
-                            {verSenhaEdicao ? '🙈' : '👁️'}
+                            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', padding: 0 }}>
+                            {verSenhaEdicao ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                           </button>
                         </div>
                       </div>
@@ -2402,8 +2411,8 @@ function Dashboard() {
                 Saldo estimado da API usada na geração de documentos. A Anthropic não informa o saldo real — cadastre aqui o valor atual (veja em console.anthropic.com) e o sistema desconta automaticamente a cada documento gerado, avisando só os ADMINs quando estiver acabando.
               </p>
               {saldoIA.saldo <= saldoIA.limite && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#b91c1c', fontWeight: 600 }}>
-                  ⚠️ Saldo estimado baixo (US$ {Number(saldoIA.saldo).toFixed(2)}). Adicione créditos e atualize o valor abaixo.
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#b91c1c', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <IconAlert size={16} /> Saldo estimado baixo (US$ {Number(saldoIA.saldo).toFixed(2)}). Adicione créditos e atualize o valor abaixo.
                 </div>
               )}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
@@ -2525,7 +2534,7 @@ function Dashboard() {
                       <span style={{ fontSize: 13, color: '#666' }}>{row.tipo}</span>
                       {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
                         <button onClick={() => { if (confirm(`Desconectar as contas de ${row.c.nome}?`)) desconectarInstagram(row.c.id) }} title="Desconectar"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 16, padding: 4 }}>🗑</button>
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
                       ) : <span />}
                     </div>
                   ))}
