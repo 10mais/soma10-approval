@@ -48,6 +48,9 @@ export type Cliente = {
   tomDeVoz?: string
   preferencias?: string
   documentos?: { nome: string; url: string }[]
+  // Documento de marca aprofundado, gerado por IA a partir do Brand Board
+  documentoMarca?: string
+  documentoMarcaGeradoEm?: string
 }
 
 export type ConfigAgencia = {
