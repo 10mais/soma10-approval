@@ -1446,7 +1446,9 @@ function Dashboard() {
             {/* BLOCO FECHADO */}
             {brandModo === 'card' && (
               <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fff7db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🎯</div>
+                <div style={{ width: 46, height: 46, borderRadius: '50%', overflow: 'hidden', background: clienteEmVisualizacao?.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: clienteEmVisualizacao?.corSecundaria || '#111', flexShrink: 0 }}>
+                  {clienteEmVisualizacao?.logo ? <img src={clienteEmVisualizacao.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (clienteEmVisualizacao?.nome?.[0]?.toUpperCase() || '?')}
+                </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>

@@ -1,8 +1,8 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <!-- Barra superior inclinada (acento da marca) -->
-  <rect x="300" y="212" width="425" height="112" rx="50" transform="rotate(-8 512 268)" fill="#F8B311"/>
+  <rect x="232" y="92" width="560" height="156" rx="68" transform="rotate(-8 512 170)" fill="#F8B311"/>
   <!-- Anel (0) com furo transparente -->
   <path fill="#F8B311" fill-rule="evenodd"
-    d="M280,604 a232,232 0 1,0 464,0 a232,232 0 1,0 -464,0 Z
-       M387,616 a126,99 0 1,0 252,0 a126,99 0 1,0 -252,0 Z"/>
+    d="M188,628 a324,324 0 1,0 648,0 a324,324 0 1,0 -648,0 Z
+       M333,642 a179,140 0 1,0 358,0 a179,140 0 1,0 -358,0 Z"/>
 </svg>
