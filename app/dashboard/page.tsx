@@ -203,6 +203,9 @@ function Dashboard() {
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente' })
+  const [mostrarFormUsuario, setMostrarFormUsuario] = useState(false)
+  const [verSenhaNovo, setVerSenhaNovo] = useState(false)
+  const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
   const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [linkGerado, setLinkGerado] = useState('')
@@ -645,6 +648,8 @@ function Dashboard() {
     }
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
     setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente' })
+    setMostrarFormUsuario(false)
+    setVerSenhaNovo(false)
   }
 
   async function enviarImagem(arquivo: File): Promise<string | null> {
@@ -817,6 +822,7 @@ function Dashboard() {
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
     setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '' })
+    setVerSenhaEdicao(false)
   }
 
   async function salvarEdicaoUsuario(email: string) {
@@ -2226,36 +2232,50 @@ function Dashboard() {
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Colaboradores</h2>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Adicionar colaborador</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <input value={novoUsuario.nome} onChange={e => setNovoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                  <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <input type="password" value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                  <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
-                    <option value="gerente">Gerente</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
-                    padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
-                    fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
-                  }}>Adicionar</button>
-                </div>
-                {erroUsuario && (
-                  <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
-                )}
-                {!erroUsuario && (novoUsuario.nome || novoUsuario.email || novoUsuario.senha) && !usuarioFormValido && (
-                  <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>
-                    Preencha nome, e-mail válido, senha (mín. 6 caracteres) e nível de acesso para continuar.
-                  </p>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 15 }}>Adicionar colaborador</h3>
+                <button onClick={() => { setMostrarFormUsuario(v => !v); setErroUsuario(''); setVerSenhaNovo(false) }} style={{
+                  padding: '9px 18px', background: mostrarFormUsuario ? '#f0f0f0' : '#ffc00f', border: 'none', borderRadius: 10,
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer', color: '#111',
+                }}>{mostrarFormUsuario ? 'Fechar' : '+ Cadastrar usuário'}</button>
               </div>
+              {mostrarFormUsuario && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input value={novoUsuario.nome} onChange={e => setNovoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
+                        style={{ width: '100%', padding: '10px 42px 10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      <button type="button" onClick={() => setVerSenhaNovo(v => !v)} title={verSenhaNovo ? 'Ocultar senha' : 'Mostrar senha'}
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
+                        {verSenhaNovo ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+                    <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                      <option value="gerente">Gerente</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
+                      padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
+                      fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
+                    }}>Adicionar</button>
+                  </div>
+                  {erroUsuario && (
+                    <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
+                  )}
+                  {!erroUsuario && (novoUsuario.nome || novoUsuario.email || novoUsuario.senha) && !usuarioFormValido && (
+                    <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>
+                      Preencha nome, e-mail válido, senha (mín. 6 caracteres) e nível de acesso para continuar.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {usuarios.map(u => (
@@ -2285,8 +2305,14 @@ function Dashboard() {
                           <option value="gerente">Gerente</option>
                           <option value="admin">Admin</option>
                         </select>
-                        <input type="password" value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Nova senha (opcional)"
-                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <div style={{ flex: 1, minWidth: 160, position: 'relative' }}>
+                          <input type={verSenhaEdicao ? 'text' : 'password'} value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Redefinir senha (vazio = manter)"
+                            style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                          <button type="button" onClick={() => setVerSenhaEdicao(v => !v)} title={verSenhaEdicao ? 'Ocultar senha' : 'Mostrar senha'}
+                            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>
+                            {verSenhaEdicao ? '🙈' : '👁️'}
+                          </button>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
