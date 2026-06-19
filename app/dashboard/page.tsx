@@ -1570,6 +1570,30 @@ function Dashboard() {
                     )}
                   </div>
                 </div>
+
+                {/* TikTok — Creative Center */}
+                <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 18 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#111"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+                    TikTok — hashtags em alta (Brasil)
+                    <span style={{ fontSize: 11, color: '#aaa', fontWeight: 500 }}>· Creative Center</span>
+                  </h3>
+                  <p style={{ margin: '0 0 12px', fontSize: 12, color: '#aaa' }}>Tendências gerais do Brasil. Os <strong style={{ color: '#16a34a' }}>verdes</strong> casam com o nicho do cliente.</p>
+                  {!listeningData.tiktokOk ? (
+                    <p style={{ fontSize: 13, color: '#aaa' }}>Não foi possível carregar as tendências do TikTok agora (a fonte não-oficial pode estar bloqueando consultas automáticas). O restante do Social Listening segue funcionando.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {(listeningData.tiktok || []).map((h: any, i: number) => (
+                        <a key={i} href={h.url} target="_blank" rel="noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 20, textDecoration: 'none',
+                            background: h.relevante ? '#dcfce7' : '#f4f4f5', border: h.relevante ? '1px solid #86efac' : '1px solid #eee' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: h.relevante ? '#15803d' : '#333' }}>#{h.nome}</span>
+                          {h.posts > 0 && <span style={{ fontSize: 11, color: '#999' }}>{h.posts.toLocaleString('pt-BR')} posts</span>}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

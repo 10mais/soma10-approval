@@ -54,6 +54,46 @@ async function buscarGoogleTrends(termo: string): Promise<{ ok: boolean; relacio
   }
 }
 
+// Best-effort: hashtags em alta no TikTok Creative Center (API não-oficial).
+// Os dados são por país (não por palavra-chave), então retornamos o top do BR
+// e destacamos os que casam com os termos do nicho. Pode quebrar sem aviso.
+async function buscarTikTok(termos: string[]): Promise<{ ok: boolean; hashtags: any[] }> {
+  try {
+    const uuid = crypto.randomUUID()
+    const url = 'https://ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list?period=7&page=1&limit=50&country_code=BR&sort_by=popular'
+    const r = await fetch(url, {
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'referer': 'https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en',
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'pt-BR,pt;q=0.9',
+        'anonymous-user-id': uuid,
+        'timestamp': String(Date.now()),
+      },
+      cache: 'no-store',
+    })
+    const data = await r.json().catch(() => null)
+    const lista = data?.data?.list || data?.list || []
+    if (!Array.isArray(lista) || lista.length === 0) return { ok: false, hashtags: [] }
+
+    const termosLower = termos.map(t => t.toLowerCase())
+    const hashtags = lista.map((h: any) => {
+      const nome = h.hashtag_name || h.name || ''
+      const relevante = termosLower.some(t => t && (nome.toLowerCase().includes(t) || t.includes(nome.toLowerCase())))
+      return {
+        nome,
+        posts: Number(h.publish_cnt || h.video_views || h.post_count || 0),
+        relevante,
+        url: `https://www.tiktok.com/tag/${encodeURIComponent(nome)}`,
+      }
+    }).filter((h: any) => h.nome)
+    hashtags.sort((a: any, b: any) => (b.relevante ? 1 : 0) - (a.relevante ? 1 : 0) || b.posts - a.posts)
+    return { ok: true, hashtags: hashtags.slice(0, 20) }
+  } catch {
+    return { ok: false, hashtags: [] }
+  }
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
@@ -76,9 +116,10 @@ export async function GET(req: NextRequest) {
   const query = termos.slice(0, 4).join(' ')
   const termoPrincipal = segmento || palavras[0] || ''
 
-  const [youtube, trends] = await Promise.all([
+  const [youtube, trends, tiktok] = await Promise.all([
     buscarYouTube(query),
     buscarGoogleTrends(termoPrincipal),
+    buscarTikTok(termos),
   ])
 
   return NextResponse.json({
@@ -88,5 +129,7 @@ export async function GET(req: NextRequest) {
     youtubeConfigurado: !!process.env.YOUTUBE_API_KEY,
     trends: trends.relacionadas,
     trendsOk: trends.ok,
+    tiktok: tiktok.hashtags,
+    tiktokOk: tiktok.ok,
   })
 }
