@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
@@ -60,12 +60,17 @@ export async function POST(req: NextRequest) {
     ...(colaboradoresLimpos.length ? { colaboradores: colaboradoresLimpos } : {}),
     ...(capasVideo && typeof capasVideo === 'object' && Object.keys(capasVideo).length ? { capasVideo } : {}),
     redes: redesLimpas.length ? redesLimpas : ['instagram', 'facebook'],
+    ...(planoId ? { planoId } : {}),
+    ...(etapa ? { etapa } : {}),
+    ...(briefing ? { briefing } : {}),
   }
 
   await redis.set(`post:${post.id}`, post)
   await redis.sadd('posts', post.id)
   // Índice de agendados — o cron lê só este conjunto, não todos os posts
   if (post.status === 'agendado') await redis.sadd('agendados', post.id)
+  // Índice de pautas por plano (esteira)
+  if (planoId) await redis.sadd(`plano:${planoId}:pautas`, post.id)
 
   const link = `${process.env.APPROVAL_BASE_URL}/aprovar/${post.id}`
   return NextResponse.json({ ok: true, post, link })
@@ -103,6 +108,7 @@ export async function DELETE(req: NextRequest) {
   await redis.del(`post:${id}`)
   await redis.srem('posts', id)
   await redis.srem('agendados', id)
+  if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
 
   return NextResponse.json({ ok: true })
 }

@@ -93,6 +93,21 @@ export type ChatMensagem = {
 
 export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
+// Esteira de produção de criativos — etapas pelas quais uma pauta caminha
+export type EtapaCriativo = 'briefing' | 'copy' | 'aprovacao_copy' | 'criativo' | 'aprovacao_criativo' | 'pronto'
+
+// Plano mensal de conteúdo (guarda-chuva das pautas de um cliente num mês)
+export type Plano = {
+  id: string
+  clienteId: string
+  clienteNome: string
+  mes: number // 1-12
+  ano: number
+  titulo?: string
+  criadoPor: string
+  criadoEm: string
+}
+
 export type Post = {
   id: string
   clienteId: string
@@ -115,4 +130,12 @@ export type Post = {
   capasVideo?: Record<string, string> // URL do vídeo -> URL da capa (thumbnail) escolhida
   midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
   thumbnail?: string // miniatura mantida após a limpeza (uma imagem leve por post)
+  // Esteira de criativos
+  planoId?: string // plano mensal a que a pauta pertence
+  etapa?: EtapaCriativo // posição na esteira (ausente = post avulso, fora da esteira)
+  briefing?: string // ideia/ângulo/objetivo da pauta
+  ajusteCopy?: string // comentário do cliente ao pedir ajuste de copy
+  ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
+  copyAprovadaEm?: string
+  criativoAprovadoEm?: string
 }
