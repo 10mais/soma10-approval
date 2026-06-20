@@ -118,20 +118,43 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
   }
 }
 
-// Envia o vídeo à Página do Facebook (file_url). O FB baixa o vídeo da URL e às
-// vezes falha de forma transitória (389/1363057 "Unable to fetch video file from
-// URL"); por isso, repetimos algumas vezes com espera crescente.
+// Publica o vídeo na Página do Facebook.
+// Estratégia 1 (preferida): baixa o vídeo do nosso Blob e ENVIA o arquivo direto
+//   ao Facebook (upload "source" multipart). Assim o Facebook não precisa buscar a
+//   URL, eliminando o erro 389/1363057 "Unable to fetch video file from URL".
+// Estratégia 2 (fallback): pede ao Facebook para buscar a URL (file_url), com
+//   repetição em falhas transitórias de fetch.
 async function publicarVideoFB(pageId: string, token: string, fileUrl: string, descricao: string): Promise<any> {
+  // 1) Upload direto do arquivo (source)
+  try {
+    const resp = await fetch(fileUrl)
+    if (resp.ok) {
+      const buf = Buffer.from(await resp.arrayBuffer())
+      const nome = (fileUrl.split('?')[0].split('/').pop() || 'video.mp4')
+      const ehMov = /\.mov(\?|$)/i.test(fileUrl)
+      const fd = new FormData()
+      fd.append('access_token', token)
+      if (descricao) fd.append('description', descricao)
+      fd.append('source', new Blob([buf], { type: ehMov ? 'video/quicktime' : 'video/mp4' }), nome)
+      const r = await fetch(`${BASE}/${pageId}/videos`, { method: 'POST', body: fd }).then(x => x.json())
+      if (!r?.error) return r
+      // Se for erro de formato/permissão (não de fetch), retorna já — o file_url não resolveria
+      const sub = r.error?.error_subcode
+      const ehFalhaDeFetch = r.error?.code === 389 || [1363057, 1363019, 1363030, 1363037].includes(sub)
+      if (!ehFalhaDeFetch) return r
+    }
+  } catch { /* cai para o fallback file_url */ }
+
+  // 2) Fallback: file_url com repetição em falhas transitórias de fetch
   let ultimo: any = null
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const r = await postForm(`${BASE}/${pageId}/videos`, { access_token: token, file_url: fileUrl, description: descricao })
     if (!r?.error) return r
     ultimo = r
-    const code = r.error?.code
     const sub = r.error?.error_subcode
-    const ehFalhaDeFetch = code === 389 || sub === 1363057 || sub === 1363019 || sub === 1363030 || sub === 1363037
-    if (!ehFalhaDeFetch) break // erro definitivo (formato, permissão, etc.) — não adianta repetir
-    await new Promise(res => setTimeout(res, 5000 * (i + 1))) // 5s, 10s, 15s
+    const ehFalhaDeFetch = r.error?.code === 389 || [1363057, 1363019, 1363030, 1363037].includes(sub)
+    if (!ehFalhaDeFetch) break
+    await new Promise(res => setTimeout(res, 5000 * (i + 1)))
   }
   return ultimo
 }
