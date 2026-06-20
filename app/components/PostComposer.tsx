@@ -272,12 +272,19 @@ export default function PostComposer({
     }
   }
 
+  const videosSemCapa = midias.filter(m => m.tipo === 'video' && !m.capa).length
+
   function submeter(acao: ComposerValue['acao']) {
+    // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
+    if ((acao === 'publicar' || acao === 'agendar') && videosSemCapa > 0) {
+      setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
+      return
+    }
     onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
-  const podePublicar = !!clienteId && !!legenda.trim() && midias.length > 0 && redes.length > 0 && !enviando && !enviandoArquivo
+  const podePublicar = !!clienteId && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
   const podeRascunho = !!clienteId && !enviando && !enviandoArquivo
 
   return (
@@ -437,6 +444,11 @@ export default function PostComposer({
                 </div>
               ))}
             </div>
+          )}
+          {videosSemCapa > 0 && (
+            <p style={{ margin: '10px 0 0', fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
+              {videosSemCapa > 1 ? `${videosSemCapa} vídeos estão` : 'Um vídeo está'} sem capa. Defina a capa pelo botão "Frame" ou "Capa" para poder publicar ou agendar.
+            </p>
           )}
         </div>
 
