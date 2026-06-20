@@ -404,6 +404,18 @@ export default function PostComposer({
                   {midias.length > 1 && (
                     <span style={{ position: 'absolute', top: 4, left: 4, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                   )}
+                  {midias.length > 1 && i > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i - 1) }} title="Mover para a esquerda"
+                      style={{ position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                    </button>
+                  )}
+                  {midias.length > 1 && i < midias.length - 1 && (
+                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i + 1) }} title="Mover para a direita"
+                      style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    </button>
+                  )}
                   <button onClick={(e) => { e.stopPropagation(); removerMidia(i) }} style={{
                     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%',
                     background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1,

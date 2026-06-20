@@ -439,7 +439,12 @@ function Dashboard() {
     const acao = valor.acao || 'publicar'
     if (!valor.clienteId) return
     setCriandoPost(true)
-    setRascunhoMsg('')
+    setRascunhoMsg(acao === 'publicar' ? 'Publicando nas redes selecionadas...' : acao === 'agendar' ? 'Agendando a postagem...' : 'Salvando rascunho...')
+    // Fecha o compositor e volta ao Planner enquanto processa/carrega
+    setEditandoPostId(null)
+    setComposerPrefill(null)
+    setComposerKey(k => k + 1)
+    setAba('planner')
     const cliente = clientes.find(c => c.id === valor.clienteId)
     // Converte a data local (datetime-local) para ISO absoluto, evitando erro de fuso no servidor
     const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
@@ -465,10 +470,8 @@ function Dashboard() {
       setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }
 
+    await fetch('/api/posts').then(r => r.json()).then(setPosts).catch(() => {})
     setCriandoPost(false)
-    setComposerPrefill(null)
-    setComposerKey(k => k + 1)
-    fetch('/api/posts').then(r => r.json()).then(setPosts)
     setTimeout(() => setRascunhoMsg(''), 8000)
   }
 
@@ -1297,6 +1300,22 @@ function Dashboard() {
                 <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Novo Post
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Status/barra de progresso ao publicar/agendar/salvar */}
+        {aba === 'planner' && (criandoPost || rascunhoMsg) && (
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: 13, color: '#1d4ed8' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'girar 0.8s linear infinite', flexShrink: 0 }} />}
+              <span>{rascunhoMsg || 'Processando...'}</span>
+            </div>
+            {criandoPost && (
+              <div style={{ position: 'relative', height: 4, borderRadius: 999, background: '#dbeafe', overflow: 'hidden', marginTop: 10 }}>
+                <div style={{ position: 'absolute', top: 0, bottom: 0, background: '#1d4ed8', borderRadius: 999, animation: 'barraInd 1.2s ease-in-out infinite' }} />
+              </div>
+            )}
+            <style>{`@keyframes girar{to{transform:rotate(360deg)}}@keyframes barraInd{0%{left:-40%;width:40%}50%{left:30%;width:50%}100%{left:100%;width:40%}}`}</style>
           </div>
         )}
 
