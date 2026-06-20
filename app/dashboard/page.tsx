@@ -1473,12 +1473,16 @@ function Dashboard() {
                     </span>
                   </div>
 
-                  {/* Imagem principal */}
+                  {/* Mídia principal (imagem ou vídeo/Reel) */}
                   {postPreview.imagens?.[0] && (
-                    <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', overflow: 'auto', display: 'flex', gap: 2 }}>
-                      {postPreview.imagens.map((img, i) => (
-                        <img key={i} src={img} alt="" style={{ width: postPreview.imagens.length > 1 ? '90%' : '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} />
-                      ))}
+                    <div style={{ width: '100%', aspectRatio: '1', background: '#000', overflow: 'auto', display: 'flex', gap: 2 }}>
+                      {postPreview.imagens.map((m, i) => {
+                        const estilo = { width: postPreview.imagens.length > 1 ? '90%' : '100%', height: '100%', objectFit: 'cover' as const, flexShrink: 0, scrollSnapAlign: 'start' as const }
+                        const capa = (postPreview as any).capasVideo?.[m]
+                        return /\.(mp4|mov|m4v)(\?|$)/i.test(m)
+                          ? <video key={i} src={m} poster={capa} controls playsInline muted style={estilo} />
+                          : <img key={i} src={m} alt="" style={estilo} />
+                      })}
                     </div>
                   )}
 

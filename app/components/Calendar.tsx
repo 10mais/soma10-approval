@@ -187,7 +187,9 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                         <div style={{ width: 28, height: 28, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: '#e5e5e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {mostrarImg
                             ? <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg>}
+                            : capa
+                              ? <video src={capa} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg>}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#333' }}>
