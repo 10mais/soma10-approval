@@ -1192,7 +1192,7 @@ function Dashboard() {
                 Vendo como: {clienteEmVisualizacao?.nome}
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['planner', 'aprovacoes', 'marca', 'listening', 'analytics'] as const).map(a => {
+                {(['planner', 'esteira', 'aprovacoes', 'marca', 'listening', 'analytics'] as const).map(a => {
                   const ativo = aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))
                   return (
                   <button key={a} onClick={() => setAba(a as any)} style={{
@@ -1201,7 +1201,7 @@ function Dashboard() {
                     background: ativo ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'planner' ? 'Planner' : a === 'aprovacoes' ? 'Aprovações' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
+                    {a === 'planner' ? 'Planner' : a === 'esteira' ? 'Esteira' : a === 'aprovacoes' ? 'Aprovações' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
                   </button>
                 )})}
               </nav>
@@ -2125,7 +2125,7 @@ function Dashboard() {
         )}
 
         {aba === 'esteira' && (
-          <Esteira clientes={clientes} onAbrirComposer={(pauta: any) => {
+          <Esteira clientes={clientes} clienteFixo={verComoClienteId || undefined} onAbrirComposer={(pauta: any) => {
             setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
             setEditandoPostId(pauta.id)
             setAba('novo-post')

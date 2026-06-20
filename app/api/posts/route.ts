@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing } = await req.json()
+  const { clienteId, clienteNome, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
@@ -63,6 +63,9 @@ export async function POST(req: NextRequest) {
     ...(planoId ? { planoId } : {}),
     ...(etapa ? { etapa } : {}),
     ...(briefing ? { briefing } : {}),
+    ...(sugestaoImagem ? { sugestaoImagem } : {}),
+    ...(textoImagem ? { textoImagem } : {}),
+    ...(sugestaoLegenda ? { sugestaoLegenda } : {}),
   }
 
   await redis.set(`post:${post.id}`, post)

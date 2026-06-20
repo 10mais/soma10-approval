@@ -134,6 +134,9 @@ export type Post = {
   planoId?: string // plano mensal a que a pauta pertence
   etapa?: EtapaCriativo // posição na esteira (ausente = post avulso, fora da esteira)
   briefing?: string // ideia/ângulo/objetivo da pauta
+  sugestaoImagem?: string // descrição visual sugerida (opcional)
+  textoImagem?: string // texto que deve aparecer na arte
+  sugestaoLegenda?: string // rascunho de legenda sugerido no briefing
   ajusteCopy?: string // comentário do cliente ao pedir ajuste de copy
   ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
   copyAprovadaEm?: string
