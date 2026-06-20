@@ -1429,7 +1429,14 @@ function Dashboard() {
                       </div>
                       <div style={{ padding: 9 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                            {(() => { const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome); return (
+                              <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cli?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 9, color: cli?.corSecundaria || '#111' }}>
+                                {cli?.logo ? <img src={cli.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (post.clienteNome?.[0]?.toUpperCase() || '?')}
+                              </span>
+                            )})()}
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
+                          </span>
                           <span style={{ background: STATUS_COLOR[post.status] || '#eee', color: STATUS_TEXT[post.status] || '#555', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {STATUS_LABEL[post.status] || post.status}
                           </span>
