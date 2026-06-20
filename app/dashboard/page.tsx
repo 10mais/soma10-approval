@@ -6,6 +6,7 @@ import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import ChatInterno from '../components/ChatInterno'
+import Esteira from '../components/Esteira'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -115,6 +116,88 @@ function ImagemComFallback({ src }: { src: string }) {
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
+// Área de aprovações do cliente (fila simples com os 2 portões)
+function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; clientes: any[]; onAtualizado: () => void }) {
+  const [enviando, setEnviando] = useState<string | null>(null)
+  const [comentario, setComentario] = useState<Record<string, string>>({})
+  const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
+
+  async function agir(postId: string, acao: string) {
+    setEnviando(postId)
+    await fetch('/api/esteira/aprovar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId, acao, comentario: comentario[postId] || '' }),
+    }).catch(() => {})
+    setEnviando(null)
+    onAtualizado()
+  }
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Minhas aprovações</h2>
+      {pendentes.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+          <p>Nenhuma pendência de aprovação no momento.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {pendentes.map(p => {
+            const ehCopy = p.etapa === 'aprovacao_copy'
+            const cli = clientes.find((c: any) => c.id === p.clienteId)
+            const capa = capaDoPost(p)
+            return (
+              <div key={p.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  {capa && (
+                    <div style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', background: '#eee', flexShrink: 0 }}>
+                      {/\.(mp4|mov|m4v)(\?|$)/i.test(capa) ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      {cli?.logo && <img src={cli.logo} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />}
+                      <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{p.clienteNome}</span>
+                      <span style={{ background: ehCopy ? '#dbeafe' : '#fef3c7', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? '#1d4ed8' : '#92400e' }}>
+                        {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
+                      </span>
+                    </div>
+                    {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}>Briefing: {p.briefing}</p>}
+                    <p style={{ margin: '0 0 6px', fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', maxHeight: 100, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>
+                    {(p.imagens || []).length > 0 && !ehCopy && (
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto' }}>
+                        {p.imagens.map((m: string, i: number) => (
+                          <div key={i} style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', background: '#eee', flexShrink: 0 }}>
+                            {/\.(mp4|mov|m4v)(\?|$)/i.test(m) ? <video src={m} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <textarea value={comentario[p.id] || ''} onChange={e => setComentario(c => ({ ...c, [p.id]: e.target.value }))}
+                      placeholder="Comentário (opcional ao pedir ajuste)"
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
+                        style={{ flex: 1, padding: '10px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        Aprovar
+                      </button>
+                      <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
+                        style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        Pedir ajuste
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Escolhe a melhor miniatura do post: thumbnail salva, capa de vídeo, imagem, ou a 1ª mídia
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
@@ -168,7 +251,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening'>('clientes')
+  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes'>('clientes')
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
@@ -1085,14 +1168,14 @@ function Dashboard() {
                 Agência
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['clientes', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+                {(['clientes', 'esteira', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'clientes' ? 'Clientes' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                    {a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
                   </button>
                 ))}
               </nav>
@@ -1109,7 +1192,7 @@ function Dashboard() {
                 Vendo como: {clienteEmVisualizacao?.nome}
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['planner', 'marca', 'listening', 'analytics'] as const).map(a => {
+                {(['planner', 'aprovacoes', 'marca', 'listening', 'analytics'] as const).map(a => {
                   const ativo = aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))
                   return (
                   <button key={a} onClick={() => setAba(a as any)} style={{
@@ -1118,7 +1201,7 @@ function Dashboard() {
                     background: ativo ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'planner' ? 'Planner' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
+                    {a === 'planner' ? 'Planner' : a === 'aprovacoes' ? 'Aprovações' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
                   </button>
                 )})}
               </nav>
@@ -2039,6 +2122,18 @@ function Dashboard() {
             clienteNome={clientes.find(c => c.id === conectarRedesCliente)?.nome}
             onClose={() => setConectarRedesCliente(null)}
           />
+        )}
+
+        {aba === 'esteira' && (
+          <Esteira clientes={clientes} onAbrirComposer={(pauta: any) => {
+            setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
+            setEditandoPostId(pauta.id)
+            setAba('novo-post')
+          }} />
+        )}
+
+        {aba === 'aprovacoes' && (
+          <AprovacoesCli posts={posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
         )}
 
         {aba === 'mensagens' && (
