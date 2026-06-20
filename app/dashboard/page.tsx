@@ -1463,15 +1463,17 @@ function Dashboard() {
                   background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column',
                 }}>
                   {/* Cabeçalho estilo Instagram */}
+                  {(() => { const clientePreview = clientes.find(c => c.id === postPreview.clienteId || c.nome === postPreview.clienteNome); return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111' }}>
-                      {postPreview.clienteNome?.[0]?.toUpperCase() || '?'}
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: clientePreview?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: clientePreview?.corSecundaria || '#111', flexShrink: 0 }}>
+                      {clientePreview?.logo ? <img src={clientePreview.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (postPreview.clienteNome?.[0]?.toUpperCase() || '?')}
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
                     <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
                       {STATUS_LABEL[postPreview.status] || postPreview.status}
                     </span>
                   </div>
+                  ) })()}
 
                   {/* Mídia principal (imagem ou vídeo/Reel) */}
                   {postPreview.imagens?.[0] && (
