@@ -47,6 +47,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [pautaModal, setPautaModal] = useState<Pauta | null>(null)
   const [novaPautaModal, setNovaPautaModal] = useState(false)
   const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' })
+  const [gerandoIA, setGerandoIA] = useState(false)
+  const [iaMsg, setIaMsg] = useState('')
 
   function carregarPlanos() {
     const url = clienteFixo ? `/api/planos?clienteId=${clienteFixo}` : '/api/planos'
@@ -92,6 +94,24 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
     carregarPautas(planoSel)
   }
 
+  async function gerarPlanoIA() {
+    if (!planoSel) return
+    if (!confirm('A IA vai gerar pautas para o mes inteiro com base no Brand Board. Isso consome creditos da IA. Continuar?')) return
+    setGerandoIA(true); setIaMsg('Gerando pautas com IA... (pode levar ate 1 minuto)')
+    try {
+      const r = await fetch('/api/esteira/gerar-plano', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planoId: planoSel, quantidade: 12 }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setIaMsg(d?.error || 'Falha ao gerar o plano.'); return }
+      setIaMsg(`${d.quantidade} pautas criadas com sucesso!`)
+      carregarPautas(planoSel)
+      setTimeout(() => setIaMsg(''), 6000)
+    } catch { setIaMsg('Erro de conexao ao gerar o plano.') }
+    finally { setGerandoIA(false) }
+  }
+
   async function moverEtapa(pauta: Pauta, etapa: string) {
     if (pauta.etapa === etapa) return
     setPautas(ps => ps.map(p => p.id === pauta.id ? { ...p, etapa } : p))
@@ -112,7 +132,12 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
         </select>
         <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
-        {planoSel && <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>}
+        {planoSel && <>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+            {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
+          </button>
+        </>}
       </div>
 
       {/* Form de novo plano */}
@@ -139,6 +164,18 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           </div>
           <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
           <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      )}
+
+      {iaMsg && (
+        <div style={{ background: iaMsg.includes('sucesso') ? '#dcfce7' : iaMsg.includes('Gerando') ? '#eff6ff' : '#fef2f2',
+          border: `1px solid ${iaMsg.includes('sucesso') ? '#86efac' : iaMsg.includes('Gerando') ? '#bfdbfe' : '#fecaca'}`,
+          borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13,
+          color: iaMsg.includes('sucesso') ? '#166534' : iaMsg.includes('Gerando') ? '#1d4ed8' : '#b91c1c',
+          display: 'flex', alignItems: 'center', gap: 10 }}>
+          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'girar 0.8s linear infinite', flexShrink: 0 }} />}
+          {iaMsg}
+          {gerandoIA && <style>{`@keyframes girar{to{transform:rotate(360deg)}}`}</style>}
         </div>
       )}
 
