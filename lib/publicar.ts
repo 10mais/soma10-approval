@@ -228,38 +228,58 @@ export type ResultadoPublicacao = {
 }
 
 // Publica nas redes selecionadas do post, faz a limpeza e devolve os campos a salvar.
+// IMPORTANTE: respeita `redesPublicadas` — nunca republica numa rede que já deu certo.
 export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
   const temFB = !!(cliente?.facebookPageToken && cliente?.facebookPageId)
   let redes = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
-  // Não tenta o Facebook se o cliente não tem Página do Facebook conectada (ex.: conexão só de Instagram)
   if (!temFB) redes = redes.filter(r => r !== 'facebook')
   if (redes.length === 0) redes = ['instagram']
 
-  const ig = redes.includes('instagram') ? await publishToInstagram(post, cliente) : { ok: true as const }
-  const fb = redes.includes('facebook') ? await publishToFacebook(post, cliente) : { ok: true as const }
-  const agora = new Date().toISOString()
+  // Remove redes que JÁ foram publicadas com sucesso (evita duplicação)
+  const jaPublicadas = (post.redesPublicadas || []) as string[]
+  const redesPendentes = redes.filter(r => !jaPublicadas.includes(r))
 
-  if (ig.ok && fb.ok) {
+  // Se todas as redes já foram publicadas, não faz nada (proteção contra re-execução)
+  if (redesPendentes.length === 0) {
     const limpeza = await limparMidiasMantendoCapa(post)
     return {
-      ok: true,
-      redesOk: redes.join(' e '),
-      motivo: '',
-      campos: {
-        status: 'publicado',
-        erroPublicacao: undefined,
+      ok: true, redesOk: jaPublicadas.join(' e '), motivo: '',
+      campos: { status: 'publicado', erroPublicacao: undefined, redesPublicadas: jaPublicadas,
         ...(limpeza.removidas ? { midiaRemovida: true } : {}),
         ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
-        atualizadoEm: agora,
-      },
+        atualizadoEm: new Date().toISOString() },
     }
   }
 
-  const motivo = [!ig.ok ? `Instagram — ${(ig as any).error}` : null, !fb.ok ? `Facebook — ${(fb as any).error}` : null].filter(Boolean).join(' | ')
+  const ig = redesPendentes.includes('instagram') ? await publishToInstagram(post, cliente) : { ok: true as const }
+  const fb = redesPendentes.includes('facebook') ? await publishToFacebook(post, cliente) : { ok: true as const }
+  const agora = new Date().toISOString()
+
+  // Registra cada rede que deu certo (acumula com as anteriores)
+  const novasOk: string[] = [...jaPublicadas]
+  if (ig.ok && redesPendentes.includes('instagram')) novasOk.push('instagram')
+  if (fb.ok && redesPendentes.includes('facebook')) novasOk.push('facebook')
+
+  const todasOk = redes.every(r => novasOk.includes(r))
+
+  if (todasOk) {
+    const limpeza = await limparMidiasMantendoCapa(post)
+    return {
+      ok: true, redesOk: novasOk.join(' e '), motivo: '',
+      campos: { status: 'publicado', erroPublicacao: undefined, redesPublicadas: novasOk,
+        ...(limpeza.removidas ? { midiaRemovida: true } : {}),
+        ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
+        atualizadoEm: agora },
+    }
+  }
+
+  const motivo = [
+    !ig.ok && redesPendentes.includes('instagram') ? `Instagram — ${(ig as any).error}` : null,
+    !fb.ok && redesPendentes.includes('facebook') ? `Facebook — ${(fb as any).error}` : null,
+  ].filter(Boolean).join(' | ')
+
   return {
-    ok: false,
-    redesOk: '',
-    motivo,
-    campos: { status: 'falha_publicacao', erroPublicacao: motivo, atualizadoEm: agora },
+    ok: false, redesOk: novasOk.join(' e '), motivo,
+    campos: { status: 'falha_publicacao', erroPublicacao: motivo, redesPublicadas: novasOk, atualizadoEm: agora },
   }
 }

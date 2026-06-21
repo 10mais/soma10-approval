@@ -128,6 +128,7 @@ export type Post = {
   colaboradores?: string[] // até 4 @usuários marcados em colab
   redes?: ('instagram' | 'facebook')[] // redes onde publicar
   capasVideo?: Record<string, string> // URL do vídeo -> URL da capa (thumbnail) escolhida
+  redesPublicadas?: string[] // redes em que o post JÁ foi publicado com sucesso (evita duplicação)
   midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
   thumbnail?: string // miniatura mantida após a limpeza (uma imagem leve por post)
   // Esteira de criativos
