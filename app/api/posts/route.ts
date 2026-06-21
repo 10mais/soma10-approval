@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     filtrados = filtrados.filter(p => !p!.rascunhoInterno)
   }
 
+  // Posts na esteira de criativos só aparecem no Planner quando chegam à etapa final ("pronto")
+  filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto')
+
   return NextResponse.json(filtrados)
 }
 
