@@ -59,7 +59,7 @@ ${brand}
 
 REGRAS:
 - Cada pauta deve ser ESPECÍFICA e acionável para este nicho (nada genérico).
-- Varie os formatos: Feed (imagem estática), Reel (vídeo curto) e Story.
+- Varie os formatos: Feed (imagem estática) e Reel (vídeo curto). NAO sugira Stories.
 - Distribua as datas ao longo do mês (3-4x por semana, exceto domingos).
 - O tom de voz deve seguir o informado acima.
 - Respeite as preferências e restrições da marca.
@@ -72,7 +72,7 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
     "sugestaoImagem": "descrição visual para o designer",
     "textoImagem": "texto que aparece na arte (ou vazio)",
     "legenda": "legenda completa com hashtags",
-    "formato": "feed" | "reel" | "story",
+    "formato": "feed" | "reel",
     "dia": número do dia do mês (1-${new Date(ano, plano.mes, 0).getDate()})
   }
 ]`

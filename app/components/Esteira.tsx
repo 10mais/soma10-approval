@@ -275,14 +275,19 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       {pautaModal && (
         <PautaModal pauta={pautaModal} onClose={() => setPautaModal(null)}
           onAbrirComposer={onAbrirComposer}
-          onSalvo={() => { setPautaModal(null); carregarPautas(planoSel) }} />
+          onSalvo={() => { setPautaModal(null); carregarPautas(planoSel) }}
+          onDescartar={async () => {
+            if (!confirm('Descartar esta pauta? Ela será removida permanentemente.')) return
+            await fetch(`/api/posts?id=${pautaModal.id}`, { method: 'DELETE' }).catch(() => {})
+            setPautaModal(null); carregarPautas(planoSel)
+          }} />
       )}
     </div>
   )
 }
 
-function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer }: {
-  pauta: Pauta; onClose: () => void; onSalvo: () => void; onAbrirComposer?: (p: Pauta) => void
+function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
+  pauta: Pauta; onClose: () => void; onSalvo: () => void; onAbrirComposer?: (p: Pauta) => void; onDescartar?: () => void
 }) {
   const [briefing, setBriefing] = useState(pauta.briefing || '')
   const [sugestaoImagem, setSugestaoImagem] = useState(pauta.sugestaoImagem || '')
@@ -331,12 +336,17 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer }: {
           <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
-          {onAbrirComposer && (
+          {onAbrirComposer && pauta.etapa === 'criativo' && (
             <button onClick={() => onAbrirComposer(pauta)} style={{ padding: '11px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              Abrir criativo
+              Adicionar criativo
             </button>
           )}
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          {onDescartar && (
+            <button onClick={onDescartar} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              Descartar
+            </button>
+          )}
         </div>
       </div>
     </div>
