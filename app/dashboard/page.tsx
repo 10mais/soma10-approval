@@ -1559,11 +1559,21 @@ function Dashboard() {
                       {clientePreview?.logo ? <img src={clientePreview.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (postPreview.clienteNome?.[0]?.toUpperCase() || '?')}
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
-                    <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: '#333' }}>
+                    <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || '#333', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
+                      onClick={() => { if (postPreview.erroPublicacao) alert(`Motivo da falha:\n\n${postPreview.erroPublicacao}`) }}
+                      title={postPreview.erroPublicacao || ''}>
                       {STATUS_LABEL[postPreview.status] || postPreview.status}
                     </span>
                   </div>
                   ) })()}
+
+                  {/* Motivo da falha */}
+                  {postPreview.erroPublicacao && (
+                    <div style={{ padding: '10px 16px', background: '#fef2f2', borderBottom: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.5 }}>
+                      <strong style={{ display: 'block', marginBottom: 4 }}>Motivo da falha:</strong>
+                      {postPreview.erroPublicacao}
+                    </div>
+                  )}
 
                   {/* Mídia principal (imagem ou vídeo/Reel) */}
                   {postPreview.imagens?.[0] && (
