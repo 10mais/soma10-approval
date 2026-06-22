@@ -9,6 +9,7 @@ type Pauta = {
   capasVideo?: Record<string, string>; thumbnail?: string; dataAgendada?: string
   ajusteCopy?: string; ajusteCriativo?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
+  criadoEm?: string; atualizadoEm?: string
 }
 
 const ETAPAS: { key: string; label: string; cliente?: boolean }[] = [
@@ -189,7 +190,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
           {ETAPAS.map(col => {
-            const cards = pautas.filter(p => (p.etapa || 'briefing') === col.key)
+            const cards = pautas.filter(p => (p.etapa || 'briefing') === col.key).sort((a, b) => new Date(b.atualizadoEm || b.criadoEm || '').getTime() - new Date(a.atualizadoEm || a.criadoEm || '').getTime())
             return (
               <div key={col.key}
                 onDragOver={e => { if (dragId) { e.preventDefault(); setOverCol(col.key) } }}
