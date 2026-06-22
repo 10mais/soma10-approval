@@ -1842,7 +1842,7 @@ function Dashboard() {
                   <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                      YouTube — mais vistos do nicho
+                      YouTube Shorts — mais vistos do nicho (5k+ views)
                     </h3>
                     {!listeningData.youtubeConfigurado && (
                       <p style={{ fontSize: 13, color: '#b45309', background: '#fffbeb', borderRadius: 8, padding: 12 }}>A chave do YouTube (YOUTUBE_API_KEY) ainda não está ativa na Vercel.</p>

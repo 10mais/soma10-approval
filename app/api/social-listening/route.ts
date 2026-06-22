@@ -6,28 +6,37 @@ import { redis, Cliente } from '@/lib/redis'
 export const runtime = 'nodejs'
 
 // Busca os vídeos mais vistos do YouTube para os termos do nicho
+// Palavras que indicam review/avaliacao — filtramos esses resultados
+const REVIEW_TERMS = /review|avalia[çc][ãa]o|testei|experimentei|provei|unboxing|resenha|teste de|vale a pena\?/i
+
 async function buscarYouTube(termos: string): Promise<any[]> {
   const KEY = process.env.YOUTUBE_API_KEY?.trim()
   if (!KEY) return []
   try {
-    const q = encodeURIComponent(termos)
-    const buscaUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&order=viewCount&maxResults=12&relevanceLanguage=pt&regionCode=BR&key=${KEY}`
+    const q = encodeURIComponent(termos + ' #shorts')
+    // videoDuration=short filtra apenas Shorts (ate 60s)
+    const buscaUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&order=viewCount&maxResults=25&relevanceLanguage=pt&regionCode=BR&videoDuration=short&key=${KEY}`
     const busca = await fetch(buscaUrl).then(r => r.json())
     const ids = (busca?.items || []).map((it: any) => it.id?.videoId).filter(Boolean)
     if (!ids.length) return []
-    const stUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}&key=${KEY}`
+    const stUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids.join(',')}&key=${KEY}`
     const st = await fetch(stUrl).then(r => r.json())
-    return (st?.items || []).map((v: any) => ({
-      id: v.id,
-      titulo: v.snippet?.title,
-      canal: v.snippet?.channelTitle,
-      thumb: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url,
-      views: Number(v.statistics?.viewCount || 0),
-      curtidas: Number(v.statistics?.likeCount || 0),
-      comentarios: Number(v.statistics?.commentCount || 0),
-      url: `https://www.youtube.com/watch?v=${v.id}`,
-      publicadoEm: v.snippet?.publishedAt,
-    })).sort((a: any, b: any) => b.views - a.views)
+    return (st?.items || [])
+      .map((v: any) => ({
+        id: v.id,
+        titulo: v.snippet?.title,
+        canal: v.snippet?.channelTitle,
+        thumb: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url,
+        views: Number(v.statistics?.viewCount || 0),
+        curtidas: Number(v.statistics?.likeCount || 0),
+        comentarios: Number(v.statistics?.commentCount || 0),
+        url: `https://www.youtube.com/shorts/${v.id}`,
+        publicadoEm: v.snippet?.publishedAt,
+      }))
+      .filter((v: any) => v.views >= 5000)
+      .filter((v: any) => !REVIEW_TERMS.test(v.titulo || ''))
+      .sort((a: any, b: any) => b.views - a.views)
+      .slice(0, 12)
   } catch {
     return []
   }
