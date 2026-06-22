@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { upload } from '@vercel/blob/client'
+import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type Plano = { id: string; clienteId: string; clienteNome: string; mes: number; ano: number; titulo?: string }
