@@ -1123,11 +1123,11 @@ function Dashboard() {
                     {clienteEmVisualizacao?.nome || 'Cliente'}
                   </p>
                 </div>
-                <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{
+                <button onClick={() => { setVerComoClienteId(''); setAba('home') }} style={{
                   background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
                   cursor: 'pointer', textDecoration: 'underline', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
                 }}>
-                  <IconBack size={13} /> Voltar para a visão da agência
+                  <IconBack size={13} /> Voltar ao Painel
                 </button>
               </div>
             ) : (
@@ -1246,8 +1246,8 @@ function Dashboard() {
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram?.replace(/^@/, '')}) — somente o conteúdo dele é exibido.
             </p>
-            <button onClick={() => { setVerComoClienteId(''); setAba('clientes') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
-              Voltar à visão da agência
+            <button onClick={() => { setVerComoClienteId(''); setAba('home') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <IconBack size={13} /> Voltar ao Painel
             </button>
           </div>
         )}
@@ -2111,8 +2111,8 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba('planner') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <IconBack size={14} /> Voltar ao Planner
+            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba(verComoClienteId ? 'planner' : 'home') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <IconBack size={14} /> Voltar
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
