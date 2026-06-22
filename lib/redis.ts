@@ -94,6 +94,26 @@ export type ChatMensagem = {
   criadoEm: string
 }
 
+// Gestao de tarefas
+export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
+export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
+export type Tarefa = {
+  id: string
+  titulo: string
+  descricao?: string
+  status: TarefaStatus
+  prioridade: TarefaPrioridade
+  responsavelEmail?: string
+  responsavelNome?: string
+  clienteId?: string
+  clienteNome?: string
+  prazo?: string // ISO date
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+  concluidoEm?: string
+}
+
 export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
 // Esteira de produção de criativos — etapas pelas quais uma pauta caminha
