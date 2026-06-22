@@ -343,6 +343,8 @@ function Dashboard() {
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
   const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
+  const [chatNaoLidas, setChatNaoLidas] = useState(0)
+  const [configAberto, setConfigAberto] = useState(true)
   const [linkGerado, setLinkGerado] = useState('')
   const [codigoGerado, setCodigoGerado] = useState('')
   // Conexão manual por ID
@@ -390,12 +392,18 @@ function Dashboard() {
     setBrandModo(tem ? 'card' : 'editar')
   }, [verComoClienteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Notificações: carrega ao autenticar e atualiza periodicamente
+  // Notificacoes + mensagens nao lidas: carrega ao autenticar e atualiza periodicamente
   useEffect(() => {
     if (status !== 'authenticated') return
     const carregarNotificacoes = () => fetch('/api/notificacoes').then(r => r.json()).then(d => setNotificacoes(Array.isArray(d) ? d : []))
-    carregarNotificacoes()
-    const intervalo = setInterval(carregarNotificacoes, 60000)
+    const carregarChatNaoLidas = () => {
+      if ((session?.user as any)?.role === 'cliente') return
+      fetch('/api/mensagens?contatos=1').then(r => r.json()).then(d => {
+        if (Array.isArray(d)) setChatNaoLidas(d.reduce((s: number, c: any) => s + (c.naoLidas || 0), 0))
+      }).catch(() => {})
+    }
+    carregarNotificacoes(); carregarChatNaoLidas()
+    const intervalo = setInterval(() => { carregarNotificacoes(); carregarChatNaoLidas() }, 30000)
     return () => clearInterval(intervalo)
   }, [status])
 
@@ -1249,18 +1257,29 @@ function Dashboard() {
               </nav>
               <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <button onClick={() => setAba('mensagens' as any)} style={{
+                <button onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: aba === 'mensagens' ? 700 : 500, color: aba === 'mensagens' ? '#111' : '#888',
                   background: aba === 'mensagens' ? '#ffc00f' : 'transparent', fontSize: 14,
-                }}>Mensagens</button>
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  Mensagens
+                  {chatNaoLidas > 0 && (
+                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{chatNaoLidas > 99 ? '99+' : chatNaoLidas}</span>
+                  )}
+                </button>
               </nav>
               {role === 'admin' && (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                  <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Configuracoes
-                  </p>
+                  <button onClick={() => setConfigAberto(v => !v)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configuracoes</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                  {configAberto && (
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {(['config', 'usuarios', 'clientes'] as const).map(a => (
                       <button key={a} onClick={() => setAba(a as any)} style={{
@@ -1273,6 +1292,7 @@ function Dashboard() {
                       </button>
                     ))}
                   </nav>
+                  )}
                 </>
               )}
             </>

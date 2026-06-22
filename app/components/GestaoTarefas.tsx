@@ -67,6 +67,15 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
     return true
   })
 
+  const [selecionadas, setSelecionadas] = useState<string[]>([])
+  function alternarSelecao(id: string) { setSelecionadas(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]) }
+  async function excluirSelecionadas() {
+    if (!confirm(`Excluir ${selecionadas.length} tarefa(s)?`)) return
+    await Promise.all(selecionadas.map(id => fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })))
+    setSelecionadas([])
+    carregar()
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -93,6 +102,14 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
         )}
         <button onClick={() => setNovaModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
       </div>
+
+      {selecionadas.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{selecionadas.length} selecionada(s)</span>
+          <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
+          <button onClick={excluirSelecionadas} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>
+        </div>
+      )}
 
       {/* KANBAN */}
       {view === 'kanban' && (
@@ -134,6 +151,13 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                         )})()}
                         {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
                         {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                        <span onClick={e => { e.stopPropagation(); alternarSelecao(t.id) }}
+                          style={{ width: 16, height: 16, borderRadius: 4, border: selecionadas.includes(t.id) ? '1.5px solid #1877f2' : '1px solid #ccc',
+                            background: selecionadas.includes(t.id) ? '#1877f2' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {selecionadas.includes(t.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                        </span>
                       </div>
                     </div>
                   ))}
