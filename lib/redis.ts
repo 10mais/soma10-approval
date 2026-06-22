@@ -26,6 +26,7 @@ export type Cliente = {
   logo?: string
   corPrimaria?: string
   corSecundaria?: string
+  tipo?: 'cliente' | 'interno' // cliente externo ou projeto interno da agência
   criadoEm: string
   // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string
