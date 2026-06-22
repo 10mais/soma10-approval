@@ -7,6 +7,7 @@ import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import ChatInterno from '../components/ChatInterno'
 import Esteira from '../components/Esteira'
+import DashboardHome from '../components/DashboardHome'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -251,7 +252,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes'>('clientes')
+  const [aba, setAba] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes'>('home')
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
@@ -1000,7 +1001,7 @@ function Dashboard() {
       `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => { setVerComoClienteId(''); setAba('clientes'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
+        <div onClick={() => { setVerComoClienteId(''); setAba('home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
@@ -1171,14 +1172,14 @@ function Dashboard() {
                 Agência
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['clientes', 'esteira', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+                {(['home', 'clientes', 'esteira', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuários' : 'Configurações'}
+                    {a === 'home' ? 'Painel' : a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuarios' : 'Configuracoes'}
                   </button>
                 ))}
               </nav>
@@ -2126,6 +2127,11 @@ function Dashboard() {
               textoBotao={editandoPostId ? 'Salvar alterações' : 'Salvar'}
             />
           </div>
+        )}
+
+        {/* PAINEL HOME */}
+        {aba === 'home' && (
+          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => { setVerComoClienteId(id); setAba('planner'); const c: any = clientes.find(x => x.id === id); if (c) setBrandForm({ segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '', publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '', documentos: c.documentos || [], documentoMarca: c.documentoMarca || '', documentoMarcaGeradoEm: c.documentoMarcaGeradoEm || '' }) }} />
         )}
 
         {/* CLIENTES */}
