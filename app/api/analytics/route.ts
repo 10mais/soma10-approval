@@ -127,10 +127,48 @@ export async function GET(req: NextRequest) {
     compartilhamentos: somar('compartilhamentos'),
   }
 
+  // Ranking: ordena posts por engajamento total (curtidas + comentarios + salvamentos + compartilhamentos)
+  const postsRanking = [...midiasComInsights].sort((a, b) => {
+    const ea = (a.curtidas + a.comentarios + a.salvamentos + a.compartilhamentos)
+    const eb = (b.curtidas + b.comentarios + b.salvamentos + b.compartilhamentos)
+    return eb - ea
+  })
+
+  // Periodo anterior (mesma duracao, imediatamente antes) para comparativo
+  const duracaoSegundos = until - since
+  const anteriorSince = since - duracaoSegundos
+  const anteriorUntil = since - 1
+  const midiasAntRes = await chamarGraph(
+    `${BASE}/${IG_ID}/media?fields=id,like_count,comments_count&since=${anteriorSince}&until=${anteriorUntil}&limit=50&access_token=${TOKEN}`
+  )
+  const midiasAnt: any[] = midiasAntRes.data?.data || []
+  const midiasAntComInsights = await Promise.all(midiasAnt.map(async (m) => {
+    const ehVideo = m.media_type === 'VIDEO' || m.media_type === 'REELS'
+    const metricas = ehVideo ? 'plays,reach,saved,shares' : 'impressions,reach,saved,shares'
+    const ins = await chamarGraph(`${BASE}/${m.id}/insights?metric=${metricas}&access_token=${TOKEN}`)
+    const valores: Record<string, number> = {}
+    for (const item of (ins.data?.data || [])) {
+      valores[item.name] = item.values?.[0]?.value ?? 0
+    }
+    return {
+      curtidas: m.like_count ?? 0, comentarios: m.comments_count ?? 0,
+      alcance: valores.reach ?? 0, impressoes: valores.impressions ?? valores.plays ?? 0,
+      salvamentos: valores.saved ?? 0, compartilhamentos: valores.shares ?? 0,
+    }
+  }))
+  const somarAnt = (chave: string) => midiasAntComInsights.reduce((acc, m) => acc + (Number((m as any)[chave]) || 0), 0)
+  const totaisAnterior = {
+    posts: midiasAntComInsights.length,
+    curtidas: somarAnt('curtidas'), comentarios: somarAnt('comentarios'),
+    alcance: somarAnt('alcance'), impressoes: somarAnt('impressoes'),
+    salvamentos: somarAnt('salvamentos'), compartilhamentos: somarAnt('compartilhamentos'),
+  }
+
   return NextResponse.json({
     conectado: true,
     instagramUsername: cliente.instagramUsername || perfil.data?.username,
     periodo: { since, until },
+    periodoAnterior: { since: anteriorSince, until: anteriorUntil },
     perfil: perfil.data || null,
     erroPerfil: perfil.erro,
     insightsConta: insightsConta.data?.data || [],
@@ -140,7 +178,8 @@ export async function GET(req: NextRequest) {
       idade: demografiaIdade.data?.data?.[0]?.total_value?.breakdowns?.[0]?.results || null,
       erro: demografiaGenero.erro || demografiaIdade.erro || null,
     },
-    posts: midiasComInsights,
+    posts: postsRanking,
     totais,
+    totaisAnterior,
   })
 }

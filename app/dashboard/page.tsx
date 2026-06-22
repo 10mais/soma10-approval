@@ -1977,20 +1977,36 @@ function Dashboard() {
               <>
                 {/* Cartões de totais */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>
-                  {[
-                    { label: 'Posts no período', valor: analyticsData.totais?.posts },
-                    { label: 'Curtidas', valor: analyticsData.totais?.curtidas },
-                    { label: 'Comentários', valor: analyticsData.totais?.comentarios },
-                    { label: 'Alcance', valor: analyticsData.totais?.alcance },
-                    { label: 'Impressões', valor: analyticsData.totais?.impressoes },
-                    { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos },
-                    { label: 'Compartilhamentos', valor: analyticsData.totais?.compartilhamentos },
-                  ].map(card => (
-                    <div key={card.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
-                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{(card.valor ?? 0).toLocaleString('pt-BR')}</p>
-                    </div>
-                  ))}
+                  {(() => {
+                    const ant = analyticsData.totaisAnterior || {}
+                    return [
+                      { label: 'Posts no periodo', valor: analyticsData.totais?.posts, anterior: ant.posts },
+                      { label: 'Curtidas', valor: analyticsData.totais?.curtidas, anterior: ant.curtidas },
+                      { label: 'Comentarios', valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
+                      { label: 'Alcance', valor: analyticsData.totais?.alcance, anterior: ant.alcance },
+                      { label: 'Impressoes', valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
+                      { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos, anterior: ant.salvamentos },
+                      { label: 'Compartilhamentos', valor: analyticsData.totais?.compartilhamentos, anterior: ant.compartilhamentos },
+                    ].map(card => {
+                      const v = card.valor ?? 0
+                      const a = card.anterior ?? 0
+                      const diff = a > 0 ? Math.round(((v - a) / a) * 100) : (v > 0 ? 100 : 0)
+                      return (
+                        <div key={card.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{v.toLocaleString('pt-BR')}</p>
+                            {a > 0 && (
+                              <span style={{ fontSize: 12, fontWeight: 700, color: diff > 0 ? '#16a34a' : diff < 0 ? '#b91c1c' : '#888' }}>
+                                {diff > 0 ? '+' : ''}{diff}%
+                              </span>
+                            )}
+                          </div>
+                          {a > 0 && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#bbb' }}>Anterior: {a.toLocaleString('pt-BR')}</p>}
+                        </div>
+                      )
+                    })
+                  })()}
                   {analyticsData.perfil?.followers_count != null && (
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                       <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
@@ -2077,7 +2093,7 @@ function Dashboard() {
                 {/* Tabela de posts no período */}
                 <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: '#111', borderBottom: '1px solid #f0f0f0' }}>
-                    Posts publicados no período ({analyticsData.posts?.length || 0})
+                    Posts por relevancia — melhor desempenho no topo ({analyticsData.posts?.length || 0})
                   </p>
                   {(!analyticsData.posts || analyticsData.posts.length === 0) ? (
                     <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhum post encontrado no período selecionado.</p>
