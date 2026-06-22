@@ -108,7 +108,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       }),
     })
     setNovaPautaModal(false)
-    setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' })
+    setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' })
     carregarPautas(planoSel)
   }
 
