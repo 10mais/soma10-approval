@@ -23,6 +23,23 @@ const ETAPAS: { key: string; label: string; cliente?: boolean }[] = [
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
 
+const FORMATO_INFO: Record<string, { label: string; cor: string; icon: string }> = {
+  feed: { label: 'Feed', cor: '#1d4ed8', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
+  reel: { label: 'Reel', cor: '#dc2626', icon: 'M5.76 2h12.48L22 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6l3.76-4zM10 12l5 3-5 3v-6z' },
+  story: { label: 'Story', cor: '#7c3aed', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z' },
+  carrossel: { label: 'Carrossel', cor: '#0891b2', icon: 'M4 4h12v12H4zM8 8h12v12H8z' },
+}
+function formatoBadge(formato?: string, qtdImagens?: number) {
+  const fmt = (qtdImagens && qtdImagens > 1) ? 'carrossel' : (formato || 'feed')
+  const info = FORMATO_INFO[fmt] || FORMATO_INFO.feed
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: info.cor, background: `${info.cor}12`, border: `1px solid ${info.cor}30`, borderRadius: 999, padding: '1px 6px' }}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill={info.cor} style={{ flexShrink: 0 }}><path d={info.icon} /></svg>
+      {info.label}
+    </span>
+  )
+}
+
 function capaDaPauta(p: Pauta): string {
   if (p.thumbnail) return p.thumbnail
   const caps = p.capasVideo || {}
@@ -188,7 +205,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       ) : carregando ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>Carregando pautas...</div>
       ) : (
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {ETAPAS.map(col => {
             const cards = pautas.filter(p => (p.etapa || 'briefing') === col.key).sort((a, b) => new Date(b.atualizadoEm || b.criadoEm || '').getTime() - new Date(a.atualizadoEm || a.criadoEm || '').getTime())
             return (
@@ -198,14 +215,15 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                 onDrop={() => { const p = pautas.find(x => x.id === dragId); if (p) moverEtapa(p, col.key); setDragId(null); setOverCol(null) }}
                 style={{
                   flex: '0 0 230px', width: 230, background: overCol === col.key ? '#fffbeb' : '#f6f6f7', borderRadius: 12, padding: 10,
-                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2, alignSelf: 'flex-start',
+                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+                  display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: '#444' }}>{col.label}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
                 </div>
                 {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: '#b45309' }}>Aguarda o cliente</p>}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(p => {
                     const capa = capaDaPauta(p)
                     const mostrarImg = capa && !ehVideo(capa)
@@ -219,10 +237,13 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                               : capa ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                           </div>
                         )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          {formatoBadge(p.formato, (p.imagens || []).length)}
+                          {p.dataAgendada && <span style={{ fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                        </div>
                         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {p.briefing || p.legenda || 'Sem titulo'}
                         </p>
-                        {p.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} as {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
                         {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#888' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
                         {(p.ajusteCopy || p.ajusteCriativo) && (
                           <p style={{ margin: '5px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
