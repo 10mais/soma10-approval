@@ -59,6 +59,8 @@ const ENTREGAVEIS_OPCOES = [
   { key: 'branding', label: 'Branding / Identidade visual' },
   { key: 'email_marketing', label: 'E-mail marketing' },
   { key: 'consultoria', label: 'Consultoria' },
+  { key: 'crm', label: 'Sistema CRM' },
+  { key: 'google_meu_negocio', label: 'Google Meu Negocio' },
 ]
 
 // Ícones de contorno (substituem emojis por um visual mais profissional)
