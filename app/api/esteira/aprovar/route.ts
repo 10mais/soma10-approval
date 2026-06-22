@@ -50,19 +50,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (acao === 'aprovar_criativo') {
+    // Obrigatorio ter data/horario para aprovar o criativo
+    if (!post.dataAgendada) {
+      return NextResponse.json({ error: 'Defina a data e horario da postagem antes de aprovar o criativo.', semData: true }, { status: 400 })
+    }
     post.etapa = 'pronto'
     post.criativoAprovadoEm = agora
     post.ajusteCriativo = undefined
-    // Auto-agendamento: se tem data sugerida, agenda; senão fica pronto pra equipe definir
-    if (post.dataAgendada) {
-      post.status = 'agendado'
-      post.rascunhoInterno = false
-      await redis.sadd('agendados', postId)
-    }
+    post.status = 'agendado'
+    post.rascunhoInterno = false
+    await redis.sadd('agendados', postId)
     await redis.set(`post:${postId}`, post)
-    const msg = post.status === 'agendado'
-      ? `${quem} aprovou o criativo e o post foi agendado automaticamente para ${new Date(post.dataAgendada!).toLocaleString('pt-BR')}.`
-      : `${quem} aprovou o criativo. O post está pronto — defina a data de agendamento.`
+    const msg = `${quem} aprovou o criativo e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
     await notificarEquipe('geral', `Criativo aprovado — ${nome}`, msg, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }

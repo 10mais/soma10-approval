@@ -52,28 +52,57 @@ export async function POST(req: NextRequest) {
     cliente.documentoMarca ? `\nDNA da marca (referência editorial):\n${cliente.documentoMarca.slice(0, 3000)}` : '',
   ].filter(Boolean).join('\n')
 
-  const prompt = `Você é um estrategista de conteúdo de uma agência de marketing digital. Gere exatamente ${qtd} pautas de conteúdo para o mês de ${mesNome}/${ano} do cliente abaixo.
+  // Busca tendencias do Google Trends para enriquecer as pautas
+  let trendsTxt = ''
+  try {
+    const termoPrincipal = (cliente.segmento || (cliente.palavrasChave || '').split(',')[0] || '').trim()
+    if (termoPrincipal) {
+      const headers: Record<string, string> = { 'accept-language': 'pt-BR' }
+      const reqExplore = encodeURIComponent(JSON.stringify({ comparisonItem: [{ keyword: termoPrincipal, geo: 'BR', time: 'now 7-d' }], category: 0, property: '' }))
+      const exp = await fetch(`https://trends.google.com/trends/api/explore?hl=pt-BR&tz=180&req=${reqExplore}`, { headers }).then(r => r.text()).catch(() => '')
+      if (exp) {
+        const expJson = JSON.parse(exp.replace(/^\)\]\}'/, ''))
+        const widget = (expJson?.widgets || []).find((w: any) => w.id === 'RELATED_QUERIES')
+        if (widget) {
+          const reqRel = encodeURIComponent(JSON.stringify(widget.request))
+          const rel = await fetch(`https://trends.google.com/trends/api/widgetdata/relatedsearches?hl=pt-BR&tz=180&req=${reqRel}&token=${widget.token}`, { headers }).then(r => r.text()).catch(() => '')
+          if (rel) {
+            const relJson = JSON.parse(rel.replace(/^\)\]\}'/, ''))
+            const lista = relJson?.default?.rankedList?.[1]?.rankedKeyword || relJson?.default?.rankedList?.[0]?.rankedKeyword || []
+            const termos = lista.slice(0, 8).map((k: any) => k.query).filter(Boolean)
+            if (termos.length) trendsTxt = `\nTENDENCIAS EM ALTA (Google Trends BR, ultima semana):\n${termos.join(', ')}\nUse essas tendencias como inspiracao quando fizerem sentido para o nicho.`
+          }
+        }
+      }
+    }
+  } catch { /* trends e best-effort */ }
+
+  const prompt = `Voce e um estrategista de conteudo de uma agencia de marketing digital. Gere exatamente ${qtd} pautas de conteudo para o mes de ${mesNome}/${ano} do cliente abaixo.
 
 BRAND BOARD DO CLIENTE:
 ${brand}
+${trendsTxt}
 
 REGRAS:
-- Cada pauta deve ser ESPECÍFICA e acionável para este nicho (nada genérico).
-- Varie os formatos: Feed (imagem estática) e Reel (vídeo curto). NAO sugira Stories.
-- Distribua as datas ao longo do mês (3-4x por semana, exceto domingos).
+- Cada pauta deve ser ESPECIFICA e acionavel para este nicho (nada generico).
+- Varie os formatos: Feed (imagem estatica) e Reel (video curto). NAO sugira Stories.
+- Distribua as datas ao longo do mes (3-4x por semana, exceto domingos).
+- Sugira um HORARIO para cada postagem (entre 10h e 20h, variando).
 - O tom de voz deve seguir o informado acima.
-- Respeite as preferências e restrições da marca.
-- As legendas devem ser completas e publicáveis (com hashtags relevantes no final).
+- Respeite as preferencias e restricoes da marca.
+- As legendas devem ser completas e publicaveis (com hashtags relevantes no final).
 
-Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backticks) no formato:
+Responda APENAS com um JSON valido (sem markdown, sem explicacao, sem backticks) no formato:
 [
   {
     "briefing": "tema/ideia da pauta",
-    "sugestaoImagem": "descrição visual para o designer",
+    "sugestaoImagem": "descricao visual para o designer",
     "textoImagem": "texto que aparece na arte (ou vazio)",
     "legenda": "legenda completa com hashtags",
     "formato": "feed" | "reel",
-    "dia": número do dia do mês (1-${new Date(ano, plano.mes, 0).getDate()})
+    "dia": numero do dia do mes (1-${new Date(ano, plano.mes, 0).getDate()}),
+    "hora": numero da hora (10-20),
+    "minuto": 0 ou 30
   }
 ]`
 
@@ -112,7 +141,9 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
     const postsCriados: Post[] = []
     for (const p of pautasGeradas) {
       const dia = Math.min(Math.max(Number(p.dia) || 1, 1), new Date(ano, plano.mes, 0).getDate())
-      const dataAgendada = new Date(ano, plano.mes - 1, dia, 17, 0, 0).toISOString()
+      const hora = Math.min(Math.max(Number(p.hora) || 17, 6), 23)
+      const minuto = [0, 30].includes(Number(p.minuto)) ? Number(p.minuto) : 0
+      const dataAgendada = new Date(ano, plano.mes - 1, dia, hora, minuto, 0).toISOString()
       const formato = ['feed', 'reel', 'story'].includes(p.formato) ? p.formato : 'feed'
       const post: Post = {
         id: uuid(),

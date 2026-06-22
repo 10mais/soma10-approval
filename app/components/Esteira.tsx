@@ -221,9 +221,16 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {p.briefing || p.legenda || 'Sem titulo'}
                         </p>
-                        {p.sugestaoImagem && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#888' }}>Imagem: {p.sugestaoImagem.slice(0, 50)}</p>}
+                        {p.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} as {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+                        {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#888' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
                         {(p.ajusteCopy || p.ajusteCriativo) && (
-                          <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
+                          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
+                        )}
+                        {col.key === 'criativo' && (p.imagens || []).length > 0 && (
+                          <button onClick={(e) => { e.stopPropagation(); moverEtapa(p, 'aprovacao_criativo') }}
+                            style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                            Enviar para aprovacao
+                          </button>
                         )}
                       </div>
                     )
@@ -331,6 +338,22 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             <strong>Ajuste solicitado pelo cliente:</strong> {pauta.ajusteCopy || pauta.ajusteCriativo}
           </div>
         )}
+
+        {/* Botao copiar instrucoes para producao */}
+        <button onClick={() => {
+          const txt = [
+            `CLIENTE: ${pauta.clienteNome}`,
+            `BRIEFING: ${briefing}`,
+            sugestaoImagem ? `SUGESTAO DE IMAGEM: ${sugestaoImagem}` : '',
+            textoImagem ? `TEXTO NA IMAGEM: ${textoImagem}` : '',
+            legenda ? `LEGENDA:\n${legenda}` : '',
+            pauta.formato ? `FORMATO: ${pauta.formato}` : '',
+            pauta.dataAgendada ? `DATA: ${new Date(pauta.dataAgendada).toLocaleString('pt-BR')}` : '',
+          ].filter(Boolean).join('\n\n')
+          navigator.clipboard.writeText(txt).then(() => alert('Instrucoes copiadas para a area de transferencia!')).catch(() => alert(txt))
+        }} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#555', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
+          Copiar instrucoes para producao
+        </button>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
