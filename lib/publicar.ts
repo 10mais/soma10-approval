@@ -251,14 +251,40 @@ export async function processarPublicacao(post: Post, cliente?: any): Promise<Re
     }
   }
 
-  const ig = redesPendentes.includes('instagram') ? await publishToInstagram(post, cliente) : { ok: true as const }
-  const fb = redesPendentes.includes('facebook') ? await publishToFacebook(post, cliente) : { ok: true as const }
-  const agora = new Date().toISOString()
-
-  // Registra cada rede que deu certo (acumula com as anteriores)
   const novasOk: string[] = [...jaPublicadas]
-  if (ig.ok && redesPendentes.includes('instagram')) novasOk.push('instagram')
-  if (fb.ok && redesPendentes.includes('facebook')) novasOk.push('facebook')
+
+  // Publica CADA REDE SEPARADAMENTE e salva redesPublicadas IMEDIATAMENTE
+  // para que mesmo em caso de crash/timeout, a rede ja publicada nao seja repetida
+  if (redesPendentes.includes('instagram')) {
+    const ig = await publishToInstagram(post, cliente)
+    if (ig.ok) {
+      novasOk.push('instagram')
+      // Salva imediatamente no banco — protecao anti-duplicata atomica
+      const { redis: r } = await import('@/lib/redis')
+      const curr = await r.get<Post>(`post:${post.id}`)
+      if (curr) await r.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
+    } else {
+      const agora = new Date().toISOString()
+      return { ok: false, redesOk: novasOk.join(' e '), motivo: `Instagram — ${(ig as any).error}`,
+        campos: { status: 'falha_publicacao', erroPublicacao: `Instagram — ${(ig as any).error}`, redesPublicadas: novasOk, atualizadoEm: agora } }
+    }
+  }
+
+  if (redesPendentes.includes('facebook')) {
+    const fb = await publishToFacebook(post, cliente)
+    if (fb.ok) {
+      novasOk.push('facebook')
+      const { redis: r } = await import('@/lib/redis')
+      const curr = await r.get<Post>(`post:${post.id}`)
+      if (curr) await r.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
+    } else {
+      const agora = new Date().toISOString()
+      return { ok: false, redesOk: novasOk.join(' e '), motivo: `Facebook — ${(fb as any).error}`,
+        campos: { status: 'falha_publicacao', erroPublicacao: `Facebook — ${(fb as any).error}`, redesPublicadas: novasOk, atualizadoEm: agora } }
+    }
+  }
+
+  const agora = new Date().toISOString()
 
   const todasOk = redes.every(r => novasOk.includes(r))
 
@@ -273,13 +299,10 @@ export async function processarPublicacao(post: Post, cliente?: any): Promise<Re
     }
   }
 
-  const motivo = [
-    !ig.ok && redesPendentes.includes('instagram') ? `Instagram — ${(ig as any).error}` : null,
-    !fb.ok && redesPendentes.includes('facebook') ? `Facebook — ${(fb as any).error}` : null,
-  ].filter(Boolean).join(' | ')
-
+  // Se chegou aqui, nao houve erro (os returns de erro estao dentro de cada bloco acima)
+  // Este trecho so e alcancado se nenhuma rede falhou — redundante com o todasOk abaixo, mas seguro
   return {
-    ok: false, redesOk: novasOk.join(' e '), motivo,
-    campos: { status: 'falha_publicacao', erroPublicacao: motivo, redesPublicadas: novasOk, atualizadoEm: agora },
+    ok: false, redesOk: novasOk.join(' e '), motivo: 'erro desconhecido',
+    campos: { status: 'falha_publicacao', erroPublicacao: 'erro desconhecido', redesPublicadas: novasOk, atualizadoEm: agora },
   }
 }
