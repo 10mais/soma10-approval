@@ -67,6 +67,26 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' })
   const [gerandoIA, setGerandoIA] = useState(false)
   const [iaMsg, setIaMsg] = useState('')
+  const [gerandoLegendaNova, setGerandoLegendaNova] = useState(false)
+  const [legendaNovaMsg, setLegendaNovaMsg] = useState('')
+
+  async function gerarLegendaNovaPauta() {
+    const plano = planos.find(p => p.id === planoSel)
+    if (!plano || !formPauta.briefing.trim()) return
+    setGerandoLegendaNova(true); setLegendaNovaMsg('Gerando legenda...')
+    try {
+      const r = await fetch('/api/esteira/gerar-legenda', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clienteId: plano.clienteId, briefing: formPauta.briefing, sugestaoImagem: formPauta.sugestaoImagem, textoImagem: formPauta.textoImagem, formato: formPauta.formato }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setLegendaNovaMsg(d?.error || 'Falha ao gerar.'); return }
+      setFormPauta(f => ({ ...f, sugestaoLegenda: d.legenda }))
+      setLegendaNovaMsg('Legenda gerada!')
+      setTimeout(() => setLegendaNovaMsg(''), 4000)
+    } catch { setLegendaNovaMsg('Erro de conexao.') }
+    finally { setGerandoLegendaNova(false) }
+  }
 
   function carregarPlanos() {
     const url = clienteFixo ? `/api/planos?clienteId=${clienteFixo}` : '/api/planos'
@@ -287,7 +307,14 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Sugestão de legenda (opcional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Legenda (opcional)</label>
+                  <button onClick={gerarLegendaNovaPauta} disabled={gerandoLegendaNova || !formPauta.briefing.trim()} type="button"
+                    style={{ padding: '4px 12px', background: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#f0f0f0' : '#111', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#888' : '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer' }}>
+                    {gerandoLegendaNova ? 'Gerando...' : 'Criar com IA'}
+                  </button>
+                </div>
+                {legendaNovaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaNovaMsg.includes('Erro') || legendaNovaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaNovaMsg}</p>}
                 <textarea value={formPauta.sugestaoLegenda} onChange={e => setFormPauta(f => ({ ...f, sugestaoLegenda: e.target.value }))} placeholder="Rascunho da legenda/copy para o post..."
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
