@@ -2397,7 +2397,7 @@ function Dashboard() {
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                         <input value={edicaoCliente.instagram || ''} onChange={e => setEdicaoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                        <select value={(edicaoCliente as any).tipo || 'cliente'} onChange={e => setEdicaoCliente(p => ({ ...p, tipo: e.target.value }))}
+                        <select value={(edicaoCliente as any).tipo || 'cliente'} onChange={e => setEdicaoCliente(p => ({ ...p, tipo: e.target.value as 'cliente' | 'interno' }))}
                           style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                           <option value="cliente">Cliente</option>
                           <option value="interno">Projeto interno</option>
