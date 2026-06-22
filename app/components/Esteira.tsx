@@ -322,13 +322,14 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   const [sugestaoImagem, setSugestaoImagem] = useState(pauta.sugestaoImagem || '')
   const [textoImagem, setTextoImagem] = useState(pauta.textoImagem || '')
   const [legenda, setLegenda] = useState(pauta.legenda || '')
+  const [formato, setFormato] = useState(pauta.formato || 'feed')
   const [salvando, setSalvando] = useState(false)
 
   async function salvar(extra?: any) {
     setSalvando(true)
     await fetch('/api/posts', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: pauta.id, briefing, sugestaoImagem, textoImagem, legenda, ...extra }),
+      body: JSON.stringify({ id: pauta.id, briefing, sugestaoImagem, textoImagem, legenda, formato, ...extra }),
     }).catch(() => {})
     setSalvando(false)
     onSalvo()
@@ -354,6 +355,23 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Copy (legenda)</label>
         <textarea value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicação..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 100, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Formato</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { key: 'feed', label: 'Feed', cor: '#1d4ed8' },
+              { key: 'reel', label: 'Reel', cor: '#dc2626' },
+              { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
+              { key: 'story', label: 'Story', cor: '#7c3aed' },
+            ].map(f => (
+              <button key={f.key} type="button" onClick={() => setFormato(f.key)}
+                style={{ padding: '6px 14px', borderRadius: 8, border: formato === f.key ? `2px solid ${f.cor}` : '1px solid #e0e0e0', background: formato === f.key ? `${f.cor}10` : '#fff', fontSize: 12, fontWeight: formato === f.key ? 700 : 500, color: formato === f.key ? f.cor : '#666', cursor: 'pointer' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {(pauta.ajusteCopy || pauta.ajusteCriativo) && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: '#b91c1c' }}>
