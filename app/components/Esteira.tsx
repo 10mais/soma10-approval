@@ -64,7 +64,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [overCol, setOverCol] = useState<string | null>(null)
   const [pautaModal, setPautaModal] = useState<Pauta | null>(null)
   const [novaPautaModal, setNovaPautaModal] = useState(false)
-  const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' })
+  const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' })
   const [gerandoIA, setGerandoIA] = useState(false)
   const [iaMsg, setIaMsg] = useState('')
 
@@ -103,7 +103,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId: plano.clienteId, clienteNome: plano.clienteNome, imagens: [], legenda: formPauta.sugestaoLegenda || '',
-        formato: 'feed', rascunhoInterno: true, planoId: plano.id, etapa: 'briefing',
+        formato: formPauta.formato || 'feed', rascunhoInterno: true, planoId: plano.id, etapa: 'briefing',
         briefing: formPauta.briefing, sugestaoImagem: formPauta.sugestaoImagem, textoImagem: formPauta.textoImagem, sugestaoLegenda: formPauta.sugestaoLegenda,
       }),
     })
@@ -151,7 +151,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
         </select>
         <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
         {planoSel && <>
-          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
@@ -290,6 +290,22 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Sugestão de legenda (opcional)</label>
                 <textarea value={formPauta.sugestaoLegenda} onChange={e => setFormPauta(f => ({ ...f, sugestaoLegenda: e.target.value }))} placeholder="Rascunho da legenda/copy para o post..."
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Formato</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[
+                  { key: 'feed', label: 'Feed', cor: '#1d4ed8' },
+                  { key: 'reel', label: 'Reel', cor: '#dc2626' },
+                  { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
+                  { key: 'story', label: 'Story', cor: '#7c3aed' },
+                ].map(f => (
+                  <button key={f.key} type="button" onClick={() => setFormPauta(p => ({ ...p, formato: f.key }))}
+                    style={{ padding: '6px 14px', borderRadius: 8, border: formPauta.formato === f.key ? `2px solid ${f.cor}` : '1px solid #e0e0e0', background: formPauta.formato === f.key ? `${f.cor}10` : '#fff', fontSize: 12, fontWeight: formPauta.formato === f.key ? 700 : 500, color: formPauta.formato === f.key ? f.cor : '#666', cursor: 'pointer' }}>
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
