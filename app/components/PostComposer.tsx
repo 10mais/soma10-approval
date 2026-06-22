@@ -151,8 +151,8 @@ export default function PostComposer({
     setErroUpload('')
     for (const original of Array.from(arquivos)) {
       // Verifica tamanho antes de tentar upload (limite: 200MB)
-      if (original.size > 200 * 1024 * 1024) {
-        setErroUpload(`O arquivo "${original.name}" tem ${(original.size / 1024 / 1024).toFixed(0)}MB e excede o limite de 200MB. Reduza o tamanho ou comprima o video antes de enviar.`)
+      if (original.size > 500 * 1024 * 1024) {
+        setErroUpload(`O arquivo "${original.name}" tem ${(original.size / 1024 / 1024).toFixed(0)}MB e excede o limite de 500MB. Reduza o tamanho ou comprima o video antes de enviar.`)
         continue
       }
       const arquivo = await comprimirImagem(original)
@@ -364,7 +364,7 @@ export default function PostComposer({
             <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
               {enviandoArquivo ? 'Enviando arquivo...' : 'Arraste arquivos aqui ou clique para selecionar'}
             </p>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>JPG, PNG, WEBP, GIF, MP4, MOV — até 200MB</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>JPG, PNG, WEBP, GIF, MP4, MOV — até 500MB</p>
           </div>
 
           {emEnvio.length > 0 && (

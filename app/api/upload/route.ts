@@ -13,7 +13,7 @@ const TIPOS_PERMITIDOS = [
   'text/plain', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/ogg',
 ]
 // Limite generoso — o upload vai direto do navegador para o Blob, sem passar pelo servidor.
-const TAMANHO_MAX = 200 * 1024 * 1024 // 200 MB por arquivo
+const TAMANHO_MAX = 500 * 1024 * 1024 // 500 MB por arquivo
 
 // Esta rota apenas autoriza o upload e devolve um token de curta duração.
 // O arquivo é enviado diretamente do navegador para o Vercel Blob (sem limite de 4,5 MB).
