@@ -18,11 +18,16 @@ export async function POST(req: NextRequest) {
   const post = await redis.get<Post>(`post:${id}`)
   if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
+  // Protecao anti-duplicata: se ja esta publicado em todas as redes, nao republica
+  if (post.status === 'publicado') return NextResponse.json({ ok: true, jaPublicado: true })
+
+  // Remove do indice de agendados ANTES de publicar (evita race condition com o cron)
+  await redis.srem('agendados', id)
+
   const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
   const resultado = await processarPublicacao(post, cliente)
 
   await redis.set(`post:${id}`, { ...post, ...resultado.campos })
-  await redis.srem('agendados', id) // se estava agendado, sai do índice
 
   const nome = post.clienteNome || 'Cliente'
   if (resultado.ok) {

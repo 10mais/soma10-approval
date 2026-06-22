@@ -56,10 +56,15 @@ export async function GET(req: NextRequest) {
     if (!post.dataAgendada || new Date(post.dataAgendada).getTime() > agora) continue
 
     verificados++
-    const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
-    const resultado = await processarPublicacao(post, cliente)
-    await redis.set(`post:${id}`, { ...post, ...resultado.campos })
-    await redis.srem('agendados', id) // sai do índice (publicado ou falhou — não re-tenta em loop)
+    // CRITICO: remove do indice ANTES de publicar para evitar que outra instancia
+    // do cron pegue o mesmo post e publique em duplicata (race condition)
+    await redis.srem('agendados', id)
+    // Re-le o post fresco do banco (pode ter sido atualizado por outra instancia)
+    const postFresco = await redis.get<Post>(`post:${id}`)
+    if (!postFresco || postFresco.status === 'publicado') continue
+    const cliente = postFresco.clienteId ? await redis.get<any>(`cliente:${postFresco.clienteId}`) : null
+    const resultado = await processarPublicacao(postFresco, cliente)
+    await redis.set(`post:${id}`, { ...postFresco, ...resultado.campos })
     const nome = post.clienteNome || 'Cliente'
     if (resultado.ok) {
       publicados++
