@@ -27,6 +27,8 @@ export type Cliente = {
   corPrimaria?: string
   corSecundaria?: string
   tipo?: 'cliente' | 'interno' // cliente externo ou projeto interno da agência
+  entregaveis?: string[] // ex.: ['social_media', 'trafego_meta', 'trafego_google', 'landing_page']
+  postsMensais?: number // quantidade contratada de posts por mês (0 ou ausente = não se aplica)
   criadoEm: string
   // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string

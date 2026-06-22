@@ -12,7 +12,7 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -50,6 +50,16 @@ const STATUS_TEXT: Record<string, string> = {
   publicado: '#16a34a',      // verde
   falha_publicacao: '#991b1b', // vermelho escuro
 }
+
+const ENTREGAVEIS_OPCOES = [
+  { key: 'social_media', label: 'Social Media' },
+  { key: 'trafego_meta', label: 'Trafego pago Meta Ads' },
+  { key: 'trafego_google', label: 'Trafego pago Google Ads' },
+  { key: 'landing_page', label: 'Landing Page(s)' },
+  { key: 'branding', label: 'Branding / Identidade visual' },
+  { key: 'email_marketing', label: 'E-mail marketing' },
+  { key: 'consultoria', label: 'Consultoria' },
+]
 
 // Ícones de contorno (substituem emojis por um visual mais profissional)
 function Icon({ children, size = 16, ...props }: { children: any; size?: number } & Record<string, any>) {
@@ -317,7 +327,7 @@ function Dashboard() {
   const [rascunhoMsg, setRascunhoMsg] = useState('')
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
-  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente' })
+  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12 })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
@@ -834,7 +844,7 @@ function Dashboard() {
 
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
-    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: (c as any).tipo || 'cliente' })
+    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0 })
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -2260,6 +2270,27 @@ function Dashboard() {
                     <option value="interno">Projeto interno</option>
                   </select>
                 </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Entregaveis</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {ENTREGAVEIS_OPCOES.map(op => {
+                      const ativo = (novoCliente.entregaveis || []).includes(op.key)
+                      return (
+                        <button key={op.key} type="button" onClick={() => setNovoCliente(p => ({ ...p, entregaveis: ativo ? (p.entregaveis || []).filter(e => e !== op.key) : [...(p.entregaveis || []), op.key] }))}
+                          style={{ padding: '6px 12px', borderRadius: 8, border: ativo ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: ativo ? '#fffbeb' : '#fff', fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? '#92400e' : '#666', cursor: 'pointer' }}>
+                          {op.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {(novoCliente.entregaveis || []).includes('social_media') && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Posts mensais:</label>
+                      <input type="number" min="0" value={novoCliente.postsMensais || 12} onChange={e => setNovoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
+                        style={{ width: 70, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    </div>
+                  )}
+                </div>
 
                 {/* Identidade visual do cliente */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
@@ -2402,6 +2433,27 @@ function Dashboard() {
                           <option value="cliente">Cliente</option>
                           <option value="interno">Projeto interno</option>
                         </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Entregaveis</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {ENTREGAVEIS_OPCOES.map(op => {
+                            const ativo = ((edicaoCliente as any).entregaveis || []).includes(op.key)
+                            return (
+                              <button key={op.key} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, entregaveis: ativo ? ((p as any).entregaveis || []).filter((e: string) => e !== op.key) : [...((p as any).entregaveis || []), op.key] }))}
+                                style={{ padding: '5px 10px', borderRadius: 8, border: ativo ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: ativo ? '#fffbeb' : '#fff', fontSize: 11, fontWeight: ativo ? 700 : 500, color: ativo ? '#92400e' : '#666', cursor: 'pointer' }}>
+                                {op.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {((edicaoCliente as any).entregaveis || []).includes('social_media') && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Posts mensais:</label>
+                            <input type="number" min="0" value={(edicaoCliente as any).postsMensais || 0} onChange={e => setEdicaoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
+                              style={{ width: 70, padding: '5px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { nome, instagram, logo, corPrimaria, corSecundaria, loginEmail, tipo } = await req.json()
-  const cliente: Cliente = { id: uuid(), nome, instagram, logo, corPrimaria, corSecundaria, tipo: tipo || 'cliente', criadoEm: new Date().toISOString() }
+  const { nome, instagram, logo, corPrimaria, corSecundaria, loginEmail, tipo, entregaveis, postsMensais } = await req.json()
+  const cliente: Cliente = { id: uuid(), nome, instagram, logo, corPrimaria, corSecundaria, tipo: tipo || 'cliente', entregaveis: entregaveis || [], postsMensais: Number(postsMensais) || 0, criadoEm: new Date().toISOString() }
 
   // Criar acesso de login para o cliente, se um e-mail foi informado
   if (loginEmail) {
@@ -82,7 +82,7 @@ export async function PUT(req: NextRequest) {
   const cliente = await redis.get<Cliente>(`cliente:${id}`)
   if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria', 'tipo',
+  const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria', 'tipo', 'entregaveis', 'postsMensais',
     'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos',
     'documentoMarca', 'documentoMarcaGeradoEm']
   const atualizado = { ...cliente }
