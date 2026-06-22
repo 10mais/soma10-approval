@@ -64,7 +64,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [overCol, setOverCol] = useState<string | null>(null)
   const [pautaModal, setPautaModal] = useState<Pauta | null>(null)
   const [novaPautaModal, setNovaPautaModal] = useState(false)
-  const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' })
+  const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' })
+  const [enviandoRefImagem, setEnviandoRefImagem] = useState(false)
   const [gerandoIA, setGerandoIA] = useState(false)
   const [iaMsg, setIaMsg] = useState('')
   const [gerandoLegendaNova, setGerandoLegendaNova] = useState(false)
@@ -124,11 +125,11 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
       body: JSON.stringify({
         clienteId: plano.clienteId, clienteNome: plano.clienteNome, imagens: [], legenda: formPauta.sugestaoLegenda || '',
         formato: formPauta.formato || 'feed', rascunhoInterno: true, planoId: plano.id, etapa: 'briefing',
-        briefing: formPauta.briefing, sugestaoImagem: formPauta.sugestaoImagem, textoImagem: formPauta.textoImagem, sugestaoLegenda: formPauta.sugestaoLegenda,
+        briefing: formPauta.briefing, sugestaoImagem: [formPauta.sugestaoImagem, formPauta.refImagemUrl].filter(Boolean).join('\n'), textoImagem: formPauta.textoImagem, sugestaoLegenda: formPauta.sugestaoLegenda,
       }),
     })
     setNovaPautaModal(false)
-    setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' })
+    setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' })
     carregarPautas(planoSel)
   }
 
@@ -171,7 +172,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
         </select>
         <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
         {planoSel && <>
-          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
@@ -297,9 +298,30 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Sugestão de imagem (opcional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem (opcional)</label>
                 <textarea value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder="Descreva a ideia visual: foto de produto, lifestyle, bastidores..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
+                    {enviandoRefImagem ? 'Enviando...' : '+ Anexar imagem'}
+                    <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRefImagem} onChange={async e => {
+                      if (!e.target.files?.[0]) return
+                      setEnviandoRefImagem(true)
+                      try {
+                        const f = e.target.files[0]; const ext = f.name.split('.').pop() || 'jpg'
+                        const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type })
+                        setFormPauta(p => ({ ...p, refImagemUrl: blob.url }))
+                      } catch {} finally { setEnviandoRefImagem(false) }
+                      e.target.value = ''
+                    }} />
+                  </label>
+                  <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
+                  <input value={formPauta.refImagemUrl} onChange={e => setFormPauta(f => ({ ...f, refImagemUrl: e.target.value }))} placeholder="Link do Drive ou URL da referencia"
+                    style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
+                </div>
+                {formPauta.refImagemUrl && /\.(jpg|jpeg|png|gif|webp)/i.test(formPauta.refImagemUrl) && (
+                  <img src={formPauta.refImagemUrl} alt="" style={{ marginTop: 8, maxWidth: 120, maxHeight: 80, borderRadius: 8, objectFit: 'cover' }} />
+                )}
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto na imagem (opcional)</label>
@@ -387,6 +409,9 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
     finally { setGerandoLegenda(false) }
   }
 
+  const [refImgUrl, setRefImgUrl] = useState('')
+  const [enviandoRef, setEnviandoRef] = useState(false)
+
   async function salvar(extra?: any) {
     setSalvando(true)
     await fetch('/api/posts', {
@@ -406,9 +431,31 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <textarea value={briefing} onChange={e => setBriefing(e.target.value)} placeholder="Tema, ângulo, objetivo..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Sugestão de imagem</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem</label>
         <textarea value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder="Descreva a ideia visual..."
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
+            {enviandoRef ? 'Enviando...' : '+ Anexar imagem'}
+            <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRef} onChange={async e => {
+              if (!e.target.files?.[0]) return
+              setEnviandoRef(true)
+              try {
+                const f = e.target.files[0]; const ext = f.name.split('.').pop() || 'jpg'
+                const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type })
+                setRefImgUrl(blob.url)
+                setSugestaoImagem(prev => [prev, blob.url].filter(Boolean).join('\n'))
+              } catch {} finally { setEnviandoRef(false) }
+              e.target.value = ''
+            }} />
+          </label>
+          <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
+          <input value={refImgUrl} onChange={e => setRefImgUrl(e.target.value)} placeholder="Link do Drive ou URL da referencia"
+            style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
+        </div>
+        {refImgUrl && /\.(jpg|jpeg|png|gif|webp)/i.test(refImgUrl) && (
+          <img src={refImgUrl} alt="" style={{ marginBottom: 12, maxWidth: 120, maxHeight: 80, borderRadius: 8, objectFit: 'cover' }} />
+        )}
 
         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto na imagem</label>
         <input value={textoImagem} onChange={e => setTextoImagem(e.target.value)} placeholder="Texto que aparece na arte"

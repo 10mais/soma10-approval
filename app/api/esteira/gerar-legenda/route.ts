@@ -53,7 +53,7 @@ REGRAS:
 - A legenda deve ser ESPECIFICA para o briefing/tema informado.
 - Siga o tom de voz da marca (informado acima).
 - Respeite as preferencias e restricoes.
-- Inclua hashtags relevantes no final (8-15 hashtags).
+- Inclua no maximo 5 hashtags relevantes no final.
 - Se for Reel, faca um gancho forte na primeira frase.
 - Nao use emojis em excesso (maximo 3-4 por legenda).
 - Tamanho ideal: 3 a 6 paragrafos curtos.

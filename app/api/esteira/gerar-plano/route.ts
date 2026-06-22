@@ -90,7 +90,7 @@ REGRAS:
 - Sugira um HORARIO para cada postagem (entre 10h e 20h, variando).
 - O tom de voz deve seguir o informado acima.
 - Respeite as preferencias e restricoes da marca.
-- As legendas devem ser completas e publicaveis (com hashtags relevantes no final).
+- As legendas devem ser completas e publicaveis (com no maximo 5 hashtags relevantes no final).
 
 Responda APENAS com um JSON valido (sem markdown, sem explicacao, sem backticks) no formato:
 [
