@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
-type Cliente = { id: string; nome: string }
-type Usuario = { id: string; nome: string; email: string; role: string }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
+type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
 type Tarefa = {
   id: string; titulo: string; descricao?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
@@ -88,6 +88,9 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
           <option value="">Todos os responsaveis</option>
           {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
         </select>
+        {(filtroCliente || filtroResponsavel) && (
+          <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
+        )}
         <button onClick={() => setNovaModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
       </div>
 
@@ -117,8 +120,18 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                       style={{ background: '#fff', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}` }}>
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        {t.responsavelNome && <span style={{ fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>{t.responsavelNome}</span>}
-                        {t.clienteNome && <span style={{ fontSize: 10, color: '#888' }}>{t.clienteNome}</span>}
+                        {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>
+                            {u?.foto ? <img src={u.foto} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }} /> : null}
+                            {t.responsavelNome}
+                          </span>
+                        )})()}
+                        {t.clienteNome && (() => { const c = (clientes || []).find(x => x.id === t.clienteId); return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#888' }}>
+                            {c?.logo ? <img src={c.logo} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }} /> : null}
+                            {t.clienteNome}
+                          </span>
+                        )})()}
                         {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
                         {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>

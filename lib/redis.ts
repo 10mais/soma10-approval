@@ -15,6 +15,7 @@ export type Usuario = {
   senha: string
   role: Role
   cargo?: string // função/cargo da pessoa (ex.: Social Media, Designer)
+  foto?: string // URL da foto de perfil do usuário
   clienteId?: string // presente quando role === 'cliente', vincula ao Cliente
   criadoEm: string
 }

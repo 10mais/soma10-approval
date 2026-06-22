@@ -317,7 +317,7 @@ function Dashboard() {
   const [docIAMsg, setDocIAMsg] = useState('')
   const [brandModo, setBrandModo] = useState<'card' | 'editar' | 'ver'>('editar')
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
-  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '' })
+  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string; foto: string }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '', foto: '' })
   const [bibBusca, setBibBusca] = useState('')
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
@@ -970,7 +970,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '' })
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '' })
     setVerSenhaEdicao(false)
   }
 
@@ -978,7 +978,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -1183,24 +1183,49 @@ function Dashboard() {
 
           <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />
 
-          {/* NÍVEL AGÊNCIA — oculto na visão de cliente */}
+          {/* NIVEL AGENCIA — oculto na visao de cliente */}
           {!verComoClienteId && (
             <>
-              <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Agência
-              </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['home', 'clientes', 'esteira', 'tarefas', 'playbook', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+                {(['home', 'tarefas', 'playbook', 'esteira'] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'home' ? 'Painel' : a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuarios' : 'Configuracoes'}
+                    {a === 'home' ? 'Painel' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : 'Esteira'}
                   </button>
                 ))}
               </nav>
+              <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button onClick={() => setAba('mensagens' as any)} style={{
+                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  fontWeight: aba === 'mensagens' ? 700 : 500, color: aba === 'mensagens' ? '#111' : '#888',
+                  background: aba === 'mensagens' ? '#ffc00f' : 'transparent', fontSize: 14,
+                }}>Mensagens</button>
+              </nav>
+              {role === 'admin' && (
+                <>
+                  <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                  <p style={{ margin: '0 0 6px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Configuracoes
+                  </p>
+                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {(['config', 'usuarios', 'clientes'] as const).map(a => (
+                      <button key={a} onClick={() => setAba(a as any)} style={{
+                        padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                        background: aba === a ? '#ffc00f' : 'transparent',
+                        fontSize: 13, transition: 'all 0.15s',
+                      }}>
+                        {a === 'config' ? 'Geral' : a === 'usuarios' ? 'Colaboradores' : 'Clientes'}
+                      </button>
+                    ))}
+                  </nav>
+                </>
+              )}
             </>
           )}
 
@@ -2578,6 +2603,9 @@ function Dashboard() {
               }).map(u => (
                 <div key={u.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#888', flexShrink: 0 }}>
+                      {(u as any).foto ? <img src={(u as any).foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : u.nome[0]?.toUpperCase()}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}{(u as any).cargo ? <span style={{ fontWeight: 500, fontSize: 13, color: '#888' }}> · {(u as any).cargo}</span> : null}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
@@ -2594,6 +2622,20 @@ function Dashboard() {
                   </div>
                   {editandoUsuario === u.email && (
                     <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #e0e0e0' }}>
+                            {edicaoUsuario.foto ? <img src={edicaoUsuario.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Foto</span>}
+                          </div>
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                            if (!e.target.files?.[0]) return
+                            const url = await enviarImagem(e.target.files[0])
+                            if (url) setEdicaoUsuario(p => ({ ...p, foto: url }))
+                            e.target.value = ''
+                          }} />
+                        </label>
+                        <span style={{ fontSize: 11, color: '#888' }}>Clique para alterar a foto</span>
+                      </div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />

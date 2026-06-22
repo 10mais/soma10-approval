@@ -36,13 +36,14 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { email, nome, role, novaSenha, cargo } = await req.json()
+  const { email, nome, role, novaSenha, cargo, foto } = await req.json()
   const usuario = await redis.get<Usuario>(`usuario:${email}`)
   if (!usuario) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
   if (nome) usuario.nome = nome
   if (role) usuario.role = role
   if (cargo !== undefined) usuario.cargo = cargo
+  if (foto !== undefined) usuario.foto = foto
   if (novaSenha) usuario.senha = await bcrypt.hash(novaSenha, 10)
 
   await redis.set(`usuario:${email}`, usuario)
