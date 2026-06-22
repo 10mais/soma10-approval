@@ -9,6 +9,7 @@ import ChatInterno from '../components/ChatInterno'
 import Esteira from '../components/Esteira'
 import DashboardHome from '../components/DashboardHome'
 import GestaoTarefas from '../components/GestaoTarefas'
+import Playbook from '../components/Playbook'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -267,7 +268,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas'>('home')
+  const [aba, setAba] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook'>('home')
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
@@ -1189,14 +1190,14 @@ function Dashboard() {
                 Agência
               </p>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['home', 'clientes', 'esteira', 'tarefas', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
+                {(['home', 'clientes', 'esteira', 'tarefas', 'playbook', 'mensagens', ...(role === 'admin' ? ['usuarios', 'config'] : [])] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'home' ? 'Painel' : a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'tarefas' ? 'Tarefas' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuarios' : 'Configuracoes'}
+                    {a === 'home' ? 'Painel' : a === 'clientes' ? 'Clientes' : a === 'esteira' ? 'Esteira' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : a === 'mensagens' ? 'Mensagens' : a === 'usuarios' ? 'Usuarios' : 'Configuracoes'}
                   </button>
                 ))}
               </nav>
@@ -2190,6 +2191,10 @@ function Dashboard() {
 
         {aba === 'tarefas' && (
           <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} />
+        )}
+
+        {aba === 'playbook' && (
+          <Playbook clientes={clientes as any} />
         )}
 
         {aba === 'mensagens' && (

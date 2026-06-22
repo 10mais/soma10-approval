@@ -94,6 +94,25 @@ export type ChatMensagem = {
   criadoEm: string
 }
 
+// Playbook — marcos/entregas por cliente
+export type MarcoStatus = 'planejado' | 'em_andamento' | 'concluido' | 'atrasado' | 'cancelado'
+export type MarcoCategoria = 'social_media' | 'trafego' | 'branding' | 'landing_page' | 'estrategia' | 'reuniao' | 'entrega' | 'outro'
+export type Marco = {
+  id: string
+  clienteId: string
+  clienteNome: string
+  titulo: string
+  descricao?: string
+  categoria: MarcoCategoria
+  status: MarcoStatus
+  dataInicio: string // ISO
+  dataFim?: string // ISO
+  responsavelNome?: string
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 // Gestao de tarefas
 export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
