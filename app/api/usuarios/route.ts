@@ -7,7 +7,8 @@ import { v4 as uuid } from 'uuid'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const role = (session?.user as any)?.role
+  if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const emails = await redis.smembers('usuarios')
   const usuarios = await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))

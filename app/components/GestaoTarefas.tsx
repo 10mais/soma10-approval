@@ -1,12 +1,15 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { upload } from '@vercel/blob/client'
+import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string }
 type Usuario = { id: string; nome: string; email: string; role: string }
 type Tarefa = {
   id: string; titulo: string; descricao?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
-  prazo?: string; criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
+  prazo?: string; anexos?: { nome: string; url: string; tipo: string }[]
+  criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
 }
 
 const COLUNAS: { key: string; label: string }[] = [
@@ -83,14 +86,14 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
         </select>
         <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
           <option value="">Todos os responsaveis</option>
-          {usuarios.filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+          {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
         </select>
         <button onClick={() => setNovaModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
       </div>
 
       {/* KANBAN */}
       {view === 'kanban' && (
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {COLUNAS.map(col => {
             const cards = filtradas.filter(t => t.status === col.key)
             return (
@@ -100,13 +103,14 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                 onDrop={() => { if (dragId) moverStatus(dragId, col.key); setDragId(null); setOverCol(null) }}
                 style={{
                   flex: '0 0 240px', width: 240, background: overCol === col.key ? '#fffbeb' : '#f6f6f7', borderRadius: 12, padding: 10,
-                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2, alignSelf: 'flex-start',
+                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+                  display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: '#444' }}>{col.label}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(t => (
                     <div key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
@@ -116,6 +120,7 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                         {t.responsavelNome && <span style={{ fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>{t.responsavelNome}</span>}
                         {t.clienteNome && <span style={{ fontSize: 10, color: '#888' }}>{t.clienteNome}</span>}
                         {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
+                        {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>
                     </div>
                   ))}
@@ -169,13 +174,27 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
     responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
   })
+  const [anexos, setAnexos] = useState<{ nome: string; url: string; tipo: string }[]>(tarefa?.anexos || [])
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [salvando, setSalvando] = useState(false)
+
+  async function enviarAnexo(arquivo: File) {
+    setEnviandoAnexo(true)
+    try {
+      const ext = arquivo.name.split('.').pop() || 'bin'
+      const blob = await upload(`tarefas/${uuid()}.${ext}`, arquivo, {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type,
+      })
+      setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
+    } catch { /* erro silencioso */ }
+    setEnviandoAnexo(false)
+  }
 
   async function salvar() {
     setSalvando(true)
-    const resp = usuarios.find(u => u.email === form.responsavelEmail)
-    const cli = clientes.find(c => c.id === form.clienteId)
-    const body = { ...form, responsavelNome: resp?.nome || '', clienteNome: cli?.nome || '', prazo: form.prazo ? new Date(form.prazo + 'T23:59:59').toISOString() : '' }
+    const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
+    const cli = (clientes || []).find(c => c.id === form.clienteId)
+    const body = { ...form, anexos, responsavelNome: resp?.nome || '', clienteNome: cli?.nome || '', prazo: form.prazo ? new Date(form.prazo + 'T23:59:59').toISOString() : '' }
     if (tarefa) {
       await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) })
     } else {
@@ -206,7 +225,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
               <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                 <option value="">Sem responsavel</option>
-                {usuarios.filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+                {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
             </div>
             <div>
@@ -240,6 +259,32 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
             </div>
           </div>
         </div>
+        {/* Anexos */}
+        <div style={{ marginTop: 14 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Anexos</label>
+          {anexos.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+              {anexos.map((a, i) => (
+                <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+                  {a.tipo.startsWith('video') ? (
+                    <video src={a.url} style={{ width: 80, height: 80, objectFit: 'cover' }} muted preload="metadata" />
+                  ) : a.tipo.startsWith('image') ? (
+                    <img src={a.url} alt={a.nome} style={{ width: 80, height: 80, objectFit: 'cover' }} />
+                  ) : (
+                    <a href={a.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: '#f5f5f5', fontSize: 10, color: '#666', textDecoration: 'none', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</a>
+                  )}
+                  <button onClick={() => setAnexos(arr => arr.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#444' }}>
+            {enviandoAnexo ? 'Enviando...' : '+ Adicionar anexo'}
+            <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={enviandoAnexo}
+              onChange={e => { if (e.target.files?.[0]) enviarAnexo(e.target.files[0]); e.target.value = '' }} />
+          </label>
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
           <button onClick={salvar} disabled={salvando || !form.titulo.trim()} style={{ flex: 1, padding: '11px 0', background: form.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.titulo.trim() ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (tarefa ? 'Salvar' : 'Criar tarefa')}

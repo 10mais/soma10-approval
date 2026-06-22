@@ -127,6 +127,7 @@ export type Tarefa = {
   clienteId?: string
   clienteNome?: string
   prazo?: string // ISO date
+  anexos?: { nome: string; url: string; tipo: string }[]
   criadoPor: string
   criadoEm: string
   atualizadoEm: string

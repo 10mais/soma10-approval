@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest) {
   const tarefa = await redis.get<Tarefa>(`tarefa:${id}`)
   if (!tarefa) return NextResponse.json({ error: 'nao encontrada' }, { status: 404 })
 
-  const camposPermitidos = ['titulo', 'descricao', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo']
+  const camposPermitidos = ['titulo', 'descricao', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
