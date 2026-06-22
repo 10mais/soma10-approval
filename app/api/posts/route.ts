@@ -29,8 +29,9 @@ export async function GET(req: NextRequest) {
     filtrados = filtrados.filter(p => !p!.rascunhoInterno)
   }
 
-  // Posts na esteira de criativos só aparecem no Planner quando chegam à etapa final ("pronto")
-  filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto')
+  // Posts na esteira: exclui briefing/copy/criativo do Planner, mas MANTEM aprovacao_copy
+  // e aprovacao_criativo (necessarios para a tela de aprovacoes do cliente)
+  filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto' || p!.etapa === 'aprovacao_copy' || p!.etapa === 'aprovacao_criativo')
 
   return NextResponse.json(filtrados)
 }

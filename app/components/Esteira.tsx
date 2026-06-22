@@ -310,7 +310,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Legenda (opcional)</label>
                   <button onClick={gerarLegendaNovaPauta} disabled={gerandoLegendaNova || !formPauta.briefing.trim()} type="button"
-                    style={{ padding: '4px 12px', background: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#f0f0f0' : '#111', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#888' : '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer' }}>
+                    style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#ccc' : '#7c3aed', border: `1px solid ${(gerandoLegendaNova || !formPauta.briefing.trim()) ? '#e0e0e0' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
                     {gerandoLegendaNova ? 'Gerando...' : 'Criar com IA'}
                   </button>
                 </div>
@@ -416,7 +417,8 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Copy (legenda)</label>
           <button onClick={gerarLegendaIA} disabled={gerandoLegenda || !briefing.trim()} type="button"
-            style={{ padding: '4px 12px', background: gerandoLegenda ? '#f0f0f0' : '#111', color: gerandoLegenda ? '#888' : '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer' }}>
+            style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegenda || !briefing.trim()) ? '#ccc' : '#7c3aed', border: `1px solid ${(gerandoLegenda || !briefing.trim()) ? '#e0e0e0' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
             {gerandoLegenda ? 'Gerando...' : 'Criar com IA'}
           </button>
         </div>

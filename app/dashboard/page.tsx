@@ -468,7 +468,8 @@ function Dashboard() {
 
   const role = (session?.user as any)?.role
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
-  const postsView = verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts
+  const postsPlanner = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto')
+  const postsView = verComoClienteId ? postsPlanner.filter(p => p.clienteId === verComoClienteId) : postsPlanner
 
   // Cliente logado: trava na visao dele, aba padrao aprovacoes
   const ehCliente = role === 'cliente'
