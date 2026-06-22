@@ -1000,7 +1000,7 @@ function Dashboard() {
       `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => { setVerComoClienteId(''); setAba('clientes'); router.push('/dashboard') }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o início">
+        <div onClick={() => { setVerComoClienteId(''); setAba('clientes'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
@@ -1053,7 +1053,10 @@ function Dashboard() {
                     notificacoes.map(n => (
                       <div key={n.id} onClick={() => {
                         if (!n.lida) marcarNotificacaoLida(n.id)
-                        if (n.postId) { setInboxAberto(false); router.push(`/aprovar/${n.postId}`) }
+                        if (n.postId) {
+                          const p = posts.find((x: any) => x.id === n.postId)
+                          if (p) { setInboxAberto(false); setPostPreview(p) }
+                        }
                       }} style={{
                         padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
                         background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start',
