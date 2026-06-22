@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
-import { notificarEquipe } from '@/lib/notificacoes'
+import { notificarDono } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     post.copyAprovadaEm = agora
     post.ajusteCopy = undefined
     await redis.set(`post:${postId}`, post)
-    await notificarEquipe('geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, postId)
+    await notificarDono(post.criadoPor, 'geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     post.etapa = 'copy'
     post.ajusteCopy = comentario || 'Ajuste solicitado'
     await redis.set(`post:${postId}`, post)
-    await notificarEquipe('geral', `Ajuste de copy — ${nome}`, `${quem} pediu ajuste na copy: "${comentario || 'sem comentário'}".`, postId)
+    await notificarDono(post.criadoPor, 'geral', `Ajuste de copy — ${nome}`, `${quem} pediu ajuste na copy: "${comentario || 'sem comentário'}".`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     await redis.sadd('agendados', postId)
     await redis.set(`post:${postId}`, post)
     const msg = `${quem} aprovou o criativo e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
-    await notificarEquipe('geral', `Criativo aprovado — ${nome}`, msg, postId)
+    await notificarDono(post.criadoPor, 'geral', `Criativo aprovado — ${nome}`, msg, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     post.etapa = 'criativo'
     post.ajusteCriativo = comentario || 'Ajuste solicitado'
     await redis.set(`post:${postId}`, post)
-    await notificarEquipe('geral', `Ajuste de criativo — ${nome}`, `${quem} pediu ajuste no criativo: "${comentario || 'sem comentário'}".`, postId)
+    await notificarDono(post.criadoPor, 'geral', `Ajuste de criativo — ${nome}`, `${quem} pediu ajuste no criativo: "${comentario || 'sem comentário'}".`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }
 
