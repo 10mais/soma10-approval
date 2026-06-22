@@ -454,14 +454,23 @@ function Dashboard() {
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
   const postsView = verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts
 
-  // Quando estamos numa área travada de cliente (ou o usuário é cliente), o Analytics deve sempre se referir a ele
+  // Cliente logado: trava na visao dele, aba padrao aprovacoes
+  const ehCliente = role === 'cliente'
   useEffect(() => {
-    if (role === 'cliente' && (session?.user as any)?.clienteId) {
+    if (ehCliente && (session?.user as any)?.clienteId) {
+      setVerComoClienteId((session?.user as any).clienteId)
+      setAba('aprovacoes')
+    }
+  }, [ehCliente, session])
+
+  // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
+  useEffect(() => {
+    if (ehCliente && (session?.user as any)?.clienteId) {
       setAnalyticsClienteId((session?.user as any).clienteId)
     } else if (verComoClienteId) {
       setAnalyticsClienteId(verComoClienteId)
     }
-  }, [verComoClienteId, role, session])
+  }, [verComoClienteId, ehCliente, session])
 
   async function buscarAnalytics() {
     if (!analyticsClienteId) { setAnalyticsErro('Selecione um cliente para ver o desempenho.'); return }
@@ -1019,7 +1028,7 @@ function Dashboard() {
       `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => { setVerComoClienteId(''); setAba('home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
+        <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
@@ -1095,6 +1104,22 @@ function Dashboard() {
             )}
           </div>
 
+          {role === 'admin' && (
+            <select onChange={e => {
+              const v = e.target.value
+              if (!v) return
+              if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
+              // Simular como um usuario especifico
+              const u = usuarios.find((x: any) => x.email === v)
+              if (u && (u as any).clienteId) { setVerComoClienteId((u as any).clienteId); setAba('aprovacoes') }
+              else if (u) { /* gerente — so mostra o nome, nao tem visao diferente */ }
+              e.target.value = ''
+            }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
+              <option value="">Visualizar como...</option>
+              <option value="_reset">Voltar a minha visao</option>
+              {usuarios.map((u: any) => <option key={u.email} value={u.email}>{u.nome} ({u.role})</option>)}
+            </select>
+          )}
           <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
           <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
           <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#fff' }}>Sair</button>
@@ -1107,8 +1132,32 @@ function Dashboard() {
           width: 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
           minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56, padding: '20px 14px', boxSizing: 'border-box',
         }}>
-          {/* Seletor de visualização por cliente — primeira coisa exibida */}
-          <div style={{ marginBottom: 20 }}>
+          {/* PAINEL DO CLIENTE — nav simplificada */}
+          {ehCliente && clienteEmVisualizacao && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', marginBottom: 10 }}>
+                {clienteEmVisualizacao.logo && <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />}
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#111' }}>{clienteEmVisualizacao.nome}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#888' }}>Painel do cliente</p>
+                </div>
+              </div>
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {(['aprovacoes', 'esteira', 'playbook'] as const).map(a => (
+                  <button key={a} onClick={() => setAba(a as any)} style={{
+                    padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                    background: aba === a ? '#ffc00f' : 'transparent', fontSize: 14,
+                  }}>
+                    {a === 'aprovacoes' ? 'Aprovacoes' : a === 'esteira' ? 'Esteira' : 'Playbook'}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
+
+          {/* Seletor de visualização por cliente — primeira coisa exibida (equipe) */}
+          {!ehCliente && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               Visualizando como
             </label>
@@ -1179,9 +1228,9 @@ function Dashboard() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
-          <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />
+          {!ehCliente && <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />}
 
           {/* NIVEL AGENCIA — oculto na visao de cliente */}
           {!verComoClienteId && (
@@ -1229,8 +1278,8 @@ function Dashboard() {
             </>
           )}
 
-          {/* NÍVEL CLIENTE — só na visualização como cliente */}
-          {verComoClienteId && (
+          {/* NIVEL CLIENTE — so na visualizacao como cliente (equipe vendo como) */}
+          {verComoClienteId && !ehCliente && (
             <div>
               <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Cliente
@@ -1259,8 +1308,8 @@ function Dashboard() {
         {/* Conteúdo principal */}
         <div style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
 
-        {/* Faixa indicando visualização filtrada por cliente */}
-        {clienteEmVisualizacao && (
+        {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
+        {clienteEmVisualizacao && !ehCliente && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: 12, padding: '10px 16px', marginBottom: 20,
