@@ -340,6 +340,24 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   const [legenda, setLegenda] = useState(pauta.legenda || '')
   const [formato, setFormato] = useState(pauta.formato || 'feed')
   const [salvando, setSalvando] = useState(false)
+  const [gerandoLegenda, setGerandoLegenda] = useState(false)
+  const [legendaMsg, setLegendaMsg] = useState('')
+
+  async function gerarLegendaIA() {
+    setGerandoLegenda(true); setLegendaMsg('Gerando legenda...')
+    try {
+      const r = await fetch('/api/esteira/gerar-legenda', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clienteId: pauta.clienteId, briefing, sugestaoImagem, textoImagem, formato }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setLegendaMsg(d?.error || 'Falha ao gerar.'); return }
+      setLegenda(d.legenda)
+      setLegendaMsg('Legenda gerada!')
+      setTimeout(() => setLegendaMsg(''), 4000)
+    } catch { setLegendaMsg('Erro de conexao.') }
+    finally { setGerandoLegenda(false) }
+  }
 
   async function salvar(extra?: any) {
     setSalvando(true)
@@ -368,8 +386,15 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <input value={textoImagem} onChange={e => setTextoImagem(e.target.value)} placeholder="Texto que aparece na arte"
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Copy (legenda)</label>
-        <textarea value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicação..."
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Copy (legenda)</label>
+          <button onClick={gerarLegendaIA} disabled={gerandoLegenda || !briefing.trim()} type="button"
+            style={{ padding: '4px 12px', background: gerandoLegenda ? '#f0f0f0' : '#111', color: gerandoLegenda ? '#888' : '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer' }}>
+            {gerandoLegenda ? 'Gerando...' : 'Criar com IA'}
+          </button>
+        </div>
+        {legendaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaMsg.includes('Erro') || legendaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaMsg}</p>}
+        <textarea value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicacao..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 100, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
         <div style={{ marginBottom: 12 }}>
