@@ -268,7 +268,14 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAba] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook'>('home')
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook'>(() => {
+    if (typeof window !== 'undefined') {
+      const salva = sessionStorage.getItem('soma10_aba')
+      if (salva) return salva as any
+    }
+    return 'home'
+  })
+  const setAba = (a: typeof aba) => { setAbaRaw(a); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_aba', a) }
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
@@ -324,7 +331,8 @@ function Dashboard() {
   const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
   const [avisoFalhaOculto, setAvisoFalhaOculto] = useState(false)
   const [postPreview, setPostPreview] = useState<Post | null>(null)
-  const [verComoClienteId, setVerComoClienteId] = useState('')
+  const [verComoClienteId, setVerComoClienteIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_clienteId') || '' : ''))
+  const setVerComoClienteId = (id: string) => { setVerComoClienteIdRaw(id); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_clienteId', id) }
   const [buscaCliente, setBuscaCliente] = useState('')
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)

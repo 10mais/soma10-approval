@@ -553,10 +553,20 @@ export default function PostComposer({
 
         {/* Acoes */}
         {modoEdicao ? (
-          <button onClick={() => submeter('salvar')} disabled={!podePublicar}
-            style={{ width: '100%', padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
-            {enviando ? 'Salvando...' : (textoBotao || 'Salvar alteracoes')}
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => submeter('salvar')} disabled={!podePublicar}
+              style={{ flex: 1, padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+              {enviando ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button onClick={() => submeter('agendar')} disabled={!podePublicar || !dataAgendada} type="button"
+              style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (podePublicar && dataAgendada) ? 'pointer' : 'not-allowed', opacity: (podePublicar && dataAgendada) ? 1 : 0.5 }}>
+              Agendar
+            </button>
+            <button onClick={() => submeter('publicar')} disabled={!podePublicar}
+              style={{ flex: 1, padding: '14px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+              Publicar agora
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => submeter('rascunho')} disabled={!podeRascunho} type="button"

@@ -259,19 +259,25 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsavel</label>
-              <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                <option value="">Sem responsavel</option>
-                {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
-              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <img src={u.foto} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} /> : null })()}
+                <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="">Sem responsavel</option>
+                  {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+                </select>
+              </div>
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
-              <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                <option value="">Nenhum</option>
-                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <img src={c.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} /> : null })()}
+                <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="">Nenhum</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
