@@ -66,28 +66,37 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   }, [cliente?.logo])
 
   const corPrimaria = corExtraida || cliente?.corPrimaria || '#111'
-  const corSecundaria = cliente?.corSecundaria || '#fff'
+
+  // Calcula se o fundo e claro ou escuro para escolher texto branco ou preto
+  function corEscura(hex: string): boolean {
+    const c = hex.replace('#', '')
+    const r = parseInt(c.substring(0, 2), 16) || 0
+    const g = parseInt(c.substring(2, 4), 16) || 0
+    const b = parseInt(c.substring(4, 6), 16) || 0
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128
+  }
+  const fundoEscuro = corEscura(corPrimaria)
+  const corTextoHeader = fundoEscuro ? '#fff' : '#111'
+  const logoSrc = fundoEscuro ? '/logo-branco.svg' : '/logo.svg'
 
   return (
     <div>
       {/* Header personalizado com a cor do cliente */}
       <div style={{ background: corPrimaria, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
         <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-          <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {cliente?.logo ? <img src={cliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <img src="/logo.svg" alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />}
-          </div>
-          <span style={{ fontWeight: 800, color: corSecundaria, fontSize: 15 }}>{cliente?.nome || 'Soma10Approval'}</span>
+          <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+          <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button onClick={() => router.push(`${basePath}/conta`)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <span style={{ fontSize: 13, color: corSecundaria, opacity: 0.8 }}>{session?.user?.name}</span>
+            <span style={{ fontSize: 13, color: corTextoHeader, opacity: 0.8 }}>{session?.user?.name}</span>
           </button>
           {ehEquipe && (
-            <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: `1px solid ${corSecundaria}40`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: corSecundaria, opacity: 0.8 }}>
+            <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: `1px solid ${corTextoHeader}40`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: corTextoHeader, opacity: 0.8 }}>
               Voltar ao Painel
             </button>
           )}
-          <button onClick={() => signOut()} style={{ background: 'none', border: `1.5px solid ${corSecundaria}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: corSecundaria }}>Sair</button>
+          <button onClick={() => signOut()} style={{ background: 'none', border: `1.5px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: corTextoHeader }}>Sair</button>
         </div>
       </div>
 
@@ -115,7 +124,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
               return (
                 <button key={item.key} onClick={() => router.push(href)} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  fontWeight: ativo ? 700 : 500, color: ativo ? corSecundaria : '#888',
+                  fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : '#888',
                   background: ativo ? corPrimaria : 'transparent',
                   fontSize: 14, transition: 'all 0.15s',
                 }}>
