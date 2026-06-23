@@ -34,7 +34,38 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const basePath = `/cliente/${clienteId}`
   const subpath = pathname.replace(basePath, '') || ''
 
-  const corPrimaria = cliente?.corPrimaria || '#111'
+  // Extrai cor dominante da imagem de perfil
+  const [corExtraida, setCorExtraida] = useState<string | null>(null)
+  useEffect(() => {
+    if (!cliente?.logo) return
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = 50; canvas.height = 50
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, 50, 50)
+        const data = ctx.getImageData(0, 0, 50, 50).data
+        let r = 0, g = 0, b = 0, count = 0
+        for (let i = 0; i < data.length; i += 16) {
+          const pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3]
+          if (pa < 128) continue
+          // Ignora pixels muito claros (brancos/cinza claro) e muito escuros
+          if (pr + pg + pb > 680 || pr + pg + pb < 60) continue
+          r += pr; g += pg; b += pb; count++
+        }
+        if (count > 0) {
+          r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count)
+          setCorExtraida(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`)
+        }
+      } catch {}
+    }
+    img.src = cliente.logo
+  }, [cliente?.logo])
+
+  const corPrimaria = corExtraida || cliente?.corPrimaria || '#111'
   const corSecundaria = cliente?.corSecundaria || '#fff'
 
   return (
