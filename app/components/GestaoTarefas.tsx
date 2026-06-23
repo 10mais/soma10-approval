@@ -346,7 +346,7 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                     <div key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
                       style={{ background: '#fff', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}` }}>
-                      {t.tipo && t.tipo !== 'tarefa' && (() => { const tp = tipoInfo(t.tipo); return (
+                      {(() => { const tp = tipoInfo(t.tipo); return (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
                           {tp.label}
@@ -639,7 +639,12 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
         <div style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'sidebar' ? 22 : 24, display: 'flex', flexDirection: 'column' }}>
           {/* Cabecalho com titulo + botoes de modo */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{tarefa ? 'Editar tarefa' : 'Nova tarefa'}</h3>
+            <h3 style={{ margin: 0, fontSize: 16, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {tarefa ? (<>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tipoInfo(form.tipo).icone} /></svg>
+                Editar {tipoInfo(form.tipo).label.toLowerCase()}
+              </>) : 'Nova tarefa'}
+            </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {tarefa && onChangeViewMode && (['modal', 'fullscreen', 'sidebar'] as const).map(m => (
                 <button key={m} onClick={() => onChangeViewMode(m)} title={m === 'modal' ? 'Modal' : m === 'fullscreen' ? 'Tela cheia' : 'Sidebar'}
