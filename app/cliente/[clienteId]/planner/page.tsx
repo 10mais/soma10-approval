@@ -28,6 +28,7 @@ export default function PlannerPage() {
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
   const [clientes, setClientes] = useState<any[]>([])
+  const [cliente, setCliente] = useState<any>(null)
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
   const [novoPost, setNovoPost] = useState(false)
@@ -40,7 +41,10 @@ export default function PlannerPage() {
   useEffect(() => {
     carregar()
     fetch('/api/clientes').then(r => r.json()).then(d => setClientes(Array.isArray(d) ? d : [])).catch(() => {})
+    fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setCliente(d) }).catch(() => {})
   }, [clienteId])
+
+  const corCliente = cliente?.corPrimaria || '#ffc00f'
 
   async function criarPost(valor: any) {
     setEnviando(true)
@@ -74,7 +78,7 @@ export default function PlannerPage() {
               }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
             ))}
           </div>
-          <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Nova postagem
           </button>
         </div>
