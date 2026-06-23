@@ -135,13 +135,15 @@ function ImagemComFallback({ src }: { src: string }) {
 function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; clientes: any[]; onAtualizado: () => void }) {
   const [enviando, setEnviando] = useState<string | null>(null)
   const [comentario, setComentario] = useState<Record<string, string>>({})
+  const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
+  const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
 
-  async function agir(postId: string, acao: string) {
+  async function agir(postId: string, acao: string, comentarioOverride?: string) {
     setEnviando(postId)
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId, acao, comentario: comentario[postId] || '' }),
+      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? comentario[postId] || '' }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
     if (r?.semData) { alert('Defina a data e horario da postagem antes de aprovar o criativo.'); setEnviando(null); return }
     if (r?.error) { alert(r.error); setEnviando(null); return }
@@ -191,17 +193,18 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
                         ))}
                       </div>
                     )}
-                    <textarea value={comentario[p.id] || ''} onChange={e => setComentario(c => ({ ...c, [p.id]: e.target.value }))}
-                      placeholder="Comentário (opcional ao pedir ajuste)"
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                       <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
-                        style={{ flex: 1, padding: '10px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
                         Aprovar
                       </button>
-                      <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
-                        style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                      <button onClick={() => { setComentario(c => ({ ...c, [p.id]: '' })); agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo') }} disabled={enviando === p.id}
+                        style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
                         Pedir ajuste
+                      </button>
+                      <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
+                        style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        Rejeitar
                       </button>
                     </div>
                   </div>
@@ -209,6 +212,27 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal de rejeicao */}
+      {rejeitar && (
+        <div onClick={() => setRejeitar(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeicao. O criativo voltara para a equipe com esta justificativa.</p>
+            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeicao..."
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+              <button disabled={!motivoRejeicao.trim() || enviando === rejeitar.id} onClick={async () => {
+                await agir(rejeitar.id, rejeitar.ehCopy ? 'ajuste_copy' : 'ajuste_criativo', `REJEITADO: ${motivoRejeicao}`)
+                setRejeitar(null)
+              }} style={{ padding: '9px 20px', background: motivoRejeicao.trim() ? '#b91c1c' : '#f0f0f0', color: motivoRejeicao.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: motivoRejeicao.trim() ? 'pointer' : 'not-allowed' }}>
+                Confirmar rejeicao
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
