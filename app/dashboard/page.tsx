@@ -143,7 +143,7 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
     setEnviando(postId)
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? comentario[postId] || '' }),
+      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
     if (r?.semData) { alert('Defina a data e horario da postagem antes de aprovar o criativo.'); setEnviando(null); return }
     if (r?.error) { alert(r.error); setEnviando(null); return }
