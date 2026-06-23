@@ -7,10 +7,19 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '50') || 50
+  const contagem = req.nextUrl.searchParams.get('contagem') === 'true'
   const ids = await redis.smembers(`notificacoes:${session.user.email}`)
-  if (ids.length === 0) return NextResponse.json([])
 
+  if (contagem) {
+    if (ids.length === 0) return NextResponse.json({ total: 0, naoLidas: 0 })
+    const keys = ids.map(id => `notificacao:${id}`)
+    const raw = await redis.mget<(Notificacao | null)[]>(...keys)
+    const naoLidas = raw.filter(n => n && !n.lida).length
+    return NextResponse.json({ total: ids.length, naoLidas })
+  }
+
+  if (ids.length === 0) return NextResponse.json([])
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '50') || 50
   const keys = ids.map(id => `notificacao:${id}`)
   const raw = await redis.mget<(Notificacao | null)[]>(...keys)
   const notificacoes = raw.filter(Boolean) as Notificacao[]

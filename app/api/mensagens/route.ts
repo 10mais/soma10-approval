@@ -24,6 +24,21 @@ export async function GET(req: NextRequest) {
   const me = session?.user?.email || ''
   if (!session || role === 'cliente' || !me) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
+  // Contagem rapida de nao lidas (para polling)
+  if (req.nextUrl.searchParams.get('naoLidas')) {
+    const emails = await redis.smembers('usuarios')
+    const usuarios = emails.length > 0 ? ((await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]) : []
+    const equipe = usuarios.filter(u => u.role !== 'cliente' && u.email !== me)
+    let total = 0
+    const chaves = [chaveConversa(me, 'equipe'), ...equipe.map(u => chaveConversa(me, u.email))]
+    await Promise.all(chaves.map(async chave => {
+      const msgs = await lerThread(chave)
+      const lidoEm = (await redis.get<string>(`chat:read:${me}:${chave}`)) || ''
+      total += msgs.filter(m => m.de !== me && m.criadoEm > lidoEm).length
+    }))
+    return NextResponse.json({ naoLidas: total })
+  }
+
   // Lista de contatos (equipe) com prévia da última mensagem e não lidas
   if (req.nextUrl.searchParams.get('contatos')) {
     const emails = await redis.smembers('usuarios')

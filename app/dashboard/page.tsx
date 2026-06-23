@@ -2,15 +2,32 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
-import ChatInterno from '../components/ChatInterno'
-import Esteira from '../components/Esteira'
-import DashboardHome from '../components/DashboardHome'
-import GestaoTarefas from '../components/GestaoTarefas'
-import Playbook from '../components/Playbook'
-import MinhaConta from '../components/MinhaConta'
+
+const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Esteira = dynamic(() => import('../components/Esteira'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+
+function LoadingPlaceholder() {
+  return (
+    <div style={{ padding: '40px 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ width: '35%', height: 22, background: '#f0f0f0', borderRadius: 8, animation: 'shimmer 1.5s infinite' }} />
+        <div style={{ display: 'flex', gap: 12 }}>
+          {[1,2,3].map(i => <div key={i} style={{ flex: 1, height: 120, background: '#f5f5f5', borderRadius: 12, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.2}s` }} />)}
+        </div>
+        <div style={{ width: '60%', height: 14, background: '#f5f5f5', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
+        <div style={{ width: '40%', height: 14, background: '#f8f8f8', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
+      </div>
+    </div>
+  )
+}
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -434,20 +451,25 @@ function Dashboard() {
     setBrandModo(tem ? 'card' : 'editar')
   }, [verComoClienteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Notificacoes + mensagens nao lidas: carrega ao autenticar e atualiza periodicamente
+  // Notificacoes: carrega lista completa uma vez, depois poll so a contagem
   useEffect(() => {
     if (status !== 'authenticated') return
-    const carregarNotificacoes = () => fetch('/api/notificacoes').then(r => r.json()).then(d => setNotificacoes(Array.isArray(d) ? d : []))
-    const carregarChatNaoLidas = () => {
-      if ((session?.user as any)?.role === 'cliente') return
-      fetch('/api/mensagens?contatos=1').then(r => r.json()).then(d => {
-        if (Array.isArray(d)) setChatNaoLidas(d.reduce((s: number, c: any) => s + (c.naoLidas || 0), 0))
-      }).catch(() => {})
+    fetch('/api/notificacoes').then(r => r.json()).then(d => setNotificacoes(Array.isArray(d) ? d : []))
+    if ((session?.user as any)?.role !== 'cliente') {
+      fetch('/api/mensagens?naoLidas=true').then(r => r.json()).then(d => setChatNaoLidas(d?.naoLidas || 0)).catch(() => {})
     }
-    carregarNotificacoes(); carregarChatNaoLidas()
-    const intervalo = setInterval(() => { carregarNotificacoes(); carregarChatNaoLidas() }, 30000)
+    const intervalo = setInterval(() => {
+      fetch('/api/notificacoes?contagem=true').then(r => r.json()).then(d => {
+        if (d?.naoLidas > 0 && notificacoes.every(n => n.lida)) {
+          fetch('/api/notificacoes').then(r => r.json()).then(nd => setNotificacoes(Array.isArray(nd) ? nd : []))
+        }
+      }).catch(() => {})
+      if ((session?.user as any)?.role !== 'cliente') {
+        fetch('/api/mensagens?naoLidas=true').then(r => r.json()).then(d => setChatNaoLidas(d?.naoLidas || 0)).catch(() => {})
+      }
+    }, 30000)
     return () => clearInterval(intervalo)
-  }, [status])
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function marcarNotificacaoLida(id: string) {
     setNotificacoes(ns => ns.map(n => n.id === id ? { ...n, lida: true } : n))
@@ -1078,6 +1100,11 @@ function Dashboard() {
         }
         .soma10-tema-escuro .soma10-no-invert {
           filter: invert(1) hue-rotate(180deg);
+        }
+        @keyframes shimmer {
+          0% { opacity: 1; }
+          50% { opacity: 0.4; }
+          100% { opacity: 1; }
         }
       `}</style>
       {/* Header */}

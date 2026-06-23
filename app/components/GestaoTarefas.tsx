@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import OptImg from './OptImg'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
@@ -372,13 +373,13 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>
-                            {u?.foto ? <img src={u.foto} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }} /> : null}
+                            {u?.foto ? <OptImg src={u.foto} size={14} /> : null}
                             {t.responsavelNome}
                           </span>
                         )})()}
                         {t.clienteNome && (() => { const c = (clientes || []).find(x => x.id === t.clienteId); return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#888' }}>
-                            {c?.logo ? <img src={c.logo} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }} /> : null}
+                            {c?.logo ? <OptImg src={c.logo} size={14} /> : null}
                             {t.clienteNome}
                           </span>
                         )})()}
@@ -790,7 +791,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsavel</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <img src={u.foto} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} /> : null })()}
+                  {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <OptImg src={u.foto} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Sem responsavel</option>
@@ -801,7 +802,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <img src={c.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} /> : null })()}
+                  {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <OptImg src={c.logo} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Nenhum</option>
