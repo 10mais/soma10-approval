@@ -138,7 +138,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           <div style={{ paddingTop: 16, borderTop: '1px solid #f0f0f0', marginTop: 20 }}>
             <button onClick={() => router.push(`${basePath}/conta`)} style={{
               padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-              fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corSecundaria : '#888',
+              fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corTextoHeader : '#888',
               background: subpath === '/conta' ? corPrimaria : 'transparent', fontSize: 13, width: '100%',
             }}>
               Minha conta
