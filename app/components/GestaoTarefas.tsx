@@ -345,9 +345,9 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                   {cards.map(t => (
                     <div key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
-                      style={{ background: '#fff', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}` }}>
+                      style={{ background: '#fff', borderRadius: 10, padding: '26px 10px 10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}`, position: 'relative' }}>
                       {(() => { const tp = tipoInfo(t.tipo); return (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                        <span style={{ position: 'absolute', top: 6, left: 8, display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
                           {tp.label}
                         </span>
@@ -389,19 +389,19 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
       {/* LISTA */}
       {view === 'lista' && (
         <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 120px 100px 90px 90px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
-            <span>Tarefa</span><span>Tipo</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
+            <span>Tipo</span><span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
           {filtradas.map(t => {
             const tp = tipoInfo(t.tipo)
             return (
-            <div key={t.id} onClick={() => setEditModal(t)} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12 }}>
-              <span style={{ fontWeight: 600, color: '#111' }}>{t.titulo}</span>
+            <div key={t.id} onClick={() => setEditModal(t)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: tp.cor, fontWeight: 600 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
                 {tp.label}
               </span>
+              <span style={{ fontWeight: 600, color: '#111' }}>{t.titulo}</span>
               <span style={{ color: '#555' }}>{t.responsavelNome || '--'}</span>
               <span style={{ color: '#888' }}>{t.clienteNome || '--'}</span>
               <span style={{ color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo) || '--'}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>
