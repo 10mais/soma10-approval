@@ -91,7 +91,7 @@ export default function PlannerPage() {
               const dataMostrar = post.status === 'agendado' ? (post.dataAgendada || post.criadoEm) : (post.atualizadoEm || post.criadoEm)
               return (
                 <div key={post.id} onClick={() => setPreview(post)} style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee' }}>
-                  <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : post.formato === 'carrossel' ? '1' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
                     {capa ? <ImagemComFallback src={capa} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11 }}>Sem imagem</div>}
                   </div>
                   <div style={{ padding: 9 }}>

@@ -404,17 +404,20 @@ function Dashboard() {
   }, [status])
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetch('/api/posts').then(r => r.json()).then(setPosts)
-      fetch('/api/clientes').then(r => r.json()).then(setClientes)
-      if ((session?.user as any)?.role === 'admin' || (session?.user as any)?.role === 'gerente') {
-        fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {})
-      }
-      if ((session?.user as any)?.role === 'admin') {
-        fetch('/api/config').then(r => r.json()).then(setConfigAgencia)
-        fetch('/api/anthropic-saldo').then(r => r.json()).then(d => { if (d && typeof d.saldo === 'number') setSaldoIA(d) }).catch(() => {})
-      }
+    if (status !== 'authenticated') return
+    const role = (session?.user as any)?.role
+    const fetches: Promise<void>[] = [
+      fetch('/api/posts').then(r => r.json()).then(setPosts),
+      fetch('/api/clientes').then(r => r.json()).then(setClientes),
+    ]
+    if (role === 'admin' || role === 'gerente') {
+      fetches.push(fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {}))
     }
+    if (role === 'admin') {
+      fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
+      fetches.push(fetch('/api/anthropic-saldo').then(r => r.json()).then(d => { if (d && typeof d.saldo === 'number') setSaldoIA(d) }).catch(() => {}))
+    }
+    Promise.all(fetches).catch(() => {})
   }, [status])
 
   // Brand Board: ao trocar de cliente, recarrega os dados DAQUELE cliente (evita
@@ -1609,7 +1612,7 @@ function Dashboard() {
                       background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                       border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid #eee',
                     }}>
-                      <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : post.formato === 'carrossel' ? '1' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
                         {capa ? (
                           <ImagemComFallback src={capa} />
                         ) : (

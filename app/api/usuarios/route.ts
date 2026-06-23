@@ -11,8 +11,8 @@ export async function GET() {
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const emails = await redis.smembers('usuarios')
-  const usuarios = await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))
-  return NextResponse.json(usuarios.filter(Boolean).map(u => ({ ...u, senha: undefined })))
+  const usuarios = emails.length > 0 ? await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`)) : []
+  return NextResponse.json(usuarios.filter(Boolean).map(u => ({ ...u!, senha: undefined })))
 }
 
 export async function POST(req: NextRequest) {

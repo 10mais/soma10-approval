@@ -22,12 +22,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
     }
     const pautaIds = await redis.smembers(`plano:${id}:pautas`)
-    const pautas = (await Promise.all(pautaIds.map(pid => redis.get<Post>(`post:${pid}`)))).filter(Boolean) as Post[]
+    const pautas = pautaIds.length > 0 ? ((await redis.mget<(Post | null)[]>(...pautaIds.map(pid => `post:${pid}`))).filter(Boolean) as Post[]) : []
     return NextResponse.json({ plano, pautas })
   }
 
   const ids = await redis.smembers('planos')
-  let planos = (await Promise.all(ids.map(pid => redis.get<Plano>(`plano:${pid}`)))).filter(Boolean) as Plano[]
+  let planos = ids.length > 0 ? ((await redis.mget<(Plano | null)[]>(...ids.map(pid => `plano:${pid}`))).filter(Boolean) as Plano[]) : []
   if (role === 'cliente') planos = planos.filter(p => p.clienteId === sessionClienteId)
   const filtroCliente = req.nextUrl.searchParams.get('clienteId')
   if (filtroCliente) planos = planos.filter(p => p.clienteId === filtroCliente)

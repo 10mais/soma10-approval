@@ -8,10 +8,9 @@ export default function ClienteHome() {
   const [stats, setStats] = useState<any>(null)
 
   useEffect(() => {
-    fetch('/api/clientes').then(r => r.json()).then(lista => {
-      const c = (Array.isArray(lista) ? lista : []).find((x: any) => x.id === clienteId)
-      if (c) setCliente(c)
-    })
+    fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(d => {
+      if (d && !d.error) setCliente(Array.isArray(d) ? d.find((x: any) => x.id === clienteId) : d)
+    }).catch(() => {})
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(posts => {
       if (!Array.isArray(posts)) return
       const agora = new Date()

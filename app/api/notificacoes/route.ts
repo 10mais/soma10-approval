@@ -3,16 +3,20 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Notificacao } from '@/lib/redis'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '50') || 50
   const ids = await redis.smembers(`notificacoes:${session.user.email}`)
-  const notificacoes = (await Promise.all(ids.map(id => redis.get<Notificacao>(`notificacao:${id}`))))
-    .filter(Boolean)
-    .sort((a, b) => new Date(b!.criadoEm).getTime() - new Date(a!.criadoEm).getTime())
+  if (ids.length === 0) return NextResponse.json([])
 
-  return NextResponse.json(notificacoes)
+  const keys = ids.map(id => `notificacao:${id}`)
+  const raw = await redis.mget<(Notificacao | null)[]>(...keys)
+  const notificacoes = raw.filter(Boolean) as Notificacao[]
+  notificacoes.sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime())
+
+  return NextResponse.json(notificacoes.slice(0, limit))
 }
 
 export async function PUT(req: NextRequest) {
@@ -23,8 +27,12 @@ export async function PUT(req: NextRequest) {
 
   if (todasComoLidas) {
     const ids = await redis.smembers(`notificacoes:${session.user.email}`)
-    const notificacoes = (await Promise.all(ids.map(nid => redis.get<Notificacao>(`notificacao:${nid}`)))).filter(Boolean) as Notificacao[]
-    await Promise.all(notificacoes.filter(n => !n.lida).map(n => redis.set(`notificacao:${n.id}`, { ...n, lida: true })))
+    if (ids.length > 0) {
+      const keys = ids.map(nid => `notificacao:${nid}`)
+      const notificacoes = (await redis.mget<(Notificacao | null)[]>(...keys)).filter(Boolean) as Notificacao[]
+      const naoLidas = notificacoes.filter(n => !n.lida)
+      if (naoLidas.length > 0) await Promise.all(naoLidas.map(n => redis.set(`notificacao:${n.id}`, { ...n, lida: true })))
+    }
     return NextResponse.json({ ok: true })
   }
 

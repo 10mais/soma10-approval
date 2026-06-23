@@ -13,15 +13,25 @@ function gerarSenha() {
   return s
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const role = (session.user as any).role
-  const ids = await redis.smembers('clientes')
-  let clientes = (await Promise.all(ids.map(id => redis.get<Cliente>(`cliente:${id}`)))).filter(Boolean) as Cliente[]
 
-  // Cliente só vê a si mesmo
+  // Busca por ID unico — retorna apenas 1 cliente (rapido)
+  const idParam = req.nextUrl.searchParams.get('id')
+  if (idParam) {
+    const c = await redis.get<Cliente>(`cliente:${idParam}`)
+    if (!c) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    if (role === 'cliente' && c.id !== (session.user as any).clienteId) return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+    const { facebookPageToken, instagramToken, loginSenha, ...seguro } = c as any
+    return NextResponse.json({ ...seguro, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken })
+  }
+
+  const ids = await redis.smembers('clientes')
+  let clientes = ids.length > 0 ? ((await redis.mget<(Cliente | null)[]>(...ids.map(id => `cliente:${id}`))).filter(Boolean) as Cliente[]) : []
+
   if (role === 'cliente') {
     const clienteId = (session.user as any).clienteId
     clientes = clientes.filter(c => c.id === clienteId)

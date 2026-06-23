@@ -25,9 +25,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const ehEquipe = role === 'admin' || role === 'gerente'
 
   useEffect(() => {
-    fetch('/api/clientes').then(r => r.json()).then(lista => {
-      const c = (Array.isArray(lista) ? lista : []).find((x: any) => x.id === clienteId)
-      if (c) setCliente(c)
+    fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(d => {
+      if (d && !d.error) setCliente(d)
     }).catch(() => {})
   }, [clienteId])
 

@@ -15,7 +15,8 @@ function extrairMencoes(texto: string): string[] {
 
 async function resolverEmailPorNome(nome: string): Promise<string | null> {
   const emails = await redis.smembers('usuarios')
-  const usuarios = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+  if (emails.length === 0) return null
+  const usuarios = (await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]
   const u = usuarios.find(x => x.nome.toLowerCase() === nome.toLowerCase())
   return u?.email || null
 }
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   if (lixeira) {
     const ids = await redis.smembers('tarefas_excluidas')
-    const tarefas = (await Promise.all(ids.map(id => redis.get<any>(`tarefa:${id}`)))).filter(Boolean)
+    const tarefas = ids.length > 0 ? (await redis.mget<(any | null)[]>(...ids.map(id => `tarefa:${id}`))).filter(Boolean) : []
     const agora = Date.now()
     const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000
     const validas: any[] = []
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
   }
 
   const ids = await redis.smembers('tarefas')
-  const tarefas = (await Promise.all(ids.map(id => redis.get<Tarefa>(`tarefa:${id}`)))).filter(Boolean) as Tarefa[]
+  const tarefas = ids.length > 0 ? ((await redis.mget<(Tarefa | null)[]>(...ids.map(id => `tarefa:${id}`))).filter(Boolean) as Tarefa[]) : []
   tarefas.sort((a, b) => {
     const ordem: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
     return (ordem[a.prioridade] ?? 9) - (ordem[b.prioridade] ?? 9) || new Date(a.prazo || '9999').getTime() - new Date(b.prazo || '9999').getTime()

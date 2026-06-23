@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   }
 
   const ids = await redis.smembers('posts')
-  const posts = await Promise.all(ids.map(id => redis.get<Post>(`post:${id}`)))
+  const posts = ids.length > 0 ? await redis.mget<(Post | null)[]>(...ids.map(id => `post:${id}`)) : []
   let filtrados = posts.filter(Boolean).filter(p => !clienteId || p!.clienteId === clienteId)
 
   // Rascunhos internos não devem ser visíveis para o cliente

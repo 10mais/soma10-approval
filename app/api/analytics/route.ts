@@ -68,26 +68,14 @@ export async function GET(req: NextRequest) {
   const since = paraTimestamp(desde) || (agora - 30 * 24 * 3600)
   const until = paraTimestamp(ate, true) || agora
 
-  // 1) Perfil / contagens gerais
-  const perfil = await chamarGraph(`${BASE}/${IG_ID}?fields=username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${TOKEN}`)
-
-  // 2) Série de insights da conta (alcance e visitas ao perfil por dia)
-  const insightsConta = await chamarGraph(
-    `${BASE}/${IG_ID}/insights?metric=reach,profile_views&period=day&since=${since}&until=${until}&access_token=${TOKEN}`
-  )
-
-  // 3) Demografia dos seguidores (melhor esforço — pode não estar disponível em todas as contas)
-  const demografiaGenero = await chamarGraph(
-    `${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=gender&access_token=${TOKEN}`
-  )
-  const demografiaIdade = await chamarGraph(
-    `${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=age&access_token=${TOKEN}`
-  )
-
-  // 4) Mídias publicadas no período
-  const midiasRes = await chamarGraph(
-    `${BASE}/${IG_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&since=${since}&until=${until}&limit=50&access_token=${TOKEN}`
-  )
+  // 1-4) Busca perfil, insights, demografia e midias em paralelo
+  const [perfil, insightsConta, demografiaGenero, demografiaIdade, midiasRes] = await Promise.all([
+    chamarGraph(`${BASE}/${IG_ID}?fields=username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/insights?metric=reach,profile_views&period=day&since=${since}&until=${until}&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=gender&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=age&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&since=${since}&until=${until}&limit=50&access_token=${TOKEN}`),
+  ])
   const midias: any[] = midiasRes.data?.data || []
 
   // 5) Métricas por mídia (alcance, impressões, salvamentos, compartilhamentos) — melhor esforço, tolerante a falhas individuais
