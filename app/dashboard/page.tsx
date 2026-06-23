@@ -10,6 +10,7 @@ import Esteira from '../components/Esteira'
 import DashboardHome from '../components/DashboardHome'
 import GestaoTarefas from '../components/GestaoTarefas'
 import Playbook from '../components/Playbook'
+import MinhaConta from '../components/MinhaConta'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -292,7 +293,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1165,60 +1166,12 @@ function Dashboard() {
               {usuarios.map((u: any) => <option key={u.email} value={u.email}>{u.nome} ({u.role})</option>)}
             </select>
           )}
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => {
-              if (!meuPerfil) fetch('/api/meu-perfil').then(r => r.json()).then(d => setMeuPerfil(d)).catch(() => {})
-              setPerfilAberto(v => !v); setPerfilMsg('')
-            }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {meuPerfil?.foto ? <img src={meuPerfil.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#888', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
-              </div>
-              <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
-            </button>
-            {perfilAberto && meuPerfil && (
-              <div style={{ position: 'absolute', top: 40, right: 0, width: 300, background: '#fff', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200, padding: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                  <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                    <div style={{ width: 50, height: 50, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #e0e0e0' }}>
-                      {meuPerfil.foto ? <img src={meuPerfil.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16, color: '#bbb', fontWeight: 800 }}>{meuPerfil.nome?.[0]?.toUpperCase()}</span>}
-                    </div>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
-                      if (!e.target.files?.[0]) return
-                      const url = await enviarImagem(e.target.files[0])
-                      if (url) setMeuPerfil((p: any) => ({ ...p, foto: url }))
-                      e.target.value = ''
-                    }} />
-                  </label>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#111' }}>{meuPerfil.nome}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#888' }}>{meuPerfil.email}</p>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#888', background: '#f0f0f0', borderRadius: 999, padding: '1px 8px' }}>{meuPerfil.role}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input value={meuPerfil.nome || ''} onChange={e => setMeuPerfil((p: any) => ({ ...p, nome: e.target.value }))} placeholder="Nome"
-                    style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                  <input value={meuPerfil.cargo || ''} onChange={e => setMeuPerfil((p: any) => ({ ...p, cargo: e.target.value }))} placeholder="Funcao / Cargo"
-                    style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                  <input type="password" value={meuPerfil.novaSenha || ''} onChange={e => setMeuPerfil((p: any) => ({ ...p, novaSenha: e.target.value }))} placeholder="Nova senha (vazio = manter)"
-                    style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                </div>
-                {perfilMsg && <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: perfilMsg.includes('Erro') ? '#dc2626' : '#16a34a' }}>{perfilMsg}</p>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button disabled={perfilSalvando} onClick={async () => {
-                    setPerfilSalvando(true)
-                    await fetch('/api/meu-perfil', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: meuPerfil.nome, cargo: meuPerfil.cargo, foto: meuPerfil.foto, novaSenha: meuPerfil.novaSenha || undefined }) })
-                    setPerfilSalvando(false); setPerfilMsg('Perfil atualizado!'); setTimeout(() => setPerfilMsg(''), 3000)
-                    fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {})
-                  }} style={{ flex: 1, padding: '8px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                    {perfilSalvando ? 'Salvando...' : 'Salvar'}
-                  </button>
-                  <button onClick={() => setPerfilAberto(false)} style={{ padding: '8px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Fechar</button>
-                </div>
-                <button onClick={() => { setPerfilAberto(false); signOut() }} style={{ width: '100%', marginTop: 8, padding: '8px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Sair da conta</button>
-              </div>
-            )}
-          </div>
+          <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
+            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ color: '#888', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>
+            </div>
+            <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
+          </button>
           <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
           <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#fff' }}>Sair</button>
         </div>
@@ -2375,6 +2328,10 @@ function Dashboard() {
 
         {aba === 'tarefas' && (
           <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} />
+        )}
+
+        {aba === 'minha-conta' && (
+          <MinhaConta />
         )}
 
         {aba === 'playbook' && (
