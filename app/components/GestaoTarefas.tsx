@@ -5,10 +5,12 @@ import { v4 as uuid } from 'uuid'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
+type Anotacao = { id: string; x: number; y: number; texto: string; autor: string; autorNome: string; criadoEm: string }
+type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[] }
 type Tarefa = {
   id: string; titulo: string; descricao?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
-  prazo?: string; anexos?: { nome: string; url: string; tipo: string }[]
+  prazo?: string; anexos?: Anexo[]
   atividades?: any[]; comentarios?: any[]
   criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
   excluidoEm?: string; excluidoPor?: string
@@ -29,6 +31,127 @@ function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onC
           <button onClick={onCancel} style={{ padding: '9px 20px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer' }}>Cancelar</button>
           <button onClick={onConfirm} style={{ padding: '9px 20px', background: '#b91c1c', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Excluir</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotacao }: {
+  anexo: Anexo; anexoIndex: number
+  onClose: () => void
+  onAddAnotacao: (idx: number, anotacao: Anotacao) => void
+  onRemoveAnotacao: (idx: number, anotacaoId: string) => void
+}) {
+  const [pendente, setPendente] = useState<{ x: number; y: number } | null>(null)
+  const [textoAnotacao, setTextoAnotacao] = useState('')
+  const [anotacaoHover, setAnotacaoHover] = useState<string | null>(null)
+  const ehImagem = anexo.tipo.startsWith('image')
+  const ehVideo = anexo.tipo.startsWith('video')
+  const anotacoes = anexo.anotacoes || []
+
+  function handleClickImagem(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setPendente({ x, y })
+    setTextoAnotacao('')
+  }
+
+  function confirmarAnotacao() {
+    if (!pendente || !textoAnotacao.trim()) return
+    onAddAnotacao(anexoIndex, {
+      id: uuid(), x: pendente.x, y: pendente.y, texto: textoAnotacao.trim(),
+      autor: '', autorNome: '', criadoEm: new Date().toISOString(),
+    })
+    setPendente(null)
+    setTextoAnotacao('')
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 0, maxWidth: 1200, width: '100%', maxHeight: '92vh', background: '#1a1a1a', borderRadius: 16, overflow: 'hidden' }}>
+        {/* Lado esquerdo — midia */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', minWidth: 0, background: '#111' }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+          <a href={anexo.url} download={anexo.nome} target="_blank" rel="noreferrer" style={{ position: 'absolute', top: 12, right: 52, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', zIndex: 10 }}
+            title="Baixar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </a>
+          {ehImagem && (
+            <div onClick={handleClickImagem} style={{ position: 'relative', cursor: 'crosshair', maxWidth: '100%', maxHeight: '92vh' }}>
+              <img src={anexo.url} alt={anexo.nome} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
+              {anotacoes.map((an, idx) => (
+                <div key={an.id}
+                  onMouseEnter={() => setAnotacaoHover(an.id)}
+                  onMouseLeave={() => setAnotacaoHover(null)}
+                  style={{ position: 'absolute', left: `${an.x}%`, top: `${an.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', cursor: 'pointer' }}>
+                    {idx + 1}
+                  </div>
+                  {anotacaoHover === an.id && (
+                    <div style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 160, maxWidth: 260, zIndex: 10 }}>
+                      <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: '#111' }}>{an.texto}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>{an.autorNome} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                      <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }}
+                        style={{ marginTop: 6, padding: '3px 8px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, fontSize: 10, color: '#b91c1c', cursor: 'pointer', fontWeight: 600 }}>Remover</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {pendente && (
+                <div style={{ position: 'absolute', left: `${pendente.x}%`, top: `${pendente.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'pulse 1s infinite' }}>?</div>
+                  <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 10, padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 220, zIndex: 10 }}>
+                    <textarea value={textoAnotacao} onChange={e => setTextoAnotacao(e.target.value)} placeholder="Descreva a correcao..."
+                      autoFocus style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarAnotacao() } }} />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setPendente(null)} style={{ flex: 1, padding: '6px 0', background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={confirmarAnotacao} disabled={!textoAnotacao.trim()} style={{ flex: 1, padding: '6px 0', background: textoAnotacao.trim() ? '#b91c1c' : '#f0f0f0', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: textoAnotacao.trim() ? '#fff' : '#aaa', cursor: textoAnotacao.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {ehVideo && <video src={anexo.url} controls style={{ maxWidth: '100%', maxHeight: '85vh' }} />}
+          {!ehImagem && !ehVideo && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40 }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <p style={{ margin: 0, fontSize: 14, color: '#ccc', fontWeight: 600 }}>{anexo.nome}</p>
+              <a href={anexo.url} target="_blank" rel="noreferrer" style={{ padding: '8px 20px', background: '#ffc00f', color: '#111', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Abrir arquivo</a>
+            </div>
+          )}
+          {ehImagem && <p style={{ margin: '8px 0 0', fontSize: 11, color: '#888', textAlign: 'center' }}>Clique na imagem para marcar uma correcao</p>}
+        </div>
+
+        {/* Lado direito — lista de anotacoes */}
+        {ehImagem && (
+          <div style={{ width: 280, background: '#1e1e1e', borderLeft: '1px solid #333', padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: '#fff' }}>Correcoes ({anotacoes.length})</h4>
+            {anotacoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#666' }}>Nenhuma correcao marcada. Clique na imagem para adicionar.</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+              {anotacoes.map((an, idx) => (
+                <div key={an.id}
+                  onMouseEnter={() => setAnotacaoHover(an.id)}
+                  onMouseLeave={() => setAnotacaoHover(null)}
+                  style={{ display: 'flex', gap: 10, padding: '10px 12px', background: anotacaoHover === an.id ? '#2a2a2a' : '#252525', borderRadius: 8, border: anotacaoHover === an.id ? '1px solid #555' : '1px solid #333', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px', fontSize: 12, color: '#eee', lineHeight: 1.4 }}>{an.texto}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: '#777' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }} title="Remover"
+                    style={{ width: 20, height: 20, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: 0.5 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -319,12 +442,20 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
     responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
   })
-  const [anexos, setAnexos] = useState<{ nome: string; url: string; tipo: string }[]>(tarefa?.anexos || [])
+  const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
   const [novoComentario, setNovoComentario] = useState('')
   const [enviandoComentario, setEnviandoComentario] = useState(false)
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+
+  function addAnotacao(idx: number, anotacao: Anotacao) {
+    setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: [...(a.anotacoes || []), anotacao] } : a))
+  }
+  function removeAnotacao(idx: number, anotacaoId: string) {
+    setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: (a.anotacoes || []).filter(an => an.id !== anotacaoId) } : a))
+  }
 
   async function enviarAnexo(arquivo: File) {
     setEnviandoAnexo(true)
@@ -374,11 +505,65 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
     sidebar: { display: 'flex', flexDirection: 'column' as const },
   }
 
+  const anexosComAnotacoes = anexos.filter(a => (a.anotacoes || []).length > 0)
+
   const activityPanel = tarefa && (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: '#111' }}>Activity</h4>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
+        {/* Anexos com miniatura clicavel */}
+        {anexos.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Anexos</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              {anexos.map((a, i) => (
+                <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', border: '1px solid #e0e0e0', cursor: 'pointer' }}>
+                  {a.tipo.startsWith('image') ? (
+                    <img src={a.url} alt={a.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : a.tipo.startsWith('video') ? (
+                    <video src={a.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted preload="metadata" />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                    </div>
+                  )}
+                  {(a.anotacoes || []).length > 0 && (
+                    <span style={{ position: 'absolute', top: 1, left: 1, background: '#b91c1c', color: '#fff', borderRadius: 999, minWidth: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, padding: '0 3px' }}>{a.anotacoes!.length}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Correcoes marcadas */}
+        {anexosComAnotacoes.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Correcoes marcadas</div>
+            {anexosComAnotacoes.map((a, ai) => {
+              const realIdx = anexos.indexOf(a)
+              return (
+              <div key={ai} style={{ marginBottom: 12 }}>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: '#555' }}>{a.nome}</p>
+                {(a.anotacoes || []).map((an, idx) => (
+                  <div key={an.id} onClick={() => setViewerIndex(realIdx)} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', cursor: 'pointer' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: '#555', lineHeight: 1.3 }}>{an.texto}</p>
+                      <p style={{ margin: '1px 0 0', fontSize: 9, color: '#bbb' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )})}
+          </>
+        )}
+
+        {/* Historico */}
+        {(tarefa.atividades || []).length > 0 && (
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Historico</div>
+        )}
         {[...(tarefa.atividades || [])].reverse().map((a: any) => (
           <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? '#1d4ed8' : a.tipo === 'status' ? '#ffc00f' : '#ccc', marginTop: 5, flexShrink: 0 }} />
@@ -388,7 +573,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
             </div>
           </div>
         ))}
-        {(tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma atividade ainda.</p>}
+        {anexos.length === 0 && (tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma atividade ainda.</p>}
 
         {(tarefa.comentarios || []).length > 0 && (
           <>
@@ -516,15 +701,18 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
             {anexos.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                 {anexos.map((a, i) => (
-                  <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+                  <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0', cursor: 'pointer' }}>
                     {a.tipo.startsWith('video') ? (
                       <video src={a.url} style={{ width: 80, height: 80, objectFit: 'cover' }} muted preload="metadata" />
                     ) : a.tipo.startsWith('image') ? (
                       <img src={a.url} alt={a.nome} style={{ width: 80, height: 80, objectFit: 'cover' }} />
                     ) : (
-                      <a href={a.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: '#f5f5f5', fontSize: 10, color: '#666', textDecoration: 'none', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</a>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: '#f5f5f5', fontSize: 10, color: '#666', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>
                     )}
-                    <button onClick={() => setAnexos(arr => arr.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+                    {(a.anotacoes || []).length > 0 && (
+                      <span style={{ position: 'absolute', top: 2, left: 2, background: '#b91c1c', color: '#fff', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, padding: '0 4px' }}>{a.anotacoes!.length}</span>
+                    )}
+                    <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
                     <a href={a.url} download={a.nome} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
                       style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
                       title={`Baixar ${a.nome}`}>
@@ -564,6 +752,15 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
           </div>
         )}
       </div>
+
+      {/* Viewer de anexo */}
+      {viewerIndex !== null && anexos[viewerIndex] && (
+        <AnexoViewer anexo={anexos[viewerIndex]} anexoIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onAddAnotacao={addAnotacao}
+          onRemoveAnotacao={removeAnotacao}
+        />
+      )}
     </div>
   )
 }
