@@ -2289,7 +2289,7 @@ function Dashboard() {
         )}
 
         {aba === 'aprovacoes' && (
-          <AprovacoesCli posts={posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
+          <AprovacoesCli posts={verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
         )}
 
         {aba === 'tarefas' && (
