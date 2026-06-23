@@ -123,6 +123,31 @@ export async function PUT(req: NextRequest) {
   if (updates.prazo && updates.prazo !== tarefa.prazo) novasAtividades.push({ id: uuid(), tipo: 'prazo', descricao: `Prazo definido para ${new Date(updates.prazo).toLocaleDateString('pt-BR')}`, autor, criadoEm: agora })
   if (updates.clienteNome && updates.clienteNome !== tarefa.clienteNome) novasAtividades.push({ id: uuid(), tipo: 'cliente', descricao: `Cliente alterado para ${updates.clienteNome}`, autor, criadoEm: agora })
 
+  // Editar comentario existente
+  if (updates.editarComentario) {
+    const { id: comId, texto: novoTexto } = updates.editarComentario
+    const comentarios = [...(tarefa.comentarios || [])]
+    const idx = comentarios.findIndex((c: any) => c.id === comId)
+    if (idx >= 0) {
+      comentarios[idx] = { ...comentarios[idx], texto: novoTexto, editadoEm: agora }
+      atualizado.comentarios = comentarios
+      novasAtividades.push({ id: uuid(), tipo: 'comentario', descricao: `Editou comentario`, autor, criadoEm: agora })
+    }
+    atualizado.atividades = novasAtividades
+    await redis.set(`tarefa:${id}`, atualizado)
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
+  // Excluir comentario
+  if (updates.excluirComentario) {
+    const comentarios = (tarefa.comentarios || []).filter((c: any) => c.id !== updates.excluirComentario)
+    atualizado.comentarios = comentarios
+    novasAtividades.push({ id: uuid(), tipo: 'comentario', descricao: `Removeu um comentario`, autor, criadoEm: agora })
+    atualizado.atividades = novasAtividades
+    await redis.set(`tarefa:${id}`, atualizado)
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
   // Comentario novo
   if (updates.novoComentario) {
     const comentarios = [...(tarefa.comentarios || [])]

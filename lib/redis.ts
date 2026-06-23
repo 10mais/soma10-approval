@@ -163,6 +163,7 @@ export type TarefaComentario = {
   autorFoto?: string
   texto: string
   criadoEm: string
+  editadoEm?: string
 }
 
 export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'

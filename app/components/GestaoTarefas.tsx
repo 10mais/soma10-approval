@@ -462,6 +462,7 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
           onChangeViewMode={setTarefaViewMode}
           onClose={() => { setNovaModal(false); setEditModal(null) }}
           onSalvo={() => { if (tarefaViewMode !== 'sidebar') { setNovaModal(false); setEditModal(null) }; carregar() }}
+          onRecarregar={(t) => { setEditModal(t); carregar() }}
           onExcluir={editModal ? () => {
             const id = editModal.id
             setConfirmPopup({
@@ -475,9 +476,9 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
   )
 }
 
-function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, viewMode = 'modal', onChangeViewMode }: {
+function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]
-  onClose: () => void; onSalvo: () => void; onExcluir?: () => void
+  onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
   viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
   const [form, setForm] = useState({
@@ -497,6 +498,8 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
   const [mencaoQuery, setMencaoQuery] = useState('')
   const [mencaoAberta, setMencaoAberta] = useState(false)
   const [mencaoPos, setMencaoPos] = useState(0)
+  const [editandoComentarioId, setEditandoComentarioId] = useState<string | null>(null)
+  const [editandoComentarioTexto, setEditandoComentarioTexto] = useState('')
 
   function addAnotacao(idx: number, anotacao: Anotacao) {
     setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: [...(a.anotacoes || []), anotacao] } : a))
@@ -520,10 +523,31 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
   async function enviarComentario() {
     if (!tarefa || !novoComentario.trim()) return
     setEnviandoComentario(true)
-    await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, novoComentario: novoComentario.trim() }) }).catch(() => {})
+    const res = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, novoComentario: novoComentario.trim() }) }).catch(() => null)
     setNovoComentario('')
     setEnviandoComentario(false)
-    onSalvo()
+    if (res) {
+      const data = await res.json().catch(() => null)
+      if (data?.tarefa && onRecarregar) onRecarregar(data.tarefa)
+    }
+  }
+
+  async function editarComentario(comentarioId: string, novoTexto: string) {
+    if (!tarefa) return
+    const res = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, editarComentario: { id: comentarioId, texto: novoTexto } }) }).catch(() => null)
+    if (res) {
+      const data = await res.json().catch(() => null)
+      if (data?.tarefa && onRecarregar) onRecarregar(data.tarefa)
+    }
+  }
+
+  async function excluirComentario(comentarioId: string) {
+    if (!tarefa) return
+    const res = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, excluirComentario: comentarioId }) }).catch(() => null)
+    if (res) {
+      const data = await res.json().catch(() => null)
+      if (data?.tarefa && onRecarregar) onRecarregar(data.tarefa)
+    }
   }
 
   async function salvar() {
@@ -631,8 +655,28 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 12, color: '#111' }}>{c.autorNome}</span>
                   <span style={{ fontSize: 10, color: '#aaa' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                    <button onClick={() => { setEditandoComentarioId(c.id); setEditandoComentarioTexto(c.texto) }} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button onClick={() => excluirComentario(c.id)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                  </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={c.texto} /></p>
+                {editandoComentarioId === c.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea value={editandoComentarioTexto} onChange={e => setEditandoComentarioTexto(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEditandoComentarioId(null)} style={{ padding: '4px 10px', background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={() => { editarComentario(c.id, editandoComentarioTexto); setEditandoComentarioId(null) }} disabled={!editandoComentarioTexto.trim()}
+                        style={{ padding: '4px 10px', background: '#111', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Salvar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={c.texto} /></p>
+                )}
               </div>
             ))}
           </>
