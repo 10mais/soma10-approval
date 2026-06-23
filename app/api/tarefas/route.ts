@@ -7,9 +7,30 @@ import { notificar } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+
+  const lixeira = req.nextUrl.searchParams.get('lixeira') === 'true'
+
+  if (lixeira) {
+    const ids = await redis.smembers('tarefas_excluidas')
+    const tarefas = (await Promise.all(ids.map(id => redis.get<any>(`tarefa:${id}`)))).filter(Boolean)
+    const agora = Date.now()
+    const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000
+    const validas: any[] = []
+    for (const t of tarefas) {
+      if (t.excluidoEm && agora - new Date(t.excluidoEm).getTime() > TRINTA_DIAS) {
+        await redis.del(`tarefa:${t.id}`)
+        await redis.srem('tarefas_excluidas', t.id)
+      } else {
+        validas.push(t)
+      }
+    }
+    validas.sort((a, b) => new Date(b.excluidoEm || 0).getTime() - new Date(a.excluidoEm || 0).getTime())
+    return NextResponse.json(validas)
+  }
+
   const ids = await redis.smembers('tarefas')
   const tarefas = (await Promise.all(ids.map(id => redis.get<Tarefa>(`tarefa:${id}`)))).filter(Boolean) as Tarefa[]
   tarefas.sort((a, b) => {
@@ -61,6 +82,17 @@ export async function PUT(req: NextRequest) {
   const tarefa = await redis.get<Tarefa>(`tarefa:${id}`)
   if (!tarefa) return NextResponse.json({ error: 'nao encontrada' }, { status: 404 })
 
+  // Restaurar da lixeira
+  if (updates.restaurar) {
+    await redis.srem('tarefas_excluidas', id)
+    await redis.sadd('tarefas', id)
+    const restaurado = { ...tarefa } as any
+    delete restaurado.excluidoEm
+    delete restaurado.excluidoPor
+    await redis.set(`tarefa:${id}`, restaurado)
+    return NextResponse.json({ ok: true })
+  }
+
   const camposPermitidos = ['titulo', 'descricao', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
@@ -98,7 +130,21 @@ export async function DELETE(req: NextRequest) {
   }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })
-  await redis.del(`tarefa:${id}`)
+  const permanente = req.nextUrl.searchParams.get('permanente') === 'true'
+
+  if (permanente) {
+    await redis.del(`tarefa:${id}`)
+    await redis.srem('tarefas_excluidas', id)
+    return NextResponse.json({ ok: true })
+  }
+
+  const tarefa = await redis.get<any>(`tarefa:${id}`)
+  if (tarefa) {
+    tarefa.excluidoEm = new Date().toISOString()
+    tarefa.excluidoPor = session.user?.name || ''
+    await redis.set(`tarefa:${id}`, tarefa)
+  }
   await redis.srem('tarefas', id)
+  await redis.sadd('tarefas_excluidas', id)
   return NextResponse.json({ ok: true })
 }

@@ -1073,6 +1073,9 @@ function Dashboard() {
         .soma10-tema-escuro img, .soma10-tema-escuro video, .soma10-tema-escuro iframe {
           filter: invert(1) hue-rotate(180deg);
         }
+        .soma10-tema-escuro .soma10-no-invert {
+          filter: invert(1) hue-rotate(180deg);
+        }
       `}</style>
       {/* Header */}
       <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -1294,7 +1297,7 @@ function Dashboard() {
             <>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {(['home', 'tarefas', 'playbook', 'esteira'] as const).map(a => (
-                  <button key={a} onClick={() => setAba(a as any)} style={{
+                  <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
@@ -1306,7 +1309,7 @@ function Dashboard() {
               </nav>
               <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <button onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} style={{
+                <button onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} className={aba === 'mensagens' ? 'soma10-no-invert' : undefined} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: aba === 'mensagens' ? 700 : 500, color: aba === 'mensagens' ? '#111' : '#888',
                   background: aba === 'mensagens' ? '#ffc00f' : 'transparent', fontSize: 14,
@@ -1331,7 +1334,7 @@ function Dashboard() {
                   {configAberto && (
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {(['config', 'usuarios', 'clientes'] as const).map(a => (
-                      <button key={a} onClick={() => setAba(a as any)} style={{
+                      <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
                         padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                         fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                         background: aba === a ? '#ffc00f' : 'transparent',
