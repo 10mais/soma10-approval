@@ -1155,10 +1155,8 @@ function Dashboard() {
               const v = e.target.value
               if (!v) return
               if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
-              // Simular como um usuario especifico
               const u = usuarios.find((x: any) => x.email === v)
-              if (u && (u as any).clienteId) { setVerComoClienteId((u as any).clienteId); setAba('aprovacoes') }
-              else if (u) { /* gerente — so mostra o nome, nao tem visao diferente */ }
+              if (u && (u as any).clienteId) { router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
             }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
@@ -1260,7 +1258,7 @@ function Dashboard() {
                     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
                     .map(c => (
                       <button key={c.id} onClick={() => {
-                        setVerComoClienteId(c.id); setBuscaCliente(''); setAba('planner')
+                        router.push(`/cliente/${c.id}`); setBuscaCliente('')
                         setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [], documentoMarca: (c as any).documentoMarca || '', documentoMarcaGeradoEm: (c as any).documentoMarcaGeradoEm || '' })
                       }} style={{
                         textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -2302,7 +2300,7 @@ function Dashboard() {
 
         {/* PAINEL HOME */}
         {aba === 'home' && (
-          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => { setVerComoClienteId(id); setAba('planner'); const c: any = clientes.find(x => x.id === id); if (c) setBrandForm({ segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '', publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '', documentos: c.documentos || [], documentoMarca: c.documentoMarca || '', documentoMarcaGeradoEm: c.documentoMarcaGeradoEm || '' }) }} />
+          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} />
         )}
 
         {/* CLIENTES */}
