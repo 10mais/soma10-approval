@@ -120,10 +120,12 @@ export type Marco = {
 // Gestao de tarefas
 export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
+export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video'
 export type Tarefa = {
   id: string
   titulo: string
   descricao?: string
+  tipo?: TarefaTipo
   status: TarefaStatus
   prioridade: TarefaPrioridade
   responsavelEmail?: string

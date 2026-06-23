@@ -8,13 +8,29 @@ type Usuario = { id: string; nome: string; email: string; role: string; foto?: s
 type Anotacao = { id: string; x: number; y: number; texto: string; autor: string; autorNome: string; criadoEm: string }
 type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[] }
 type Tarefa = {
-  id: string; titulo: string; descricao?: string; status: string; prioridade: string
+  id: string; titulo: string; descricao?: string; tipo?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
   prazo?: string; anexos?: Anexo[]
   atividades?: any[]; comentarios?: any[]
   criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
   excluidoEm?: string; excluidoPor?: string
 }
+
+const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
+  { key: 'carrossel', label: 'Carrossel', cor: '#7c3aed', icone: 'M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5z' },
+  { key: 'criativo', label: 'Criativo', cor: '#ea580c', icone: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
+  { key: 'ecommerce', label: 'E-commerce', cor: '#0891b2', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
+  { key: 'estrategia', label: 'Estrategia', cor: '#0d9488', icone: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
+  { key: 'landing_page', label: 'Landing Page', cor: '#2563eb', icone: 'M3 3h18v18H3zM3 9h18M9 21V9' },
+  { key: 'planejamento', label: 'Planejamento', cor: '#4f46e5', icone: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+  { key: 'post', label: 'Post', cor: '#059669', icone: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  { key: 'reel', label: 'Reel', cor: '#dc2626', icone: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z' },
+  { key: 'story', label: 'Story', cor: '#c026d3', icone: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z' },
+  { key: 'tarefa', label: 'Tarefa', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'video', label: 'Video', cor: '#b91c1c', icone: 'M5 3l14 9-14 9V3z' },
+]
+
+function tipoInfo(key?: string) { return TIPOS.find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -330,6 +346,12 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
                     <div key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
                       style={{ background: '#fff', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}` }}>
+                      {t.tipo && t.tipo !== 'tarefa' && (() => { const tp = tipoInfo(t.tipo); return (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
+                          {tp.label}
+                        </span>
+                      )})()}
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
@@ -367,20 +389,26 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
       {/* LISTA */}
       {view === 'lista' && (
         <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 90px 90px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
-            <span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 120px 100px 90px 90px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
+            <span>Tarefa</span><span>Tipo</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
-          {filtradas.map(t => (
-            <div key={t.id} onClick={() => setEditModal(t)} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12 }}>
+          {filtradas.map(t => {
+            const tp = tipoInfo(t.tipo)
+            return (
+            <div key={t.id} onClick={() => setEditModal(t)} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12 }}>
               <span style={{ fontWeight: 600, color: '#111' }}>{t.titulo}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: tp.cor, fontWeight: 600 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
+                {tp.label}
+              </span>
               <span style={{ color: '#555' }}>{t.responsavelNome || '--'}</span>
               <span style={{ color: '#888' }}>{t.clienteNome || '--'}</span>
               <span style={{ color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo) || '--'}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>
               <span style={{ color: corPrioridade(t.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === t.prioridade)?.label || t.prioridade}</span>
               <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === t.status)?.label || t.status}</span>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -438,6 +466,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
 }) {
   const [form, setForm] = useState({
     titulo: tarefa?.titulo || '', descricao: tarefa?.descricao || '',
+    tipo: tarefa?.tipo || 'tarefa',
     status: tarefa?.status || 'a_fazer', prioridade: tarefa?.prioridade || 'media',
     responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
@@ -639,10 +668,25 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
           {/* DETALHES */}
           {(!tarefa || viewMode !== 'sidebar' || abaInterna === 'detalhes') && (<>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Titulo *</label>
-              <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="O que precisa ser feito?"
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Titulo *</label>
+                <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="O que precisa ser feito?"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ width: 160 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Tipo</label>
+                <div style={{ position: 'relative' }}>
+                  <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff', appearance: 'none', boxSizing: 'border-box' }}>
+                    {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  </select>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                    <path d={tipoInfo(form.tipo).icone} />
+                  </svg>
+                </div>
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>

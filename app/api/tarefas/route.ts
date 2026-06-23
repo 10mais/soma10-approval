@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     id: uuid(),
     titulo: body.titulo || 'Nova tarefa',
     descricao: body.descricao || '',
+    tipo: body.tipo || 'tarefa',
     status: body.status || 'a_fazer',
     prioridade: body.prioridade || 'media',
     responsavelEmail: body.responsavelEmail || '',
@@ -93,7 +94,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const camposPermitidos = ['titulo', 'descricao', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
+  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
   const agora = new Date().toISOString()
