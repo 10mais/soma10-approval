@@ -33,7 +33,7 @@ export default function PlannerPage() {
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
   }, [clienteId])
 
-  const filtrados = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto')
+  const filtrados = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || p.status === 'rascunho')
     .sort((a, b) => new Date(b.dataAgendada || b.criadoEm).getTime() - new Date(a.dataAgendada || a.criadoEm).getTime())
 
   return (
