@@ -76,6 +76,12 @@ export type TipoNotificacao =
   | 'post_reprovado'
   | 'post_publicado'
   | 'post_falha_publicacao'
+  | 'tarefa_atribuida'
+  | 'tarefa_alterada'
+  | 'tarefa_mencao'
+  | 'tarefa_prazo_proximo'
+  | 'tarefa_vencida'
+  | 'mensagem_privada'
   | 'geral'
 
 export type Notificacao = {

@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Tarefa } from '@/lib/redis'
+import { redis, Tarefa, Usuario } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
+
+function extrairMencoes(texto: string): string[] {
+  const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
+  const mencoes: string[] = []
+  let m
+  while ((m = regex.exec(texto)) !== null) mencoes.push(m[1].trim())
+  return mencoes
+}
+
+async function resolverEmailPorNome(nome: string): Promise<string | null> {
+  const emails = await redis.smembers('usuarios')
+  const usuarios = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+  const u = usuarios.find(x => x.nome.toLowerCase() === nome.toLowerCase())
+  return u?.email || null
+}
 
 export const runtime = 'nodejs'
 
@@ -115,12 +130,44 @@ export async function PUT(req: NextRequest) {
     comentarios.push(com)
     atualizado.comentarios = comentarios
     novasAtividades.push({ id: uuid(), tipo: 'comentario', descricao: `Comentou: "${updates.novoComentario.slice(0, 60)}"`, autor, criadoEm: agora })
+
+    // Notificar mencionados com @
+    const mencoes = extrairMencoes(updates.novoComentario)
+    for (const nome of mencoes) {
+      const email = await resolverEmailPorNome(nome)
+      if (email && email !== (session.user as any).email) {
+        await notificar(email, 'tarefa_mencao', `Voce foi mencionado`, `${autor} mencionou voce na tarefa "${tarefa.titulo}": "${updates.novoComentario.slice(0, 80)}"`)
+      }
+    }
   }
 
   atualizado.atividades = novasAtividades
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
   await redis.set(`tarefa:${id}`, atualizado)
+
+  const meuEmail = (session.user as any).email
+  // Notificar responsavel quando tarefa e reatribuida
+  if (updates.responsavelEmail && updates.responsavelEmail !== tarefa.responsavelEmail && updates.responsavelEmail !== meuEmail) {
+    await notificar(updates.responsavelEmail, 'tarefa_atribuida', 'Tarefa atribuida a voce', `${autor} atribuiu a tarefa "${tarefa.titulo}" a voce.`)
+  }
+  // Notificar criador e responsavel sobre alteracoes (exceto quem fez a mudanca)
+  const alterou = (updates.status && updates.status !== tarefa.status) || (updates.prioridade && updates.prioridade !== tarefa.prioridade) || (updates.prazo && updates.prazo !== tarefa.prazo)
+  if (alterou && !updates.novoComentario) {
+    const mudancas: string[] = []
+    if (updates.status && updates.status !== tarefa.status) mudancas.push(`status para ${statusLabels[updates.status] || updates.status}`)
+    if (updates.prioridade && updates.prioridade !== tarefa.prioridade) mudancas.push(`prioridade para ${updates.prioridade}`)
+    if (updates.prazo && updates.prazo !== tarefa.prazo) mudancas.push(`prazo para ${new Date(updates.prazo).toLocaleDateString('pt-BR')}`)
+    const desc = mudancas.join(', ')
+    const notifEmails: string[] = []
+    if (tarefa.responsavelEmail && tarefa.responsavelEmail !== meuEmail && !notifEmails.includes(tarefa.responsavelEmail)) notifEmails.push(tarefa.responsavelEmail)
+    const criadorEmail = await resolverEmailPorNome(tarefa.criadoPor)
+    if (criadorEmail && criadorEmail !== meuEmail && !notifEmails.includes(criadorEmail)) notifEmails.push(criadorEmail)
+    for (const e of notifEmails) {
+      await notificar(e, 'tarefa_alterada', `Tarefa alterada`, `${autor} alterou "${tarefa.titulo}": ${desc}.`)
+    }
+  }
+
   return NextResponse.json({ ok: true, tarefa: atualizado })
 }
 

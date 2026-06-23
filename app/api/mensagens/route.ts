@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Usuario, ChatMensagem } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { notificar } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 
@@ -81,8 +82,17 @@ export async function POST(req: NextRequest) {
 
   const chave = chaveConversa(me, para)
   await redis.rpush(chave, msg)
-  // Quem envia já "leu" a própria mensagem
   await redis.set(`chat:read:${me}:${chave}`, msg.criadoEm)
+
+  // Notificar destinatario (DM) ou equipe (canal geral)
+  if (para !== 'equipe') {
+    await notificar(para, 'mensagem_privada', 'Nova mensagem', `${msg.deNome}: "${texto.slice(0, 80)}"`)
+  } else {
+    const emails = await redis.smembers('usuarios')
+    const usuarios = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+    const equipe = usuarios.filter(u => u.role !== 'cliente' && u.email !== me)
+    await Promise.all(equipe.map(u => notificar(u.email, 'mensagem_privada', 'Mensagem na equipe', `${msg.deNome}: "${texto.slice(0, 80)}"`)))
+  }
 
   return NextResponse.json({ ok: true, mensagem: msg })
 }

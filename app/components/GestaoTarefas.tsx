@@ -32,6 +32,22 @@ const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
 
 function tipoInfo(key?: string) { return TIPOS.find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 
+function forcarDownload(url: string, nome: string) {
+  fetch(url).then(r => r.blob()).then(blob => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = nome
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 100)
+  }).catch(() => { window.open(url, '_blank') })
+}
+
+function TextoComMencoes({ texto }: { texto: string }) {
+  const partes = texto.split(/(@[a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g)
+  return <>{partes.map((p, i) => p.startsWith('@') ? <span key={i} style={{ color: '#2563eb', fontWeight: 600 }}>{p}</span> : <span key={i}>{p}</span>)}</>
+}
+
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div onClick={onCancel} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
@@ -91,10 +107,10 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
-          <a href={anexo.url} download={anexo.nome} target="_blank" rel="noreferrer" style={{ position: 'absolute', top: 12, right: 52, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', zIndex: 10 }}
+          <button onClick={() => forcarDownload(anexo.url, anexo.nome)} style={{ position: 'absolute', top: 12, right: 52, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}
             title="Baixar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </a>
+          </button>
           {ehImagem && (
             <div onClick={handleClickImagem} style={{ position: 'relative', cursor: 'crosshair', maxWidth: '100%', maxHeight: '92vh' }}>
               <img src={anexo.url} alt={anexo.nome} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', display: 'block' }} />
@@ -478,6 +494,9 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
   const [novoComentario, setNovoComentario] = useState('')
   const [enviandoComentario, setEnviandoComentario] = useState(false)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  const [mencaoQuery, setMencaoQuery] = useState('')
+  const [mencaoAberta, setMencaoAberta] = useState(false)
+  const [mencaoPos, setMencaoPos] = useState(0)
 
   function addAnotacao(idx: number, anotacao: Anotacao) {
     setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: [...(a.anotacoes || []), anotacao] } : a))
@@ -613,17 +632,47 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
                   <span style={{ fontWeight: 700, fontSize: 12, color: '#111' }}>{c.autorNome}</span>
                   <span style={{ fontSize: 10, color: '#aaa' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}>{c.texto}</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={c.texto} /></p>
               </div>
             ))}
           </>
         )}
       </div>
 
-      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-        <textarea value={novoComentario} onChange={e => setNovoComentario(e.target.value)} placeholder="Escreva um comentario..."
+      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, position: 'relative' }}>
+        {mencaoAberta && (() => {
+          const filtrados = (usuarios || []).filter(u => u.role !== 'cliente' && u.nome.toLowerCase().includes(mencaoQuery.toLowerCase()))
+          return filtrados.length > 0 ? (
+            <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: 160, overflowY: 'auto', zIndex: 10, marginBottom: 4 }}>
+              {filtrados.map(u => (
+                <button key={u.email} onClick={() => {
+                  const antes = novoComentario.slice(0, mencaoPos)
+                  const depois = novoComentario.slice(mencaoPos + mencaoQuery.length + 1)
+                  setNovoComentario(antes + '@' + u.nome + ' ' + depois)
+                  setMencaoAberta(false)
+                }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12 }}>
+                  {u.foto ? <img src={u.foto} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f0f0f0' }} />}
+                  <span style={{ fontWeight: 600, color: '#111' }}>{u.nome}</span>
+                  <span style={{ color: '#aaa', fontSize: 10 }}>{u.role}</span>
+                </button>
+              ))}
+            </div>
+          ) : null
+        })()}
+        <textarea value={novoComentario} onChange={e => {
+          const v = e.target.value
+          setNovoComentario(v)
+          const pos = e.target.selectionStart || 0
+          const textoBefore = v.slice(0, pos)
+          const arroba = textoBefore.lastIndexOf('@')
+          if (arroba >= 0 && (arroba === 0 || v[arroba - 1] === ' ' || v[arroba - 1] === '\n')) {
+            const query = textoBefore.slice(arroba + 1)
+            if (!query.includes(' ') || query.length < 30) { setMencaoAberta(true); setMencaoQuery(query); setMencaoPos(arroba) }
+            else setMencaoAberta(false)
+          } else setMencaoAberta(false)
+        }} placeholder="Escreva um comentario... Use @ para mencionar"
           style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarComentario() } }} />
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mencaoAberta) { e.preventDefault(); enviarComentario() } }} />
         <button onClick={enviarComentario} disabled={enviandoComentario || !novoComentario.trim()}
           style={{ width: '100%', padding: '8px 0', background: novoComentario.trim() ? '#111' : '#f0f0f0', color: novoComentario.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoComentario.trim() ? 'pointer' : 'not-allowed' }}>
           Enviar
@@ -762,11 +811,11 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
                       <span style={{ position: 'absolute', top: 2, left: 2, background: '#b91c1c', color: '#fff', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, padding: '0 4px' }}>{a.anotacoes!.length}</span>
                     )}
                     <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
-                    <a href={a.url} download={a.nome} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                      style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                    <button onClick={e => { e.stopPropagation(); forcarDownload(a.url, a.nome) }}
+                      style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                       title={`Baixar ${a.nome}`}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    </a>
+                    </button>
                   </div>
                 ))}
               </div>
