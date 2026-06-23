@@ -146,51 +146,6 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
         </div>
       )}
 
-      {/* Saude dos clientes */}
-      {clientesOrdenados.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Saude dos clientes</h3>
-            <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#888' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#ef4444' }} />Critico</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#f59e0b' }} />Atencao</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#22c55e' }} />Saudavel</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#16a34a' }} />Excelente</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#ffc00f' }} />Destaque</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {clientesOrdenados.map(c => {
-              const qtd = contagemPorCliente[c.id] || 0
-              const fx = faixaStatus(qtd)
-              return (
-                <div key={c.id} onClick={() => onVerCliente(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#fafafa', borderRadius: 10, cursor: 'pointer' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: c.corSecundaria || '#111', flexShrink: 0 }}>
-                    {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : c.nome[0]?.toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: fx.cor }}>{qtd}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: fx.cor, background: fx.bg, borderRadius: 999, padding: '2px 8px' }}>{fx.label}</span>
-                      </div>
-                    </div>
-                    <div style={{ position: 'relative', height: 6, borderRadius: 999, background: '#eee', overflow: 'hidden' }}>
-                      <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${barPct(qtd)}%`, background: barCor(qtd), borderRadius: 999, transition: 'width .3s' }} />
-                      <div style={{ position: 'absolute', top: -1, bottom: -1, left: `${(META_MIN / META_EXC) * 100}%`, width: 1, background: '#aaa' }} />
-                      <div style={{ position: 'absolute', top: -1, bottom: -1, left: `${(META_BOA / META_EXC) * 100}%`, width: 1, background: '#16a34a' }} />
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          {clientesSM.length === 0 && (
-            <p style={{ margin: 0, fontSize: 13, color: '#aaa', textAlign: 'center', padding: 20 }}>Nenhum cliente com entrega de Social Media configurada. Defina os entregaveis em Clientes.</p>
-          )}
-        </div>
-      )}
     </div>
   )
 }
