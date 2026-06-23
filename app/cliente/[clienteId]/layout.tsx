@@ -4,14 +4,14 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 
 const NAV_ITEMS = [
-  { key: '', label: 'Inicio' },
-  { key: '/aprovacoes', label: 'Aprovacoes' },
-  { key: '/esteira', label: 'Esteira' },
-  { key: '/planner', label: 'Planner' },
-  { key: '/playbook', label: 'Playbook' },
-  { key: '/marca', label: 'Marca' },
-  { key: '/listening', label: 'Social Listening' },
-  { key: '/analytics', label: 'Analytics' },
+  { key: '', label: 'Inicio', todos: true },
+  { key: '/aprovacoes', label: 'Aprovacoes', todos: true },
+  { key: '/esteira', label: 'Esteira', todos: true },
+  { key: '/planner', label: 'Planner', todos: true },
+  { key: '/playbook', label: 'Playbook', equipe: true },
+  { key: '/marca', label: 'Marca', equipe: true },
+  { key: '/listening', label: 'Social Listening', equipe: true },
+  { key: '/analytics', label: 'Analytics', equipe: true },
 ]
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
@@ -76,7 +76,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
           {/* Nav */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {NAV_ITEMS.map(item => {
+            {NAV_ITEMS.filter(item => item.todos || (item.equipe && ehEquipe)).map(item => {
               const href = `${basePath}${item.key}`
               const ativo = subpath === item.key || (item.key === '' && subpath === '')
               return (
