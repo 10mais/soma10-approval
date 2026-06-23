@@ -35,6 +35,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const subpath = pathname.replace(basePath, '') || ''
 
   // Extrai cor dominante da imagem de perfil
+  // Extrai a cor DOMINANTE (mais frequente) da imagem de perfil
   const [corExtraida, setCorExtraida] = useState<string | null>(null)
   useEffect(() => {
     if (!cliente?.logo) return
@@ -43,21 +44,34 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas')
-        canvas.width = 50; canvas.height = 50
+        canvas.width = 40; canvas.height = 40
         const ctx = canvas.getContext('2d')
         if (!ctx) return
-        ctx.drawImage(img, 0, 0, 50, 50)
-        const data = ctx.getImageData(0, 0, 50, 50).data
-        let r = 0, g = 0, b = 0, count = 0
-        for (let i = 0; i < data.length; i += 16) {
-          const pr = data[i], pg = data[i+1], pb = data[i+2], pa = data[i+3]
-          if (pa < 128) continue
-          // Ignora pixels muito claros (brancos/cinza claro) e muito escuros
-          if (pr + pg + pb > 680 || pr + pg + pb < 60) continue
-          r += pr; g += pg; b += pb; count++
+        ctx.drawImage(img, 0, 0, 40, 40)
+        const data = ctx.getImageData(0, 0, 40, 40).data
+        // Histograma quantizado (agrupa cores similares em buckets de 32)
+        const buckets: Record<string, { r: number; g: number; b: number; count: number }> = {}
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3]
+          if (a < 128) continue
+          const soma = r + g + b
+          if (soma > 700 || soma < 50) continue // ignora brancos e pretos
+          if (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && soma > 200) continue // ignora cinzas
+          const qr = Math.round(r / 32) * 32
+          const qg = Math.round(g / 32) * 32
+          const qb = Math.round(b / 32) * 32
+          const key = `${qr},${qg},${qb}`
+          if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 }
+          buckets[key].r += r; buckets[key].g += g; buckets[key].b += b; buckets[key].count++
         }
-        if (count > 0) {
-          r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count)
+        let melhor = null as { r: number; g: number; b: number; count: number } | null
+        for (const b of Object.values(buckets)) {
+          if (!melhor || b.count > melhor.count) melhor = b
+        }
+        if (melhor && melhor.count > 10) {
+          const r = Math.round(melhor.r / melhor.count)
+          const g = Math.round(melhor.g / melhor.count)
+          const b = Math.round(melhor.b / melhor.count)
           setCorExtraida(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`)
         }
       } catch {}
@@ -107,7 +121,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           {cliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: cliente.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: cliente.corSecundaria || '#111', flexShrink: 0 }}>
-                {cliente.logo ? <img src={cliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : cliente.nome?.[0]?.toUpperCase()}
+                {cliente.logo ? <img src={cliente.logo} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                {(!cliente.logo) && <span>{cliente.nome?.[0]?.toUpperCase()}</span>}
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111' }}>{cliente.nome}</p>

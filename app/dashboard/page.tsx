@@ -304,12 +304,14 @@ function Dashboard() {
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
-  // Tema (claro/escuro) — persistido no navegador
-  const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
-  useEffect(() => {
-    const salvo = typeof window !== 'undefined' ? localStorage.getItem('soma10-tema') : null
-    if (salvo === 'escuro' || salvo === 'claro') setTema(salvo)
-  }, [])
+  // Tema (claro/escuro) — persistido no navegador, inicializa direto do localStorage
+  const [tema, setTema] = useState<'claro' | 'escuro'>(() => {
+    if (typeof window !== 'undefined') {
+      const salvo = localStorage.getItem('soma10-tema')
+      if (salvo === 'escuro') return 'escuro'
+    }
+    return 'claro'
+  })
   function alternarTema() {
     setTema(t => {
       const novo = t === 'claro' ? 'escuro' : 'claro'
@@ -1155,13 +1157,19 @@ function Dashboard() {
               const v = e.target.value
               if (!v) return
               if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
+              if (v.startsWith('cli:')) { router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
               const u = usuarios.find((x: any) => x.email === v)
               if (u && (u as any).clienteId) { router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
             }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
               <option value="_reset">Voltar a minha visao</option>
-              {usuarios.map((u: any) => <option key={u.email} value={u.email}>{u.nome} ({u.role})</option>)}
+              <optgroup label="Clientes">
+                {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
+              </optgroup>
+              <optgroup label="Usuarios">
+                {usuarios.map((u: any) => <option key={u.email} value={u.email}>{u.nome} ({u.role})</option>)}
+              </optgroup>
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
