@@ -79,7 +79,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     img.src = cliente.logo
   }, [cliente?.logo])
 
-  const corPrimaria = corExtraida || cliente?.corPrimaria || '#111'
+  const corPrimaria = cliente?.corPrimaria || corExtraida || '#111'
 
   // Calcula se o fundo e claro ou escuro para escolher texto branco ou preto
   function corEscura(hex: string): boolean {

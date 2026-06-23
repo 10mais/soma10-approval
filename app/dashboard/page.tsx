@@ -293,7 +293,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1094,66 +1094,21 @@ function Dashboard() {
             {tema === 'escuro' ? <IconSun size={18} /> : <IconMoon size={18} />}
           </button>
 
-          {/* Sininho de notificações */}
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
-              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
-              width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <IconBell size={18} />
-              {notificacoes.some(n => !n.lida) && (
-                <span style={{
-                  position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
-                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
-                }}>
-                  {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
-                </span>
-              )}
-            </button>
-
-            {inboxAberto && (
-              <>
-                <div onClick={() => setInboxAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
-                <div style={{
-                  position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 440, overflowY: 'auto', background: '#fff',
-                  borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
-                    {notificacoes.length > 0 && (
-                      <button onClick={limparNotificacoes} style={{ background: 'none', border: 'none', color: '#991b1b', fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-                        Limpar todas
-                      </button>
-                    )}
-                  </div>
-                  {notificacoes.length === 0 ? (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma notificação por enquanto.</div>
-                  ) : (
-                    notificacoes.map(n => (
-                      <div key={n.id} onClick={() => {
-                        if (!n.lida) marcarNotificacaoLida(n.id)
-                        if (n.postId) {
-                          const p = posts.find((x: any) => x.id === n.postId)
-                          if (p) { setInboxAberto(false); setPostPreview(p) }
-                        }
-                      }} style={{
-                        padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
-                        background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start',
-                      }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
+          {/* Sininho de notificações — abre Inbox */}
+          <button onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} title="Inbox" style={{
+            position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
+            width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <IconBell size={18} />
+            {notificacoes.some(n => !n.lida) && (
+              <span style={{
+                position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
+                color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
+              }}>
+                {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
+              </span>
             )}
-          </div>
+          </button>
 
           {role === 'admin' && (
             <select onChange={e => {
@@ -1309,6 +1264,17 @@ function Dashboard() {
               </nav>
               <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} className={aba === 'inbox' ? 'soma10-no-invert' : undefined} style={{
+                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                  fontWeight: aba === 'inbox' ? 700 : 500, color: aba === 'inbox' ? '#111' : '#888',
+                  background: aba === 'inbox' ? '#ffc00f' : 'transparent', fontSize: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  Inbox
+                  {notificacoes.filter(n => !n.lida).length > 0 && (
+                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{notificacoes.filter(n => !n.lida).length > 99 ? '99+' : notificacoes.filter(n => !n.lida).length}</span>
+                  )}
+                </button>
                 <button onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} className={aba === 'mensagens' ? 'soma10-no-invert' : undefined} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: aba === 'mensagens' ? 700 : 500, color: aba === 'mensagens' ? '#111' : '#888',
@@ -1643,7 +1609,7 @@ function Dashboard() {
                       background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                       border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid #eee',
                     }}>
-                      <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
+                      <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : post.formato === 'carrossel' ? '1' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
                         {capa ? (
                           <ImagemComFallback src={capa} />
                         ) : (
@@ -2335,6 +2301,68 @@ function Dashboard() {
           <AprovacoesCli posts={verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
         )}
 
+        {aba === 'inbox' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Inbox</h2>
+              {notificacoes.length > 0 && (
+                <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Limpar todas</button>
+              )}
+            </div>
+            {notificacoes.length === 0 ? (
+              <div style={{ background: '#fff', borderRadius: 14, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+                <p style={{ margin: 0, fontSize: 14, color: '#888', fontWeight: 500 }}>Nenhuma notificacao por enquanto.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Voce sera notificado sobre tarefas, aprovacoes, mensagens e prazos.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {notificacoes.map(n => {
+                  const icones: Record<string, { cor: string; path: string }> = {
+                    tarefa_atribuida: { cor: '#2563eb', path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6' },
+                    tarefa_alterada: { cor: '#ca8a04', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
+                    tarefa_mencao: { cor: '#7c3aed', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8z' },
+                    tarefa_prazo_proximo: { cor: '#ea580c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
+                    tarefa_vencida: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
+                    mensagem_privada: { cor: '#0891b2', path: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+                    post_aprovado: { cor: '#059669', path: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+                    post_corrigir: { cor: '#ca8a04', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
+                    post_publicado: { cor: '#059669', path: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z' },
+                    post_falha_publicacao: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01' },
+                    geral: { cor: '#6b7280', path: 'M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0' },
+                  }
+                  const ic = icones[n.tipo] || icones.geral
+                  return (
+                    <div key={n.id} onClick={() => {
+                      if (!n.lida) marcarNotificacaoLida(n.id)
+                      if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) setPostPreview(p) }
+                      if (n.tipo?.startsWith('tarefa_')) setAba('tarefas' as any)
+                      if (n.tipo === 'mensagem_privada') setAba('mensagens' as any)
+                    }} style={{
+                      display: 'flex', gap: 14, padding: '14px 18px', background: n.lida ? '#fff' : '#fffbeb', borderRadius: 12,
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', alignItems: 'flex-start',
+                      border: n.lida ? '1px solid #f0f0f0' : '1px solid #fde68a', transition: 'all 0.15s',
+                    }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${ic.cor}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ic.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ic.path} /></svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</span>
+                          {!n.lida && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
+                        </div>
+                        <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#555', lineHeight: 1.4 }}>{n.mensagem}</p>
+                        <span style={{ fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>x</button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {aba === 'tarefas' && (
           <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} />
         )}
@@ -2587,7 +2615,7 @@ function Dashboard() {
                                   </a>
                                 )}
                                 {(temFB || temIG) && (
-                                  <button onClick={() => desconectarInstagram(c.id)}
+                                  <button onClick={() => { if (confirm(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`)) desconectarInstagram(c.id) }}
                                     style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 10px', fontSize: 12, color: '#aaa', cursor: 'pointer' }}>
                                     Desconectar
                                   </button>

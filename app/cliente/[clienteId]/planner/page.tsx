@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Calendar from '@/app/components/Calendar'
+import PostComposer from '@/app/components/PostComposer'
 
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
@@ -26,12 +27,35 @@ const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: '
 export default function PlannerPage() {
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
+  const [clientes, setClientes] = useState<any[]>([])
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
+  const [novoPost, setNovoPost] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [salvandoRascunho, setSalvandoRascunho] = useState(false)
 
-  useEffect(() => {
+  function carregar() {
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
+  }
+  useEffect(() => {
+    carregar()
+    fetch('/api/clientes').then(r => r.json()).then(d => setClientes(Array.isArray(d) ? d : [])).catch(() => {})
   }, [clienteId])
+
+  async function criarPost(valor: any) {
+    setEnviando(true)
+    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...valor, clienteId, status: 'agendado' }) }).catch(() => {})
+    setEnviando(false)
+    setNovoPost(false)
+    carregar()
+  }
+  async function salvarRascunho(valor: any) {
+    setSalvandoRascunho(true)
+    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...valor, clienteId, status: 'rascunho' }) }).catch(() => {})
+    setSalvandoRascunho(false)
+    setNovoPost(false)
+    carregar()
+  }
 
   const filtrados = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || p.status === 'rascunho')
     .sort((a, b) => new Date(b.dataAgendada || b.criadoEm).getTime() - new Date(a.dataAgendada || a.criadoEm).getTime())
@@ -40,14 +64,19 @@ export default function PlannerPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Planner</h2>
-        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {(['lista', 'calendario'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              background: view === v ? '#fff' : 'transparent', color: view === v ? '#111' : '#888',
-              boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-            }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+            {(['lista', 'calendario'] as const).map(v => (
+              <button key={v} onClick={() => setView(v)} style={{
+                padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                background: view === v ? '#fff' : 'transparent', color: view === v ? '#111' : '#888',
+                boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+              }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
+            ))}
+          </div>
+          <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Nova postagem
+          </button>
         </div>
       </div>
 
@@ -62,7 +91,7 @@ export default function PlannerPage() {
               const dataMostrar = post.status === 'agendado' ? (post.dataAgendada || post.criadoEm) : (post.atualizadoEm || post.criadoEm)
               return (
                 <div key={post.id} onClick={() => setPreview(post)} style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee' }}>
-                  <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', position: 'relative' }}>
+                  <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : post.formato === 'carrossel' ? '1' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
                     {capa ? <ImagemComFallback src={capa} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11 }}>Sem imagem</div>}
                   </div>
                   <div style={{ padding: 9 }}>
@@ -80,6 +109,28 @@ export default function PlannerPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Modal novo post */}
+      {novoPost && (
+        <div onClick={() => setNovoPost(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Nova postagem</h3>
+              <button onClick={() => setNovoPost(false)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+            </div>
+            <PostComposer
+              clientes={clientes}
+              valorInicial={{ clienteId: clienteId as string }}
+              onSubmit={criarPost}
+              onSalvarRascunho={salvarRascunho}
+              enviando={enviando}
+              salvandoRascunho={salvandoRascunho}
+              textoBotao="Agendar"
+              travarCliente
+            />
+          </div>
+        </div>
       )}
 
       {/* Modal de preview */}
