@@ -1020,7 +1020,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '' })
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '', clienteId: u.clienteId || '' } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1028,7 +1028,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -2681,7 +2681,15 @@ function Dashboard() {
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
                       <option value="gerente">Gerente</option>
                       <option value="admin">Admin</option>
+                      <option value="cliente">Cliente</option>
                     </select>
+                    {novoUsuario.role === 'cliente' && (
+                      <select value={(novoUsuario as any).clienteId || ''} onChange={e => setNovoUsuario(p => ({ ...p, clienteId: e.target.value }))}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        <option value="">Vincular a qual cliente?</option>
+                        {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                      </select>
+                    )}
                     <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
                       padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
                       fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
@@ -2711,8 +2719,9 @@ function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}{(u as any).cargo ? <span style={{ fontWeight: 500, fontSize: 13, color: '#888' }}> · {(u as any).cargo}</span> : null}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
+                      {u.role === 'cliente' && u.clienteId && (() => { const c = clientes.find(x => x.id === u.clienteId); return c ? <p style={{ margin: '2px 0 0', fontSize: 11, color: '#16a34a' }}>Vinculado a: {c.nome}</p> : null })()}
                     </div>
-                    <span style={{ background: u.role === 'admin' ? '#fef3c7' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: '#333' }}>{u.role}</span>
+                    <span style={{ background: u.role === 'admin' ? '#fef3c7' : u.role === 'cliente' ? '#dbeafe' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: u.role === 'cliente' ? '#1d4ed8' : '#333' }}>{u.role}</span>
                     <button onClick={() => editandoUsuario === u.email ? setEditandoUsuario(null) : iniciarEdicaoUsuario(u)}
                       style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>
                       {editandoUsuario === u.email ? 'Fechar' : 'Editar'}
@@ -2747,7 +2756,15 @@ function Dashboard() {
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                           <option value="gerente">Gerente</option>
                           <option value="admin">Admin</option>
+                          <option value="cliente">Cliente</option>
                         </select>
+                        {edicaoUsuario.role === 'cliente' && (
+                          <select value={(edicaoUsuario as any).clienteId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, clienteId: e.target.value }))}
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            <option value="">Vincular a qual cliente?</option>
+                            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                          </select>
+                        )}
                         <div style={{ flex: 1, minWidth: 160, position: 'relative' }}>
                           <input type={verSenhaEdicao ? 'text' : 'password'} value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Redefinir senha (vazio = manter)"
                             style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
