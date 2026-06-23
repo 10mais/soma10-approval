@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
     criadoPor: session.user?.name || '',
     criadoEm: agora,
     atualizadoEm: agora,
+    atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Tarefa criada', autor: session.user?.name || '', criadoEm: agora }],
+    comentarios: [],
   }
   await redis.set(`tarefa:${tarefa.id}`, tarefa)
   await redis.sadd('tarefas', tarefa.id)
@@ -61,6 +63,28 @@ export async function PUT(req: NextRequest) {
 
   const camposPermitidos = ['titulo', 'descricao', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
+  const autor = session.user?.name || ''
+  const agora = new Date().toISOString()
+  const novasAtividades = [...(tarefa.atividades || [])]
+
+  // Registra mudancas no activity log
+  const statusLabels: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido' }
+  if (updates.status && updates.status !== tarefa.status) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Status alterado para ${statusLabels[updates.status] || updates.status}`, autor, criadoEm: agora })
+  if (updates.responsavelNome && updates.responsavelNome !== tarefa.responsavelNome) novasAtividades.push({ id: uuid(), tipo: 'responsavel', descricao: `Responsavel alterado para ${updates.responsavelNome}`, autor, criadoEm: agora })
+  if (updates.prioridade && updates.prioridade !== tarefa.prioridade) novasAtividades.push({ id: uuid(), tipo: 'prioridade', descricao: `Prioridade alterada para ${updates.prioridade}`, autor, criadoEm: agora })
+  if (updates.prazo && updates.prazo !== tarefa.prazo) novasAtividades.push({ id: uuid(), tipo: 'prazo', descricao: `Prazo definido para ${new Date(updates.prazo).toLocaleDateString('pt-BR')}`, autor, criadoEm: agora })
+  if (updates.clienteNome && updates.clienteNome !== tarefa.clienteNome) novasAtividades.push({ id: uuid(), tipo: 'cliente', descricao: `Cliente alterado para ${updates.clienteNome}`, autor, criadoEm: agora })
+
+  // Comentario novo
+  if (updates.novoComentario) {
+    const comentarios = [...(tarefa.comentarios || [])]
+    const com = { id: uuid(), autor: (session.user as any).email, autorNome: autor, texto: updates.novoComentario, criadoEm: agora }
+    comentarios.push(com)
+    atualizado.comentarios = comentarios
+    novasAtividades.push({ id: uuid(), tipo: 'comentario', descricao: `Comentou: "${updates.novoComentario.slice(0, 60)}"`, autor, criadoEm: agora })
+  }
+
+  atualizado.atividades = novasAtividades
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
   await redis.set(`tarefa:${id}`, atualizado)

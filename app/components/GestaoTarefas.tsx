@@ -9,6 +9,7 @@ type Tarefa = {
   id: string; titulo: string; descricao?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
   prazo?: string; anexos?: { nome: string; url: string; tipo: string }[]
+  atividades?: any[]; comentarios?: any[]
   criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
 }
 
@@ -49,6 +50,7 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
   const [editModal, setEditModal] = useState<Tarefa | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
+  const [tarefaViewMode, setTarefaViewMode] = useState<'modal' | 'fullscreen' | 'sidebar'>('modal')
 
   function carregar() {
     fetch('/api/tarefas').then(r => r.json()).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
@@ -192,8 +194,10 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
       {/* Modal nova/editar tarefa */}
       {(novaModal || editModal) && (
         <TarefaModal tarefa={editModal} clientes={clientes} usuarios={usuarios}
+          viewMode={editModal ? tarefaViewMode : 'modal'}
+          onChangeViewMode={setTarefaViewMode}
           onClose={() => { setNovaModal(false); setEditModal(null) }}
-          onSalvo={() => { setNovaModal(false); setEditModal(null); carregar() }}
+          onSalvo={() => { if (tarefaViewMode !== 'sidebar') { setNovaModal(false); setEditModal(null) }; carregar() }}
           onExcluir={editModal ? async () => { await fetch(`/api/tarefas?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
         />
       )}
@@ -201,9 +205,10 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
   )
 }
 
-function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }: {
+function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
+  viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
   const [form, setForm] = useState({
     titulo: tarefa?.titulo || '', descricao: tarefa?.descricao || '',
@@ -214,6 +219,9 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
   const [anexos, setAnexos] = useState<{ nome: string; url: string; tipo: string }[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
+  const [novoComentario, setNovoComentario] = useState('')
+  const [enviandoComentario, setEnviandoComentario] = useState(false)
 
   async function enviarAnexo(arquivo: File) {
     setEnviandoAnexo(true)
@@ -225,6 +233,15 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
       setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
     } catch { /* erro silencioso */ }
     setEnviandoAnexo(false)
+  }
+
+  async function enviarComentario() {
+    if (!tarefa || !novoComentario.trim()) return
+    setEnviandoComentario(true)
+    await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, novoComentario: novoComentario.trim() }) }).catch(() => {})
+    setNovoComentario('')
+    setEnviandoComentario(false)
+    onSalvo()
   }
 
   async function salvar() {
@@ -241,10 +258,51 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
     onSalvo()
   }
 
+  const wrapperStyle: Record<string, any> = {
+    modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
+    fullscreen: { position: 'fixed', inset: 0, background: '#f8f8f8', zIndex: 1000, overflow: 'auto' },
+    sidebar: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, background: '#fff', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'auto' },
+  }
+  const panelStyle: Record<string, any> = {
+    modal: { background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 },
+    fullscreen: { maxWidth: 900, margin: '0 auto', padding: '32px 40px' },
+    sidebar: { padding: 22 },
+  }
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{tarefa ? 'Editar tarefa' : 'Nova tarefa'}</h3>
+    <div onClick={viewMode === 'modal' ? onClose : undefined} style={wrapperStyle[viewMode]}>
+      <div onClick={e => e.stopPropagation()} style={panelStyle[viewMode]}>
+        {/* Cabecalho com titulo + botoes de modo */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{tarefa ? 'Editar tarefa' : 'Nova tarefa'}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {tarefa && onChangeViewMode && (['modal', 'fullscreen', 'sidebar'] as const).map(m => (
+              <button key={m} onClick={() => onChangeViewMode(m)} title={m === 'modal' ? 'Modal' : m === 'fullscreen' ? 'Tela cheia' : 'Sidebar'}
+                style={{ width: 28, height: 28, borderRadius: 6, border: viewMode === m ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: viewMode === m ? '#fffbeb' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {m === 'modal' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /></svg>}
+                {m === 'fullscreen' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /></svg>}
+                {m === 'sidebar' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M14 2v20" /></svg>}
+              </button>
+            ))}
+            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+          </div>
+        </div>
+
+        {/* Abas internas (detalhes / activity) — so quando editando */}
+        {tarefa && (
+          <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+            {(['detalhes', 'activity'] as const).map(a => (
+              <button key={a} onClick={() => setAbaInterna(a)} style={{
+                padding: '8px 18px', border: 'none', borderBottom: abaInterna === a ? '2px solid #ffc00f' : '2px solid transparent',
+                background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: abaInterna === a ? 700 : 500, color: abaInterna === a ? '#111' : '#888',
+              }}>{a === 'detalhes' ? 'Detalhes' : 'Activity'}</button>
+            ))}
+          </div>
+        )}
+
+        {/* ABA DETALHES */}
+        {(!tarefa || abaInterna === 'detalhes') && (<>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Titulo *</label>
@@ -332,11 +390,59 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir }
           <button onClick={salvar} disabled={salvando || !form.titulo.trim()} style={{ flex: 1, padding: '11px 0', background: form.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.titulo.trim() ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (tarefa ? 'Salvar' : 'Criar tarefa')}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onExcluir && (
             <button onClick={() => { if (confirm('Excluir esta tarefa?')) onExcluir() }} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
           )}
         </div>
+        </>)}
+
+        {/* ABA ACTIVITY */}
+        {tarefa && abaInterna === 'activity' && (
+          <div>
+            {/* Comentarios */}
+            <div style={{ marginBottom: 20 }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: 14, color: '#111' }}>Comentarios</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                {(tarefa.comentarios || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhum comentario ainda.</p>}
+                {(tarefa.comentarios || []).map((c: any) => (
+                  <div key={c.id} style={{ background: '#fafafa', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: '#111' }}>{c.autorNome}</span>
+                      <span style={{ fontSize: 10, color: '#aaa' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}>{c.texto}</p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <textarea value={novoComentario} onChange={e => setNovoComentario(e.target.value)} placeholder="Escreva um comentario..."
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarComentario() } }} />
+                <button onClick={enviarComentario} disabled={enviandoComentario || !novoComentario.trim()}
+                  style={{ padding: '8px 16px', background: novoComentario.trim() ? '#111' : '#f0f0f0', color: novoComentario.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoComentario.trim() ? 'pointer' : 'not-allowed', alignSelf: 'flex-end' }}>
+                  Enviar
+                </button>
+              </div>
+            </div>
+
+            {/* Historico de atividades */}
+            <div>
+              <h4 style={{ margin: '0 0 12px', fontSize: 14, color: '#111' }}>Historico</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {[...(tarefa.atividades || [])].reverse().map((a: any) => (
+                  <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? '#1d4ed8' : a.tipo === 'status' ? '#ffc00f' : '#ccc', marginTop: 5, flexShrink: 0 }} />
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#555' }}>{a.descricao}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 10, color: '#aaa' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                ))}
+                {(tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma atividade registrada.</p>}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

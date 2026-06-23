@@ -132,10 +132,29 @@ export type Tarefa = {
   clienteNome?: string
   prazo?: string // ISO date
   anexos?: { nome: string; url: string; tipo: string }[]
+  atividades?: TarefaAtividade[]
+  comentarios?: TarefaComentario[]
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
   concluidoEm?: string
+}
+
+export type TarefaAtividade = {
+  id: string
+  tipo: 'criacao' | 'status' | 'responsavel' | 'prioridade' | 'prazo' | 'cliente' | 'anexo' | 'comentario'
+  descricao: string
+  autor: string
+  criadoEm: string
+}
+
+export type TarefaComentario = {
+  id: string
+  autor: string
+  autorNome: string
+  autorFoto?: string
+  texto: string
+  criadoEm: string
 }
 
 export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
