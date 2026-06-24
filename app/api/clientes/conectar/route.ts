@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { revalidateTag } from 'next/cache'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       ...(fotoPerfil ? { logo: fotoPerfil } : {}),
     }
     await redis.set(`cliente:${clienteId}`, atualizado)
+    revalidateTag('clientes')
     return NextResponse.json({ ok: true, instagram: instagramUsername, tipo: 'instagram-login' })
   }
 
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
     }
 
     await redis.set(`cliente:${clienteId}`, clienteAtualizado)
+    revalidateTag('clientes')
     return NextResponse.json({ ok: true, instagram: igUsername, instagramId: igId })
 
   } catch (err: any) {
@@ -140,5 +143,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   await redis.set(`cliente:${clienteId}`, clienteAtualizado)
+  revalidateTag('clientes')
   return NextResponse.json({ ok: true })
 }

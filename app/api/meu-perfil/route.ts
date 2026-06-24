@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
+import { revalidateTag } from 'next/cache'
 import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
@@ -46,5 +47,6 @@ export async function PUT(req: NextRequest) {
   }
 
   await redis.set(`usuario:${email}`, usuario)
+  revalidateTag('usuarios')
   return NextResponse.json({ ok: true })
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Usuario } from '@/lib/redis'
+import { getClientesRaw } from '@/lib/cache'
+import { revalidateTag } from 'next/cache'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -29,8 +31,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ...seguro, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken })
   }
 
-  const ids = await redis.smembers('clientes')
-  let clientes = ids.length > 0 ? ((await redis.mget<(Cliente | null)[]>(...ids.map(id => `cliente:${id}`))).filter(Boolean) as Cliente[]) : []
+  let clientes = await getClientesRaw()
 
   if (role === 'cliente') {
     const clienteId = (session.user as any).clienteId
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
   await redis.set(`cliente:${cliente.id}`, cliente)
   await redis.sadd('clientes', cliente.id)
 
+  revalidateTag('clientes')
+  if (cliente.loginEmail) revalidateTag('usuarios')
   return NextResponse.json({ ok: true, cliente })
 }
 
@@ -101,6 +104,7 @@ export async function PUT(req: NextRequest) {
   }
 
   await redis.set(`cliente:${id}`, atualizado)
+  revalidateTag('clientes')
   return NextResponse.json({ ok: true, cliente: atualizado })
 }
 
@@ -118,5 +122,7 @@ export async function DELETE(req: NextRequest) {
 
   await redis.del(`cliente:${id}`)
   await redis.srem('clientes', id)
+  revalidateTag('clientes')
+  if (cliente?.loginEmail) revalidateTag('usuarios')
   return NextResponse.json({ ok: true })
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { revalidateTag } from 'next/cache'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -107,6 +108,7 @@ Entregue apenas o documento final em Markdown, sem preâmbulos.`
     const geradoEm = new Date().toISOString()
     const atualizado: Cliente = { ...cliente, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm }
     await redis.set(`cliente:${clienteId}`, atualizado)
+    revalidateTag('clientes')
 
     return NextResponse.json({ ok: true, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm })
   } catch (err: any) {

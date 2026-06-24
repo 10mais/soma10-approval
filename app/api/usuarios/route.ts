@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
+import { getUsuariosRaw } from '@/lib/cache'
+import { revalidateTag } from 'next/cache'
 import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
 
@@ -10,9 +12,8 @@ export async function GET() {
   const role = (session?.user as any)?.role
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const emails = await redis.smembers('usuarios')
-  const usuarios = emails.length > 0 ? await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`)) : []
-  return NextResponse.json(usuarios.filter(Boolean).map(u => ({ ...u!, senha: undefined })))
+  const usuarios = await getUsuariosRaw()
+  return NextResponse.json(usuarios.map(u => ({ ...u, senha: undefined })))
 }
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
   await redis.set(`usuario:${email}`, usuario)
   await redis.sadd('usuarios', email)
 
+  revalidateTag('usuarios')
   return NextResponse.json({ ok: true })
 }
 
@@ -48,6 +50,7 @@ export async function PUT(req: NextRequest) {
   if (novaSenha) usuario.senha = await bcrypt.hash(novaSenha, 10)
 
   await redis.set(`usuario:${email}`, usuario)
+  revalidateTag('usuarios')
   return NextResponse.json({ ok: true, usuario: { ...usuario, senha: undefined } })
 }
 
@@ -58,5 +61,6 @@ export async function DELETE(req: NextRequest) {
   const { email } = await req.json()
   await redis.del(`usuario:${email}`)
   await redis.srem('usuarios', email)
+  revalidateTag('usuarios')
   return NextResponse.json({ ok: true })
 }
