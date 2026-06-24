@@ -378,6 +378,7 @@ function Dashboard() {
   const [verComoClienteId, setVerComoClienteIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_clienteId') || '' : ''))
   const setVerComoClienteId = (id: string) => { setVerComoClienteIdRaw(id); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_clienteId', id) }
   const [buscaCliente, setBuscaCliente] = useState('')
+  const [clientesAberto, setClientesAberto] = useState(false)
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
   const [composerKey, setComposerKey] = useState(0)
   const [criandoPost, setCriandoPost] = useState(false)
@@ -1230,47 +1231,64 @@ function Dashboard() {
               </div>
             ) : (
               <div>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
-                  <input
-                    value={buscaCliente}
-                    onChange={e => setBuscaCliente(e.target.value)}
-                    placeholder="Buscar cliente..."
-                    style={{
-                      width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid #e0e0e0',
-                      fontSize: 13, fontWeight: 600, background: '#f8f8f8', color: '#111', fontFamily: 'inherit', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto' }}>
-                  <button onClick={() => { setVerComoClienteId(''); setBuscaCliente('') }} style={{
-                    textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    background: 'transparent', color: '#888', fontSize: 12, fontWeight: 700,
-                  }}>
-                    Visão da agência (todos)
-                  </button>
-                  {clientes
-                    .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
-                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
-                    .map(c => (
-                      <button key={c.id} onClick={() => {
-                        router.push(`/cliente/${c.id}`); setBuscaCliente('')
-                        setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [], documentoMarca: (c as any).documentoMarca || '', documentoMarcaGeradoEm: (c as any).documentoMarcaGeradoEm || '' })
-                      }} style={{
-                        textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
-                        display: 'flex', alignItems: 'center', gap: 8,
+                {/* Cabecalho colapsavel — clique para abrir a busca/lista */}
+                <button onClick={() => setClientesAberto(v => !v)} style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
+                  border: '1.5px solid #e0e0e0', background: '#f8f8f8', cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  <span style={{ color: '#bbb', display: 'flex' }}><IconSearch size={14} /></span>
+                  <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? '#111' : '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Visualizar como cliente'}
+                  </span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: clientesAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+
+                {clientesAberto && (
+                  <>
+                    <div style={{ position: 'relative', marginTop: 6 }}>
+                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
+                      <input
+                        value={buscaCliente}
+                        onChange={e => setBuscaCliente(e.target.value)}
+                        placeholder="Buscar cliente..."
+                        autoFocus
+                        style={{
+                          width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid #e0e0e0',
+                          fontSize: 13, fontWeight: 600, background: '#fff', color: '#111', fontFamily: 'inherit', boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 260, overflowY: 'auto' }}>
+                      <button onClick={() => { setVerComoClienteId(''); setBuscaCliente(''); setClientesAberto(false) }} style={{
+                        textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: 'transparent', color: '#888', fontSize: 12, fontWeight: 700,
                       }}>
-                        <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
-                          {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome[0]?.toUpperCase())}
-                        </span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                        Visão da agência (todos)
                       </button>
-                    ))}
-                  {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
-                    <p style={{ margin: '4px 10px', fontSize: 12, color: '#bbb' }}>Nenhum cliente encontrado.</p>
-                  )}
-                </div>
+                      {clientes
+                        .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
+                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
+                        .map(c => (
+                          <button key={c.id} onClick={() => {
+                            router.push(`/cliente/${c.id}`); setBuscaCliente(''); setClientesAberto(false)
+                            setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [], documentoMarca: (c as any).documentoMarca || '', documentoMarcaGeradoEm: (c as any).documentoMarcaGeradoEm || '' })
+                          }} style={{
+                            textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: 8,
+                          }}>
+                            <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
+                              {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome[0]?.toUpperCase())}
+                            </span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                          </button>
+                        ))}
+                      {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
+                        <p style={{ margin: '4px 10px', fontSize: 12, color: '#bbb' }}>Nenhum cliente encontrado.</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>}
