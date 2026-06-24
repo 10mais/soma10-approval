@@ -13,6 +13,7 @@ const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Briefings = dynamic(() => import('../components/Briefings'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 function LoadingPlaceholder() {
   return (
@@ -311,7 +312,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1354,14 +1355,14 @@ function Dashboard() {
           {!verComoClienteId && (
             <>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['home', 'tarefas', 'playbook', 'esteira'] as const).map(a => (
+                {(['home', 'tarefas', 'playbook', 'esteira', 'campanhas'] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent',
                     fontSize: 14, transition: 'all 0.15s',
                   }}>
-                    {a === 'home' ? 'Painel' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : 'Esteira'}
+                    {a === 'home' ? 'Painel' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : a === 'esteira' ? 'Esteira' : 'Campanhas'}
                   </button>
                 ))}
               </nav>
@@ -2493,6 +2494,10 @@ function Dashboard() {
 
         {aba === 'tarefas' && (
           <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} />
+        )}
+
+        {aba === 'campanhas' && (
+          <Briefings clientes={clientes as any} />
         )}
 
         {aba === 'minha-conta' && (

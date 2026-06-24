@@ -173,6 +173,25 @@ export type TarefaComentario = {
   editadoEm?: string
 }
 
+// Briefing de campanha (gerado/refinado com IA a partir do Brand Board)
+export type BriefingCampanha = {
+  id: string
+  clienteId: string
+  clienteNome: string
+  titulo: string
+  objetivo: string // vendas, leads, alcance, engajamento, trafego, reconhecimento
+  plataformas: string[] // ['meta', 'google', 'tiktok', ...]
+  verba?: string
+  periodo?: string
+  publico?: string
+  oferta?: string
+  observacoes?: string
+  conteudo: string // o briefing completo (Markdown), gerado/editado
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
 
 // Esteira de produção de criativos — etapas pelas quais uma pauta caminha
