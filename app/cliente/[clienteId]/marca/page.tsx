@@ -7,10 +7,10 @@ export default function MarcaPage() {
   const [cliente, setCliente] = useState<any>(null)
 
   useEffect(() => {
-    fetch('/api/clientes').then(r => r.json()).then(lista => {
-      const c = (Array.isArray(lista) ? lista : []).find((x: any) => x.id === clienteId)
-      if (c) setCliente(c)
-    })
+    // Le direto por id (sem cache) para o Brand Board nao "sumir" por cache stale
+    fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then((c: any) => {
+      if (c && !c.error) setCliente(c)
+    }).catch(() => {})
   }, [clienteId])
 
   if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>

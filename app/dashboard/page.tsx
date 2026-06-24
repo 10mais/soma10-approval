@@ -33,7 +33,7 @@ import { v4 as uuid } from 'uuid'
 import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -444,15 +444,20 @@ function Dashboard() {
   // misturar o documento/identidade de um cliente com outro) e define o modo.
   useEffect(() => {
     if (!verComoClienteId) { setBrandForm({}); return }
-    const c: any = clientes.find(x => x.id === verComoClienteId)
-    setBrandForm({
-      segmento: c?.segmento || '', palavrasChave: c?.palavrasChave || '', descricao: c?.descricao || '',
-      publicoAlvo: c?.publicoAlvo || '', tomDeVoz: c?.tomDeVoz || '', preferencias: c?.preferencias || '',
-      documentos: c?.documentos || [], documentoMarca: c?.documentoMarca || '', documentoMarcaGeradoEm: c?.documentoMarcaGeradoEm || '',
-    })
-    const tem = !!(c && (c.segmento || c.palavrasChave || c.descricao || c.publicoAlvo || c.tomDeVoz || c.preferencias))
-    setBrandModo(tem ? 'card' : 'editar')
-  }, [verComoClienteId]) // eslint-disable-line react-hooks/exhaustive-deps
+    let cancelado = false
+    // Le SEMPRE do endpoint por id (direto do Redis, sem cache) — evita Brand Board "sumir" por cache stale
+    fetch(`/api/clientes?id=${verComoClienteId}`).then(r => r.json()).then((c: any) => {
+      if (cancelado || !c || c.error) return
+      setBrandForm({
+        segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '',
+        publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '',
+        documentos: c.documentos || [], documentoMarca: c.documentoMarca || '', documentoMarcaGeradoEm: c.documentoMarcaGeradoEm || '',
+      })
+      const tem = !!(c.segmento || c.palavrasChave || c.descricao || c.publicoAlvo || c.tomDeVoz || c.preferencias)
+      setBrandModo(tem ? 'card' : 'editar')
+    }).catch(() => {})
+    return () => { cancelado = true }
+  }, [verComoClienteId])
 
   // Notificacoes: carrega lista completa uma vez, depois poll so a contagem
   useEffect(() => {
@@ -961,7 +966,8 @@ function Dashboard() {
 
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
-    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0 })
+    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
+      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo })
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -999,12 +1005,14 @@ function Dashboard() {
   async function salvarBrand() {
     if (!verComoClienteId) return
     setSalvandoBrand(true); setBrandMsg('')
-    await fetch('/api/clientes', {
+    const r = await fetch('/api/clientes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: verComoClienteId, ...brandForm }),
-    })
-    await fetch('/api/clientes').then(r => r.json()).then(setClientes)
+    }).then(x => x.json()).catch(() => null)
     setSalvandoBrand(false)
+    if (!r || r.error) { setBrandMsg('Erro ao salvar. Tente novamente.'); setTimeout(() => setBrandMsg(''), 5000); return }
+    // Atualiza a lista local imediatamente (nao depende do cache) para nao "sumir"
+    setClientes(cs => cs.map((c: any) => c.id === verComoClienteId ? { ...c, ...brandForm } : c))
     setBrandMsg('Identidade da marca salva!')
     setBrandModo('card')
     setTimeout(() => setBrandMsg(''), 4000)
@@ -2674,6 +2682,9 @@ function Dashboard() {
                       <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
                         {c.nome}
                         <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? '#dbeafe' : '#f0fdf4', color: (c as any).tipo === 'interno' ? '#1d4ed8' : '#16a34a' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
+                        {(() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
+                        ) : null })()}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
                       {c.loginEmail && (
