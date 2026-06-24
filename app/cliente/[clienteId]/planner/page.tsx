@@ -24,6 +24,14 @@ function ImagemComFallback({ src }: { src: string }) {
 const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', agendado: '#fef9c3', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
 const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', publicado: 'Publicado', falha_publicacao: 'Falha' }
 
+function paraDatetimeLocal(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const tz = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16)
+}
+
 export default function PlannerPage() {
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
@@ -32,6 +40,7 @@ export default function PlannerPage() {
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
   const [novoPost, setNovoPost] = useState(false)
+  const [editPost, setEditPost] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
   const [salvandoRascunho, setSalvandoRascunho] = useState(false)
 
@@ -46,19 +55,74 @@ export default function PlannerPage() {
 
   const corCliente = cliente?.corPrimaria || '#ffc00f'
 
-  async function criarPost(valor: any) {
-    setEnviando(true)
-    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...valor, clienteId, status: 'agendado' }) }).catch(() => {})
-    setEnviando(false)
+  // Cria/agenda/publica respeitando a acao escolhida no compositor
+  async function enviarPost(valor: any) {
+    const acao = valor.acao || 'publicar'
+    const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
+    const body: any = { ...valor, dataAgendada: dataISO, clienteId, clienteNome: cliente?.nome }
+    if (acao === 'rascunho') body.rascunhoInterno = true
+    if (acao === 'agendar') body.statusInicial = 'agendado'
+
+    const res = await fetch('/api/posts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json()).catch(() => null)
+
+    if (acao === 'publicar' && res?.post?.id) {
+      const pub = await fetch('/api/publicar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: res.post.id }),
+      }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+      if (!pub.ok) alert(`Falha ao publicar: ${pub.error || 'erro desconhecido'}`)
+    }
     setNovoPost(false)
     carregar()
   }
+
+  async function criarPost(valor: any) {
+    setEnviando(true)
+    await enviarPost(valor)
+    setEnviando(false)
+  }
   async function salvarRascunho(valor: any) {
     setSalvandoRascunho(true)
-    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...valor, clienteId, status: 'rascunho' }) }).catch(() => {})
+    await enviarPost({ ...valor, acao: 'rascunho' })
     setSalvandoRascunho(false)
-    setNovoPost(false)
+  }
+
+  // Editar um post existente (rascunho/agendado) — usa PUT
+  async function atualizarPost(valor: any) {
+    if (!editPost) return
+    setEnviando(true)
+    const acao = valor.acao || 'salvar'
+    const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
+    const updates: any = {
+      id: editPost.id, legenda: valor.legenda, imagens: valor.imagens, formato: valor.formato,
+      capasVideo: valor.capasVideo, redes: valor.redes, colaboradores: valor.colaboradores, dataAgendada: dataISO,
+    }
+    if (acao === 'agendar') updates.status = 'agendado'
+    else if (acao === 'salvar') updates.status = 'rascunho'
+    const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
+    if (acao === 'publicar' && res?.post?.id) {
+      const pub = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.post.id }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+      if (!pub.ok) alert(`Falha ao publicar: ${pub.error || 'erro desconhecido'}`)
+    }
+    setEnviando(false)
+    setEditPost(null)
     carregar()
+  }
+
+  async function excluirPost(id: string) {
+    if (!confirm('Excluir este post? Esta ação não pode ser desfeita.')) return
+    const r = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
+    if (r?.error) { alert(`Não foi possível excluir: ${r.error}`); return }
+    setPreview(null)
+    carregar()
+  }
+
+  function abrirEdicao(post: any) {
+    setPreview(null)
+    setEditPost(post)
   }
 
   const filtrados = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || p.status === 'rascunho')
@@ -115,23 +179,33 @@ export default function PlannerPage() {
         </>
       )}
 
-      {/* Modal novo post */}
-      {novoPost && (
-        <div onClick={() => setNovoPost(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      {/* Modal novo post / editar */}
+      {(novoPost || editPost) && (
+        <div onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Nova postagem</h3>
-              <button onClick={() => setNovoPost(false)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{editPost ? 'Editar postagem' : 'Nova postagem'}</h3>
+              <button onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
             </div>
             <PostComposer
               clientes={clientes}
-              valorInicial={{ clienteId: clienteId as string }}
-              onSubmit={criarPost}
-              onSalvarRascunho={salvarRascunho}
+              valorInicial={editPost ? {
+                clienteId: editPost.clienteId,
+                legenda: editPost.legenda || '',
+                dataAgendada: paraDatetimeLocal(editPost.dataAgendada),
+                imagens: editPost.imagens || [],
+                formato: editPost.formato || 'feed',
+                colaboradores: editPost.colaboradores || [],
+                capasVideo: editPost.capasVideo || {},
+                redes: editPost.redes || ['instagram', 'facebook'],
+              } : { clienteId: clienteId as string }}
+              onSubmit={editPost ? atualizarPost : criarPost}
+              onSalvarRascunho={editPost ? undefined : salvarRascunho}
               enviando={enviando}
               salvandoRascunho={salvandoRascunho}
               textoBotao="Agendar"
               travarCliente
+              modoEdicao={!!editPost}
             />
           </div>
         </div>
@@ -154,6 +228,12 @@ export default function PlannerPage() {
             <div style={{ padding: 16, overflowY: 'auto' }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{preview.legenda}</p>
               {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
+              {(preview.status === 'rascunho' || preview.status === 'agendado') && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+                </div>
+              )}
               <button onClick={() => setPreview(null)} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
             </div>
           </div>

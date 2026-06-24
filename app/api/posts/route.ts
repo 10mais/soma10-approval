@@ -110,13 +110,18 @@ export async function DELETE(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const role = (session.user as any).role
-  if (role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
-
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
 
   const post = await redis.get<Post>(`post:${id}`)
   if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+
+  // Cliente só pode excluir o próprio rascunho; equipe exclui qualquer post
+  if (role === 'cliente') {
+    if (post.clienteId !== (session.user as any).clienteId || post.status !== 'rascunho') {
+      return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+    }
+  }
 
   await redis.del(`post:${id}`)
   await redis.srem('posts', id)
