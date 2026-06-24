@@ -12,6 +12,17 @@ function capaDoPost(post: any): string {
   return Object.values(caps)[0] as string || (post?.imagens || [])[0] || ''
 }
 
+// Retorna { texto, atrasado } da espera em aprovacao (SLA 24h)
+function tempoEspera(aguardandoDesde?: string): { texto: string; atrasado: boolean } | null {
+  if (!aguardandoDesde) return null
+  const ms = Date.now() - new Date(aguardandoDesde).getTime()
+  if (ms < 0) return null
+  const horas = Math.floor(ms / (60 * 60 * 1000))
+  const atrasado = horas >= 24
+  const texto = horas < 1 ? 'há poucos minutos' : horas < 24 ? `há ${horas}h` : `há ${Math.floor(horas / 24)} dia(s)`
+  return { texto, atrasado }
+}
+
 export default function AprovacoesPagina() {
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
@@ -66,6 +77,11 @@ export default function AprovacoesPagina() {
                       <span style={{ background: ehCopy ? '#dbeafe' : '#fef3c7', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? '#1d4ed8' : '#92400e' }}>
                         {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
                       </span>
+                      {(() => { const e = tempoEspera(p.aguardandoDesde); return e ? (
+                        <span style={{ background: e.atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: e.atrasado ? '#b91c1c' : '#888' }}>
+                          aguardando {e.texto}
+                        </span>
+                      ) : null })()}
                     </div>
                     {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}>Briefing: {p.briefing}</p>}
                     <p style={{ margin: '0 0 6px', fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>

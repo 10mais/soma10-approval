@@ -30,6 +30,7 @@ function LoadingPlaceholder() {
 }
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
@@ -348,6 +349,7 @@ function Dashboard() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [analyticsErro, setAnalyticsErro] = useState('')
   const [exportandoPdf, setExportandoPdf] = useState(false)
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false)
 
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
@@ -386,7 +388,7 @@ function Dashboard() {
   const [rascunhoMsg, setRascunhoMsg] = useState('')
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
-  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12 })
+  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12 })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
@@ -618,6 +620,30 @@ function Dashboard() {
       alert(`Não foi possível gerar o PDF: ${e?.message || 'erro desconhecido'}`)
     }
     setExportandoPdf(false)
+  }
+
+  async function gerarRelatorioMensalPdf() {
+    if (!analyticsData) return
+    setGerandoRelatorio(true)
+    try {
+      const cliente = clientes.find(c => c.id === analyticsClienteId)
+      const refDate = analyticsDesde ? new Date(analyticsDesde) : new Date()
+      const mes = refDate.getMonth(), ano = refDate.getFullYear()
+      const ehDoMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === mes && d.getFullYear() === ano }
+      const entregue = (posts as any[]).filter(p => {
+        if (p.clienteId !== analyticsClienteId) return false
+        if (p.etapa && p.etapa !== 'pronto') return false
+        if (p.status === 'publicado') return ehDoMes(p.atualizadoEm || p.criadoEm)
+        if (p.status === 'agendado') return ehDoMes(p.dataAgendada)
+        return false
+      }).length
+      const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+      await gerarRelatorioMensal({ cliente, analyticsData, entregue, mesRef: `${MESES[mes]}/${ano}` })
+    } catch (e: any) {
+      console.error('[relatorio] erro:', e)
+      alert(`Não foi possível gerar o relatório: ${e?.message || 'erro desconhecido'}`)
+    }
+    setGerandoRelatorio(false)
   }
 
   async function criarPost(valor: any) {
@@ -2122,6 +2148,14 @@ function Dashboard() {
                   <IconDownload size={14} /> {exportandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
                 </button>
               )}
+              {analyticsData && (
+                <button onClick={gerarRelatorioMensalPdf} disabled={gerandoRelatorio} className="soma10-no-invert" style={{
+                  padding: '11px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
+                  cursor: gerandoRelatorio ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}>
+                  <IconDownload size={14} /> {gerandoRelatorio ? 'Gerando...' : 'Relatório mensal'}
+                </button>
+              )}
             </div>
 
             {analyticsErro && (
@@ -2377,6 +2411,8 @@ function Dashboard() {
                     post_corrigir: { cor: '#ca8a04', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
                     post_publicado: { cor: '#059669', path: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z' },
                     post_falha_publicacao: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01' },
+                    aprovacao_atrasada: { cor: '#ea580c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
+                    contrato_renovacao: { cor: '#7c3aed', path: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
                     geral: { cor: '#6b7280', path: 'M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0' },
                   }
                   const ic = icones[n.tipo] || icones.geral
@@ -2548,6 +2584,28 @@ function Dashboard() {
                         style={{ width: 70, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                     </div>
                   )}
+                  {/* Contrato */}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Contrato (opcional)</label>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <input type="number" min="0" placeholder="Valor (R$)" value={novoCliente.contratoValor ?? ''} onChange={e => setNovoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
+                        style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                      <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
+                        <input type="date" value={novoCliente.contratoInicio || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoInicio: e.target.value }))}
+                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                      <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
+                        <input type="date" value={novoCliente.contratoRenovacao || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoRenovacao: e.target.value }))}
+                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                      <select value={novoCliente.contratoCiclo || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoCiclo: e.target.value }))}
+                        style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                        <option value="">Ciclo...</option>
+                        <option value="mensal">Mensal</option>
+                        <option value="trimestral">Trimestral</option>
+                        <option value="semestral">Semestral</option>
+                        <option value="anual">Anual</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Identidade visual do cliente */}
@@ -2621,6 +2679,16 @@ function Dashboard() {
                       {c.loginEmail && (
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
                       )}
+                      {(c as any).contratoRenovacao && (() => {
+                        const dias = Math.ceil((new Date((c as any).contratoRenovacao).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+                        const venceu = dias < 0
+                        const perto = dias >= 0 && dias <= 30
+                        return (
+                          <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? '#b91c1c' : perto ? '#ea580c' : '#888' }}>
+                            Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString('pt-BR')}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
+                          </p>
+                        )
+                      })()}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {role === 'admin' && (
@@ -2712,6 +2780,28 @@ function Dashboard() {
                               style={{ width: 70, padding: '5px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                           </div>
                         )}
+                        {/* Contrato */}
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Contrato</label>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <input type="number" min="0" placeholder="Valor (R$)" value={(edicaoCliente as any).contratoValor ?? ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
+                              style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
+                              <input type="date" value={(edicaoCliente as any).contratoInicio || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoInicio: e.target.value }))}
+                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
+                              <input type="date" value={(edicaoCliente as any).contratoRenovacao || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoRenovacao: e.target.value }))}
+                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                            <select value={(edicaoCliente as any).contratoCiclo || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoCiclo: e.target.value as any }))}
+                              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                              <option value="">Ciclo...</option>
+                              <option value="mensal">Mensal</option>
+                              <option value="trimestral">Trimestral</option>
+                              <option value="semestral">Semestral</option>
+                              <option value="anual">Anual</option>
+                            </select>
+                          </div>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

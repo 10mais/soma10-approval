@@ -92,6 +92,12 @@ export async function PUT(req: NextRequest) {
   if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
   const atualizado = { ...post, ...updates, atualizadoEm: new Date().toISOString() }
+  // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
+  const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']
+  if ('etapa' in updates && updates.etapa !== post.etapa) {
+    if (ETAPAS_APROVACAO.includes(updates.etapa)) atualizado.aguardandoDesde = new Date().toISOString()
+    else atualizado.aguardandoDesde = undefined
+  }
   await redis.set(`post:${id}`, atualizado)
   // Mantém o índice de agendados em dia
   if (atualizado.status === 'agendado') await redis.sadd('agendados', id)

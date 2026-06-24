@@ -11,7 +11,18 @@ type Pauta = {
   capasVideo?: Record<string, string>; thumbnail?: string; dataAgendada?: string
   ajusteCopy?: string; ajusteCriativo?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
-  criadoEm?: string; atualizadoEm?: string
+  criadoEm?: string; atualizadoEm?: string; aguardandoDesde?: string
+}
+
+// Espera em aprovacao (SLA 24h)
+function tempoEspera(aguardandoDesde?: string): { texto: string; atrasado: boolean } | null {
+  if (!aguardandoDesde) return null
+  const ms = Date.now() - new Date(aguardandoDesde).getTime()
+  if (ms < 0) return null
+  const horas = Math.floor(ms / (60 * 60 * 1000))
+  const atrasado = horas >= 24
+  const texto = horas < 1 ? 'há poucos minutos' : horas < 24 ? `há ${horas}h` : `há ${Math.floor(horas / 24)} dia(s)`
+  return { texto, atrasado }
 }
 
 const ETAPAS: { key: string; label: string; cliente?: boolean }[] = [
@@ -271,6 +282,9 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                         {(p.ajusteCopy || p.ajusteCriativo) && (
                           <p style={{ margin: '5px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
                         )}
+                        {col.cliente && (() => { const e = tempoEspera(p.aguardandoDesde); return e ? (
+                          <p style={{ margin: '5px 0 0', fontSize: 10.5, fontWeight: 700, color: e.atrasado ? '#b91c1c' : '#888', background: e.atrasado ? '#fef2f2' : '#f5f5f5', borderRadius: 6, padding: '4px 6px' }}>Aguardando {e.texto}</p>
+                        ) : null })()}
                         {col.key === 'criativo' && (p.imagens || []).length > 0 && (
                           <button onClick={(e) => { e.stopPropagation(); moverEtapa(p, 'aprovacao_criativo') }}
                             style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>

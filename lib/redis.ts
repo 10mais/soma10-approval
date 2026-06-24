@@ -33,6 +33,11 @@ export type Cliente = {
   tipo?: 'cliente' | 'interno' // cliente externo ou projeto interno da agência
   entregaveis?: string[] // ex.: ['social_media', 'trafego_meta', 'trafego_google', 'landing_page']
   postsMensais?: number // quantidade contratada de posts por mês (0 ou ausente = não se aplica)
+  // Contrato (gestão de renovação)
+  contratoValor?: number // valor mensal/contratual em R$
+  contratoInicio?: string // ISO date — início do contrato
+  contratoRenovacao?: string // ISO date — próxima renovação/vencimento
+  contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'
   criadoEm: string
   // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string
@@ -82,6 +87,8 @@ export type TipoNotificacao =
   | 'tarefa_prazo_proximo'
   | 'tarefa_vencida'
   | 'mensagem_privada'
+  | 'aprovacao_atrasada'
+  | 'contrato_renovacao'
   | 'geral'
 
 export type Notificacao = {
@@ -217,4 +224,5 @@ export type Post = {
   ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
   copyAprovadaEm?: string
   criativoAprovadoEm?: string
+  aguardandoDesde?: string // ISO — quando a pauta entrou numa etapa de aprovação (SLA)
 }
