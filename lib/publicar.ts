@@ -165,23 +165,38 @@ async function publicarVideoFB(pageId: string, token: string, fileUrl: string, d
 //   erro 100/1366046 "Não foi possível carregar suas fotos / Invalid parameter".
 // Estratégia 2 (fallback): pede ao Facebook para buscar a URL (url), com repetição.
 async function publicarFotoFB(pageId: string, token: string, imgUrl: string, opts: { caption?: string; published?: boolean }): Promise<any> {
-  const tipoPorExt = (u: string) => {
-    const e = (u.split('?')[0].split('.').pop() || '').toLowerCase()
-    return e === 'png' ? 'image/png' : e === 'gif' ? 'image/gif' : e === 'webp' ? 'image/webp' : 'image/jpeg'
-  }
-  // 1) Upload direto (source)
+  // 1) Baixa, NORMALIZA com sharp (JPEG sRGB, <=1920px) e envia direto (source).
+  //    A normalizacao corrige o que o Facebook rejeita com 100/1366046: espaco de
+  //    cor CMYK, dimensoes/perfis incomuns, formatos problematicos. O Instagram e
+  //    mais tolerante (por isso costuma aceitar a mesma imagem que o FB recusa).
   try {
     const resp = await fetch(imgUrl)
     if (resp.ok) {
-      const buf = Buffer.from(await resp.arrayBuffer())
-      // Limite do Facebook para foto via API é ~10 MB — se exceder, nem tenta o source (cai pro url)
+      const raw = Buffer.from(await resp.arrayBuffer())
+      let buf: Buffer = raw
+      let tipo = 'image/jpeg'
+      let nome = (imgUrl.split('?')[0].split('/').pop() || 'foto.jpg').replace(/\.\w+$/, '.jpg')
+      try {
+        const sharp = (await import('sharp')).default
+        buf = await sharp(raw, { failOn: 'none' })
+          .rotate() // respeita orientacao EXIF
+          .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
+          .flatten({ background: '#ffffff' }) // remove transparencia (PNG) -> fundo branco
+          .jpeg({ quality: 85 }) // saida sempre sRGB JPEG
+          .toBuffer()
+      } catch {
+        // Se o sharp falhar, usa o arquivo original
+        const e = (imgUrl.split('?')[0].split('.').pop() || '').toLowerCase()
+        tipo = e === 'png' ? 'image/png' : e === 'webp' ? 'image/webp' : 'image/jpeg'
+        nome = imgUrl.split('?')[0].split('/').pop() || 'foto.jpg'
+      }
+
       if (buf.byteLength <= 10 * 1024 * 1024) {
-        const nome = imgUrl.split('?')[0].split('/').pop() || 'foto.jpg'
         const fd = new FormData()
         fd.append('access_token', token)
         if (opts.caption) fd.append('caption', opts.caption)
         if (opts.published === false) fd.append('published', 'false')
-        fd.append('source', new Blob([buf], { type: tipoPorExt(imgUrl) }), nome)
+        fd.append('source', new Blob([new Uint8Array(buf)], { type: tipo }), nome)
         const r = await fetch(`${BASE}/${pageId}/photos`, { method: 'POST', body: fd }).then(x => x.json())
         if (!r?.error) return r
         // Só cai pro fallback se for erro de processamento/fetch; erros reais retornam já

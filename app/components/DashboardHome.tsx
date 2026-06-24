@@ -65,7 +65,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
 
   const pautasEsteira = posts.filter(p => p.etapa && p.etapa !== 'pronto').length
   const falhasPendentes = posts.filter(p => p.status === 'falha_publicacao').length
-  const clientesSemBrand = clientes.filter(c => c.tipo !== 'interno' && !(c as any).segmento && !(c as any).palavrasChave).length
+  const clientesSemBrandLista = clientes.filter(c => c.tipo !== 'interno' && !(c as any).segmento && !(c as any).palavrasChave && !(c as any).descricao && !(c as any).documentoMarca)
+  const clientesSemBrand = clientesSemBrandLista.length
   const clientesSemEntregaveis = clientes.filter(c => c.tipo !== 'interno' && !(c.entregaveis || []).length).length
 
   const clientesOrdenados = useMemo(() =>
@@ -139,7 +140,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
               {clientesOrdenados.filter(c => (contagemPorCliente[c.id] || 0) < 8).map(c => (
                 <p key={c.id} style={{ margin: 0, fontSize: 12.5, color: '#b91c1c' }}><strong>{c.nome}</strong> esta em nivel critico ({contagemPorCliente[c.id] || 0} posts no mes).</p>
               ))}
-              {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido.</p>}
+              {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido: {clientesSemBrandLista.map(c => c.nome).join(', ')}.</p>}
               {clientesSemEntregaveis > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemEntregaveis} cliente(s) sem entregaveis definidos (configure em Clientes).</p>}
             </div>
           )}
