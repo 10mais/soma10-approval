@@ -123,7 +123,9 @@ export default function PostComposer({
 
   // Comprime imagens grandes (reduz para máx. 1440px, JPEG) — evita limite do Facebook e economiza armazenamento
   async function comprimirImagem(file: File): Promise<File> {
-    if (!file.type.startsWith('image/') || /gif/i.test(file.type) || file.size < 1.2 * 1024 * 1024) return file
+    if (!file.type.startsWith('image/') || /gif/i.test(file.type)) return file
+    // Imagens pequenas ja estao seguras para as redes
+    if (file.size < 1.2 * 1024 * 1024) return file
     try {
       const dataUrl = await new Promise<string>((res, rej) => {
         const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file)
@@ -131,19 +133,31 @@ export default function PostComposer({
       const img = await new Promise<HTMLImageElement>((res, rej) => {
         const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = dataUrl
       })
-      const maxLado = 1440
-      let { width, height } = img
-      if (Math.max(width, height) > maxLado) {
-        const esc = maxLado / Math.max(width, height)
-        width = Math.round(width * esc); height = Math.round(height * esc)
+      // Alvo bem abaixo do limite de 10MB das redes (Instagram/Facebook)
+      const LIMITE = 8 * 1024 * 1024
+      let maxLado = 1920
+      let qualidade = 0.9
+      let melhor: Blob | null = null
+      for (let tentativa = 0; tentativa < 6; tentativa++) {
+        let { width, height } = img
+        if (Math.max(width, height) > maxLado) {
+          const esc = maxLado / Math.max(width, height)
+          width = Math.round(width * esc); height = Math.round(height * esc)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        const ctx = canvas.getContext('2d'); if (!ctx) return file
+        ctx.drawImage(img, 0, 0, width, height)
+        const blob = await new Promise<Blob | null>(r => canvas.toBlob(b => r(b), 'image/jpeg', qualidade))
+        if (!blob) break
+        melhor = blob
+        if (blob.size <= LIMITE) break
+        // Ainda grande: reduz qualidade e dimensao e tenta de novo
+        qualidade = Math.max(0.5, qualidade - 0.15)
+        maxLado = Math.round(maxLado * 0.85)
       }
-      const canvas = document.createElement('canvas')
-      canvas.width = width; canvas.height = height
-      const ctx = canvas.getContext('2d'); if (!ctx) return file
-      ctx.drawImage(img, 0, 0, width, height)
-      const blob = await new Promise<Blob | null>(r => canvas.toBlob(b => r(b), 'image/jpeg', 0.9))
-      if (!blob || blob.size >= file.size) return file
-      return new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })
+      if (!melhor || melhor.size >= file.size) return file
+      return new File([melhor], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })
     } catch { return file }
   }
 

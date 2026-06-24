@@ -1017,6 +1017,14 @@ function Dashboard() {
   // ---- Brands Board ----
   async function salvarBrand() {
     if (!verComoClienteId) return
+    // Trava anti-sobrescrita: nao deixa gravar um Brand Board totalmente vazio por cima
+    // de dados que ja existem (evita perda acidental por form carregado vazio).
+    const formVazio = !['segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias'].some(k => (brandForm as any)[k]?.trim?.()) && !(brandForm.documentoMarca || '').trim()
+    const clienteAtual: any = clientes.find(c => c.id === verComoClienteId)
+    const tinhaDados = !!(clienteAtual && (clienteAtual.segmento || clienteAtual.palavrasChave || clienteAtual.descricao || clienteAtual.publicoAlvo || clienteAtual.tomDeVoz || clienteAtual.preferencias || clienteAtual.documentoMarca))
+    if (formVazio && tinhaDados) {
+      if (!confirm('O Brand Board está vazio e este cliente já tinha dados salvos. Salvar vai APAGAR o Brand Board. Tem certeza?')) return
+    }
     setSalvandoBrand(true); setBrandMsg('')
     const r = await fetch('/api/clientes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
