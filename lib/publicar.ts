@@ -32,7 +32,7 @@ async function aguardarContainer(igId: string, token: string, creationId: string
 // Publicação via "API com login do Instagram" (graph.instagram.com)
 const IG_BASE = `https://graph.instagram.com/${VERSION}`
 
-async function aguardarContainerIG(token: string, creationId: string, tentativas = 20): Promise<boolean> {
+async function aguardarContainerIG(token: string, creationId: string, tentativas = 40): Promise<boolean> {
   for (let i = 0; i < tentativas; i++) {
     await new Promise(r => setTimeout(r, 3000))
     const st = await fetch(`${IG_BASE}/${creationId}?fields=status_code&access_token=${token}`).then(r => r.json())
@@ -59,12 +59,12 @@ async function criarMidiaIG(igId: string, token: string, params: Record<string, 
 
 // Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027)
 async function publicarMidiaIG(igId: string, token: string, creationId: string): Promise<{ ok: boolean; error?: string }> {
-  await aguardarContainerIG(token, creationId, 20)
-  for (let i = 0; i < 6; i++) {
+  await aguardarContainerIG(token, creationId, 40)
+  for (let i = 0; i < 12; i++) {
     const pub = await postForm(`${IG_BASE}/${igId}/media_publish`, { access_token: token, creation_id: creationId })
     if (!pub?.error) return { ok: true }
     const naoPronta = pub.error.code === 9007 || pub.error.error_subcode === 2207027
-    if (naoPronta) { await new Promise(r => setTimeout(r, 4000)); continue }
+    if (naoPronta) { await new Promise(r => setTimeout(r, 5000)); continue }
     return { ok: false, error: fmtErro(pub.error) }
   }
   return { ok: false, error: 'A mídia não ficou pronta a tempo no Instagram. Tente publicar novamente.' }
@@ -159,6 +159,53 @@ async function publicarVideoFB(pageId: string, token: string, fileUrl: string, d
   return ultimo
 }
 
+// Publica/cria uma FOTO na Página do Facebook.
+// Estratégia 1 (preferida): baixa a imagem do nosso Blob e ENVIA o arquivo direto
+//   (multipart "source"). Assim o Facebook NÃO precisa buscar a URL — elimina o
+//   erro 100/1366046 "Não foi possível carregar suas fotos / Invalid parameter".
+// Estratégia 2 (fallback): pede ao Facebook para buscar a URL (url), com repetição.
+async function publicarFotoFB(pageId: string, token: string, imgUrl: string, opts: { caption?: string; published?: boolean }): Promise<any> {
+  const tipoPorExt = (u: string) => {
+    const e = (u.split('?')[0].split('.').pop() || '').toLowerCase()
+    return e === 'png' ? 'image/png' : e === 'gif' ? 'image/gif' : e === 'webp' ? 'image/webp' : 'image/jpeg'
+  }
+  // 1) Upload direto (source)
+  try {
+    const resp = await fetch(imgUrl)
+    if (resp.ok) {
+      const buf = Buffer.from(await resp.arrayBuffer())
+      // Limite do Facebook para foto via API é ~10 MB — se exceder, nem tenta o source (cai pro url)
+      if (buf.byteLength <= 10 * 1024 * 1024) {
+        const nome = imgUrl.split('?')[0].split('/').pop() || 'foto.jpg'
+        const fd = new FormData()
+        fd.append('access_token', token)
+        if (opts.caption) fd.append('caption', opts.caption)
+        if (opts.published === false) fd.append('published', 'false')
+        fd.append('source', new Blob([buf], { type: tipoPorExt(imgUrl) }), nome)
+        const r = await fetch(`${BASE}/${pageId}/photos`, { method: 'POST', body: fd }).then(x => x.json())
+        if (!r?.error) return r
+        // Só cai pro fallback se for erro de processamento/fetch; erros reais retornam já
+        const sub = r.error?.error_subcode
+        const ehProcess = r.error?.code === 100 && [1366046, 1366047, 1366055].includes(sub)
+        if (!ehProcess) return r
+      }
+    }
+  } catch { /* cai para o fallback url */ }
+
+  // 2) Fallback: url com repetição em falhas transitórias
+  let ultimo: any = null
+  for (let i = 0; i < 3; i++) {
+    const params: Record<string, string> = { access_token: token, url: imgUrl }
+    if (opts.caption) params.caption = opts.caption
+    if (opts.published === false) params.published = 'false'
+    const r = await postForm(`${BASE}/${pageId}/photos`, params)
+    if (!r?.error) return r
+    ultimo = r
+    await new Promise(res => setTimeout(res, 3000 * (i + 1)))
+  }
+  return ultimo
+}
+
 export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
   const TOKEN = cliente?.metaConectado && cliente?.facebookPageToken ? cliente.facebookPageToken : undefined
   const PAGE_ID = cliente?.metaConectado && cliente?.facebookPageId ? cliente.facebookPageId : undefined
@@ -175,12 +222,12 @@ export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok
       if (r?.error) return { ok: false, error: fmtErro(r.error) }
     }
     if (imagens.length === 1) {
-      const r = await postForm(`${BASE}/${PAGE_ID}/photos`, { access_token: TOKEN, url: imagens[0], caption: post.legenda })
+      const r = await publicarFotoFB(PAGE_ID, TOKEN, imagens[0], { caption: post.legenda })
       if (r?.error) return { ok: false, error: fmtErro(r.error) }
     } else if (imagens.length > 1) {
       const ids: { media_fbid: string }[] = []
       for (const img of imagens) {
-        const r = await postForm(`${BASE}/${PAGE_ID}/photos`, { access_token: TOKEN, url: img, published: 'false' })
+        const r = await publicarFotoFB(PAGE_ID, TOKEN, img, { published: false })
         if (r?.error) return { ok: false, error: fmtErro(r.error) }
         ids.push({ media_fbid: r.id })
       }

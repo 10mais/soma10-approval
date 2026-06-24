@@ -125,6 +125,16 @@ export default function PlannerPage() {
     setEditPost(post)
   }
 
+  const [republicando, setRepublicando] = useState(false)
+  async function republicar(id: string) {
+    setRepublicando(true)
+    const r = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+    setRepublicando(false)
+    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error || 'erro desconhecido'}\n\nDica: edite o post e verifique a mídia (imagens com menos de 10 MB, em JPG/PNG).`)
+    else { setPreview(null); alert('Publicado com sucesso!') }
+    carregar()
+  }
+
   const filtrados = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || p.status === 'rascunho')
     .sort((a, b) => new Date(b.dataAgendada || b.criadoEm).getTime() - new Date(a.dataAgendada || a.criadoEm).getTime())
 
@@ -228,7 +238,15 @@ export default function PlannerPage() {
             <div style={{ padding: 16, overflowY: 'auto' }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{preview.legenda}</p>
               {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
-              {(preview.status === 'rascunho' || preview.status === 'agendado') && (
+              {preview.status === 'falha_publicacao' && preview.erroPublicacao && (
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
+              )}
+              {preview.status === 'falha_publicacao' && (
+                <button onClick={() => republicar(preview.id)} disabled={republicando} style={{ width: '100%', padding: '11px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicando ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                  {republicando ? 'Publicando...' : 'Tentar publicar novamente'}
+                </button>
+              )}
+              {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao') && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
                   <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>

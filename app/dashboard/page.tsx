@@ -780,6 +780,19 @@ function Dashboard() {
     }
   }
 
+  const [republicandoId, setRepublicandoId] = useState<string | null>(null)
+  async function republicarPost(post: Post) {
+    setRepublicandoId(post.id)
+    const r = await fetch('/api/publicar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: post.id }),
+    }).then(x => x.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+    setRepublicandoId(null)
+    await fetch('/api/posts').then(x => x.json()).then(setPosts).catch(() => {})
+    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error || 'erro desconhecido'}\n\nDica: edite o post e verifique a mídia (imagens com menos de 10 MB, em JPG/PNG) antes de tentar de novo.`)
+    else { setPostPreview(null); alert('Publicado com sucesso!') }
+  }
+
   function alternarSelecaoPost(id: string) {
     setBibSelecionados(lista => lista.includes(id) ? lista.filter(x => x !== id) : [...lista, id])
   }
@@ -1555,6 +1568,13 @@ function Dashboard() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      {post.status === 'falha_publicacao' && (
+                        <button onClick={() => republicarPost(post)} disabled={republicandoId === post.id} style={{
+                          padding: '8px 14px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: '#111', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
+                        }}>
+                          {republicandoId === post.id ? 'Publicando...' : 'Tentar novamente'}
+                        </button>
+                      )}
                       <button onClick={() => iniciarEdicaoPost(post)} style={{
                         padding: '8px 14px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#111', cursor: 'pointer',
                       }}>
@@ -1812,6 +1832,14 @@ function Dashboard() {
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
+                    )}
+                    {postPreview.status === 'falha_publicacao' && postPreview.erroPublicacao && (
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
+                    )}
+                    {postPreview.status === 'falha_publicacao' && (
+                      <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                        {republicandoId === postPreview.id ? 'Publicando...' : 'Tentar publicar novamente'}
+                      </button>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
