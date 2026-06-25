@@ -1208,7 +1208,7 @@ function Dashboard() {
               if (u && (u as any).clienteId) { router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
             }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
-              <option value="">Visualizar como...</option>
+              <option value="">Acessar sub-account...</option>
               <option value="_reset">Voltar a minha visao</option>
               <optgroup label="Clientes">
                 {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
@@ -1262,7 +1262,7 @@ function Dashboard() {
           {/* Seletor de visualização por cliente — primeira coisa exibida (equipe) */}
           {!ehCliente && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
-              Visualizando como
+              {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
             {verComoClienteId ? (
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
@@ -1295,7 +1295,7 @@ function Dashboard() {
                 }}>
                   <span style={{ color: '#bbb', display: 'flex' }}><IconSearch size={14} /></span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? '#111' : '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Visualizar como cliente'}
+                    {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Acessar cliente (sub-account)'}
                   </span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: clientesAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
                 </button>
