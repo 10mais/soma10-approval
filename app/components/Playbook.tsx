@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<string, string> = {
 function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || '#888' }
 function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
 
-export default function Playbook({ clientes }: { clientes: Cliente[] }) {
+export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[]; clienteFixo?: string }) {
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [periodo, setPeriodo] = useState('mensal')
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -45,20 +45,23 @@ export default function Playbook({ clientes }: { clientes: Cliente[] }) {
   const [novoModal, setNovoModal] = useState(false)
   const [refDate, setRefDate] = useState(new Date())
 
+  // Playbook e sempre escopado a UM cliente. No portal vem fixo; na agencia, escolhido.
+  const clienteAtivo = clienteFixo || filtroCliente
+
   function carregar() {
-    const url = filtroCliente ? `/api/playbook?clienteId=${filtroCliente}` : '/api/playbook'
-    fetch(url).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+    if (!clienteAtivo) { setMarcos([]); return }
+    fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
   }
-  useEffect(() => { carregar() }, [filtroCliente])
+  useEffect(() => { carregar() }, [clienteAtivo])
 
   const periodoAtual = PERIODOS.find(p => p.key === periodo) || PERIODOS[1]
   const inicio = new Date(refDate)
   inicio.setHours(0, 0, 0, 0)
   const fim = new Date(inicio.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000)
 
-  // Agrupa marcos por cliente
-  const clientesComMarcos = clientes.filter(c => !filtroCliente || c.id === filtroCliente).filter(c => marcos.some(m => m.clienteId === c.id))
-  const clientesSemMarcos = clientes.filter(c => !filtroCliente || c.id === filtroCliente).filter(c => !marcos.some(m => m.clienteId === c.id))
+  // Agrupa marcos do cliente ativo (nunca generico)
+  const clientesComMarcos = clienteAtivo ? clientes.filter(c => c.id === clienteAtivo).filter(c => marcos.some(m => m.clienteId === c.id)) : []
+  const clientesSemMarcos = clienteAtivo ? clientes.filter(c => c.id === clienteAtivo).filter(c => !marcos.some(m => m.clienteId === c.id)) : []
 
   const totalDias = periodoAtual.dias
   function posicaoPct(data: string): number {
@@ -93,18 +96,31 @@ export default function Playbook({ clientes }: { clientes: Cliente[] }) {
             }}>{p.label}</button>
           ))}
         </div>
-        <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
-          <option value="">Todos os clientes</option>
-          {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => setRefDate(d => new Date(d.getTime() - periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8249;</button>
-          <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
-          <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
-        </div>
-        <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+        {!clienteFixo && (
+          <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+            <option value="">Selecione um cliente...</option>
+            {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
+        {clienteAtivo && <>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() - periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8249;</button>
+            <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
+          </div>
+          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+        </>}
       </div>
 
+      {/* Sem cliente selecionado (agencia): exige escolher um cliente */}
+      {!clienteAtivo && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Selecione um cliente para ver o Playbook.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Cada cliente tem seu próprio Playbook — escolha um acima para ver, criar ou editar as etapas.</p>
+        </div>
+      )}
+
+      {clienteAtivo && <>
       {/* Legenda de categorias */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
@@ -169,10 +185,11 @@ export default function Playbook({ clientes }: { clientes: Cliente[] }) {
           )
         })}
       </div>
+      </>}
 
       {/* Modal novo/editar marco */}
       {(novoModal || editModal) && (
-        <MarcoModal marco={editModal} clientes={clientes}
+        <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
           onExcluir={editModal ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
@@ -182,14 +199,14 @@ export default function Playbook({ clientes }: { clientes: Cliente[] }) {
   )
 }
 
-function MarcoModal({ marco, clientes, onClose, onSalvo, onExcluir }: {
-  marco: Marco | null; clientes: { id: string; nome: string }[]
+function MarcoModal({ marco, clientes, clientePadrao, onClose, onSalvo, onExcluir }: {
+  marco: Marco | null; clientes: { id: string; nome: string }[]; clientePadrao?: string
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
 }) {
   const [form, setForm] = useState({
     titulo: marco?.titulo || '', descricao: marco?.descricao || '',
     categoria: marco?.categoria || 'outro', status: marco?.status || 'planejado',
-    clienteId: marco?.clienteId || '', responsavelNome: marco?.responsavelNome || '',
+    clienteId: marco?.clienteId || clientePadrao || '', responsavelNome: marco?.responsavelNome || '',
     dataInicio: marco?.dataInicio ? marco.dataInicio.split('T')[0] : new Date().toISOString().split('T')[0],
     dataFim: marco?.dataFim ? marco.dataFim.split('T')[0] : '',
   })

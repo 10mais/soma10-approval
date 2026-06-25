@@ -11,5 +11,5 @@ export default function PlaybookPage() {
     fetch('/api/clientes').then(r => r.json()).then(d => setClientes(Array.isArray(d) ? d : [])).catch(() => {})
   }, [])
 
-  return <Playbook clientes={clientes.filter(c => c.id === clienteId)} />
+  return <Playbook clientes={clientes.filter(c => c.id === clienteId)} clienteFixo={clienteId as string} />
 }
