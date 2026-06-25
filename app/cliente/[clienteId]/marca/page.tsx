@@ -25,7 +25,7 @@ export default function MarcaPage() {
   const [form, setForm] = useState<any>({})
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [msg, setMsg] = useState<{ texto: string; erro: boolean } | null>(null)
 
   function carregar() {
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then((c: any) => {
@@ -35,17 +35,17 @@ export default function MarcaPage() {
   useEffect(() => { carregar() }, [clienteId])
 
   async function salvar() {
-    setSalvando(true); setMsg('')
+    setSalvando(true); setMsg(null)
     const r = await fetch('/api/clientes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: clienteId, ...form }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (!r || r.error) { setMsg('Erro ao salvar. Tente novamente.'); return }
+    if (!r || r.error) { setMsg({ texto: r?.error ? `Erro ao salvar: ${r.error}` : 'Erro ao salvar. Tente novamente.', erro: true }); return }
     setCliente((c: any) => ({ ...c, ...form }))
     setEditando(false)
-    setMsg('Brand Board salvo!')
-    setTimeout(() => setMsg(''), 4000)
+    setMsg({ texto: 'Brand Board salvo!', erro: false })
+    setTimeout(() => setMsg(null), 4000)
   }
 
   if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
@@ -65,7 +65,8 @@ export default function MarcaPage() {
       </div>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Identidade e DNA do projeto {cliente.nome}.</p>
 
-      {msg && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, fontSize: 13, color: '#166534' }}>{msg}</div>}
+      {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+        background: msg.erro ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.erro ? '#fca5a5' : '#86efac'}`, color: msg.erro ? '#b91c1c' : '#166534' }}>{msg.texto}</div>}
 
       {/* MODO EDIÇÃO (equipe) */}
       {ehEquipe && editando ? (

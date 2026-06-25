@@ -94,7 +94,10 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const role = (session?.user as any)?.role
+  // Equipe (admin e gerente) pode editar dados do cliente (inclui Brand Board).
+  // Criar/excluir cliente continua restrito ao admin (POST/DELETE).
+  if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const { id, ...updates } = await req.json()
   const cliente = await redis.get<Cliente>(`cliente:${id}`)

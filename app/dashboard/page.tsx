@@ -1034,7 +1034,7 @@ function Dashboard() {
       body: JSON.stringify({ id: verComoClienteId, ...brandForm }),
     }).then(x => x.json()).catch(() => null)
     setSalvandoBrand(false)
-    if (!r || r.error) { setBrandMsg('Erro ao salvar. Tente novamente.'); setTimeout(() => setBrandMsg(''), 5000); return }
+    if (!r || r.error) { setBrandMsg(r?.error ? `Erro ao salvar: ${r.error}` : 'Erro ao salvar. Tente novamente.'); setTimeout(() => setBrandMsg(''), 6000); return }
     // Atualiza a lista local imediatamente (nao depende do cache) para nao "sumir"
     setClientes(cs => cs.map((c: any) => c.id === verComoClienteId ? { ...c, ...brandForm } : c))
     setBrandMsg('Identidade da marca salva!')
@@ -2051,7 +2051,7 @@ function Dashboard() {
                   style={{ padding: '12px 22px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   Voltar
                 </button>
-                {brandMsg && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
+                {brandMsg && <span style={{ fontSize: 13, color: brandMsg.toLowerCase().includes('erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
               </div>
 
               {/* Documento de marca gerado por IA */}
