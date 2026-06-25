@@ -1183,39 +1183,71 @@ function Dashboard() {
             {tema === 'escuro' ? <IconSun size={18} /> : <IconMoon size={18} />}
           </button>
 
-          {/* Sininho de notificações — abre Inbox */}
-          <button onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} title="Inbox" style={{
-            position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
-            width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <IconBell size={18} />
-            {notificacoes.some(n => !n.lida) && (
-              <span style={{
-                position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
-                color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
-              }}>
-                {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
-              </span>
+          {/* Sininho de notificações — popup dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
+              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
+              width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <IconBell size={18} />
+              {notificacoes.some(n => !n.lida) && (
+                <span style={{
+                  position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
+                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
+                }}>
+                  {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
+                </span>
+              )}
+            </button>
+
+            {inboxAberto && (
+              <>
+                <div onClick={() => setInboxAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: '#fff', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff' }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
+                    <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Ver todas</button>
+                  </div>
+                  {notificacoes.length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma notificação.</div>
+                  ) : (
+                    notificacoes.slice(0, 12).map(n => (
+                      <div key={n.id} onClick={() => {
+                        if (!n.lida) marcarNotificacaoLida(n.id)
+                        if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setInboxAberto(false); setPostPreview(p) } }
+                        else if (n.tipo?.startsWith('tarefa_')) { setInboxAberto(false); setAba('tarefas' as any) }
+                        else if (n.tipo === 'mensagem_privada') { setInboxAberto(false); setAba('mensagens' as any) }
+                      }} style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
             )}
-          </button>
+          </div>
 
           {role === 'admin' && (
             <select onChange={e => {
               const v = e.target.value
               if (!v) return
               if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
-              if (v.startsWith('cli:')) { setViewAsClient(false); router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
+              // Visualizar como (somente leitura): ativa o modo cliente e abre o portal
+              if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
               const u = usuarios.find((x: any) => x.email === v)
-              if (u && (u as any).clienteId) { setViewAsClient(false); router.push(`/cliente/${(u as any).clienteId}`) }
+              if (u && (u as any).clienteId) { setViewAsClient(true); router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
             }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
-              <option value="">Acessar sub-account...</option>
+              <option value="">Visualizar como...</option>
               <option value="_reset">Voltar a minha visao</option>
-              <optgroup label="Clientes">
+              <optgroup label="Clientes (visualizar)">
                 {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
-              </optgroup>
-              <optgroup label="Usuarios">
-                {usuarios.map((u: any) => <option key={u.email} value={u.email}>{u.nome} ({u.role})</option>)}
               </optgroup>
             </select>
           )}
