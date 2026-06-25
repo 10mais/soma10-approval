@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { isViewAsClient } from '@/lib/modoCliente'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -16,7 +17,9 @@ export default function MarcaPage() {
   const { clienteId } = useParams()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
-  const ehEquipe = role === 'admin' || role === 'gerente'
+  const [viewAs, setViewAs] = useState(false)
+  useEffect(() => { setViewAs(isViewAsClient()) }, [])
+  const ehEquipe = (role === 'admin' || role === 'gerente') && !viewAs
 
   const [cliente, setCliente] = useState<any>(null)
   const [form, setForm] = useState<any>({})

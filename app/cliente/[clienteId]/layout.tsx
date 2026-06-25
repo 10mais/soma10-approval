@@ -2,6 +2,7 @@
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
 
 const NAV_ITEMS = [
   { key: '', label: 'Inicio', todos: true },
@@ -23,7 +24,12 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const clienteId = params.clienteId as string
   const [cliente, setCliente] = useState<any>(null)
   const role = (session?.user as any)?.role
-  const ehEquipe = role === 'admin' || role === 'gerente'
+  const isTeam = role === 'admin' || role === 'gerente'
+  // Modo "Visualizar como cliente": equipe ve o portal como o cliente (read-only)
+  const [viewAs, setViewAs] = useState(false)
+  useEffect(() => { setViewAs(isViewAsClient()) }, [])
+  const ehEquipe = isTeam && !viewAs
+  function alternarViewAs(on: boolean) { setViewAsClient(on); window.location.reload() }
 
   useEffect(() => {
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(d => {
@@ -101,18 +107,32 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10Approval</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => router.push(`${basePath}/conta`)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <span style={{ fontSize: 13, color: corTextoHeader, opacity: 0.8 }}>{session?.user?.name}</span>
           </button>
-          {ehEquipe && (
-            <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: `1px solid ${corTextoHeader}40`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: corTextoHeader, opacity: 0.8 }}>
+          {isTeam && (
+            <button onClick={() => alternarViewAs(!viewAs)} title={viewAs ? 'Voltar a editar como equipe' : 'Ver o portal como o cliente ve (somente leitura)'}
+              style={{ background: viewAs ? corTextoHeader : 'none', border: `1px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: viewAs ? corPrimaria : corTextoHeader }}>
+              {viewAs ? 'Editar como equipe' : 'Visualizar como cliente'}
+            </button>
+          )}
+          {isTeam && (
+            <button onClick={() => { setViewAsClient(false); router.push('/dashboard') }} style={{ background: 'none', border: `1px solid ${corTextoHeader}40`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: corTextoHeader, opacity: 0.8 }}>
               Voltar ao Painel
             </button>
           )}
           <button onClick={() => signOut()} style={{ background: 'none', border: `1.5px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: corTextoHeader }}>Sair</button>
         </div>
       </div>
+
+      {/* Banner do modo "Visualizar como cliente" */}
+      {isTeam && viewAs && (
+        <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '8px 24px', fontSize: 12.5, color: '#92400e', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700 }}>Modo visualização — você está vendo o portal como o cliente vê (somente leitura).</span>
+          <button onClick={() => alternarViewAs(false)} style={{ background: '#92400e', color: '#fff', border: 'none', borderRadius: 7, padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Sair do modo cliente</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Sidebar */}

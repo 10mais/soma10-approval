@@ -32,6 +32,7 @@ function LoadingPlaceholder() {
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
+import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
@@ -1203,9 +1204,9 @@ function Dashboard() {
               const v = e.target.value
               if (!v) return
               if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
-              if (v.startsWith('cli:')) { router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
+              if (v.startsWith('cli:')) { setViewAsClient(false); router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
               const u = usuarios.find((x: any) => x.email === v)
-              if (u && (u as any).clienteId) { router.push(`/cliente/${(u as any).clienteId}`) }
+              if (u && (u as any).clienteId) { setViewAsClient(false); router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
             }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Acessar sub-account...</option>
@@ -1327,7 +1328,7 @@ function Dashboard() {
                         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
                         .map(c => (
                           <button key={c.id} onClick={() => {
-                            router.push(`/cliente/${c.id}`); setBuscaCliente(''); setClientesAberto(false)
+                            setViewAsClient(false); router.push(`/cliente/${c.id}`); setBuscaCliente(''); setClientesAberto(false)
                             setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [], documentoMarca: (c as any).documentoMarca || '', documentoMarcaGeradoEm: (c as any).documentoMarcaGeradoEm || '' })
                           }} style={{
                             textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
