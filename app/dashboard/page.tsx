@@ -446,11 +446,13 @@ function Dashboard() {
   // Brand Board: ao trocar de cliente, recarrega os dados DAQUELE cliente (evita
   // misturar o documento/identidade de um cliente com outro) e define o modo.
   useEffect(() => {
-    if (!verComoClienteId) { setBrandForm({}); return }
+    setBrandForm({}) // limpa imediatamente ao trocar de cliente (nunca mostra dado do anterior)
+    if (!verComoClienteId) return
+    const alvo = verComoClienteId
     let cancelado = false
-    // Le SEMPRE do endpoint por id (direto do Redis, sem cache) — evita Brand Board "sumir" por cache stale
-    fetch(`/api/clientes?id=${verComoClienteId}`).then(r => r.json()).then((c: any) => {
-      if (cancelado || !c || c.error) return
+    // Le SEMPRE do endpoint por id (direto do Redis, sem cache). So aceita se for EXATAMENTE este cliente.
+    fetch(`/api/clientes?id=${alvo}`).then(r => r.json()).then((c: any) => {
+      if (cancelado || !c || c.error || c.id !== alvo) return
       setBrandForm({
         segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '',
         publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '',
@@ -1361,8 +1363,9 @@ function Dashboard() {
                         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
                         .map(c => (
                           <button key={c.id} onClick={() => {
-                            setViewAsClient(false); router.push(`/cliente/${c.id}`); setBuscaCliente(''); setClientesAberto(false)
-                            setBrandForm({ segmento: c.segmento || '', palavrasChave: (c as any).palavrasChave || '', descricao: (c as any).descricao || '', publicoAlvo: (c as any).publicoAlvo || '', tomDeVoz: (c as any).tomDeVoz || '', preferencias: (c as any).preferencias || '', documentos: (c as any).documentos || [], documentoMarca: (c as any).documentoMarca || '', documentoMarcaGeradoEm: (c as any).documentoMarcaGeradoEm || '' })
+                            // Acessa a sub-account no portal. O portal carrega o Brand Board do
+                            // proprio cliente por id — nao pre-popular aqui (evita misturar clientes).
+                            setViewAsClient(false); setBuscaCliente(''); setClientesAberto(false); router.push(`/cliente/${c.id}`)
                           }} style={{
                             textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
                             background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,

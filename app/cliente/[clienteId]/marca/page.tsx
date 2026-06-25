@@ -46,10 +46,15 @@ export default function MarcaPage() {
 
   function carregar() {
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then((c: any) => {
-      if (c && !c.error) { setCliente(c); setForm({ segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '', publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '' }) }
+      // Blindagem: so aceita o dado se for EXATAMENTE deste cliente (nunca mistura)
+      if (c && !c.error && c.id === clienteId) { setCliente(c); setForm({ segmento: c.segmento || '', palavrasChave: c.palavrasChave || '', descricao: c.descricao || '', publicoAlvo: c.publicoAlvo || '', tomDeVoz: c.tomDeVoz || '', preferencias: c.preferencias || '' }) }
     }).catch(() => {})
   }
-  useEffect(() => { carregar() }, [clienteId])
+  useEffect(() => {
+    // Reseta ao trocar de cliente para nunca exibir dados do cliente anterior
+    setCliente(null); setForm({}); setEditando(false); setMsg(null)
+    carregar()
+  }, [clienteId])
 
   async function salvar() {
     setSalvando(true); setMsg(null)
