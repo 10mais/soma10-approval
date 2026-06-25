@@ -62,7 +62,7 @@ export default function SolicitarPage() {
           <label style={label}>Observações</label>
           <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer detalhe importante..." style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
         </div>
-        <button onClick={enviar} disabled={enviando || !form.tema.trim()} style={{ padding: '12px 0', background: form.tema.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: form.tema.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
+        <button onClick={enviar} disabled={enviando || !form.tema.trim()} style={{ padding: '12px 0', background: form.tema.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: form.tema.trim() ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: form.tema.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
           {enviando ? 'Enviando...' : 'Enviar solicitação'}
         </button>
       </div>

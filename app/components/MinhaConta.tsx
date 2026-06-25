@@ -117,7 +117,7 @@ export default function MinhaConta() {
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={salvarPerfil} disabled={salvando} style={{ padding: '10px 24px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', opacity: salvando ? 0.6 : 1 }}>
+            <button onClick={salvarPerfil} disabled={salvando} style={{ padding: '10px 24px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', opacity: salvando ? 0.6 : 1 }}>
               {salvando ? 'Salvando...' : 'Salvar perfil'}
             </button>
             {msg && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a' }}>{msg}</span>}

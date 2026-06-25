@@ -100,8 +100,11 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const corTextoHeader = fundoEscuro ? '#fff' : '#111'
   const logoSrc = fundoEscuro ? '/logo-branco.svg' : '/logo.svg'
 
+  // Texto que contrasta com a cor da marca (para botoes primarios)
+  const corTextoMarca = corEscura(corPrimaria) ? '#fff' : '#111'
+
   return (
-    <div>
+    <div style={{ ['--marca' as any]: corPrimaria, ['--marca-texto' as any]: corTextoMarca }}>
       {/* Header personalizado com a cor do cliente */}
       <div style={{ background: corPrimaria, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
         <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>

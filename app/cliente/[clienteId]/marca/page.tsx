@@ -48,6 +48,23 @@ export default function MarcaPage() {
     setTimeout(() => setMsg(null), 4000)
   }
 
+  async function excluir() {
+    if (!confirm('Excluir o Brand Board deste cliente? As informações da marca serão apagadas (o documento de marca por IA, se houver, é mantido).')) return
+    setSalvando(true); setMsg(null)
+    const vazio = { segmento: '', palavrasChave: '', descricao: '', publicoAlvo: '', tomDeVoz: '', preferencias: '' }
+    const r = await fetch('/api/clientes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: clienteId, ...vazio }),
+    }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r || r.error) { setMsg({ texto: r?.error ? `Erro ao excluir: ${r.error}` : 'Erro ao excluir. Tente novamente.', erro: true }); return }
+    setForm(vazio)
+    setCliente((c: any) => ({ ...c, ...vazio }))
+    setEditando(false)
+    setMsg({ texto: 'Brand Board excluído.', erro: false })
+    setTimeout(() => setMsg(null), 4000)
+  }
+
   if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
 
   const temDados = CAMPOS.some(c => (cliente[c.key] || '').trim()) || (cliente.documentoMarca || '').trim()
@@ -58,9 +75,14 @@ export default function MarcaPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Marca — Brand Board</h2>
         {ehEquipe && !editando && (
-          <button onClick={() => setEditando(true)} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            {temDados ? 'Editar' : 'Preencher Brand Board'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setEditando(true)} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+              {temDados ? 'Editar' : 'Preencher Brand Board'}
+            </button>
+            {temDados && (
+              <button onClick={excluir} disabled={salvando} style={{ padding: '9px 14px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+            )}
+          </div>
         )}
       </div>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Identidade e DNA do projeto {cliente.nome}.</p>
@@ -80,7 +102,7 @@ export default function MarcaPage() {
             </div>
           ))}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+            <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
             <button onClick={() => { setEditando(false); carregar() }} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
           </div>
         </div>

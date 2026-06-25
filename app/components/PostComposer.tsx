@@ -594,7 +594,7 @@ export default function PostComposer({
         {modoEdicao ? (
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => submeter('salvar')} disabled={!podePublicar}
-              style={{ flex: 1, padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+              style={{ flex: 1, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
               {enviando ? 'Salvando...' : 'Salvar'}
             </button>
             <button onClick={() => submeter('agendar')} disabled={!podePublicar || !dataAgendada} type="button"
@@ -617,7 +617,7 @@ export default function PostComposer({
               {enviando ? 'Agendando...' : 'Agendar'}
             </button>
             <button onClick={() => submeter('publicar')} disabled={!podePublicar}
-              style={{ flex: 1.4, padding: '14px 0', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+              style={{ flex: 1.4, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
               {enviando ? 'Publicando...' : 'Publicar agora'}
             </button>
           </div>
