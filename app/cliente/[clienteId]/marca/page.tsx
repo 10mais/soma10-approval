@@ -26,6 +26,23 @@ export default function MarcaPage() {
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<{ texto: string; erro: boolean } | null>(null)
+  const [gerandoDoc, setGerandoDoc] = useState(false)
+
+  async function gerarDocumento() {
+    const tem = (cliente?.segmento || '').trim() || (cliente?.palavrasChave || '').trim()
+    if (!tem) { setMsg({ texto: 'Preencha ao menos Segmento/Nicho e palavras-chave antes de gerar o documento.', erro: true }); return }
+    if (cliente?.documentoMarca && !confirm('Já existe um documento. Regenerar vai consumir créditos de IA e substituir o atual. Continuar?')) return
+    setGerandoDoc(true); setMsg(null)
+    const r = await fetch('/api/brand/gerar-documento', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clienteId }),
+    }).then(x => x.json()).catch(() => null)
+    setGerandoDoc(false)
+    if (!r || r.error) { setMsg({ texto: r?.error ? `Erro: ${r.error}` : 'Não foi possível gerar o documento.', erro: true }); return }
+    setCliente((c: any) => ({ ...c, documentoMarca: r.documentoMarca, documentoMarcaGeradoEm: r.documentoMarcaGeradoEm }))
+    setMsg({ texto: 'Documento de marca gerado pela IA!', erro: false })
+    setTimeout(() => setMsg(null), 5000)
+  }
 
   function carregar() {
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then((c: any) => {
@@ -124,9 +141,26 @@ export default function MarcaPage() {
               ))}
             </div>
           )}
+          {/* Gerar documento com IA (equipe) — aparece quando ha Brand Board e ainda nao ha documento */}
+          {ehEquipe && temDados && !cliente.documentoMarca && (
+            <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
+              <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ width: '100%', padding: '12px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
+                {gerandoDoc ? 'Gerando documento com IA... (pode levar 1-2 min)' : 'Criar documento com IA'}
+              </button>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>A IA pesquisa o nicho e gera uma referência editorial completa a partir do Brand Board.</p>
+            </div>
+          )}
+
           {cliente.documentoMarca && (
             <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 15, color: '#111' }}>Documento de marca (IA)</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Documento de marca (IA)</h3>
+                {ehEquipe && (
+                  <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ padding: '7px 14px', background: '#f5f5f5', color: '#111', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
+                    {gerandoDoc ? 'Gerando...' : 'Regenerar com IA'}
+                  </button>
+                )}
+              </div>
               {cliente.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: '#999', margin: '0 0 8px' }}>Gerado em {new Date(cliente.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{cliente.documentoMarca}</pre>
             </div>
