@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; segmento?: string; palavrasChave?: string }
 type Briefing = {
-  id: string; clienteId: string; clienteNome: string; titulo: string; objetivo: string
+  id: string; clienteId: string; clienteNome: string; titulo: string; marcoId?: string; objetivo: string
   plataformas: string[]; verba?: string; periodo?: string; publico?: string; oferta?: string
   observacoes?: string; conteudo: string; criadoPor: string; criadoEm: string; atualizadoEm: string
 }
@@ -11,10 +11,13 @@ type Briefing = {
 const OBJETIVOS = ['Vendas / conversão', 'Geração de leads', 'Alcance / reconhecimento', 'Engajamento', 'Tráfego', 'Mensagens / WhatsApp']
 const PLATAFORMAS = ['Meta (Instagram/Facebook)', 'Google', 'TikTok', 'LinkedIn', 'YouTube']
 
-const vazio = { titulo: '', objetivo: OBJETIVOS[0], plataformas: ['Meta (Instagram/Facebook)'] as string[], verba: '', periodo: '', publico: '', oferta: '', observacoes: '', conteudo: '' }
+const vazio = { titulo: '', marcoId: '', objetivo: OBJETIVOS[0], plataformas: ['Meta (Instagram/Facebook)'] as string[], verba: '', periodo: '', publico: '', oferta: '', observacoes: '', conteudo: '' }
+
+type Marco = { id: string; titulo: string; clienteId: string; status: string }
 
 export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   const [briefings, setBriefings] = useState<Briefing[]>([])
+  const [marcos, setMarcos] = useState<Marco[]>([])
   const [modo, setModo] = useState<'lista' | 'editor'>('lista')
   const [editId, setEditId] = useState<string | null>(null)
   const [clienteId, setClienteId] = useState('')
@@ -29,12 +32,18 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   }
   useEffect(() => { carregar() }, [])
 
+  // Marcos (etapas do Playbook) do cliente selecionado — vinculo obrigatorio
+  useEffect(() => {
+    if (!clienteId) { setMarcos([]); return }
+    fetch(`/api/playbook?clienteId=${clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [clienteId])
+
   function novo() {
     setEditId(null); setClienteId(''); setForm({ ...vazio }); setRefino(''); setErro(''); setModo('editor')
   }
   function abrir(b: Briefing) {
     setEditId(b.id); setClienteId(b.clienteId)
-    setForm({ titulo: b.titulo, objetivo: b.objetivo, plataformas: b.plataformas || [], verba: b.verba || '', periodo: b.periodo || '', publico: b.publico || '', oferta: b.oferta || '', observacoes: b.observacoes || '', conteudo: b.conteudo || '' })
+    setForm({ titulo: b.titulo, marcoId: b.marcoId || '', objetivo: b.objetivo, plataformas: b.plataformas || [], verba: b.verba || '', periodo: b.periodo || '', publico: b.publico || '', oferta: b.oferta || '', observacoes: b.observacoes || '', conteudo: b.conteudo || '' })
     setRefino(''); setErro(''); setModo('editor')
   }
 
@@ -57,6 +66,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
 
   async function salvar() {
     if (!clienteId) { setErro('Selecione um cliente.'); return }
+    if (!form.marcoId) { setErro('Vincule a campanha a uma etapa do Playbook.'); return }
     if (!form.conteudo.trim()) { setErro('Gere ou escreva o conteúdo do briefing antes de salvar.'); return }
     setSalvando(true)
     const cli = clientes.find(c => c.id === clienteId)
@@ -148,6 +158,14 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
           <div>
             <label style={label}>Título da campanha</label>
             <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ex: Black Friday 2026" style={inputStyle} />
+          </div>
+          <div>
+            <label style={label}>Etapa do Playbook *</label>
+            <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))} style={{ ...inputStyle, background: '#fff' }} disabled={!clienteId}>
+              <option value="">{!clienteId ? 'Selecione um cliente primeiro' : marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
+              {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+            </select>
+            {clienteId && marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de salvar a campanha.</p>}
           </div>
           <div>
             <label style={label}>Objetivo</label>

@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
     responsavelNome: body.responsavelNome || '',
     clienteId: body.clienteId || '',
     clienteNome: body.clienteNome || '',
+    marcoId: body.marcoId || '',
     prazo: body.prazo || '',
     criadoPor: session.user?.name || '',
     criadoEm: agora,
@@ -110,7 +111,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'prazo', 'anexos']
+  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'anexos']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
   const agora = new Date().toISOString()

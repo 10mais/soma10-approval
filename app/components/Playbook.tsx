@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import EntregasMarco, { Entregas } from './EntregasMarco'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -193,6 +194,11 @@ function MarcoModal({ marco, clientes, onClose, onSalvo, onExcluir }: {
     dataFim: marco?.dataFim ? marco.dataFim.split('T')[0] : '',
   })
   const [salvando, setSalvando] = useState(false)
+  const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
+  useEffect(() => {
+    if (!marco?.clienteId) return
+    fetch(`/api/playbook/entregas?clienteId=${marco.clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setEntregas(d) }).catch(() => {})
+  }, [marco?.clienteId])
 
   async function salvar() {
     setSalvando(true)
@@ -264,6 +270,15 @@ function MarcoModal({ marco, clientes, onClose, onSalvo, onExcluir }: {
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
         </div>
+
+        {/* Entregas vinculadas a esta etapa */}
+        {marco && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: '#111' }}>Entregas desta etapa</h4>
+            <EntregasMarco marcoId={marco.id} entregas={entregas} cor={STATUS_COR[form.status] === '#ffc00f' ? '#ca8a04' : '#16a34a'} />
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
           <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (marco ? 'Salvar' : 'Criar marco')}

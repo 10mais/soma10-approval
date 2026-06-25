@@ -201,6 +201,7 @@ export default function PlannerPage() {
               clientes={clientes}
               valorInicial={editPost ? {
                 clienteId: editPost.clienteId,
+                marcoId: editPost.marcoId || '',
                 legenda: editPost.legenda || '',
                 dataAgendada: paraDatetimeLocal(editPost.dataAgendada),
                 imagens: editPost.imagens || [],

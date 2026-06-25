@@ -697,6 +697,7 @@ function Dashboard() {
     setEditandoPostId(post.id)
     setComposerPrefill({
       clienteId: cliente?.id || post.clienteId || '',
+      marcoId: (post as any).marcoId || '',
       legenda: post.legenda || '',
       dataAgendada: paraDatetimeLocal(post.dataAgendada),
       imagens: post.imagens || [],

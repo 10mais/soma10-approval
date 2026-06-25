@@ -145,6 +145,7 @@ export type Tarefa = {
   responsavelNome?: string
   clienteId?: string
   clienteNome?: string
+  marcoId?: string // etapa do Playbook a que a tarefa pertence
   prazo?: string // ISO date
   anexos?: { nome: string; url: string; tipo: string }[]
   atividades?: TarefaAtividade[]
@@ -179,6 +180,7 @@ export type BriefingCampanha = {
   clienteId: string
   clienteNome: string
   titulo: string
+  marcoId?: string // etapa do Playbook a que a campanha pertence
   objetivo: string // vendas, leads, alcance, engajamento, trafego, reconhecimento
   plataformas: string[] // ['meta', 'google', 'tiktok', ...]
   verba?: string
@@ -213,6 +215,7 @@ export type Post = {
   id: string
   clienteId: string
   clienteNome: string
+  marcoId?: string // etapa do Playbook a que o post pertence
   imagens: string[]
   legenda: string
   status: PostStatus

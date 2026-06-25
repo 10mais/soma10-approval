@@ -487,8 +487,14 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
     tipo: tarefa?.tipo || 'tarefa',
     status: tarefa?.status || 'a_fazer', prioridade: tarefa?.prioridade || 'media',
     responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
+    marcoId: (tarefa as any)?.marcoId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
   })
+  const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  useEffect(() => {
+    if (!form.clienteId) { setMarcos([]); return }
+    fetch(`/api/playbook?clienteId=${form.clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [form.clienteId])
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -552,6 +558,8 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
   }
 
   async function salvar() {
+    // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
+    if (form.clienteId && !form.marcoId) { alert('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
@@ -803,7 +811,7 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <OptImg src={c.logo} size={28} style={{ flexShrink: 0 }} /> : null })()}
-                  <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
+                  <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value, marcoId: '' }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Nenhum</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -811,6 +819,17 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
                 </div>
               </div>
             </div>
+            {form.clienteId && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Etapa do Playbook *</label>
+                <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
+                  {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+                </select>
+                {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de salvar.</p>}
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Prazo</label>

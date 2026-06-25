@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     clienteId: body.clienteId || '',
     clienteNome: body.clienteNome || '',
     titulo: body.titulo || 'Campanha sem título',
+    marcoId: body.marcoId || '',
     objetivo: body.objetivo || '',
     plataformas: Array.isArray(body.plataformas) ? body.plataformas : [],
     verba: body.verba || '',
@@ -58,7 +59,7 @@ export async function PUT(req: NextRequest) {
   const briefing = await redis.get<BriefingCampanha>(`briefing:${id}`)
   if (!briefing) return NextResponse.json({ error: 'nao encontrado' }, { status: 404 })
 
-  const campos = ['titulo', 'objetivo', 'plataformas', 'verba', 'periodo', 'publico', 'oferta', 'observacoes', 'conteudo']
+  const campos = ['titulo', 'marcoId', 'objetivo', 'plataformas', 'verba', 'periodo', 'publico', 'oferta', 'observacoes', 'conteudo']
   const atualizado: any = { ...briefing, atualizadoEm: new Date().toISOString() }
   for (const c of campos) { if (c in updates) atualizado[c] = updates[c] }
   await redis.set(`briefing:${id}`, atualizado)

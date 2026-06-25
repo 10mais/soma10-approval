@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 
@@ -9,6 +9,7 @@ type EmEnvio = { id: string; nome: string; progresso: number }
 
 export type ComposerValue = {
   clienteId: string
+  marcoId?: string
   legenda: string
   imagens: string[]
   dataAgendada: string
@@ -50,6 +51,12 @@ export default function PostComposer({
   modoEdicao?: boolean
 }) {
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
+  const [marcoId, setMarcoId] = useState(valorInicial?.marcoId || '')
+  const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  useEffect(() => {
+    if (!clienteId) { setMarcos([]); return }
+    fetch(`/api/playbook?clienteId=${clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [clienteId])
   const [legenda, setLegenda] = useState(valorInicial?.legenda || '')
   const [midias, setMidias] = useState<Midia[]>(
     (valorInicial?.imagens || []).map(url => ({
@@ -299,12 +306,17 @@ export default function PostComposer({
       setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
       return
     }
-    onSubmit({ clienteId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, acao })
+    if (clienteId && !marcoId) {
+      setErroUpload('Vincule o post a uma etapa do Playbook do cliente antes de continuar.')
+      return
+    }
+    onSubmit({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
-  const podePublicar = !!clienteId && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
-  const podeRascunho = !!clienteId && !enviando && !enviandoArquivo
+  const marcoOk = !clienteId || !!marcoId
+  const podePublicar = !!clienteId && marcoOk && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
+  const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: 24, alignItems: 'start' }}>
@@ -314,11 +326,24 @@ export default function PostComposer({
         {!travarCliente && (
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Cliente</label>
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)}
+            <select value={clienteId} onChange={e => { setClienteId(e.target.value); setMarcoId('') }}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
               <option value="">Selecione o cliente...</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.nome} (@{c.instagram?.replace(/^@/, '')})</option>)}
             </select>
+          </div>
+        )}
+
+        {/* Etapa do Playbook — vinculo obrigatorio */}
+        {clienteId && (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Etapa do Playbook *</label>
+            <select value={marcoId} onChange={e => setMarcoId(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
+              <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
+              {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+            </select>
+            {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
           </div>
         )}
 
