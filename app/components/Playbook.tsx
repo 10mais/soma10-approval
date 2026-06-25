@@ -48,6 +48,17 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
   // Playbook e sempre escopado a UM cliente. No portal vem fixo; na agencia, escolhido.
   const clienteAtivo = clienteFixo || filtroCliente
 
+  // Cor dos botoes primarios: cor do cliente no portal (clienteFixo), amarelo na agencia.
+  const corMarca = clienteFixo ? (clientes.find(c => c.id === clienteFixo)?.corPrimaria || '#ffc00f') : '#ffc00f'
+  const corMarcaTexto = (() => {
+    const h = corMarca.replace('#', '')
+    if (h.length < 6) return '#111'
+    const r = parseInt(h.substring(0, 2), 16) || 0
+    const g = parseInt(h.substring(2, 4), 16) || 0
+    const b = parseInt(h.substring(4, 6), 16) || 0
+    return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? '#fff' : '#111'
+  })()
+
   function carregar() {
     if (!clienteAtivo) { setMarcos([]); return }
     fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
@@ -108,7 +119,7 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
           </div>
-          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
         </>}
       </div>
 
@@ -189,7 +200,7 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
 
       {/* Modal novo/editar marco */}
       {(novoModal || editModal) && (
-        <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo}
+        <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo} corMarca={corMarca} corMarcaTexto={corMarcaTexto}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
           onExcluir={editModal ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
@@ -199,8 +210,9 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
   )
 }
 
-function MarcoModal({ marco, clientes, clientePadrao, onClose, onSalvo, onExcluir }: {
+function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corMarcaTexto = '#111', onClose, onSalvo, onExcluir }: {
   marco: Marco | null; clientes: { id: string; nome: string }[]; clientePadrao?: string
+  corMarca?: string; corMarcaTexto?: string
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
 }) {
   const [form, setForm] = useState({
@@ -297,7 +309,7 @@ function MarcoModal({ marco, clientes, clientePadrao, onClose, onSalvo, onExclui
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-          <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: (form.titulo.trim() && form.clienteId) ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
+          <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? corMarca : '#f0f0f0', color: (form.titulo.trim() && form.clienteId) ? corMarcaTexto : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (marco ? 'Salvar' : 'Criar marco')}
           </button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
