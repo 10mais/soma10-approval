@@ -469,9 +469,19 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
           <input value={refImgUrl} onChange={e => setRefImgUrl(e.target.value)} placeholder="Link do Drive ou URL da referencia"
             style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
         </div>
-        {refImgUrl && /\.(jpg|jpeg|png|gif|webp)/i.test(refImgUrl) && (
-          <img src={refImgUrl} alt="" style={{ marginBottom: 12, maxWidth: 120, maxHeight: 80, borderRadius: 8, objectFit: 'cover' }} />
-        )}
+        {(() => {
+          const urls = ((sugestaoImagem || '') + '\n' + (refImgUrl || '')).match(/https?:\/\/\S+/g) || []
+          const imgs = Array.from(new Set(urls)).filter(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
+          return imgs.length > 0 ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              {imgs.map((u, i) => (
+                <a key={i} href={u} target="_blank" rel="noreferrer" title="Abrir imagem">
+                  <img src={u} alt="" style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid #eee' }} />
+                </a>
+              ))}
+            </div>
+          ) : null
+        })()}
 
         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto na imagem</label>
         <input value={textoImagem} onChange={e => setTextoImagem(e.target.value)} placeholder="Texto que aparece na arte"
