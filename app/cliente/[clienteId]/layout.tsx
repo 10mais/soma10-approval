@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { key: '', label: 'Inicio', todos: true },
   { key: '/entregas', label: 'Entregas', todos: true },
   { key: '/aprovacoes', label: 'Aprovacoes', todos: true },
+  { key: '/solicitar', label: 'Solicitar conteudo', todos: true },
   { key: '/esteira', label: 'Esteira', todos: true },
   { key: '/planner', label: 'Planner', todos: true },
   { key: '/playbook', label: 'Playbook', equipe: true },

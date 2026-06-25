@@ -14,6 +14,7 @@ const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr
 const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Briefings = dynamic(() => import('../components/Briefings'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 function LoadingPlaceholder() {
   return (
@@ -313,7 +314,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1437,14 +1438,14 @@ function Dashboard() {
                   </button>
                   {configAberto && (
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {(['config', 'usuarios', 'clientes'] as const).map(a => (
+                    {(['config', 'usuarios', 'clientes', 'candidaturas'] as const).map(a => (
                       <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
                         padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                         fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                         background: aba === a ? '#ffc00f' : 'transparent',
                         fontSize: 13, transition: 'all 0.15s',
                       }}>
-                        {a === 'config' ? 'Geral' : a === 'usuarios' ? 'Colaboradores' : 'Clientes'}
+                        {a === 'config' ? 'Geral' : a === 'usuarios' ? 'Colaboradores' : a === 'clientes' ? 'Clientes' : 'Trabalhe Conosco'}
                       </button>
                     ))}
                   </nav>
@@ -2492,6 +2493,8 @@ function Dashboard() {
                     post_falha_publicacao: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01' },
                     aprovacao_atrasada: { cor: '#ea580c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
                     contrato_renovacao: { cor: '#7c3aed', path: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+                    briefing_solicitado: { cor: '#0891b2', path: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6M9 13h6M9 17h4' },
+                    candidatura: { cor: '#059669', path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
                     geral: { cor: '#6b7280', path: 'M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0' },
                   }
                   const ic = icones[n.tipo] || icones.geral
@@ -2532,6 +2535,10 @@ function Dashboard() {
 
         {aba === 'campanhas' && (
           <Briefings clientes={clientes as any} />
+        )}
+
+        {aba === 'candidaturas' && role === 'admin' && (
+          <Candidaturas />
         )}
 
         {aba === 'minha-conta' && (

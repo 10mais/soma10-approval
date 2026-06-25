@@ -89,6 +89,8 @@ export type TipoNotificacao =
   | 'mensagem_privada'
   | 'aprovacao_atrasada'
   | 'contrato_renovacao'
+  | 'briefing_solicitado'
+  | 'candidatura'
   | 'geral'
 
 export type Notificacao = {
@@ -172,6 +174,21 @@ export type TarefaComentario = {
   texto: string
   criadoEm: string
   editadoEm?: string
+}
+
+// Candidatura (Trabalhe conosco) — formulario publico, visivel so para admin
+export type CandidaturaStatus = 'nova' | 'em_analise' | 'aprovada' | 'reprovada'
+export type Candidatura = {
+  id: string
+  nome: string
+  email: string
+  telefone?: string
+  vaga?: string
+  mensagem?: string
+  curriculoUrl?: string
+  curriculoNome?: string
+  status: CandidaturaStatus
+  criadoEm: string
 }
 
 // Briefing de campanha (gerado/refinado com IA a partir do Brand Board)
