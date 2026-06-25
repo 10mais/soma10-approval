@@ -896,13 +896,17 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
                 </div>
               </div>
             </div>
-            {form.clienteId && (
-              <div>
+            <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook *</label>
-                  {!criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
+                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
                 </div>
-                {!criandoEtapa && (<>
+                {!form.clienteId && (
+                  <select disabled value="" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#f7f7f7', color: '#aaa' }}>
+                    <option value="">Selecione um &quot;Cliente vinculado&quot; primeiro...</option>
+                  </select>
+                )}
+                {form.clienteId && !criandoEtapa && (<>
                   <select value={form.marcoId} onChange={e => { if (e.target.value === '__nova__') { setCriandoEtapa(true) } else { setForm(f => ({ ...f, marcoId: e.target.value })) } }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie uma abaixo' : 'Selecione a etapa...'}</option>
@@ -911,7 +915,7 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
                   </select>
                   {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Clique em "+ Criar etapa".</p>}
                 </>)}
-                {criandoEtapa && (
+                {form.clienteId && criandoEtapa && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input autoFocus value={novaEtapaTitulo} onChange={e => setNovaEtapaTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarEtapaRapida() } }} placeholder="Nome da etapa (ex: Conteudos Julho)"
                       style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
@@ -921,8 +925,7 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
                       style={{ padding: '10px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Prazo</label>
