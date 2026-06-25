@@ -185,7 +185,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
         </select>
         <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
         {planoSel && <>
-          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
@@ -214,7 +214,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Ano</label>
             <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 90 }} />
           </div>
-          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
+          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
           <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       )}
@@ -375,7 +375,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-              <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
+              <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: formPauta.briefing.trim() ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
               <button onClick={() => setNovaPautaModal(false)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
@@ -539,7 +539,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         </button>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
+          <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
           {onAbrirComposer && pauta.etapa === 'criativo' && (
