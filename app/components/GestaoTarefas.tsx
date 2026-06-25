@@ -31,7 +31,11 @@ const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
   { key: 'video', label: 'Video', cor: '#b91c1c', icone: 'M5 3l14 9-14 9V3z' },
 ]
 
-function tipoInfo(key?: string) { return TIPOS.find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
+// Tipos personalizados criados pela equipe (persistidos no servidor). Mantidos em
+// modulo para que os badges dos cards (que usam tipoInfo) resolvam tipos custom.
+let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] = []
+function todosTipos() { return [...TIPOS, ...TIPOS_CUSTOM] }
+function tipoInfo(key?: string) { return todosTipos().find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 
 function forcarDownload(url: string, nome: string) {
   fetch(url).then(r => r.blob()).then(blob => {
@@ -231,6 +235,13 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
   const [overCol, setOverCol] = useState<string | null>(null)
   const [tarefaViewMode, setTarefaViewMode] = useState<'modal' | 'fullscreen' | 'sidebar'>('modal')
   const [confirmPopup, setConfirmPopup] = useState<{ mensagem: string; onConfirm: () => void } | null>(null)
+  // Tipos de tarefa personalizados (criados pela equipe, aplicam-se a tudo)
+  const [tiposCustom, setTiposCustom] = useState<{ key: string; label: string; cor: string; icone: string }[]>(TIPOS_CUSTOM)
+  function aplicarTiposCustom(lista: { key: string; label: string; cor: string; icone: string }[]) {
+    TIPOS_CUSTOM = Array.isArray(lista) ? lista : []
+    setTiposCustom(TIPOS_CUSTOM)
+  }
+  useEffect(() => { fetch('/api/tipos-tarefa').then(r => r.json()).then(d => { if (Array.isArray(d)) aplicarTiposCustom(d) }).catch(() => {}) }, [])
 
   function carregar() {
     fetch('/api/tarefas').then(r => r.json()).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
@@ -459,6 +470,7 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
       {/* Modal nova/editar tarefa */}
       {(novaModal || editModal) && (
         <TarefaModal tarefa={editModal} clientes={clientes} usuarios={usuarios}
+          tiposCustom={tiposCustom} onTiposCustom={aplicarTiposCustom}
           viewMode={editModal ? tarefaViewMode : 'modal'}
           onChangeViewMode={setTarefaViewMode}
           onClose={() => { setNovaModal(false); setEditModal(null) }}
@@ -477,8 +489,10 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
   )
 }
 
-function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]
+  tiposCustom?: { key: string; label: string; cor: string; icone: string }[]
+  onTiposCustom?: (lista: { key: string; label: string; cor: string; icone: string }[]) => void
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
   viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
@@ -491,10 +505,52 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
   })
   const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  // Criar novo tipo de tarefa (padrao) direto daqui — fica fixo no dropdown e vale para tudo
+  const [criandoTipo, setCriandoTipo] = useState(false)
+  const [novoTipoLabel, setNovoTipoLabel] = useState('')
+  const [novoTipoCor, setNovoTipoCor] = useState('#6b7280')
+  const [salvandoTipo, setSalvandoTipo] = useState(false)
+  async function criarTipo() {
+    const label = novoTipoLabel.trim()
+    if (!label || salvandoTipo) return
+    setSalvandoTipo(true)
+    try {
+      const r = await fetch('/api/tipos-tarefa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, cor: novoTipoCor }) })
+      const d = await r.json()
+      if (r.ok && d?.tipo?.key) {
+        onTiposCustom?.(d.tipos)
+        setForm(f => ({ ...f, tipo: d.tipo.key }))
+        setNovoTipoLabel(''); setNovoTipoCor('#6b7280'); setCriandoTipo(false)
+      } else {
+        alert('Nao foi possivel criar o tipo: ' + (d?.error || 'erro desconhecido'))
+      }
+    } catch { alert('Nao foi possivel criar o tipo.') } finally { setSalvandoTipo(false) }
+  }
   useEffect(() => {
     if (!form.clienteId) { setMarcos([]); return }
     fetch(`/api/playbook?clienteId=${form.clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
   }, [form.clienteId])
+  // Criar etapa do Playbook direto daqui (quando o cliente nao tem a fase desejada)
+  const [criandoEtapa, setCriandoEtapa] = useState(false)
+  const [novaEtapaTitulo, setNovaEtapaTitulo] = useState('')
+  const [salvandoEtapa, setSalvandoEtapa] = useState(false)
+  async function criarEtapaRapida() {
+    const titulo = novaEtapaTitulo.trim()
+    if (!titulo || !form.clienteId || salvandoEtapa) return
+    setSalvandoEtapa(true)
+    try {
+      const cli = (clientes || []).find(c => c.id === form.clienteId)
+      const r = await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: form.clienteId, clienteNome: cli?.nome || '', titulo }) })
+      const d = await r.json()
+      if (r.ok && d?.marco?.id) {
+        setMarcos(m => [...m, { id: d.marco.id, titulo: d.marco.titulo }])
+        setForm(f => ({ ...f, marcoId: d.marco.id }))
+        setNovaEtapaTitulo(''); setCriandoEtapa(false)
+      } else {
+        alert('Nao foi possivel criar a etapa: ' + (d?.error || 'erro desconhecido'))
+      }
+    } catch { alert('Nao foi possivel criar a etapa.') } finally { setSalvandoEtapa(false) }
+  }
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -784,14 +840,35 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
               <div style={{ width: 160 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Tipo</label>
                 <div style={{ position: 'relative' }}>
-                  <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                  <select value={form.tipo} onChange={e => { if (e.target.value === '__novo__') { setCriandoTipo(true) } else { setForm(f => ({ ...f, tipo: e.target.value })) } }}
                     style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff', appearance: 'none', boxSizing: 'border-box' }}>
-                    {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    {[...TIPOS, ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    <option value="__novo__">+ Criar novo tipo...</option>
                   </select>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                     <path d={tipoInfo(form.tipo).icone} />
                   </svg>
+                  {criandoTipo && (
+                    <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#111', marginBottom: 8 }}>Novo tipo de tarefa</div>
+                      <input autoFocus value={novoTipoLabel} onChange={e => setNovoTipoLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarTipo() } }} placeholder="Ex: Newsletter, Podcast..."
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Cor</span>
+                        <input type="color" value={novoTipoCor} onChange={e => setNovoTipoCor(e.target.value)}
+                          style={{ width: 34, height: 28, border: '1px solid #e0e0e0', borderRadius: 6, padding: 0, cursor: 'pointer', background: '#fff' }} />
+                        <span style={{ fontSize: 11, color: '#aaa' }}>{novoTipoCor}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" onClick={criarTipo} disabled={!novoTipoLabel.trim() || salvandoTipo}
+                          style={{ flex: 1, padding: '8px 0', background: novoTipoLabel.trim() ? '#111' : '#f0f0f0', color: novoTipoLabel.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoTipoLabel.trim() && !salvandoTipo ? 'pointer' : 'not-allowed' }}>{salvandoTipo ? 'Criando...' : 'Criar tipo'}</button>
+                        <button type="button" onClick={() => { setCriandoTipo(false); setNovoTipoLabel('') }}
+                          style={{ padding: '8px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#aaa', lineHeight: 1.4 }}>Fica fixo no dropdown e disponivel em todas as tarefas.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -821,13 +898,29 @@ function TarefaModal({ tarefa, clientes, usuarios, onClose, onSalvo, onExcluir, 
             </div>
             {form.clienteId && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Etapa do Playbook *</label>
-                <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                  <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
-                  {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
-                </select>
-                {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de salvar.</p>}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook *</label>
+                  {!criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
+                </div>
+                {!criandoEtapa && (<>
+                  <select value={form.marcoId} onChange={e => { if (e.target.value === '__nova__') { setCriandoEtapa(true) } else { setForm(f => ({ ...f, marcoId: e.target.value })) } }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie uma abaixo' : 'Selecione a etapa...'}</option>
+                    {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+                    <option value="__nova__">+ Criar nova etapa...</option>
+                  </select>
+                  {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Clique em "+ Criar etapa".</p>}
+                </>)}
+                {criandoEtapa && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input autoFocus value={novaEtapaTitulo} onChange={e => setNovaEtapaTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarEtapaRapida() } }} placeholder="Nome da etapa (ex: Conteudos Julho)"
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    <button type="button" onClick={criarEtapaRapida} disabled={!novaEtapaTitulo.trim() || salvandoEtapa}
+                      style={{ padding: '10px 14px', background: novaEtapaTitulo.trim() ? '#111' : '#f0f0f0', color: novaEtapaTitulo.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: novaEtapaTitulo.trim() && !salvandoEtapa ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvandoEtapa ? '...' : 'Criar'}</button>
+                    <button type="button" onClick={() => { setCriandoEtapa(false); setNovaEtapaTitulo('') }}
+                      style={{ padding: '10px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                  </div>
+                )}
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
