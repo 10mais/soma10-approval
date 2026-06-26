@@ -109,7 +109,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
       <div style={{ background: corPrimaria, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
         <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
           <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-          <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10Approval</span>
+          <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10 Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => router.push(`${basePath}/conta`)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>

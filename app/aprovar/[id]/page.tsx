@@ -274,7 +274,7 @@ function Header({ clienteName }: { clienteName: string }) {
           <span style={{ color: '#ffc00f', fontWeight: 900, fontSize: 10 }}>10+</span>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}>Soma10Approval</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}>Soma10 Approval</div>
           <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
         </div>
       </div>

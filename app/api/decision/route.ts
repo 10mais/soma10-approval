@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       : ''
 
     await transporter.sendMail({
-      from: `"Soma10Approval" <${process.env.SMTP_USER}>`,
+      from: `"Soma10 Approval" <${process.env.SMTP_USER}>`,
       to: NOTIFY_EMAIL,
       subject: `${labels[type]} — ${(post as any).clienteNome || (post as any).cliente}`,
       html: `
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
             ${annotationsHtml}
             ${rejectReason ? `<h3>Motivo:</h3><p>${rejectReason}</p>` : ''}
             <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-            <p style="color:#aaa;font-size:12px;text-align:center">Soma10Approval · Grupo 10+</p>
+            <p style="color:#aaa;font-size:12px;text-align:center">Soma10 Approval · Grupo 10+</p>
           </div>
         </div>
       `,

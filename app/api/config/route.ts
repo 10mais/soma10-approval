@@ -6,7 +6,7 @@ import { getConfigCache } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
 
 const PADRAO: ConfigAgencia = {
-  nomeAgencia: 'Soma10Approval',
+  nomeAgencia: 'Soma10 Approval',
   corPrimaria: '#ffc00f',
   corSecundaria: '#111111',
 }

@@ -34,7 +34,7 @@ export default function LoginPage() {
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 16, width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 44, height: 44, objectFit: 'contain' }} />
           </div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Soma10Approval</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Soma10 Approval</h1>
           <p style={{ margin: '6px 0 0', color: '#999', fontSize: 14 }}>Acesso exclusivo para colaboradores</p>
         </div>
 
@@ -79,7 +79,7 @@ export default function LoginPage() {
         </form>
 
         <p style={{ textAlign: 'center', color: '#ccc', fontSize: 12, margin: '24px 0 0' }}>
-          Soma10Approval · Grupo 10+
+          Soma10 Approval · Grupo 10+
         </p>
       </div>
     </div>

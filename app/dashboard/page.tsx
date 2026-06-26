@@ -369,7 +369,7 @@ function Dashboard() {
   const [exportandoPdf, setExportandoPdf] = useState(false)
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false)
 
-  const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
+  const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   const [configMsg, setConfigMsg] = useState('')
   const [enviandoLogoAgencia, setEnviandoLogoAgencia] = useState(false)
@@ -1192,7 +1192,7 @@ function Dashboard() {
           <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </div>
-          <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10Approval</span>
+          <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10 Approval</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* Alternar modo claro/escuro */}

@@ -6,7 +6,7 @@ import { redis, Cliente, Usuario, ConfigAgencia } from './redis'
 // O `revalidate` serve de rede de seguranca caso alguma invalidacao seja perdida.
 
 const PADRAO_CONFIG: ConfigAgencia = {
-  nomeAgencia: 'Soma10Approval',
+  nomeAgencia: 'Soma10 Approval',
   corPrimaria: '#ffc00f',
   corSecundaria: '#111111',
 }

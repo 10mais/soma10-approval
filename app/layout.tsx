@@ -1,6 +1,6 @@
 import { Providers } from './providers'
 
-export const metadata = { title: 'Soma10Approval — Grupo 10+' }
+export const metadata = { title: 'Soma10 Approval — Grupo 10+' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
