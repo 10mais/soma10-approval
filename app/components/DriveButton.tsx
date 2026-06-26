@@ -23,6 +23,24 @@ function carregarScript(src: string): Promise<void> {
   })
 }
 
+// Cache do token de acesso (vale para a sessao toda e para TODOS os clientes — a
+// autenticacao e da conta Google, nao do cliente). Assim o consentimento e pedido
+// uma unica vez; depois reaproveita ate expirar e renova em silencio.
+const STORE_KEY = 'soma10_gdrive_token'
+function lerTokenCache(): string | null {
+  try {
+    const raw = sessionStorage.getItem(STORE_KEY)
+    if (!raw) return null
+    const o = JSON.parse(raw)
+    if (o?.token && o?.exp && o.exp > Date.now() + 60000) return o.token
+  } catch { /* ignora */ }
+  return null
+}
+function salvarTokenCache(token: string, expiresInSeg: number) {
+  try { sessionStorage.setItem(STORE_KEY, JSON.stringify({ token, exp: Date.now() + (expiresInSeg || 3500) * 1000 })) } catch { /* ignora */ }
+}
+let tokenClient: any = null
+
 export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]) => Promise<void> | void }) {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
@@ -82,16 +100,26 @@ export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]
       await carregarScript('https://apis.google.com/js/api.js')
       await carregarScript('https://accounts.google.com/gsi/client')
       await new Promise<void>((res) => (window as any).gapi.load('picker', () => res()))
-      const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPE,
-        callback: (resp: any) => {
-          if (resp?.access_token) montarPicker(resp.access_token)
-          else { setErro('Não foi possível autenticar no Google.'); setCarregando(false) }
-        },
-      })
+
+      // Ja autenticado nesta sessao? Reaproveita sem pedir nada.
+      const cache = lerTokenCache()
+      if (cache) { montarPicker(cache); setCarregando(false); return }
+
+      if (!tokenClient) {
+        tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPE,
+          // prompt vazio: depois do 1o consentimento, renova em SILENCIO (sem tela)
+          prompt: '',
+          callback: (resp: any) => {
+            if (resp?.access_token) {
+              salvarTokenCache(resp.access_token, Number(resp.expires_in) || 3500)
+              montarPicker(resp.access_token)
+            } else { setErro('Não foi possível autenticar no Google.'); setCarregando(false) }
+          },
+        })
+      }
       tokenClient.requestAccessToken()
-      // O loading continua ate o callback do token; o picker some o loading ao terminar/cancelar
       setCarregando(false)
     } catch (e: any) {
       setErro(e?.message || 'Não foi possível abrir o Google Drive.')
