@@ -134,9 +134,19 @@ export default function PostComposer({
     setErroUpload('')
     setImportandoDrive(true)
     try {
+      // 1) Lista os arquivos da pasta (ja ordenados pela numeracao das laminas)
       const r = await fetch('/api/drive-import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link }) }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
-      if (r?.error || !Array.isArray(r?.arquivos)) { setErroUpload(r?.error || 'Não foi possível importar do Drive.'); return }
-      setMidias(m => [...m, ...r.arquivos.map((a: any) => ({ url: a.url, tipo: a.tipo as 'imagem' | 'video' }))])
+      if (r?.error || !Array.isArray(r?.arquivos) || r.arquivos.length === 0) { setErroUpload(r?.error || 'Não foi possível importar do Drive.'); return }
+      // 2) Baixa cada arquivo (proxy do servidor) e sobe pelo fluxo de upload normal (publico)
+      const files: File[] = []
+      for (const a of r.arquivos) {
+        const resp = await fetch(`/api/drive-import?id=${encodeURIComponent(a.id)}`)
+        if (!resp.ok) { setErroUpload(`Não foi possível baixar "${a.nome}" do Drive.`); return }
+        const blob = await resp.blob()
+        files.push(new File([blob], a.nome, { type: a.mimeType || blob.type }))
+      }
+      // enviarArquivos ja ordena pela numeracao, comprime e sobe pelo Blob publico
+      await enviarArquivos(files)
       setDriveUrl('')
     } finally { setImportandoDrive(false) }
   }
