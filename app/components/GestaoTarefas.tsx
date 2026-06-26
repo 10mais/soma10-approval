@@ -701,7 +701,7 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
         {(tarefa.atividades || []).length > 0 && (
           <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Historico</div>
         )}
-        {[...(tarefa.atividades || [])].reverse().map((a: any) => (
+        {(tarefa.atividades || []).map((a: any) => (
           <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? '#1d4ed8' : a.tipo === 'status' ? '#ffc00f' : '#ccc', marginTop: 5, flexShrink: 0 }} />
             <div>
