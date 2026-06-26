@@ -16,6 +16,18 @@ const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: fals
 const Briefings = dynamic(() => import('../components/Briefings'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
+// Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
+// Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
+async function acompanharPublicacao(id: string): Promise<{ ok: boolean; error?: string }> {
+  for (let i = 0; i < 75; i++) { // ~5 min (75 x 4s)
+    await new Promise(r => setTimeout(r, 4000))
+    const p = await fetch(`/api/posts?id=${id}`).then(r => r.json()).catch(() => null)
+    if (p?.status === 'publicado') return { ok: true }
+    if (p?.status === 'falha_publicacao') return { ok: false, error: p.erroPublicacao || 'falha na publicação' }
+  }
+  return { ok: false, error: 'A publicação está demorando mais que o normal (Reels podem demorar). Aguarde alguns instantes e confira se o post foi publicado antes de tentar de novo.' }
+}
+
 function LoadingPlaceholder() {
   return (
     <div style={{ padding: '40px 0' }}>
@@ -680,10 +692,11 @@ function Dashboard() {
     }).then(r => r.json())
 
     if (acao === 'publicar') {
-      const pub = await fetch('/api/publicar', {
+      fetch('/api/publicar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: res.post.id }),
-      }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+      }).catch(() => {})
+      const pub = await acompanharPublicacao(res.post.id)
       setRascunhoMsg(pub.ok ? 'Publicado com sucesso nas redes selecionadas!' : `Falha ao publicar: ${pub.error}`)
     } else if (acao === 'agendar') {
       setRascunhoMsg(`Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
@@ -789,13 +802,14 @@ function Dashboard() {
   const [republicandoId, setRepublicandoId] = useState<string | null>(null)
   async function republicarPost(post: Post) {
     setRepublicandoId(post.id)
-    const r = await fetch('/api/publicar', {
+    fetch('/api/publicar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: post.id }),
-    }).then(x => x.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+    }).catch(() => {})
+    const r = await acompanharPublicacao(post.id)
     setRepublicandoId(null)
     await fetch('/api/posts').then(x => x.json()).then(setPosts).catch(() => {})
-    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error || 'erro desconhecido'}\n\nDica: edite o post e verifique a mídia (imagens com menos de 10 MB, em JPG/PNG) antes de tentar de novo.`)
+    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB) antes de tentar de novo.`)
     else { setPostPreview(null); alert('Publicado com sucesso!') }
   }
 

@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react'
 import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
 
+// Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
+// Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
+async function acompanharPublicacao(id: string): Promise<{ ok: boolean; error?: string }> {
+  for (let i = 0; i < 75; i++) { // ~5 min (75 x 4s)
+    await new Promise(r => setTimeout(r, 4000))
+    const p = await fetch(`/api/posts?id=${id}`).then(r => r.json()).catch(() => null)
+    if (p?.status === 'publicado') return { ok: true }
+    if (p?.status === 'falha_publicacao') return { ok: false, error: p.erroPublicacao || 'falha na publicação' }
+  }
+  return { ok: false, error: 'A publicação está demorando mais que o normal (Reels podem demorar). Aguarde alguns instantes e confira se o post foi publicado antes de tentar de novo.' }
+}
+
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
   if (post?.thumbnail) return post.thumbnail
@@ -104,8 +116,11 @@ export default function PlannerPage() {
     else if (acao === 'salvar') updates.status = 'rascunho'
     const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
     if (acao === 'publicar' && res?.post?.id) {
-      const pub = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.post.id }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
-      if (!pub.ok) alert(`Falha ao publicar: ${pub.error || 'erro desconhecido'}`)
+      // Dispara a publicacao e acompanha pelo status do post (nao depende da resposta
+      // da requisicao longa — Reels demoram e a conexao pode cair antes de terminar).
+      fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.post.id }) }).catch(() => {})
+      const pub = await acompanharPublicacao(res.post.id)
+      if (!pub.ok) alert(`Ainda não foi possível publicar: ${pub.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB).`)
     }
     setEnviando(false)
     setEditPost(null)
@@ -128,9 +143,10 @@ export default function PlannerPage() {
   const [republicando, setRepublicando] = useState(false)
   async function republicar(id: string) {
     setRepublicando(true)
-    const r = await fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
+    fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {})
+    const r = await acompanharPublicacao(id)
     setRepublicando(false)
-    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error || 'erro desconhecido'}\n\nDica: edite o post e verifique a mídia (imagens com menos de 10 MB, em JPG/PNG).`)
+    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB).`)
     else { setPreview(null); alert('Publicado com sucesso!') }
     carregar()
   }

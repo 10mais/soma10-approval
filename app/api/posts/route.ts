@@ -15,6 +15,17 @@ export async function GET(req: NextRequest) {
   const role = (session.user as any).role
   let clienteId = req.nextUrl.searchParams.get('clienteId')
 
+  // Busca de UM post por id (usado pelo acompanhamento de status da publicacao)
+  const id = req.nextUrl.searchParams.get('id')
+  if (id) {
+    const p = await redis.get<Post>(`post:${id}`)
+    if (!p) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    if (role === 'cliente' && p.clienteId !== (session.user as any).clienteId) {
+      return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+    }
+    return NextResponse.json(p)
+  }
+
   // Cliente só pode ver os próprios posts, independente do parâmetro
   if (role === 'cliente') {
     clienteId = (session.user as any).clienteId

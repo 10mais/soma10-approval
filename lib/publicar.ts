@@ -57,17 +57,22 @@ async function criarMidiaIG(igId: string, token: string, params: Record<string, 
   return c
 }
 
-// Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027)
-async function publicarMidiaIG(igId: string, token: string, creationId: string): Promise<{ ok: boolean; error?: string }> {
-  await aguardarContainerIG(token, creationId, 40)
-  for (let i = 0; i < 12; i++) {
+// Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027).
+// Para video (Reels) o Instagram leva bem mais tempo processando, entao o orcamento de espera e maior.
+async function publicarMidiaIG(igId: string, token: string, creationId: string, video = false): Promise<{ ok: boolean; error?: string }> {
+  // Container: video ate ~210s (70x3s); imagem ate ~120s (40x3s)
+  await aguardarContainerIG(token, creationId, video ? 70 : 40)
+  const tentativasPub = video ? 8 : 12
+  for (let i = 0; i < tentativasPub; i++) {
     const pub = await postForm(`${IG_BASE}/${igId}/media_publish`, { access_token: token, creation_id: creationId })
     if (!pub?.error) return { ok: true }
     const naoPronta = pub.error.code === 9007 || pub.error.error_subcode === 2207027
     if (naoPronta) { await new Promise(r => setTimeout(r, 5000)); continue }
     return { ok: false, error: fmtErro(pub.error) }
   }
-  return { ok: false, error: 'A mídia não ficou pronta a tempo no Instagram. Tente publicar novamente.' }
+  return { ok: false, error: video
+    ? 'O Instagram ainda está processando o vídeo (Reels podem demorar). O post continua na fila — aguarde alguns minutos e, se não publicar, tente novamente.'
+    : 'A mídia não ficou pronta a tempo no Instagram. Tente publicar novamente.' }
 }
 
 export async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
@@ -88,7 +93,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       const m = midias[0]
       const c = await postForm(`${IG_BASE}/${IG_ID}/media`, { access_token: TOKEN, media_type: 'STORIES', ...(isVideo(m) ? { video_url: m } : { image_url: m }) })
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      return await publicarMidiaIG(IG_ID, TOKEN, c.id)
+      return await publicarMidiaIG(IG_ID, TOKEN, c.id, isVideo(m))
     }
 
     if (midias.length === 1) {
@@ -98,7 +103,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
         : { access_token: TOKEN, image_url: m, caption: post.legenda }
       const c = await criarMidiaIG(IG_ID, TOKEN, params, colabParam)
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      return await publicarMidiaIG(IG_ID, TOKEN, c.id)
+      return await publicarMidiaIG(IG_ID, TOKEN, c.id, isVideo(m))
     }
 
     const itensIds: string[] = []
@@ -107,7 +112,7 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
         ? { access_token: TOKEN, media_type: 'VIDEO', video_url: m, is_carousel_item: 'true', ...(capas[m] ? { cover_url: capas[m] } : {}) }
         : { access_token: TOKEN, image_url: m, is_carousel_item: 'true' })
       if (item?.error) return { ok: false, error: fmtErro(item.error) }
-      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, item.id))) return { ok: false, error: 'Falha no processamento de um vídeo do carrossel.' }
+      if (isVideo(m) && !(await aguardarContainerIG(TOKEN, item.id, 70))) return { ok: false, error: 'O Instagram ainda está processando um vídeo do carrossel. Aguarde alguns minutos e tente novamente.' }
       itensIds.push(item.id)
     }
     const carousel = await criarMidiaIG(IG_ID, TOKEN, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda }, colabParam)
