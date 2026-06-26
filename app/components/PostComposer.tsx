@@ -339,6 +339,20 @@ export default function PostComposer({
       setErroUpload('Vincule o post a uma etapa do Playbook do cliente antes de continuar.')
       return
     }
+    // TRAVA DE SEGURANCA: se ha um horario FUTURO definido e o usuario clicou "Publicar agora",
+    // confirma antes — evita postar imediatamente algo que deveria ser agendado.
+    if (acao === 'publicar' && dataAgendada) {
+      const dt = new Date(dataAgendada)
+      if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() + 60000) {
+        const ok = window.confirm(
+          `Atenção: você definiu o horário ${dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.\n\n` +
+          `"Publicar agora" vai postar IMEDIATAMENTE, ignorando esse horário.\n` +
+          `Para publicar no horário definido, use o botão "Agendar".\n\n` +
+          `Deseja mesmo publicar AGORA?`
+        )
+        if (!ok) return
+      }
+    }
     onSubmit({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, acao })
   }
 
