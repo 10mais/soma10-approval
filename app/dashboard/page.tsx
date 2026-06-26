@@ -395,6 +395,9 @@ function Dashboard() {
   const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
   const [avisoFalhaOculto, setAvisoFalhaOculto] = useState(false)
   const [postPreview, setPostPreview] = useState<Post | null>(null)
+  const [postPreviewSlide, setPostPreviewSlide] = useState(0)
+  const [postLegendaExpandida, setPostLegendaExpandida] = useState(false)
+  useEffect(() => { setPostPreviewSlide(0); setPostLegendaExpandida(false) }, [postPreview])
   const [verComoClienteId, setVerComoClienteIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_clienteId') || '' : ''))
   const setVerComoClienteId = (id: string) => { setVerComoClienteIdRaw(id); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_clienteId', id) }
   const [buscaCliente, setBuscaCliente] = useState('')
@@ -1850,7 +1853,7 @@ function Dashboard() {
                 alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
               }}>
                 <div onClick={e => e.stopPropagation()} style={{
-                  background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                  background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
                 }}>
                   {/* Cabeçalho estilo Instagram */}
                   {(() => { const clientePreview = clientes.find(c => c.id === postPreview.clienteId || c.nome === postPreview.clienteNome); return (
@@ -1876,22 +1879,58 @@ function Dashboard() {
                   )}
 
                   {/* Mídia principal (imagem ou vídeo/Reel) */}
-                  {postPreview.imagens?.[0] && (
-                    <div style={{ width: '100%', aspectRatio: '1', background: '#000', overflow: 'auto', display: 'flex', gap: 2 }}>
-                      {postPreview.imagens.map((m, i) => {
-                        const estilo = { width: postPreview.imagens.length > 1 ? '90%' : '100%', height: '100%', objectFit: 'cover' as const, flexShrink: 0, scrollSnapAlign: 'start' as const }
-                        const capa = (postPreview as any).capasVideo?.[m]
-                        return /\.(mp4|mov|m4v)(\?|$)/i.test(m)
-                          ? <video key={i} src={m} poster={capa} controls playsInline muted style={estilo} />
-                          : <img key={i} src={m} alt="" style={estilo} />
-                      })}
-                    </div>
-                  )}
+                  {postPreview.imagens?.[0] && (() => {
+                    const imgs = postPreview.imagens
+                    const sidx = Math.min(postPreviewSlide, imgs.length - 1)
+                    const m = imgs[sidx]
+                    const ehVideo = /\.(mp4|mov|m4v)(\?|$)/i.test(m)
+                    const ratio = postPreview.formato === 'story' || postPreview.formato === 'reel' ? '9/16' : '4/5'
+                    return (
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, maxHeight: '46vh', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
+                        {ehVideo
+                          ? <video src={m} poster={(postPreview as any).capasVideo?.[m]} controls playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        {imgs.length > 1 && (
+                          <>
+                            {sidx > 0 && (
+                              <button type="button" onClick={() => setPostPreviewSlide(sidx - 1)} aria-label="Anterior"
+                                style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                              </button>
+                            )}
+                            {sidx < imgs.length - 1 && (
+                              <button type="button" onClick={() => setPostPreviewSlide(sidx + 1)} aria-label="Próxima"
+                                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                              </button>
+                            )}
+                            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{sidx + 1}/{imgs.length}</div>
+                            <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+                              {imgs.map((_, i) => (
+                                <span key={i} onClick={() => setPostPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === sidx ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })()}
 
-                  <div style={{ padding: 16, overflowY: 'auto' }}>
-                    <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                      <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
-                    </p>
+                  <div style={{ padding: 16 }}>
+                    {postLegendaExpandida ? (
+                      <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#262626', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
+                      </p>
+                    ) : (
+                      <div style={{ margin: '0 0 10px' }}>
+                        <p style={{ margin: 0, fontSize: 13.5, color: '#262626', lineHeight: 1.5, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
+                        </p>
+                        {(postPreview.legenda || '').length > 80 && (
+                          <button onClick={() => setPostLegendaExpandida(true)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 2, color: '#8e8e8e', fontSize: 13.5, cursor: 'pointer' }}>... mais</button>
+                        )}
+                      </div>
+                    )}
                     {postPreview.dataAgendada && (
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
