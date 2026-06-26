@@ -125,6 +125,21 @@ export default function PostComposer({
   const [emEnvio, setEmEnvio] = useState<EmEnvio[]>([])
   const [erroUpload, setErroUpload] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  // Importar carrossel de uma pasta do Google Drive (na ordem das laminas: 1, 2, 3...)
+  const [driveUrl, setDriveUrl] = useState('')
+  const [importandoDrive, setImportandoDrive] = useState(false)
+  async function importarDrive() {
+    const link = driveUrl.trim()
+    if (!link || importandoDrive) return
+    setErroUpload('')
+    setImportandoDrive(true)
+    try {
+      const r = await fetch('/api/drive-import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link }) }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
+      if (r?.error || !Array.isArray(r?.arquivos)) { setErroUpload(r?.error || 'Não foi possível importar do Drive.'); return }
+      setMidias(m => [...m, ...r.arquivos.map((a: any) => ({ url: a.url, tipo: a.tipo as 'imagem' | 'video' }))])
+      setDriveUrl('')
+    } finally { setImportandoDrive(false) }
+  }
 
   const cliente = clientes.find(c => c.id === clienteId)
 
@@ -404,6 +419,21 @@ export default function PostComposer({
               {enviandoArquivo ? 'Enviando arquivo...' : 'Arraste arquivos aqui ou clique para selecionar'}
             </p>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>JPG, PNG, WEBP, GIF, MP4, MOV — até 500MB</p>
+          </div>
+
+          {/* Importar de uma pasta do Google Drive (na ordem 1, 2, 3...) */}
+          <div style={{ marginTop: 12, padding: 12, border: '1.5px solid #e0e0e0', borderRadius: 12, background: '#fafafa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Importar carrossel do Google Drive</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={driveUrl} onChange={e => setDriveUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); importarDrive() } }} placeholder="Cole o link da PASTA do Drive..."
+                style={{ flex: 1, padding: '9px 12px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }} />
+              <button type="button" onClick={importarDrive} disabled={!driveUrl.trim() || importandoDrive}
+                style={{ padding: '9px 16px', background: driveUrl.trim() && !importandoDrive ? '#111' : '#f0f0f0', color: driveUrl.trim() && !importandoDrive ? '#fff' : '#aaa', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: driveUrl.trim() && !importandoDrive ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{importandoDrive ? 'Importando...' : 'Importar'}</button>
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#aaa', lineHeight: 1.4 }}>A pasta precisa estar compartilhada como &quot;qualquer pessoa com o link&quot;. As lâminas entram na ordem da numeração (1, 2, 3...).</p>
           </div>
 
           {emEnvio.length > 0 && (
