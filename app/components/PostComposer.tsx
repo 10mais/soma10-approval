@@ -116,6 +116,7 @@ export default function PostComposer({
   }
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
+  const [previewIdx, setPreviewIdx] = useState(0) // lamina atual no preview (estilo Instagram)
   const [colaboradores, setColaboradores] = useState<string[]>(valorInicial?.colaboradores || [])
   const [colabBusca, setColabBusca] = useState('')
   const [colabResultado, setColabResultado] = useState<PerfilColab | null>(null)
@@ -621,9 +622,8 @@ export default function PostComposer({
             </div>
             {dataAgendada && (
               <button type="button" onClick={() => setDataAgendada('')} title="Remover data e horário"
-                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', background: '#fff', color: '#b91c1c', border: '1.5px solid #f0d0d0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                Limpar
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, background: 'transparent', color: '#999', border: 'none', cursor: 'pointer' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             )}
           </div>
@@ -670,20 +670,50 @@ export default function PostComposer({
             )}
           </div>
 
-          <div style={{
-            width: '100%', aspectRatio: formato === 'story' || formato === 'reel' ? '9/16' : '1', background: '#f4f4f4',
-            display: 'flex', overflowX: midias.length > 1 ? 'auto' : 'hidden', scrollSnapType: 'x mandatory',
-          }}>
-            {midias.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                Suas imagens/vídeos aparecerão aqui
+          {(() => {
+            const idx = Math.min(previewIdx, Math.max(0, midias.length - 1))
+            const m = midias[idx]
+            return (
+              <div style={{
+                position: 'relative', width: '100%', aspectRatio: formato === 'story' || formato === 'reel' ? '9/16' : '1', background: '#f4f4f4', overflow: 'hidden',
+              }}>
+                {midias.length === 0 ? (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 13, textAlign: 'center', padding: 16 }}>
+                    Suas imagens/vídeos aparecerão aqui
+                  </div>
+                ) : m.tipo === 'video'
+                  ? <video src={m.url} poster={m.capa} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted controls />
+                  : <img src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+
+                {midias.length > 1 && (
+                  <>
+                    {/* Seta esquerda */}
+                    {idx > 0 && (
+                      <button type="button" onClick={() => setPreviewIdx(idx - 1)} aria-label="Lâmina anterior"
+                        style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                      </button>
+                    )}
+                    {/* Seta direita */}
+                    {idx < midias.length - 1 && (
+                      <button type="button" onClick={() => setPreviewIdx(idx + 1)} aria-label="Próxima lâmina"
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                      </button>
+                    )}
+                    {/* Contador 1/N */}
+                    <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{idx + 1}/{midias.length}</div>
+                    {/* Bolinhas */}
+                    <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+                      {midias.map((_, i) => (
+                        <span key={i} onClick={() => setPreviewIdx(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === idx ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-            ) : midias.map((m, i) => (
-              m.tipo === 'video'
-                ? <video key={i} src={m.url} poster={m.capa} style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} muted controls />
-                : <img key={i} src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }} />
-            ))}
-          </div>
+            )
+          })()}
 
           <div style={{ padding: 14 }}>
             <p style={{ margin: 0, fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
