@@ -26,6 +26,7 @@ function carregarScript(src: string): Promise<void> {
 export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]) => Promise<void> | void }) {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
+  const [progresso, setProgresso] = useState<{ atual: number; total: number } | null>(null)
 
   if (!CLIENT_ID || !API_KEY) return null // so aparece quando configurado
 
@@ -33,13 +34,18 @@ export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]
     // Ordena pela numeracao das laminas (1, 2, 3... 10)
     const ordenados = [...docs].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { numeric: true, sensitivity: 'base' }))
     const files: File[] = []
+    setProgresso({ atual: 0, total: ordenados.length })
+    let i = 0
     for (const d of ordenados) {
+      i++
+      setProgresso({ atual: i, total: ordenados.length })
       const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${d.id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: 'Bearer ' + token } })
       if (!resp.ok) { setErro(`Não foi possível baixar "${d.name}".`); continue }
       const blob = await resp.blob()
       files.push(new File([blob], d.name || `arquivo-${d.id}`, { type: d.mimeType || blob.type }))
     }
     if (files.length) await onArquivos(files)
+    setProgresso(null)
   }
 
   function montarPicker(token: string) {
@@ -98,8 +104,13 @@ export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]
       <button type="button" onClick={abrir} disabled={carregando}
         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '10px 12px', background: '#fff', border: '1.5px solid #1a73e8', color: '#1a73e8', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: carregando ? 'default' : 'pointer' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-        {carregando ? 'Abrindo o Drive...' : 'Selecionar criativos do Google Drive'}
+        {progresso ? `Baixando ${progresso.atual} de ${progresso.total}...` : carregando ? 'Abrindo o Drive...' : 'Selecionar criativos do Google Drive'}
       </button>
+      {progresso && (
+        <div style={{ marginTop: 8, height: 6, borderRadius: 999, background: '#eef2ff', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.round((progresso.atual / Math.max(1, progresso.total)) * 100)}%`, background: '#1a73e8', borderRadius: 999, transition: 'width .2s' }} />
+        </div>
+      )}
       {erro && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#dc2626' }}>{erro}</p>}
     </div>
   )

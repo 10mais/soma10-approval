@@ -19,6 +19,25 @@ function postForm(url: string, params: Record<string, string>) {
   return fetch(url, { method: 'POST', body: new URLSearchParams(params) }).then(r => r.json())
 }
 
+// Erros transitorios do Facebook (instabilidade/limite momentaneo):
+// 1 = "Please reduce the amount of data you're asking for", 2 = servico temporario,
+// 4/17/32/613 = limite de uso. Nesses casos vale repetir com backoff.
+function ehTransitorioFB(e: any): boolean {
+  if (!e) return false
+  return [1, 2, 4, 17, 32, 341, 613].includes(e.code)
+}
+async function postFormRetry(url: string, params: Record<string, string>, tentativas = 3): Promise<any> {
+  let ultimo: any = null
+  for (let i = 0; i < tentativas; i++) {
+    const r = await postForm(url, params)
+    if (!r?.error) return r
+    ultimo = r
+    if (!ehTransitorioFB(r.error)) return r
+    await new Promise(res => setTimeout(res, 3000 * (i + 1)))
+  }
+  return ultimo
+}
+
 async function aguardarContainer(igId: string, token: string, creationId: string, tentativas = 20): Promise<boolean> {
   for (let i = 0; i < tentativas; i++) {
     await new Promise(r => setTimeout(r, 3000))
@@ -255,7 +274,7 @@ export async function publishToFacebook(post: Post, cliente?: any): Promise<{ ok
         if (r?.error) return { ok: false, error: fmtErro(r.error) }
         ids.push({ media_fbid: r.id })
       }
-      const feed = await postForm(`${BASE}/${PAGE_ID}/feed`, { access_token: TOKEN, message: post.legenda, attached_media: JSON.stringify(ids) })
+      const feed = await postFormRetry(`${BASE}/${PAGE_ID}/feed`, { access_token: TOKEN, message: post.legenda, attached_media: JSON.stringify(ids) })
       if (feed?.error) return { ok: false, error: fmtErro(feed.error) }
     }
     return { ok: true }

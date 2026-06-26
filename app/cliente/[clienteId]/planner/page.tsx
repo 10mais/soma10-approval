@@ -55,6 +55,16 @@ export default function PlannerPage() {
   const [editPost, setEditPost] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
   const [salvandoRascunho, setSalvandoRascunho] = useState(false)
+  // Publicacao em segundo plano (o modal "minimiza" e o progresso aparece num card flutuante)
+  const [pubBg, setPubBg] = useState<{ id: string; titulo: string; capa: string; status: 'publicando' | 'ok' | 'falha'; error?: string } | null>(null)
+  async function publicarEmBackground(id: string, titulo: string, capa: string) {
+    setPubBg({ id, titulo, capa, status: 'publicando' })
+    fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {})
+    const r = await acompanharPublicacao(id)
+    setPubBg(prev => (prev && prev.id === id ? { ...prev, status: r.ok ? 'ok' : 'falha', error: r.error } : prev))
+    carregar()
+    if (r.ok) setTimeout(() => setPubBg(prev => (prev && prev.id === id && prev.status === 'ok' ? null : prev)), 6000)
+  }
 
   function carregar() {
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
@@ -81,11 +91,12 @@ export default function PlannerPage() {
     }).then(r => r.json()).catch(() => null)
 
     if (acao === 'publicar' && res?.post?.id) {
-      const pub = await fetch('/api/publicar', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: res.post.id }),
-      }).then(r => r.json()).catch(() => ({ ok: false, error: 'falha de conexão' }))
-      if (!pub.ok) alert(`Falha ao publicar: ${pub.error || 'erro desconhecido'}`)
+      // Minimiza: fecha o modal e publica em segundo plano (com barra de progresso)
+      setNovoPost(false)
+      const capa = (res.post.imagens || [])[0] || ''
+      publicarEmBackground(res.post.id, cliente?.nome || 'Post', capa)
+      carregar()
+      return
     }
     setNovoPost(false)
     carregar()
@@ -116,11 +127,13 @@ export default function PlannerPage() {
     else if (acao === 'salvar') updates.status = 'rascunho'
     const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
     if (acao === 'publicar' && res?.post?.id) {
-      // Dispara a publicacao e acompanha pelo status do post (nao depende da resposta
-      // da requisicao longa — Reels demoram e a conexao pode cair antes de terminar).
-      fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: res.post.id }) }).catch(() => {})
-      const pub = await acompanharPublicacao(res.post.id)
-      if (!pub.ok) alert(`Ainda não foi possível publicar: ${pub.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB).`)
+      // Minimiza: fecha o modal e publica em segundo plano (com barra de progresso)
+      setEnviando(false)
+      setEditPost(null)
+      const capa = capaDoPost(res.post)
+      publicarEmBackground(res.post.id, cliente?.nome || 'Post', capa)
+      carregar()
+      return
     }
     setEnviando(false)
     setEditPost(null)
@@ -140,15 +153,10 @@ export default function PlannerPage() {
     setEditPost(post)
   }
 
-  const [republicando, setRepublicando] = useState(false)
   async function republicar(id: string) {
-    setRepublicando(true)
-    fetch('/api/publicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {})
-    const r = await acompanharPublicacao(id)
-    setRepublicando(false)
-    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB).`)
-    else { setPreview(null); alert('Publicado com sucesso!') }
-    carregar()
+    const post = posts.find(p => p.id === id)
+    setPreview(null)
+    publicarEmBackground(id, cliente?.nome || 'Post', post ? capaDoPost(post) : '')
   }
 
   // Planner mostra apenas posts reais (criados no compositor) ou pautas que
@@ -261,8 +269,8 @@ export default function PlannerPage() {
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
               )}
               {preview.status === 'falha_publicacao' && (
-                <button onClick={() => republicar(preview.id)} disabled={republicando} style={{ width: '100%', padding: '11px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicando ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
-                  {republicando ? 'Publicando...' : 'Tentar publicar novamente'}
+                <button onClick={() => republicar(preview.id)} style={{ width: '100%', padding: '11px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
+                  Tentar publicar novamente
                 </button>
               )}
               {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao') && (
@@ -274,6 +282,38 @@ export default function PlannerPage() {
               <button onClick={() => setPreview(null)} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Card flutuante de publicacao em segundo plano (com barra de progresso) */}
+      {pubBg && (
+        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 320, background: '#fff', borderRadius: 14, boxShadow: '0 10px 36px rgba(0,0,0,0.20)', padding: 14, zIndex: 2000 }}>
+          <style>{`@keyframes somaBarIndet { 0% { left: -40% } 100% { left: 100% } }`}</style>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {pubBg.capa
+              ? <div style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#f4f4f4' }}><ImagemComFallback src={pubBg.capa} /></div>
+              : <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f4f4f4', flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pubBg.titulo}</div>
+              <div style={{ fontSize: 11, color: pubBg.status === 'ok' ? '#16a34a' : pubBg.status === 'falha' ? '#dc2626' : '#666', marginTop: 1 }}>
+                {pubBg.status === 'publicando' ? 'Publicando nas redes...' : pubBg.status === 'ok' ? 'Publicado com sucesso!' : 'Falha ao publicar'}
+              </div>
+            </div>
+            {pubBg.status !== 'publicando' && (
+              <button onClick={() => setPubBg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 16, padding: 2, lineHeight: 1 }}>×</button>
+            )}
+          </div>
+          {pubBg.status === 'publicando' && (
+            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: '#eee', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', borderRadius: 999, background: corCliente, animation: 'somaBarIndet 1.2s infinite linear' }} />
+            </div>
+          )}
+          {pubBg.status === 'falha' && (
+            <>
+              <p style={{ margin: '8px 0', fontSize: 11, color: '#b91c1c', lineHeight: 1.4 }}>{pubBg.error}</p>
+              <button onClick={() => publicarEmBackground(pubBg.id, pubBg.titulo, pubBg.capa)} style={{ width: '100%', padding: '8px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tentar de novo</button>
+            </>
+          )}
         </div>
       )}
     </div>
