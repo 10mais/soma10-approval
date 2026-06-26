@@ -51,6 +51,8 @@ export default function PlannerPage() {
   const [cliente, setCliente] = useState<any>(null)
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
+  const [previewSlide, setPreviewSlide] = useState(0)
+  useEffect(() => { setPreviewSlide(0) }, [preview])
   const [novoPost, setNovoPost] = useState(false)
   const [editPost, setEditPost] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
@@ -252,16 +254,42 @@ export default function PlannerPage() {
       {preview && (
         <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            {preview.imagens?.[0] && (
-              <div style={{ width: '100%', aspectRatio: '1', background: '#000', overflow: 'auto', display: 'flex', gap: 2 }}>
-                {preview.imagens.map((m: string, i: number) => {
-                  const estilo = { width: preview.imagens.length > 1 ? '90%' : '100%', height: '100%', objectFit: 'cover' as const, flexShrink: 0 }
-                  return /\.(mp4|mov|m4v)(\?|$)/i.test(m)
-                    ? <video key={i} src={m} poster={(preview.capasVideo || {})[m]} controls playsInline muted style={estilo} />
-                    : <img key={i} src={m} alt="" style={estilo} />
-                })}
-              </div>
-            )}
+            {preview.imagens?.[0] && (() => {
+              const imgs: string[] = preview.imagens
+              const idx = Math.min(previewSlide, imgs.length - 1)
+              const m = imgs[idx]
+              const ehVideo = /\.(mp4|mov|m4v)(\?|$)/i.test(m)
+              const ratio = preview.formato === 'story' || preview.formato === 'reel' ? '9/16' : '4/5'
+              return (
+                <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, background: '#000', overflow: 'hidden', flexShrink: 0 }}>
+                  {ehVideo
+                    ? <video src={m} poster={(preview.capasVideo || {})[m]} controls playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  {imgs.length > 1 && (
+                    <>
+                      {idx > 0 && (
+                        <button type="button" onClick={() => setPreviewSlide(idx - 1)} aria-label="Anterior"
+                          style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                        </button>
+                      )}
+                      {idx < imgs.length - 1 && (
+                        <button type="button" onClick={() => setPreviewSlide(idx + 1)} aria-label="Próxima"
+                          style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                        </button>
+                      )}
+                      <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{idx + 1}/{imgs.length}</div>
+                      <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+                        {imgs.map((_, i) => (
+                          <span key={i} onClick={() => setPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === idx ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
             <div style={{ padding: 16, overflowY: 'auto' }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{preview.legenda}</p>
               {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
