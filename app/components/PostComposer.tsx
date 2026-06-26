@@ -428,7 +428,7 @@ export default function PostComposer({
           <div style={{ marginTop: 12, padding: 12, border: '1.5px solid #e0e0e0', borderRadius: 12, background: '#fafafa' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Importar carrossel do Google Drive</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Importar mídias do Google Drive</span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input value={driveUrl} onChange={e => setDriveUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); importarDrive() } }} placeholder="Cole o link da PASTA do Drive..."
