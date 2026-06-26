@@ -649,10 +649,22 @@ export default function PostComposer({
 
         {/* Data e horario — sempre visivel */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data e horario da publicacao</label>
-          <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={new Date().toISOString().slice(0, 16)}
-            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data e horário da publicação <span style={{ color: '#aaa', fontWeight: 400 }}>(opcional)</span></label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: `1.5px solid ${dataAgendada ? '#111' : '#e0e0e0'}`, borderRadius: 10, padding: '0 6px 0 14px', background: '#fff', minWidth: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 8 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+              <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={new Date().toISOString().slice(0, 16)}
+                style={{ flex: 1, padding: '14px 0', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
+            </div>
+            {dataAgendada && (
+              <button type="button" onClick={() => setDataAgendada('')} title="Remover data e horário"
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', background: '#fff', color: '#b91c1c', border: '1.5px solid #f0d0d0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                Limpar
+              </button>
+            )}
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: dataAgendada ? '#1d4ed8' : '#aaa' }}>
             {dataAgendada ? 'Com data preenchida, o botão publica no horário escolhido (Agendar).' : 'Em branco, o botão publica imediatamente (Publicar agora).'}
           </p>
         </div>
