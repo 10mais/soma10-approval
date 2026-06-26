@@ -25,7 +25,10 @@ export async function POST(req: NextRequest) {
   await redis.srem('agendados', id)
 
   const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
-  const resultado = await processarPublicacao(post, cliente)
+  const resultado = await processarPublicacao(post, cliente) // lock anti-duplicacao centralizado na lib
+
+  // Outra publicacao deste post ja esta rodando: nao salva nada, devolve 409
+  if (resultado.emAndamento) return NextResponse.json({ ok: false, error: resultado.motivo, emAndamento: true }, { status: 409 })
 
   await redis.set(`post:${id}`, { ...post, ...resultado.campos })
 

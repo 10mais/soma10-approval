@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
     if (!postFresco || postFresco.status === 'publicado') continue
     const cliente = postFresco.clienteId ? await redis.get<any>(`cliente:${postFresco.clienteId}`) : null
     const resultado = await processarPublicacao(postFresco, cliente)
+    // Outra publicacao deste post ja esta rodando: devolve ao indice e tenta no proximo ciclo
+    if (resultado.emAndamento) { await redis.sadd('agendados', id); continue }
     await redis.set(`post:${id}`, { ...postFresco, ...resultado.campos })
     const nome = post.clienteNome || 'Cliente'
     if (resultado.ok) {

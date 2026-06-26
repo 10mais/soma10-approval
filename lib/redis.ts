@@ -211,7 +211,7 @@ export type BriefingCampanha = {
   atualizadoEm: string
 }
 
-export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicado' | 'falha_publicacao'
+export type PostStatus ='rascunho' | 'agendado' | 'aguardando_aprovacao' | 'aprovado' | 'corrigir' | 'reprovado' | 'publicando' | 'publicado' | 'falha_publicacao'
 
 // Esteira de produção de criativos — etapas pelas quais uma pauta caminha
 export type EtapaCriativo = 'briefing' | 'copy' | 'aprovacao_copy' | 'criativo' | 'aprovacao_criativo' | 'pronto'

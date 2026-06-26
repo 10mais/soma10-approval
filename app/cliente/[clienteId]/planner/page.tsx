@@ -33,8 +33,8 @@ function ImagemComFallback({ src }: { src: string }) {
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
-const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', agendado: '#fef9c3', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
-const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', publicado: 'Publicado', falha_publicacao: 'Falha' }
+const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', agendado: '#fef9c3', publicando: '#dbeafe', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
+const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', publicando: 'Publicando...', publicado: 'Publicado', falha_publicacao: 'Falha' }
 
 function paraDatetimeLocal(iso?: string): string {
   if (!iso) return ''

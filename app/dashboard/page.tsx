@@ -59,6 +59,7 @@ const STATUS_LABEL: Record<string, string> = {
   aprovado: 'Aprovado',
   corrigir: 'Corrigir',
   reprovado: 'Reprovado',
+  publicando: 'Publicando...',
   publicado: 'Publicado',
   falha_publicacao: 'Falha ao publicar',
 }
@@ -71,6 +72,7 @@ const STATUS_COLOR: Record<string, string> = {
   aprovado: '#dcfce7',
   corrigir: '#fff3cd',
   reprovado: '#fee2e2',
+  publicando: '#dbeafe',
   publicado: '#dcfce7',
   falha_publicacao: '#fde2e2',
 }
@@ -83,6 +85,7 @@ const STATUS_TEXT: Record<string, string> = {
   aprovado: '#16a34a',
   corrigir: '#b45309',
   reprovado: '#b91c1c',
+  publicando: '#1d4ed8',     // azul
   publicado: '#16a34a',      // verde
   falha_publicacao: '#991b1b', // vermelho escuro
 }

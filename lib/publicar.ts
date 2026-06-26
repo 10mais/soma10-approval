@@ -1,5 +1,5 @@
 import { del } from '@vercel/blob'
-import { Post } from '@/lib/redis'
+import { redis, Post } from '@/lib/redis'
 
 // v21+ é necessário para Reels e para a tag de colaboradores (collaborators)
 const VERSION = process.env.META_API_VERSION_PUBLISH || 'v21.0'
@@ -292,11 +292,30 @@ export type ResultadoPublicacao = {
   campos: Partial<Post> // campos a salvar no post
   redesOk: string
   motivo: string
+  emAndamento?: boolean // outra publicacao deste post ja esta rodando (lock) — NAO salvar/contar
+}
+
+// Wrapper com LOCK ATOMICO anti-duplicacao: garante que so UMA publicacao deste post
+// roda por vez (em qualquer caminho: manual, cron de agendados ou aprovacao). Sem isso,
+// chamadas concorrentes publicavam a mesma midia 2x. Marca o post como "publicando"
+// enquanto processa, para a UI nao exibir "rascunho" durante o envio.
+export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
+  const lockKey = `publicando:${post.id}`
+  const lock = await redis.set(lockKey, Date.now().toString(), { nx: true, ex: 600 })
+  if (!lock) {
+    return { ok: false, emAndamento: true, campos: {}, redesOk: (post.redesPublicadas || []).join(' e '), motivo: 'Publicação já em andamento para este post.' }
+  }
+  try {
+    await redis.set(`post:${post.id}`, { ...post, status: 'publicando', atualizadoEm: new Date().toISOString() })
+    return await processarPublicacaoInterno(post, cliente)
+  } finally {
+    await redis.del(lockKey).catch(() => {})
+  }
 }
 
 // Publica nas redes selecionadas do post, faz a limpeza e devolve os campos a salvar.
 // IMPORTANTE: respeita `redesPublicadas` — nunca republica numa rede que já deu certo.
-export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
+async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
   const temFB = !!(cliente?.facebookPageToken && cliente?.facebookPageId)
   let redes = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
   if (!temFB) redes = redes.filter(r => r !== 'facebook')

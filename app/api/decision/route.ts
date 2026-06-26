@@ -100,11 +100,15 @@ export async function POST(req: NextRequest) {
     try {
       const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
       const resultado = await processarPublicacao(post as Post, cliente)
+      if (resultado.emAndamento) {
+        // Outra publicacao deste post ja esta rodando: nao salva nem notifica em duplicidade
+      } else {
       await redis.set(`post:${id}`, { ...atualizado, ...resultado.campos })
       if (resultado.ok) {
         await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado em ${resultado.redesOk}.`, id)
       } else {
         await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Motivo: ${resultado.motivo}`, id)
+      }
       }
     } catch (e: any) {
       console.error('Erro publicação:', e)
