@@ -652,41 +652,24 @@ export default function PostComposer({
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Data e horario da publicacao</label>
           <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={new Date().toISOString().slice(0, 16)}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-          {!dataAgendada && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>Deixe em branco para publicar agora ou salvar como rascunho.</p>}
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>
+            {dataAgendada ? 'Com data preenchida, o botão publica no horário escolhido (Agendar).' : 'Em branco, o botão publica imediatamente (Publicar agora).'}
+          </p>
         </div>
 
-        {/* Acoes */}
-        {modoEdicao ? (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => submeter('salvar')} disabled={!podePublicar}
-              style={{ flex: 1, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
-              {enviando ? 'Salvando...' : 'Salvar'}
-            </button>
-            <button onClick={() => submeter('agendar')} disabled={!podePublicar || !dataAgendada} type="button"
-              style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (podePublicar && dataAgendada) ? 'pointer' : 'not-allowed', opacity: (podePublicar && dataAgendada) ? 1 : 0.5 }}>
-              Agendar
-            </button>
-            <button onClick={() => submeter('publicar')} disabled={!podePublicar}
-              style={{ flex: 1, padding: '14px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
-              Publicar agora
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => submeter('rascunho')} disabled={!podeRascunho} type="button"
-              style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: podeRascunho ? 'pointer' : 'not-allowed', opacity: podeRascunho ? 1 : 0.5 }}>
-              {salvandoRascunho ? 'Salvando...' : 'Rascunho'}
-            </button>
-            <button onClick={() => submeter('agendar')} disabled={!podePublicar || !dataAgendada} type="button"
-              style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (podePublicar && dataAgendada) ? 'pointer' : 'not-allowed', opacity: (podePublicar && dataAgendada) ? 1 : 0.5 }}>
-              {enviando ? 'Agendando...' : 'Agendar'}
-            </button>
-            <button onClick={() => submeter('publicar')} disabled={!podePublicar}
-              style={{ flex: 1.4, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
-              {enviando ? 'Publicando...' : 'Publicar agora'}
-            </button>
-          </div>
-        )}
+        {/* Acoes — UM unico botao de publicacao: vira "Agendar" se ha data, senao "Publicar agora" */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podePublicar : !podeRascunho} type="button"
+            style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podePublicar : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podePublicar : podeRascunho) ? 1 : 0.5 }}>
+            {modoEdicao ? (enviando ? 'Salvando...' : 'Salvar alterações') : (salvandoRascunho ? 'Salvando...' : 'Rascunho')}
+          </button>
+          <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePublicar} type="button"
+            style={{ flex: 1.4, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+            {enviando
+              ? (dataAgendada ? 'Agendando...' : 'Publicando...')
+              : (dataAgendada ? 'Agendar' : 'Publicar agora')}
+          </button>
+        </div>
       </div>
 
       {/* Coluna direita: preview ao vivo */}
