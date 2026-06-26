@@ -254,7 +254,7 @@ export default function PlannerPage() {
       {/* Modal de preview */}
       {preview && (
         <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             {preview.imagens?.[0] && (() => {
               const imgs: string[] = preview.imagens
               const idx = Math.min(previewSlide, imgs.length - 1)
@@ -262,7 +262,7 @@ export default function PlannerPage() {
               const ehVideo = /\.(mp4|mov|m4v)(\?|$)/i.test(m)
               const ratio = preview.formato === 'story' || preview.formato === 'reel' ? '9/16' : '4/5'
               return (
-                <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, background: '#000', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, maxHeight: '46vh', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
                   {ehVideo
                     ? <video src={m} poster={(preview.capasVideo || {})[m]} controls playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -291,7 +291,7 @@ export default function PlannerPage() {
                 </div>
               )
             })()}
-            <div style={{ overflowY: 'auto' }}>
+            <div>
               {/* Barra de acoes estilo Instagram */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 14px 6px' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" /></svg>
