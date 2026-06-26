@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react'
 import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
 
 const NAV_ITEMS = [
-  { key: '', label: 'Inicio', todos: true },
+  { key: '', label: 'Início', todos: true },
   { key: '/entregas', label: 'Entregas', todos: true },
-  { key: '/aprovacoes', label: 'Aprovacoes', todos: true },
-  { key: '/solicitar', label: 'Solicitar conteudo', todos: true },
+  { key: '/aprovacoes', label: 'Aprovações', todos: true },
+  { key: '/solicitar', label: 'Solicitar conteúdo', todos: true },
   { key: '/esteira', label: 'Esteira', todos: true },
   { key: '/planner', label: 'Planner', todos: true },
   { key: '/playbook', label: 'Playbook', equipe: true },
