@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import DriveButton from './DriveButton'
 
 type Cliente = { id: string; nome: string; instagram: string; logo?: string }
 type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
@@ -439,6 +440,13 @@ export default function PostComposer({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Importar mídias do Google Drive</span>
+            </div>
+            {/* Picker nativo (navega no Drive da conta) — so aparece quando configurado */}
+            <DriveButton onArquivos={enviarArquivos} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
+              <div style={{ flex: 1, height: 1, background: '#eee' }} />
+              <span style={{ fontSize: 10, color: '#bbb' }}>ou cole o link da pasta</span>
+              <div style={{ flex: 1, height: 1, background: '#eee' }} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input value={driveUrl} onChange={e => setDriveUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); importarDrive() } }} placeholder="Cole o link da PASTA do Drive..."

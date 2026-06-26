@@ -130,27 +130,8 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
 // Estratégia 2 (fallback): pede ao Facebook para buscar a URL (file_url), com
 //   repetição em falhas transitórias de fetch.
 async function publicarVideoFB(pageId: string, token: string, fileUrl: string, descricao: string): Promise<any> {
-  // 1) Upload direto do arquivo (source)
-  try {
-    const resp = await fetch(fileUrl)
-    if (resp.ok) {
-      const buf = Buffer.from(await resp.arrayBuffer())
-      const nome = (fileUrl.split('?')[0].split('/').pop() || 'video.mp4')
-      const ehMov = /\.mov(\?|$)/i.test(fileUrl)
-      const fd = new FormData()
-      fd.append('access_token', token)
-      if (descricao) fd.append('description', descricao)
-      fd.append('source', new Blob([buf], { type: ehMov ? 'video/quicktime' : 'video/mp4' }), nome)
-      const r = await fetch(`${BASE}/${pageId}/videos`, { method: 'POST', body: fd }).then(x => x.json())
-      if (!r?.error) return r
-      // Se for erro de formato/permissão (não de fetch), retorna já — o file_url não resolveria
-      const sub = r.error?.error_subcode
-      const ehFalhaDeFetch = r.error?.code === 389 || [1363057, 1363019, 1363030, 1363037].includes(sub)
-      if (!ehFalhaDeFetch) return r
-    }
-  } catch { /* cai para o fallback file_url */ }
-
-  // 2) Fallback: file_url com repetição em falhas transitórias de fetch
+  // 1) PREFERIDO: file_url — o Facebook busca a URL publica direto. NAO carrega o video
+  //    na nossa memoria (antes, bufferizar o video inteiro estourava a RAM da funcao).
   let ultimo: any = null
   for (let i = 0; i < 3; i++) {
     const r = await postForm(`${BASE}/${pageId}/videos`, { access_token: token, file_url: fileUrl, description: descricao })
@@ -158,9 +139,32 @@ async function publicarVideoFB(pageId: string, token: string, fileUrl: string, d
     ultimo = r
     const sub = r.error?.error_subcode
     const ehFalhaDeFetch = r.error?.code === 389 || [1363057, 1363019, 1363030, 1363037].includes(sub)
-    if (!ehFalhaDeFetch) break
+    if (!ehFalhaDeFetch) return r // erro real (formato/permissao) — nao adianta tentar source
     await new Promise(res => setTimeout(res, 5000 * (i + 1)))
   }
+
+  // 2) Fallback (source) SOMENTE para videos pequenos — evita OOM com arquivos grandes.
+  try {
+    const head = await fetch(fileUrl, { method: 'HEAD' })
+    const tam = parseInt(head.headers.get('content-length') || '0', 10)
+    const LIMITE_SOURCE = 45 * 1024 * 1024 // 45MB: seguro para bufferizar
+    if (tam > 0 && tam <= LIMITE_SOURCE) {
+      const resp = await fetch(fileUrl)
+      if (resp.ok) {
+        const buf = Buffer.from(await resp.arrayBuffer())
+        const nome = (fileUrl.split('?')[0].split('/').pop() || 'video.mp4')
+        const ehMov = /\.mov(\?|$)/i.test(fileUrl)
+        const fd = new FormData()
+        fd.append('access_token', token)
+        if (descricao) fd.append('description', descricao)
+        fd.append('source', new Blob([new Uint8Array(buf)], { type: ehMov ? 'video/quicktime' : 'video/mp4' }), nome)
+        const r = await fetch(`${BASE}/${pageId}/videos`, { method: 'POST', body: fd }).then(x => x.json())
+        if (!r?.error) return r
+        ultimo = r
+      }
+    }
+  } catch { /* mantem o ultimo erro do file_url */ }
+
   return ultimo
 }
 
