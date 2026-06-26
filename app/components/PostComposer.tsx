@@ -185,7 +185,10 @@ export default function PostComposer({
 
   async function enviarArquivos(arquivos: FileList | File[]) {
     setErroUpload('')
-    for (const original of Array.from(arquivos)) {
+    // Ordena pelos numeros das laminas no nome (1, 2, 3... 10) — ordenacao natural,
+    // para o carrossel seguir a numeracao dos arquivos independente da ordem de selecao.
+    const ordenados = Array.from(arquivos).sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true, sensitivity: 'base' }))
+    for (const original of ordenados) {
       // Verifica tamanho antes de tentar upload (limite: 200MB)
       if (original.size > 500 * 1024 * 1024) {
         setErroUpload(`O arquivo "${original.name}" tem ${(original.size / 1024 / 1024).toFixed(0)}MB e excede o limite de 500MB. Reduza o tamanho ou comprima o video antes de enviar.`)
