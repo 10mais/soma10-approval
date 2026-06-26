@@ -52,7 +52,8 @@ export default function PlannerPage() {
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
   const [previewSlide, setPreviewSlide] = useState(0)
-  useEffect(() => { setPreviewSlide(0) }, [preview])
+  const [legendaExpandida, setLegendaExpandida] = useState(false)
+  useEffect(() => { setPreviewSlide(0); setLegendaExpandida(false) }, [preview])
   const [novoPost, setNovoPost] = useState(false)
   const [editPost, setEditPost] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
@@ -290,8 +291,32 @@ export default function PlannerPage() {
                 </div>
               )
             })()}
-            <div style={{ padding: 16, overflowY: 'auto' }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#333', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{preview.legenda}</p>
+            <div style={{ overflowY: 'auto' }}>
+              {/* Barra de acoes estilo Instagram */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 14px 6px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" /></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto' }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+              </div>
+              {/* Legenda estilo Instagram: username + texto com "... mais" */}
+              <div style={{ padding: '0 14px 12px' }}>
+                {legendaExpandida ? (
+                  <p style={{ margin: 0, fontSize: 13.5, color: '#262626', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    <strong>{(cliente?.instagram || preview.clienteNome || '').replace(/^@/, '')}</strong>{' '}{preview.legenda}
+                  </p>
+                ) : (
+                  <>
+                    <p style={{ margin: 0, fontSize: 13.5, color: '#262626', lineHeight: 1.5, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <strong>{(cliente?.instagram || preview.clienteNome || '').replace(/^@/, '')}</strong>{' '}{preview.legenda}
+                    </p>
+                    {(preview.legenda || '').length > 80 && (
+                      <button onClick={() => setLegendaExpandida(true)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 2, color: '#8e8e8e', fontSize: 13.5, cursor: 'pointer' }}>... mais</button>
+                    )}
+                  </>
+                )}
+              </div>
+              <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
               {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
               {preview.status === 'falha_publicacao' && preview.erroPublicacao && (
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
@@ -308,6 +333,7 @@ export default function PlannerPage() {
                 </div>
               )}
               <button onClick={() => setPreview(null)} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+              </div>
             </div>
           </div>
         </div>
