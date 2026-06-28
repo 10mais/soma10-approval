@@ -16,6 +16,7 @@ const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, l
 const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Briefings = dynamic(() => import('../components/Briefings'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -330,7 +331,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1466,6 +1467,14 @@ function Dashboard() {
               {role === 'admin' && (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
+                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
+                    <button onClick={() => setAba('rentabilidade' as any)} className={aba === 'rentabilidade' ? 'soma10-no-invert' : undefined} style={{
+                      padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                      fontWeight: aba === 'rentabilidade' ? 700 : 500, color: aba === 'rentabilidade' ? '#111' : '#888',
+                      background: aba === 'rentabilidade' ? '#ffc00f' : 'transparent', fontSize: 13, transition: 'all 0.15s',
+                    }}>Rentabilidade</button>
+                  </nav>
                   <button onClick={() => setConfigAberto(v => !v)} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
                     background: 'none', border: 'none', cursor: 'pointer',
@@ -3170,6 +3179,11 @@ function Dashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* RENTABILIDADE (admin only) */}
+        {aba === 'rentabilidade' && role === 'admin' && (
+          <Rentabilidade clientes={clientes as any} usuarios={usuarios as any} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}
