@@ -20,6 +20,7 @@ const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr
 const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -335,7 +336,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'carga'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1452,7 +1453,7 @@ function Dashboard() {
             <>
               {([
                 { titulo: '', itens: [['meu-dia', 'Meu dia'], ['home', 'Painel']] },
-                { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira']] },
+                { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
                 { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
               ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
@@ -3322,6 +3323,11 @@ function Dashboard() {
         {/* MEU DIA (equipe) */}
         {aba === 'meu-dia' && role !== 'cliente' && (
           <MeuDia onAbrirTarefas={() => setAba('tarefas')} clientes={clientes as any} usuarios={usuarios as any} />
+        )}
+
+        {/* CARGA DA EQUIPE (equipe) */}
+        {aba === 'carga' && role !== 'cliente' && (
+          <CargaEquipe usuarios={usuarios as any} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}
