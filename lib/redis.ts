@@ -90,6 +90,7 @@ export type Cliente = {
   // Login do cliente
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
+  statusToken?: string // token do link público de status (sem login)
   // Brands Board — identidade e DNA do cliente
   segmento?: string // nicho (ex.: Cardiologia)
   palavrasChave?: string // palavras-chave separadas por vírgula

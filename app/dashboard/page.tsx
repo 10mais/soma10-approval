@@ -805,6 +805,16 @@ function Dashboard() {
     fetch('/api/posts').then(r => r.json()).then(setPosts)
   }
 
+  // Link público de status (sem login) do cliente
+  async function statusPublico(clienteId: string) {
+    const r = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
+    if (r?.token) {
+      const link = `${window.location.origin}/status/${r.token}`
+      navigator.clipboard?.writeText(link).catch(() => {})
+      window.open(link, '_blank')
+    } else alert('Não foi possível gerar o link de status.')
+  }
+
   // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
   async function reaproveitar(post: any, formato: string) {
     const body = { clienteId: post.clienteId, clienteNome: post.clienteNome, imagens: post.imagens || [], legenda: post.legenda || '', formato, capasVideo: post.capasVideo || {}, redes: post.redes || ['instagram', 'facebook'], rascunhoInterno: true, ...(post.marcoId ? { marcoId: post.marcoId } : {}) }
@@ -2974,6 +2984,13 @@ function Dashboard() {
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#25D366', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.1.1.3 0 .5l-.4.5-.2.2c-.1.1-.3.3-.1.5.1.3.7 1.1 1.4 1.8.96.85 1.7 1.1 2 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.3.1.1.1.6-.1 1.2z" /></svg>
                           Resumo semanal
+                        </button>
+                      )}
+                      {c.tipo !== 'interno' && (
+                        <button onClick={() => statusPublico(c.id)} title="Abrir/copiar o link público de status (sem login) para enviar ao cliente"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0ea5e9', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
+                          Status público
                         </button>
                       )}
                       {role === 'admin' && (
