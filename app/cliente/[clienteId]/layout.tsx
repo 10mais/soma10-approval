@@ -41,6 +41,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const basePath = `/cliente/${clienteId}`
   const subpath = pathname.replace(basePath, '') || ''
 
+  // Pendências de aprovação do cliente (banner "o que está esperando você", em todo o portal)
+  const [pendentesAprov, setPendentesAprov] = useState(0)
+  useEffect(() => {
+    fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => {
+      setPendentesAprov(Array.isArray(d) ? d.filter((p: any) => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo').length : 0)
+    }).catch(() => {})
+  }, [clienteId, subpath])
+
   // Extrai cor dominante da imagem de perfil
   // Extrai a cor DOMINANTE (mais frequente) da imagem de perfil
   const [corExtraida, setCorExtraida] = useState<string | null>(null)
@@ -138,6 +146,16 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
       )}
 
+      {/* Banner "o que está esperando você" — visível em todo o portal, exceto na própria Aprovações */}
+      {pendentesAprov > 0 && subpath !== '/aprovacoes' && (
+        <div style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#b91c1c' }}>
+            Você tem {pendentesAprov} {pendentesAprov === 1 ? 'item aguardando' : 'itens aguardando'} a sua aprovação.
+          </span>
+          <button onClick={() => router.push(`${basePath}/aprovacoes`)} style={{ background: '#b91c1c', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Revisar agora</button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Sidebar */}
         <aside style={{ width: 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0', minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56, padding: '20px 14px', boxSizing: 'border-box' }}>
@@ -167,8 +185,12 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                   fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : '#888',
                   background: ativo ? corPrimaria : 'transparent',
                   fontSize: 14, transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 }}>
-                  {item.label}
+                  <span>{item.label}</span>
+                  {item.key === '/aprovacoes' && pendentesAprov > 0 && (
+                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{pendentesAprov}</span>
+                  )}
                 </button>
               )
             }
