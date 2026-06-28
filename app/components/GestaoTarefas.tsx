@@ -37,6 +37,7 @@ const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
 let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] = []
 function todosTipos() { return [...TIPOS, ...TIPOS_CUSTOM] }
 function tipoInfo(key?: string) { return todosTipos().find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
+function fmtRelogio(ms: number) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60; const mm = String(m).padStart(2, '0'), ss = String(seg).padStart(2, '0'); return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}` }
 
 function forcarDownload(url: string, nome: string) {
   fetch(url).then(r => r.blob()).then(blob => {
@@ -1054,7 +1055,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   </button>
                 ) : (
                   <button type="button" onClick={pararTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar ({fmtMin(Math.max(0, (Date.now() - timerInicio) / 60000))})
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar ({fmtRelogio(Date.now() - timerInicio)})
                   </button>
                 )}
                 <span style={{ fontSize: 11, color: '#bbb' }}>ou lançar manual:</span>

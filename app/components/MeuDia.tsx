@@ -7,6 +7,7 @@ const PRIO_COR: Record<string, string> = { urgente: '#dc2626', alta: '#ea580c', 
 const PRIO_PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
 
 function fmtMin(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
+function fmtRelogio(ms: number) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60; const mm = String(m).padStart(2, '0'), ss = String(seg).padStart(2, '0'); return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}` }
 function diaISO(d: Date) { return d.toISOString().slice(0, 10) }
 
 export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }: { onAbrirTarefas?: () => void; clientes?: any[]; usuarios?: any[] }) {
@@ -19,7 +20,7 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
 
   function carregar() { fetch('/api/tarefas').then(r => r.json()).then(d => { setTarefas(Array.isArray(d) ? d : []); setCarregando(false) }).catch(() => setCarregando(false)) }
   useEffect(() => { carregar() }, [])
-  useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30000); return () => clearInterval(t) }, [])
+  useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t) }, [])
 
   const minhas = tarefas
     .filter(t => t.responsavelEmail === email && t.status !== 'concluido')
@@ -56,7 +57,9 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
   }
 
   function Linha({ t }: { t: any }) {
-    const rodando = typeof window !== 'undefined' && !!localStorage.getItem(`apont:${t.id}`)
+    const ini = typeof window !== 'undefined' ? localStorage.getItem(`apont:${t.id}`) : null
+    const rodando = !!ini
+    const elapsed = ini ? Date.now() - Number(ini) : 0
     const total = (t.apontamentos || []).reduce((s: number, a: any) => s + (Number(a.minutos) || 0), 0)
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
@@ -70,7 +73,7 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
         <button onClick={() => timer(t)} title={rodando ? 'Parar timer' : 'Iniciar timer'}
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: rodando ? '#dc2626' : '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
           {rodando
-            ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar</>
+            ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar {fmtRelogio(elapsed)}</>
             : <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg> Timer</>}
         </button>
         <button onClick={() => concluir(t)} title="Concluir" style={{ flexShrink: 0, padding: '7px 12px', background: '#fff', color: '#16a34a', border: '1.5px solid #bbf7d0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Concluir</button>
