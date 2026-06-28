@@ -58,6 +58,18 @@ export async function PUT(req: NextRequest) {
   const atualizado = { ...marco, atualizadoEm: new Date().toISOString() } as any
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   await redis.set(`marco:${id}`, atualizado)
+
+  // Automação: etapa concluída -> notifica a equipe
+  if (updates.status === 'concluido' && marco.status !== 'concluido') {
+    try {
+      const { getAutomacoes } = await import('@/lib/automacoes')
+      if ((await getAutomacoes()).etapaConcluidaNotifica) {
+        const { notificarEquipe } = await import('@/lib/notificacoes')
+        await notificarEquipe('geral', 'Etapa concluída', `A etapa "${marco.titulo}"${marco.clienteNome ? ` (${marco.clienteNome})` : ''} foi marcada como concluída.`)
+      }
+    } catch { /* não bloqueia */ }
+  }
+
   return NextResponse.json({ ok: true, marco: atualizado })
 }
 

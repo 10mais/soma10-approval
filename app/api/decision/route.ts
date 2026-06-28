@@ -116,6 +116,27 @@ export async function POST(req: NextRequest) {
       await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: erro, atualizadoEm: new Date().toISOString() })
       await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Erro: ${erro}`, id)
     }
+
+    // Automação: post aprovado -> cria tarefa de publicação para a equipe
+    try {
+      const { getAutomacoes } = await import('@/lib/automacoes')
+      if ((await getAutomacoes()).postAprovadoCriaTarefa) {
+        const { v4: uuid } = await import('uuid')
+        const agora = new Date().toISOString()
+        const tarefa: any = {
+          id: uuid(), titulo: `Publicar: ${(post as any).legenda?.slice(0, 40) || 'post aprovado'}`,
+          descricao: 'Tarefa criada automaticamente quando o cliente aprovou o post.',
+          tipo: 'post', status: 'a_fazer', prioridade: 'alta',
+          clienteId: post.clienteId || '', clienteNome,
+          ...(((post as any).marcoId) ? { marcoId: (post as any).marcoId } : {}),
+          criadoPor: 'Automação', criadoEm: agora, atualizadoEm: agora,
+          atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Criada por automação (post aprovado)', autor: 'Automação', criadoEm: agora }],
+          comentarios: [],
+        }
+        await redis.set(`tarefa:${tarefa.id}`, tarefa)
+        await redis.sadd('tarefas', tarefa.id)
+      }
+    } catch { /* não bloqueia */ }
   }
 
   return NextResponse.json({ ok: true })

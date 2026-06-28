@@ -90,6 +90,17 @@ export async function POST(req: NextRequest) {
 
   revalidateTag('clientes')
   if (cliente.loginEmail) revalidateTag('usuarios')
+
+  // Automação: cliente novo -> notifica a equipe
+  try {
+    const { getAutomacoes } = await import('@/lib/automacoes')
+    const aut = await getAutomacoes()
+    if (aut.clienteNovoNotifica) {
+      const { notificarEquipe } = await import('@/lib/notificacoes')
+      await notificarEquipe('geral', 'Novo cliente cadastrado', `O cliente "${cliente.nome}" foi adicionado.`)
+    }
+  } catch { /* automação não bloqueia o cadastro */ }
+
   return NextResponse.json({ ok: true, cliente })
 }
 
