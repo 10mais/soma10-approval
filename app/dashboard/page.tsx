@@ -17,6 +17,7 @@ const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: fals
 const Briefings = dynamic(() => import('../components/Briefings'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -332,7 +333,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1427,7 +1428,7 @@ function Dashboard() {
               {([
                 { titulo: '', itens: [['home', 'Painel']] },
                 { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira']] },
-                { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas']] },
+                { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos']] },
               ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -3246,6 +3247,11 @@ function Dashboard() {
         {/* RENTABILIDADE (admin only) */}
         {aba === 'rentabilidade' && role === 'admin' && (
           <Rentabilidade clientes={clientes as any} usuarios={usuarios as any} />
+        )}
+
+        {/* MODELOS DE PROJETO (equipe) */}
+        {aba === 'modelos' && role !== 'cliente' && (
+          <Modelos clientes={clientes as any} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}

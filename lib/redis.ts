@@ -203,6 +203,19 @@ export type Tarefa = {
   concluidoEm?: string
 }
 
+// Modelos de projeto reutilizáveis (geram marcos do Playbook + tarefas num clique)
+export type TemplateMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
+export type TemplateTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
+export type TemplateProjeto = {
+  id: string
+  nome: string
+  descricao?: string
+  marcos: TemplateMarco[]
+  tarefas: TemplateTarefa[]
+  criadoPor?: string
+  criadoEm: string
+}
+
 export type TarefaAtividade = {
   id: string
   tipo: 'criacao' | 'status' | 'responsavel' | 'prioridade' | 'prazo' | 'cliente' | 'anexo' | 'comentario'
