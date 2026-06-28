@@ -8,7 +8,7 @@ const PRIO_PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa
 function fmtMin(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
 function diaISO(d: Date) { return d.toISOString().slice(0, 10) }
 
-export default function MeuDia({ onAbrirTarefas }: { onAbrirTarefas?: () => void }) {
+export default function MeuDia({ onAbrirTarefas, onAbrirTarefa }: { onAbrirTarefas?: () => void; onAbrirTarefa?: (id: string) => void }) {
   const { data: session } = useSession()
   const email = (session?.user as any)?.email as string | undefined
   const [tarefas, setTarefas] = useState<any[]>([])
@@ -59,7 +59,7 @@ export default function MeuDia({ onAbrirTarefas }: { onAbrirTarefas?: () => void
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: PRIO_COR[t.prioridade] || '#ccc', flexShrink: 0 }} title={t.prioridade} />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div onClick={() => onAbrirTarefa?.(t.id)} style={{ flex: 1, minWidth: 0, cursor: onAbrirTarefa ? 'pointer' : 'default' }} title="Abrir tarefa">
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#999' }}>
             {t.clienteNome || 'Interno'}{t.prazo ? ` · prazo ${new Date(t.prazo).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}` : ''}{total > 0 ? ` · ${fmtMin(total)} apontado` : ''}

@@ -416,6 +416,7 @@ function Dashboard() {
   const [rascunhoMsg, setRascunhoMsg] = useState('')
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
+  const [tarefaAbrirId, setTarefaAbrirId] = useState<string | null>(null)
   const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
@@ -2653,7 +2654,7 @@ function Dashboard() {
         )}
 
         {aba === 'tarefas' && (
-          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} />
+          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} />
         )}
 
         {aba === 'campanhas' && (
@@ -3320,7 +3321,7 @@ function Dashboard() {
 
         {/* MEU DIA (equipe) */}
         {aba === 'meu-dia' && role !== 'cliente' && (
-          <MeuDia onAbrirTarefas={() => setAba('tarefas')} />
+          <MeuDia onAbrirTarefas={() => setAba('tarefas')} onAbrirTarefa={(id) => { setTarefaAbrirId(id); setAba('tarefas') }} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}

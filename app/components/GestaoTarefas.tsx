@@ -223,7 +223,7 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios }: { clientes: Cliente[]; usuarios: Usuario[] }) {
+export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void }) {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [excluidas, setExcluidas] = useState<Tarefa[]>([])
   const [view, setView] = useState<'kanban' | 'lista'>('kanban')
@@ -243,6 +243,12 @@ export default function GestaoTarefas({ clientes, usuarios }: { clientes: Client
     setTiposCustom(TIPOS_CUSTOM)
   }
   useEffect(() => { fetch('/api/tipos-tarefa').then(r => r.json()).then(d => { if (Array.isArray(d)) aplicarTiposCustom(d) }).catch(() => {}) }, [])
+  // Abrir uma tarefa especifica (ex.: vindo de "Meu dia")
+  useEffect(() => {
+    if (!abrirTarefaId) return
+    const t = tarefas.find(x => x.id === abrirTarefaId)
+    if (t) { setEditModal(t); setTarefaViewMode('modal'); onAbriuTarefa?.() }
+  }, [abrirTarefaId, tarefas])
 
   function carregar() {
     fetch('/api/tarefas').then(r => r.json()).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
