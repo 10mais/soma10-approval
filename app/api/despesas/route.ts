@@ -25,19 +25,29 @@ export async function POST(req: NextRequest) {
   const b = await req.json()
   if (!b.descricao || !(Number(b.valor) > 0)) return NextResponse.json({ error: 'Informe descrição e valor.' }, { status: 400 })
   const hoje = new Date()
-  const despesa: Despesa = {
-    id: uuid(),
-    descricao: String(b.descricao).trim(),
-    valor: Number(b.valor) || 0,
-    tipo: b.tipo === 'fixo' ? 'fixo' : 'variavel',
-    categoria: b.categoria || '',
-    mes: /^\d{4}-\d{2}$/.test(b.mes || '') ? b.mes : `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`,
-    criadoPor: session.user?.name || '',
-    criadoEm: new Date().toISOString(),
+  const mesPadrao = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
+  // Pagamento único -> 1 mês; recorrente -> vários meses (lista já calculada no cliente)
+  const meses: string[] = Array.isArray(b.meses) && b.meses.length
+    ? b.meses.filter((m: string) => /^\d{4}-\d{2}$/.test(m))
+    : [/^\d{4}-\d{2}$/.test(b.mes || '') ? b.mes : mesPadrao]
+
+  const criadas: Despesa[] = []
+  for (const m of meses) {
+    const despesa: Despesa = {
+      id: uuid(),
+      descricao: String(b.descricao).trim(),
+      valor: Number(b.valor) || 0,
+      tipo: b.tipo === 'fixo' ? 'fixo' : 'variavel',
+      categoria: b.categoria || '',
+      mes: m,
+      criadoPor: session.user?.name || '',
+      criadoEm: new Date().toISOString(),
+    }
+    await redis.set(`despesa:${despesa.id}`, despesa)
+    await redis.sadd('despesas', despesa.id)
+    criadas.push(despesa)
   }
-  await redis.set(`despesa:${despesa.id}`, despesa)
-  await redis.sadd('despesas', despesa.id)
-  return NextResponse.json({ ok: true, despesa })
+  return NextResponse.json({ ok: true, despesa: criadas[0], despesas: criadas })
 }
 
 export async function PUT(req: NextRequest) {

@@ -19,6 +19,10 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [dDesc, setDDesc] = useState('')
   const [dValor, setDValor] = useState('')
   const [dTipo, setDTipo] = useState<'fixo' | 'variavel'>('fixo')
+  const [dRecorrente, setDRecorrente] = useState(false)
+  const [dRecModo, setDRecModo] = useState<'n' | 'ate'>('n')
+  const [dRecN, setDRecN] = useState('12')
+  const [dRecAte, setDRecAte] = useState('')
   const [salvandoD, setSalvandoD] = useState(false)
 
   useEffect(() => {
@@ -28,12 +32,27 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     ]).then(([t, d]) => { setTarefas(Array.isArray(t) ? t : []); setDespesas(Array.isArray(d) ? d : []); setCarregando(false) })
   }, [])
 
+  function mesesRecorrentes(inicio: string): string[] {
+    const [y, m] = inicio.split('-').map(Number)
+    const arr: string[] = []
+    let cur = new Date(y, m - 1, 1)
+    if (dRecModo === 'ate' && /^\d{4}-\d{2}$/.test(dRecAte)) {
+      const [fy, fm] = dRecAte.split('-').map(Number); const fim = new Date(fy, fm - 1, 1)
+      while (cur <= fim && arr.length < 60) { arr.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`); cur.setMonth(cur.getMonth() + 1) }
+    } else {
+      const qt = Math.max(1, Math.min(60, Number(dRecN) || 1))
+      for (let i = 0; i < qt; i++) { arr.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`); cur.setMonth(cur.getMonth() + 1) }
+    }
+    return arr
+  }
   async function addDespesa() {
     if (!dDesc.trim() || !(Number(dValor) > 0) || salvandoD) return
     setSalvandoD(true)
-    const r = await fetch('/api/despesas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao: dDesc.trim(), valor: Number(dValor), tipo: dTipo, mes: mes || `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}` }) }).then(x => x.json()).catch(() => null)
+    const inicio = mes || `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
+    const meses = dRecorrente ? mesesRecorrentes(inicio) : [inicio]
+    const r = await fetch('/api/despesas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao: dDesc.trim(), valor: Number(dValor), tipo: dTipo, meses }) }).then(x => x.json()).catch(() => null)
     setSalvandoD(false)
-    if (r?.despesa) { setDespesas(d => [r.despesa, ...d]); setDDesc(''); setDValor('') }
+    if (r?.despesas) { setDespesas(d => [...r.despesas, ...d]); setDDesc(''); setDValor(''); setDRecorrente(false) }
   }
   async function delDespesa(id: string) {
     await fetch(`/api/despesas?id=${id}`, { method: 'DELETE' }).catch(() => {})
@@ -118,14 +137,33 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
           {/* Despesas */}
           <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 18 }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid #f0f0f0', fontSize: 13, fontWeight: 700, color: '#111' }}>Despesas {mes && `· ${opcoesMes.find(o => o.v === mes)?.label}`}</div>
-            <div style={{ padding: '12px 18px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid #f5f5f5' }}>
-              <input value={dDesc} onChange={e => setDDesc(e.target.value)} placeholder="Descrição (ex.: Aluguel, Ads, Software)" style={{ flex: 1, minWidth: 180, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-              <input type="number" min="0" value={dValor} onChange={e => setDValor(e.target.value)} placeholder="Valor R$" style={{ width: 110, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-              <select value={dTipo} onChange={e => setDTipo(e.target.value as any)} style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                <option value="fixo">Fixa</option>
-                <option value="variavel">Variável</option>
-              </select>
-              <button onClick={addDespesa} disabled={salvandoD || !dDesc.trim() || !(Number(dValor) > 0)} style={{ padding: '9px 16px', background: (dDesc.trim() && Number(dValor) > 0) ? '#111' : '#f0f0f0', color: (dDesc.trim() && Number(dValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+            <div style={{ padding: '12px 18px', borderBottom: '1px solid #f5f5f5' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={dDesc} onChange={e => setDDesc(e.target.value)} placeholder="Descrição (ex.: Aluguel, Ads, Software)" style={{ flex: 1, minWidth: 180, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                <input type="number" min="0" value={dValor} onChange={e => setDValor(e.target.value)} placeholder="Valor R$" style={{ width: 110, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                <select value={dTipo} onChange={e => setDTipo(e.target.value as any)} style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="fixo">Fixa</option>
+                  <option value="variavel">Variável</option>
+                </select>
+                <select value={dRecorrente ? 'rec' : 'uni'} onChange={e => setDRecorrente(e.target.value === 'rec')} style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="uni">Pagamento único</option>
+                  <option value="rec">Recorrente</option>
+                </select>
+                <button onClick={addDespesa} disabled={salvandoD || !dDesc.trim() || !(Number(dValor) > 0)} style={{ padding: '9px 16px', background: (dDesc.trim() && Number(dValor) > 0) ? '#111' : '#f0f0f0', color: (dDesc.trim() && Number(dValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+              </div>
+              {dRecorrente && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: '#888' }}>
+                  <span>Começa em <strong style={{ color: '#111' }}>{mes || 'mês atual'}</strong> e repete por:</span>
+                  <select value={dRecModo} onChange={e => setDRecModo(e.target.value as any)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="n">Nº de meses</option>
+                    <option value="ate">Até o mês (vencimento)</option>
+                  </select>
+                  {dRecModo === 'n'
+                    ? <input type="number" min="1" max="60" value={dRecN} onChange={e => setDRecN(e.target.value)} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                    : <input type="month" value={dRecAte} onChange={e => setDRecAte(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />}
+                  <span style={{ color: '#bbb' }}>Cria um lançamento em cada mês.</span>
+                </div>
+              )}
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

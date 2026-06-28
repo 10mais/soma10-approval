@@ -22,7 +22,9 @@ export type Usuario = {
   clienteId?: string
   custoHora?: number // custo/hora do profissional em R$ (custo operacional por cliente)
   salarioFixo?: number // remuneração fixa mensal em R$
-  salarioVariavel?: number // remuneração variável mensal em R$ (comissões/bônus)
+  salarioVariavel?: number // remuneração variável mensal em R$ (= valorPorProjeto x qtdProjetos)
+  valorPorProjeto?: number // valor pago por projeto/cliente
+  qtdProjetos?: number // quantidade de projetos/clientes atendidos
   criadoEm: string
 }
 
