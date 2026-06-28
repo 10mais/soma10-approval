@@ -4,7 +4,23 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import EntregasMarco, { Entregas } from '@/app/components/EntregasMarco'
 
-type Marco = { id: string; titulo: string; descricao?: string; categoria: string; status: string; dataInicio: string; dataFim?: string }
+type Marco = { id: string; titulo: string; descricao?: string; categoria: string; status: string; dataInicio: string; dataFim?: string; atualizadoEm?: string }
+
+// Prometido x realizado: compara a entrega com a data prometida (dataFim)
+function prazoMarco(m: Marco): { texto: string; cor: string } | null {
+  if (!m.dataFim) return null
+  const prazo = new Date(m.dataFim).getTime()
+  if (m.status === 'concluido') {
+    const real = new Date(m.atualizadoEm || m.dataFim).getTime()
+    const diasAtraso = Math.round((real - prazo) / 86400000)
+    return diasAtraso <= 0 ? { texto: 'Entregue no prazo', cor: '#16a34a' } : { texto: `Entregue com ${diasAtraso}d de atraso`, cor: '#dc2626' }
+  }
+  if (m.status !== 'cancelado' && prazo < Date.now()) {
+    const dias = Math.round((Date.now() - prazo) / 86400000)
+    return { texto: `Atrasada ${dias}d`, cor: '#dc2626' }
+  }
+  return null
+}
 
 const STATUS_LABEL: Record<string, string> = { planejado: 'Planejado', em_andamento: 'Em andamento', concluido: 'Concluído', atrasado: 'Atrasado', cancelado: 'Cancelado' }
 const STATUS_COR: Record<string, string> = { planejado: '#9ca3af', em_andamento: '#ca8a04', concluido: '#16a34a', atrasado: '#dc2626', cancelado: '#aaa' }
@@ -184,6 +200,12 @@ export default function EntregasPage() {
             <div style={{ width: `${pctGeral}%`, height: '100%', background: cor, borderRadius: 999, transition: 'width .3s' }} />
           </div>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: '#888' }}>{feitos} de {totalItens} entregas concluídas · {marcos.length} etapa(s)</p>
+          {(() => {
+            const comPrazo = marcos.filter(m => m.status === 'concluido' && m.dataFim)
+            if (comPrazo.length === 0) return null
+            const noPrazo = comPrazo.filter(m => new Date(m.atualizadoEm || m.dataFim!).getTime() <= new Date(m.dataFim!).getTime()).length
+            return <p style={{ margin: '4px 0 0', fontSize: 12, color: noPrazo === comPrazo.length ? '#16a34a' : '#a16207' }}>SLA de entrega: {noPrazo} de {comPrazo.length} etapa(s) no prazo.</p>
+          })()}
         </div>
       )}
 
@@ -206,7 +228,10 @@ export default function EntregasPage() {
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{m.titulo}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: STATUS_COR[m.status] || '#888', background: `${STATUS_COR[m.status] || '#888'}1a`, borderRadius: 999, padding: '3px 10px' }}>{STATUS_LABEL[m.status] || m.status}</span>
                 </div>
-                <p style={{ margin: '0 0 12px', fontSize: 12, color: '#aaa' }}>{fmt(m.dataInicio)}{m.dataFim ? ` — ${fmt(m.dataFim)}` : ''}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 12px' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>{fmt(m.dataInicio)}{m.dataFim ? ` — prometido ${fmt(m.dataFim)}` : ''}</p>
+                  {(() => { const pz = prazoMarco(m); return pz ? <span style={{ fontSize: 10.5, fontWeight: 700, color: pz.cor, background: `${pz.cor}15`, borderRadius: 999, padding: '2px 8px' }}>{pz.texto}</span> : null })()}
+                </div>
                 {m.descricao && <p style={{ margin: '0 0 12px', fontSize: 13, color: '#555', lineHeight: 1.5 }}>{m.descricao}</p>}
                 <EntregasMarco marcoId={m.id} entregas={entregas} cor={cor} />
               </div>
