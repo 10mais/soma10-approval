@@ -805,6 +805,17 @@ function Dashboard() {
     fetch('/api/posts').then(r => r.json()).then(setPosts)
   }
 
+  // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
+  async function reaproveitar(post: any, formato: string) {
+    const body = { clienteId: post.clienteId, clienteNome: post.clienteNome, imagens: post.imagens || [], legenda: post.legenda || '', formato, capasVideo: post.capasVideo || {}, redes: post.redes || ['instagram', 'facebook'], rascunhoInterno: true, ...(post.marcoId ? { marcoId: post.marcoId } : {}) }
+    const res = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => null)
+    if (res?.ok) {
+      await fetch('/api/posts').then(r => r.json()).then(setPosts).catch(() => {})
+      setPostPreview(null)
+      alert(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`)
+    } else alert('Não foi possível reaproveitar o post.')
+  }
+
   async function salvarEdicaoPost(valor: any) {
     if (!editandoPostId) return
     setCriandoPost(true)
@@ -2009,6 +2020,14 @@ function Dashboard() {
                       <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
                         {republicandoId === postPreview.id ? 'Publicando...' : 'Tentar publicar novamente'}
                       </button>
+                    )}
+                    {role !== 'cliente' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11.5, color: '#888', fontWeight: 600 }}>Reaproveitar como:</span>
+                        {(['feed', 'reel', 'story'] as const).map(f => (
+                          <button key={f} onClick={() => reaproveitar(postPreview, f)} style={{ padding: '6px 12px', background: '#eef2ff', color: '#1d4ed8', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'capitalize' }}>{f}</button>
+                        ))}
+                      </div>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
