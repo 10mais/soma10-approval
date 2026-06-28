@@ -390,7 +390,7 @@ function Dashboard() {
   const [docIAMsg, setDocIAMsg] = useState('')
   const [brandModo, setBrandModo] = useState<'card' | 'editar' | 'ver'>('editar')
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
-  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string; foto: string; custoHora?: number }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '', foto: '' })
+  const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string; foto: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '', foto: '' })
   const [bibBusca, setBibBusca] = useState('')
   const [bibCliente, setBibCliente] = useState('')
   const [bibStatus, setBibStatus] = useState('')
@@ -416,7 +416,7 @@ function Dashboard() {
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
-  const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0 })
+  const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0, salarioFixo: 0, salarioVariavel: 0 })
   const [mostrarFormUsuario, setMostrarFormUsuario] = useState(false)
   const [verSenhaNovo, setVerSenhaNovo] = useState(false)
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
@@ -950,7 +950,7 @@ function Dashboard() {
       return
     }
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
-    setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0 })
+    setNovoUsuario({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0, salarioFixo: 0, salarioVariavel: 0 })
     setMostrarFormUsuario(false)
     setVerSenhaNovo(false)
   }
@@ -1141,7 +1141,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, salarioVariavel: u.salarioVariavel || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1149,7 +1149,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, salarioVariavel: edicaoUsuario.salarioVariavel || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -3056,10 +3056,22 @@ function Dashboard() {
                   </div>
                   <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)"
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Custo/hora (R$) — para cálculo de rentabilidade</label>
-                    <input type="number" min="0" value={novoUsuario.custoHora || ''} onChange={e => setNovoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Ex.: 50"
-                      style={{ width: 160, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Custo/hora (R$)</label>
+                      <input type="number" min="0" value={novoUsuario.custoHora || ''} onChange={e => setNovoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Ex.: 50"
+                        style={{ width: 130, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Salário fixo (R$/mês)</label>
+                      <input type="number" min="0" value={novoUsuario.salarioFixo || ''} onChange={e => setNovoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder="Ex.: 2500"
+                        style={{ width: 140, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Variável (R$/mês)</label>
+                      <input type="number" min="0" value={novoUsuario.salarioVariavel || ''} onChange={e => setNovoUsuario(p => ({ ...p, salarioVariavel: Number(e.target.value) || 0 }))} placeholder="Comissão/bônus"
+                        style={{ width: 140, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
@@ -3146,7 +3158,11 @@ function Dashboard() {
                         <input value={edicaoUsuario.cargo} onChange={e => setEdicaoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo"
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                         <input type="number" min="0" value={edicaoUsuario.custoHora || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Custo/hora R$"
-                          style={{ width: 130, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <input type="number" min="0" value={edicaoUsuario.salarioFixo || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder="Salário fixo R$"
+                          style={{ width: 120, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        <input type="number" min="0" value={edicaoUsuario.salarioVariavel || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, salarioVariavel: Number(e.target.value) || 0 }))} placeholder="Variável R$"
+                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                           <option value="gerente">Gerente</option>

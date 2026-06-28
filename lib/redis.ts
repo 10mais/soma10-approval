@@ -20,7 +20,21 @@ export type Usuario = {
   bio?: string
   fusoHorario?: string
   clienteId?: string
-  custoHora?: number // custo/hora do profissional em R$ (para cálculo de rentabilidade)
+  custoHora?: number // custo/hora do profissional em R$ (custo operacional por cliente)
+  salarioFixo?: number // remuneração fixa mensal em R$
+  salarioVariavel?: number // remuneração variável mensal em R$ (comissões/bônus)
+  criadoEm: string
+}
+
+// Despesa da agência (folha entra à parte, via Usuario)
+export type Despesa = {
+  id: string
+  descricao: string
+  valor: number
+  tipo: 'fixo' | 'variavel'
+  categoria?: string
+  mes: string // competência 'YYYY-MM'
+  criadoPor?: string
   criadoEm: string
 }
 
