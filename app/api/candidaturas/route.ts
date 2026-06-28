@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Candidatura } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
-import { notificarEquipe } from '@/lib/notificacoes'
+import { notificarAdmins } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   await redis.sadd('candidaturas', c.id)
 
   // Notifica a equipe (a tela de RH e so do admin, mas o aviso ajuda)
-  await notificarEquipe('candidatura', 'Nova candidatura recebida', `${nome} se candidatou${c.vaga ? ` para "${c.vaga}"` : ''}.`).catch(() => {})
+  await notificarAdmins('candidatura', 'Nova candidatura recebida', `${nome} se candidatou${c.vaga ? ` para "${c.vaga}"` : ''}.`).catch(() => {})
 
   return NextResponse.json({ ok: true })
 }

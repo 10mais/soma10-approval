@@ -26,6 +26,14 @@ export async function notificarEquipe(tipo: TipoNotificacao, titulo: string, men
   await Promise.all(equipe.map(u => notificar(u.email, tipo, titulo, mensagem, postId)))
 }
 
+// Notifica APENAS administradores (ex.: Pessoas e Cultura / candidaturas).
+export async function notificarAdmins(tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string) {
+  const emails = await redis.smembers('usuarios')
+  const usuarios = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+  const admins = usuarios.filter(u => u.role === 'admin')
+  await Promise.all(admins.map(u => notificar(u.email, tipo, titulo, mensagem, postId)))
+}
+
 // Notifica apenas o dono da atividade (quem criou o post). Se nao encontrar, notifica a equipe como fallback.
 export async function notificarDono(criadoPor: string | undefined, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string) {
   if (!criadoPor) return notificarEquipe(tipo, titulo, mensagem, postId)
