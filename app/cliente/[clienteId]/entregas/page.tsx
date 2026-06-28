@@ -7,6 +7,11 @@ type Marco = { id: string; titulo: string; descricao?: string; categoria: string
 
 const STATUS_LABEL: Record<string, string> = { planejado: 'Planejado', em_andamento: 'Em andamento', concluido: 'Concluído', atrasado: 'Atrasado', cancelado: 'Cancelado' }
 const STATUS_COR: Record<string, string> = { planejado: '#9ca3af', em_andamento: '#ca8a04', concluido: '#16a34a', atrasado: '#dc2626', cancelado: '#aaa' }
+const ENTREGAVEIS_LABEL: Record<string, string> = {
+  social_media: 'Social Media', trafego_meta: 'Tráfego Meta Ads', trafego_google: 'Tráfego Google Ads',
+  landing_page: 'Landing Page', branding: 'Branding', email_marketing: 'E-mail marketing',
+  consultoria: 'Consultoria', crm: 'CRM', google_meu_negocio: 'Google Meu Negócio',
+}
 
 function fmt(iso?: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '' }
 
@@ -14,6 +19,8 @@ export default function EntregasPage() {
   const { clienteId } = useParams()
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
+  const [cliente, setCliente] = useState<any>(null)
+  const [postsCliente, setPostsCliente] = useState<any[]>([])
   const [cor, setCor] = useState('#16a34a')
   const [carregando, setCarregando] = useState(true)
 
@@ -22,13 +29,26 @@ export default function EntregasPage() {
       fetch(`/api/playbook?clienteId=${clienteId}`).then(r => r.json()).catch(() => []),
       fetch(`/api/playbook/entregas?clienteId=${clienteId}`).then(r => r.json()).catch(() => ({})),
       fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).catch(() => null),
-    ]).then(([m, e, c]) => {
+      fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).catch(() => []),
+    ]).then(([m, e, c, p]) => {
       setMarcos(Array.isArray(m) ? m : [])
       setEntregas(e && !e.error ? e : { tarefas: [], posts: [], briefings: [] })
-      if (c && c.corPrimaria) setCor(c.corPrimaria)
+      if (c && !c.error) { setCliente(c); if (c.corPrimaria) setCor(c.corPrimaria) }
+      setPostsCliente(Array.isArray(p) ? p : [])
       setCarregando(false)
     })
   }, [clienteId])
+
+  // Escopo do mês: contratado (postsMensais) x publicado neste mês
+  const agora = new Date()
+  const postsPublicadosMes = postsCliente.filter(p => {
+    if (p.status !== 'publicado') return false
+    const d = new Date(p.dataAgendada || p.atualizadoEm || p.criadoEm || 0)
+    return d.getMonth() === agora.getMonth() && d.getFullYear() === agora.getFullYear()
+  }).length
+  const postsContratados = Number(cliente?.postsMensais) || 0
+  const entregaveis: string[] = cliente?.entregaveis || []
+  const pctMes = postsContratados > 0 ? Math.min(100, Math.round((postsPublicadosMes / postsContratados) * 100)) : 0
 
   const ordenados = [...marcos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime())
 
@@ -42,7 +62,33 @@ export default function EntregasPage() {
   return (
     <div style={{ maxWidth: 820 }}>
       <h2 style={{ margin: '0 0 4px', fontSize: 18, color: '#111' }}>Entregas</h2>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Acompanhe a evolução do seu projeto — cada etapa e tudo o que está sendo entregue.</p>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Acompanhe a evolução do seu projeto — o que foi contratado, o que já foi entregue e cada etapa da jornada.</p>
+
+      {/* Escopo do contrato — o que está contratado x entregue no mês */}
+      {(entregaveis.length > 0 || postsContratados > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Escopo do contrato</span>
+          {entregaveis.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0 0' }}>
+              {entregaveis.map(e => (
+                <span key={e} style={{ fontSize: 11.5, fontWeight: 700, color: cor, background: `${cor}1a`, borderRadius: 999, padding: '4px 11px' }}>{ENTREGAVEIS_LABEL[e] || e}</span>
+              ))}
+            </div>
+          )}
+          {postsContratados > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12.5, color: '#555', fontWeight: 600 }}>Posts do mês</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{postsPublicadosMes} de {postsContratados}</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: '#eee', overflow: 'hidden' }}>
+                <div style={{ width: `${pctMes}%`, height: '100%', background: cor, borderRadius: 999, transition: 'width .3s' }} />
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>{postsPublicadosMes >= postsContratados ? 'Meta do mês atingida!' : `Faltam ${postsContratados - postsPublicadosMes} post(s) para o combinado do mês.`}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Resumo geral */}
       {totalItens > 0 && (
