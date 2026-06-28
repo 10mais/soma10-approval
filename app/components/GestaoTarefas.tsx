@@ -38,6 +38,18 @@ let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] =
 function todosTipos() { return [...TIPOS, ...TIPOS_CUSTOM] }
 function tipoInfo(key?: string) { return todosTipos().find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 function fmtRelogio(ms: number) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60; const mm = String(m).padStart(2, '0'), ss = String(seg).padStart(2, '0'); return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}` }
+// Definition of Done — checklist padrão por tipo de tarefa
+const DOD_POR_TIPO: Record<string, string[]> = {
+  reel: ['Roteiro', 'Gravação', 'Edição', 'Capa', 'Legenda', 'Hashtags', 'Revisão final'],
+  video: ['Roteiro', 'Gravação', 'Edição', 'Capa', 'Legenda', 'Revisão final'],
+  carrossel: ['Estrutura/roteiro', 'Design das lâminas', 'Capa', 'Legenda', 'Revisão final'],
+  criativo: ['Briefing', 'Arte/design', 'Copy', 'Revisão final'],
+  story: ['Arte/vídeo', 'Texto/CTA', 'Sticker/link', 'Revisão'],
+  post: ['Imagem', 'Legenda', 'Hashtags', 'Revisão'],
+  ecommerce: ['Foto do produto', 'Descrição', 'Preço/CTA', 'Revisão'],
+  landing_page: ['Wireframe', 'Copy', 'Design', 'Revisão'],
+}
+function slug() { return Math.random().toString(36).slice(2) }
 
 function forcarDownload(url: string, nome: string) {
   fetch(url).then(r => r.blob()).then(blob => {
@@ -562,6 +574,15 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [progAnexo, setProgAnexo] = useState<number | null>(null)
+  // Checklist (Definition of Done) — usa o salvo, senão o padrão do tipo
+  const [checklist, setChecklist] = useState<{ id: string; texto: string; feito: boolean }[]>(
+    ((tarefa as any)?.checklist?.length ? (tarefa as any).checklist : (DOD_POR_TIPO[tarefa?.tipo || 'tarefa'] || []).map((t: string) => ({ id: slug(), texto: t, feito: false })))
+  )
+  const [novoItemCheck, setNovoItemCheck] = useState('')
+  function salvarChecklist(novo: { id: string; texto: string; feito: boolean }[]) {
+    setChecklist(novo)
+    if (tarefa?.id) fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, checklist: novo }) }).catch(() => {})
+  }
   // Apontamento de horas
   const [apontamentos, setApontamentos] = useState<any[]>((tarefa as any)?.apontamentos || [])
   const [apontH, setApontH] = useState('')
@@ -1005,6 +1026,35 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
           </div>
+          {/* Checklist (Definition of Done) */}
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Checklist {checklist.length > 0 && <span style={{ color: '#16a34a' }}>({checklist.filter(c => c.feito).length}/{checklist.length})</span>}</label>
+              {checklist.length === 0 && (DOD_POR_TIPO[form.tipo] || []).length > 0 && (
+                <button type="button" onClick={() => salvarChecklist((DOD_POR_TIPO[form.tipo] || []).map(t => ({ id: slug(), texto: t, feito: false })))} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Usar checklist de {tipoInfo(form.tipo).label}</button>
+              )}
+            </div>
+            {checklist.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {checklist.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button type="button" onClick={() => salvarChecklist(checklist.map(c => c.id === item.id ? { ...c, feito: !c.feito } : c))}
+                      style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${item.feito ? '#16a34a' : '#ccc'}`, background: item.feito ? '#16a34a' : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      {item.feito && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                    </button>
+                    <span style={{ flex: 1, fontSize: 13, color: item.feito ? '#aaa' : '#333', textDecoration: item.feito ? 'line-through' : 'none' }}>{item.texto}</span>
+                    <button type="button" onClick={() => salvarChecklist(checklist.filter(c => c.id !== item.id))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input value={novoItemCheck} onChange={e => setNovoItemCheck(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && novoItemCheck.trim()) { e.preventDefault(); salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') } }} placeholder="+ item do checklist"
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? '#111' : '#f0f0f0', color: novoItemCheck.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+            </div>
+          </div>
+
           {/* Anexos */}
           <div style={{ marginTop: 14 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Anexos</label>

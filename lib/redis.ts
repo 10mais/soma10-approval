@@ -197,6 +197,7 @@ export type Tarefa = {
   atividades?: TarefaAtividade[]
   comentarios?: TarefaComentario[]
   apontamentos?: Apontamento[] // horas trabalhadas (apontamento de tempo)
+  checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
