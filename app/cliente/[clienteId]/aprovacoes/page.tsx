@@ -30,6 +30,7 @@ export default function AprovacoesPagina() {
   const [comentario, setComentario] = useState<Record<string, string>>({})
   const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const [aprovandoTodos, setAprovandoTodos] = useState(false)
 
   function carregar() {
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
@@ -37,6 +38,22 @@ export default function AprovacoesPagina() {
   useEffect(() => { carregar() }, [clienteId])
 
   const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
+  // espera mais antiga (para o banner "o que está esperando você")
+  const maisAntiga = pendentes.reduce<string | undefined>((min, p) => (p.aguardandoDesde && (!min || p.aguardandoDesde < min)) ? p.aguardandoDesde : min, undefined)
+
+  async function aprovarTodos() {
+    if (!confirm(`Aprovar todos os ${pendentes.length} itens pendentes?`)) return
+    setAprovandoTodos(true)
+    const semData: string[] = []
+    for (const p of pendentes) {
+      const ehCopy = p.etapa === 'aprovacao_copy'
+      const r = await fetch('/api/esteira/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: p.id, acao: ehCopy ? 'aprovar_copy' : 'aprovar_criativo', comentario: '' }) }).then(x => x.json()).catch(() => ({ error: 'erro' }))
+      if (r?.semData) semData.push(p.legenda?.slice(0, 30) || p.id)
+    }
+    setAprovandoTodos(false)
+    carregar()
+    if (semData.length) alert(`Estes criativos precisam de data/horário definidos antes de aprovar (peça à equipe):\n- ${semData.join('\n- ')}`)
+  }
 
   async function agir(postId: string, acao: string, comentarioOverride?: string) {
     setEnviando(postId)
@@ -52,7 +69,26 @@ export default function AprovacoesPagina() {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Aprovacoes</h2>
+      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Aprovações</h2>
+
+      {/* O que está esperando você */}
+      {pendentes.length > 0 && (() => { const e = tempoEspera(maisAntiga); const urgente = e?.atrasado; return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: urgente ? '#fef2f2' : '#fffbeb', border: `1.5px solid ${urgente ? '#fecaca' : '#fde68a'}`, borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: urgente ? '#b91c1c' : '#92400e' }}>
+              {pendentes.length} {pendentes.length === 1 ? 'item aguardando' : 'itens aguardando'} a sua aprovação{e ? ` — o mais antigo ${e.texto}` : ''}.
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: urgente ? '#b91c1c' : '#92400e', opacity: 0.85 }}>Aprovar rápido mantém o ritmo das suas entregas.</p>
+          </div>
+          {pendentes.length > 1 && (
+            <button onClick={aprovarTodos} disabled={aprovandoTodos}
+              style={{ padding: '10px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: aprovandoTodos ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
+              {aprovandoTodos ? 'Aprovando...' : `Aprovar todos (${pendentes.length})`}
+            </button>
+          )}
+        </div>
+      ) })()}
+
       {pendentes.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
           <p>Nenhuma pendencia de aprovacao no momento.</p>
