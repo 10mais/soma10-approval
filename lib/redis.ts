@@ -322,4 +322,5 @@ export type Post = {
   copyAprovadaEm?: string
   criativoAprovadoEm?: string
   aguardandoDesde?: string // ISO — quando a pauta entrou numa etapa de aprovação (SLA)
+  etapaDesde?: string // ISO — quando a pauta entrou na etapa atual (cycle-time/aging)
 }

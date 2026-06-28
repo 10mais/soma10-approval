@@ -12,7 +12,18 @@ type Pauta = {
   capasVideo?: Record<string, string>; thumbnail?: string; dataAgendada?: string
   ajusteCopy?: string; ajusteCriativo?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
-  criadoEm?: string; atualizadoEm?: string; aguardandoDesde?: string
+  criadoEm?: string; atualizadoEm?: string; aguardandoDesde?: string; etapaDesde?: string
+}
+
+// Tempo na etapa atual (cycle-time/aging). Atrasado >= 3 dias parado.
+function idadeNaEtapa(p: Pauta): { texto: string; atrasado: boolean } | null {
+  const base = p.etapaDesde || p.atualizadoEm || p.criadoEm
+  if (!base) return null
+  const ms = Date.now() - new Date(base).getTime()
+  if (ms < 0) return null
+  const horas = Math.floor(ms / 3600000)
+  const dias = Math.floor(horas / 24)
+  return { texto: horas < 24 ? `${Math.max(1, horas)}h aqui` : `${dias}d aqui`, atrasado: dias >= 3 }
 }
 
 // Espera em aprovacao (SLA 24h)
@@ -244,6 +255,10 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {ETAPAS.map(col => {
             const cards = pautas.filter(p => (p.etapa || 'briefing') === col.key).sort((a, b) => new Date(b.atualizadoEm || b.criadoEm || '').getTime() - new Date(a.atualizadoEm || a.criadoEm || '').getTime())
+            // Gargalo: etapa de produção (não 'pronto') com mais itens, >= 3
+            const colsProducao = ETAPAS.filter(c => c.key !== 'pronto')
+            const maxQtd = Math.max(0, ...colsProducao.map(c => pautas.filter(p => (p.etapa || 'briefing') === c.key).length))
+            const ehGargalo = col.key !== 'pronto' && maxQtd >= 3 && cards.length === maxQtd && colsProducao.find(c => pautas.filter(p => (p.etapa || 'briefing') === c.key).length === maxQtd)?.key === col.key
             return (
               <div key={col.key}
                 onDragOver={e => { if (dragId) { e.preventDefault(); setOverCol(col.key) } }}
@@ -255,8 +270,11 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#444' }}>{col.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: '#444' }}>
+                    {col.label}
+                    {ehGargalo && <span title="Etapa com mais itens acumulados" style={{ fontSize: 9.5, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Gargalo</span>}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: ehGargalo ? '#b91c1c' : '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
                 </div>
                 {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: '#b45309' }}>Aguarda o cliente</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
@@ -277,9 +295,14 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                           {formatoBadge(p.formato, (p.imagens || []).length)}
                           {p.dataAgendada && <span style={{ fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {p.briefing || p.legenda || 'Sem titulo'}
-                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
+                            {p.briefing || p.legenda || 'Sem titulo'}
+                          </p>
+                          {col.key !== 'pronto' && (() => { const a = idadeNaEtapa(p); return a ? (
+                            <span title="Tempo parado nesta etapa" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? '#b91c1c' : '#999', background: a.atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
+                          ) : null })()}
+                        </div>
                         {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#888' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
                         {(p.ajusteCopy || p.ajusteCriativo) && (
                           <p style={{ margin: '5px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>

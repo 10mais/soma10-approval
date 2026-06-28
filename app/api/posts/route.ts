@@ -107,6 +107,7 @@ export async function PUT(req: NextRequest) {
   // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
   const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']
   if ('etapa' in updates && updates.etapa !== post.etapa) {
+    atualizado.etapaDesde = new Date().toISOString()
     if (ETAPAS_APROVACAO.includes(updates.etapa)) atualizado.aguardandoDesde = new Date().toISOString()
     else atualizado.aguardandoDesde = undefined
   }

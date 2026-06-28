@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     post.etapa = 'criativo'
     post.copyAprovadaEm = agora
     post.ajusteCopy = undefined
+    post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     await notificarDono(post.criadoPor, 'geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
   if (acao === 'ajuste_copy') {
     post.etapa = 'copy'
     post.ajusteCopy = comentario || 'Ajuste solicitado'
+    post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     await notificarDono(post.criadoPor, 'geral', `Ajuste de copy — ${nome}`, `${quem} pediu ajuste na copy: "${comentario || 'sem comentário'}".`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
     post.status = 'agendado'
     post.rascunhoInterno = false
     await redis.sadd('agendados', postId)
+    post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     const msg = `${quem} aprovou o criativo e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
     await notificarDono(post.criadoPor, 'geral', `Criativo aprovado — ${nome}`, msg, postId)
@@ -69,6 +72,7 @@ export async function POST(req: NextRequest) {
   if (acao === 'ajuste_criativo') {
     post.etapa = 'criativo'
     post.ajusteCriativo = comentario || 'Ajuste solicitado'
+    post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     await notificarDono(post.criadoPor, 'geral', `Ajuste de criativo — ${nome}`, `${quem} pediu ajuste no criativo: "${comentario || 'sem comentário'}".`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
