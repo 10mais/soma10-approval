@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Post, Cliente } from '@/lib/redis'
-import { notificar, notificarEquipe } from '@/lib/notificacoes'
+import { notificar, notificarEquipe, notificarAdmins } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 
     const dias = Math.ceil(faltam / UM_DIA)
     const valor = c.contratoValor ? ` (R$ ${c.contratoValor.toLocaleString('pt-BR')})` : ''
-    await notificarEquipe('contrato_renovacao', 'Renovacao de contrato proxima', `O contrato de ${c.nome}${valor} renova em ${dias} dia(s).`)
+    await notificarAdmins('contrato_renovacao', 'Renovacao de contrato proxima', `O contrato de ${c.nome}${valor} renova em ${dias} dia(s).`)
 
     await redis.set(chave, '1')
     await redis.expire(chave, 7 * 86400) // ~4 lembretes no ultimo mes
