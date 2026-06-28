@@ -295,8 +295,9 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                               : capa ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                           {formatoBadge(p.formato, (p.imagens || []).length)}
+                          {(p as any).preAprovado && <span title="Conteúdo recorrente pré-aprovado pelo cliente" style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Pré-aprovado</span>}
                           {p.dataAgendada && <span style={{ fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -435,6 +436,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   const [textoImagem, setTextoImagem] = useState(pauta.textoImagem || '')
   const [legenda, setLegenda] = useState(pauta.legenda || '')
   const [formato, setFormato] = useState(pauta.formato || 'feed')
+  const [preAprovado, setPreAprovado] = useState(!!(pauta as any).preAprovado)
   const [salvando, setSalvando] = useState(false)
   const [gerandoLegenda, setGerandoLegenda] = useState(false)
   const [legendaMsg, setLegendaMsg] = useState('')
@@ -463,7 +465,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
     setSalvando(true)
     await fetch('/api/posts', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: pauta.id, briefing, sugestaoImagem, textoImagem, legenda, formato, ...extra }),
+      body: JSON.stringify({ id: pauta.id, briefing, sugestaoImagem, textoImagem, legenda, formato, preAprovado, ...extra }),
     }).catch(() => {})
     setSalvando(false)
     onSalvo()
@@ -547,6 +549,12 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             ))}
           </div>
         </div>
+
+        {/* Conteúdo recorrente pré-aprovado */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer', background: preAprovado ? '#f0fdf4' : '#fafafa', border: `1.5px solid ${preAprovado ? '#86efac' : '#eee'}`, borderRadius: 10, padding: '10px 12px' }}>
+          <input type="checkbox" checked={preAprovado} onChange={e => setPreAprovado(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: preAprovado ? '#166534' : '#555' }}>Conteúdo recorrente <strong>pré-aprovado</strong> pelo cliente (dispensa aprovação — pode ir direto para Pronto)</span>
+        </label>
 
         {(pauta.ajusteCopy || pauta.ajusteCriativo) && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: '#b91c1c' }}>
