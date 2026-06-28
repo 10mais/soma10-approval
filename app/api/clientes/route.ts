@@ -49,8 +49,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { nome, instagram, logo, corPrimaria, corSecundaria, loginEmail, tipo, entregaveis, postsMensais, contratoValor, contratoInicio, contratoRenovacao, contratoCiclo } = await req.json()
+  const { nome, instagram, logo, corPrimaria, corSecundaria, loginEmail, tipo, entregaveis, postsMensais, contratoValor, contratoInicio, contratoRenovacao, contratoCiclo, receitasAvulsas } = await req.json()
   const cliente: Cliente = { id: uuid(), nome, instagram, logo, corPrimaria, corSecundaria, tipo: tipo || 'cliente', entregaveis: entregaveis || [], postsMensais: Number(postsMensais) || 0,
+    ...(Array.isArray(receitasAvulsas) ? { receitasAvulsas } : {}),
     ...(contratoValor !== undefined ? { contratoValor: Number(contratoValor) || 0 } : {}),
     ...(contratoInicio ? { contratoInicio } : {}),
     ...(contratoRenovacao ? { contratoRenovacao } : {}),

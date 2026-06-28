@@ -414,7 +414,8 @@ function Dashboard() {
   const [rascunhoMsg, setRascunhoMsg] = useState('')
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
-  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12 })
+  const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
+  const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
@@ -929,7 +930,7 @@ function Dashboard() {
       setCredenciaisGeradas({ nome: data.cliente.nome, email: data.cliente.loginEmail, senha: data.cliente.loginSenha })
     }
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
-    setNovoCliente({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
+    setNovoCliente({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   }
 
   async function uploadLogoNovoCliente(arquivo: File) {
@@ -2753,8 +2754,12 @@ function Dashboard() {
             )}
 
             {role === 'admin' && (
-              <div style={{ background: '#fff', borderRadius: 14, padding: 20, marginBottom: 20, border: '1px solid #e8e8e8' }}>
-                <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#555' }}>Adicionar cliente manualmente</h3>
+              <div style={{ marginBottom: 20 }}>
+                <button onClick={() => setMostrarFormCliente(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                  {mostrarFormCliente ? 'Fechar' : '+ Cadastrar novo cliente'}
+                </button>
+                {mostrarFormCliente && (
+                <div style={{ background: '#fff', borderRadius: 14, padding: 20, marginTop: 12, border: '1px solid #e8e8e8' }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do cliente"
                     style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
@@ -2806,6 +2811,28 @@ function Dashboard() {
                         <option value="semestral">Semestral</option>
                         <option value="anual">Anual</option>
                       </select>
+                    </div>
+                    {/* Cobranças avulsas / modulares */}
+                    <div style={{ marginTop: 12, width: '100%' }}>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+                        <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                        <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                        <input placeholder="Descrição" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                        <button type="button" onClick={() => { if (!avMes || !(Number(avValor) > 0)) return; const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }; setNovoCliente(p => ({ ...p, receitasAvulsas: [...((p.receitasAvulsas) || []), nova] })); setAvValor(''); setAvDesc('') }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? '#111' : '#f0f0f0', color: (avMes && Number(avValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                      </div>
+                      {((novoCliente.receitasAvulsas) || []).length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {(novoCliente.receitasAvulsas || []).map((r) => (
+                            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
+                              <span style={{ fontWeight: 700, color: '#111' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              <span style={{ color: '#aaa' }}>{r.mes}</span>
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.descricao}</span>
+                              <button type="button" onClick={() => setNovoCliente(p => ({ ...p, receitasAvulsas: (p.receitasAvulsas || []).filter(x => x.id !== r.id) }))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14 }}>×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2862,6 +2889,8 @@ function Dashboard() {
                       Copiar dados de acesso
                     </button>
                   </div>
+                )}
+                </div>
                 )}
               </div>
             )}
