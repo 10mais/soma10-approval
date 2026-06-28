@@ -496,7 +496,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   )
 }
 
-function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]
   tiposCustom?: { key: string; label: string; cor: string; icone: string }[]
   onTiposCustom?: (lista: { key: string; label: string; cor: string; icone: string }[]) => void

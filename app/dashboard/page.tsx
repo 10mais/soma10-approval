@@ -3321,7 +3321,7 @@ function Dashboard() {
 
         {/* MEU DIA (equipe) */}
         {aba === 'meu-dia' && role !== 'cliente' && (
-          <MeuDia onAbrirTarefas={() => setAba('tarefas')} onAbrirTarefa={(id) => { setTarefaAbrirId(id); setAba('tarefas') }} />
+          <MeuDia onAbrirTarefas={() => setAba('tarefas')} clientes={clientes as any} usuarios={usuarios as any} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}

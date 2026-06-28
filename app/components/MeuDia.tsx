@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { TarefaModal } from './GestaoTarefas'
 
 const PRIO_COR: Record<string, string> = { urgente: '#dc2626', alta: '#ea580c', media: '#ca8a04', baixa: '#9ca3af' }
 const PRIO_PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
@@ -8,11 +9,12 @@ const PRIO_PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa
 function fmtMin(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
 function diaISO(d: Date) { return d.toISOString().slice(0, 10) }
 
-export default function MeuDia({ onAbrirTarefas, onAbrirTarefa }: { onAbrirTarefas?: () => void; onAbrirTarefa?: (id: string) => void }) {
+export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }: { onAbrirTarefas?: () => void; clientes?: any[]; usuarios?: any[] }) {
   const { data: session } = useSession()
   const email = (session?.user as any)?.email as string | undefined
   const [tarefas, setTarefas] = useState<any[]>([])
   const [carregando, setCarregando] = useState(true)
+  const [tarefaAberta, setTarefaAberta] = useState<any | null>(null)
   const [, setTick] = useState(0)
 
   function carregar() { fetch('/api/tarefas').then(r => r.json()).then(d => { setTarefas(Array.isArray(d) ? d : []); setCarregando(false) }).catch(() => setCarregando(false)) }
@@ -59,7 +61,7 @@ export default function MeuDia({ onAbrirTarefas, onAbrirTarefa }: { onAbrirTaref
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: PRIO_COR[t.prioridade] || '#ccc', flexShrink: 0 }} title={t.prioridade} />
-        <div onClick={() => onAbrirTarefa?.(t.id)} style={{ flex: 1, minWidth: 0, cursor: onAbrirTarefa ? 'pointer' : 'default' }} title="Abrir tarefa">
+        <div onClick={() => setTarefaAberta(t)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} title="Abrir tarefa">
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#999' }}>
             {t.clienteNome || 'Interno'}{t.prazo ? ` · prazo ${new Date(t.prazo).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}` : ''}{total > 0 ? ` · ${fmtMin(total)} apontado` : ''}
@@ -106,6 +108,19 @@ export default function MeuDia({ onAbrirTarefas, onAbrirTarefa }: { onAbrirTaref
           <Secao titulo="Para hoje" itens={grupos.hoje} cor="#ca8a04" />
           <Secao titulo="Próximas" itens={grupos.proximas} cor="#888" />
         </>
+      )}
+
+      {/* Abre a tarefa no MESMO modal de Tarefas, sem sair de "Meu dia" */}
+      {tarefaAberta && (
+        <TarefaModal
+          tarefa={tarefaAberta}
+          clientes={clientes}
+          usuarios={usuarios}
+          onClose={() => setTarefaAberta(null)}
+          onSalvo={() => { setTarefaAberta(null); carregar() }}
+          onRecarregar={(t: any) => { setTarefaAberta(t); carregar() }}
+          onExcluir={async () => { if (confirm('Excluir esta tarefa?')) { await fetch(`/api/tarefas?id=${tarefaAberta.id}`, { method: 'DELETE' }).catch(() => {}); setTarefaAberta(null); carregar() } }}
+        />
       )}
     </div>
   )
