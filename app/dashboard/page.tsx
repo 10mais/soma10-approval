@@ -1308,7 +1308,7 @@ function Dashboard() {
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent', fontSize: 14,
                   }}>
-                    {a === 'aprovacoes' ? 'Aprovacoes' : a === 'esteira' ? 'Esteira' : 'Playbook'}
+                    {a === 'aprovacoes' ? 'Aprovações' : a === 'esteira' ? 'Esteira' : 'Playbook'}
                   </button>
                 ))}
               </nav>
@@ -1412,20 +1412,28 @@ function Dashboard() {
           {/* NIVEL AGENCIA — oculto na visao de cliente */}
           {!verComoClienteId && (
             <>
-              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['home', 'tarefas', 'playbook', 'esteira', 'campanhas'] as const).map(a => (
-                  <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
-                    padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                    background: aba === a ? '#ffc00f' : 'transparent',
-                    fontSize: 14, transition: 'all 0.15s',
-                  }}>
-                    {a === 'home' ? 'Painel' : a === 'tarefas' ? 'Tarefas' : a === 'playbook' ? 'Playbook' : a === 'esteira' ? 'Esteira' : 'Campanhas'}
-                  </button>
-                ))}
-              </nav>
+              {([
+                { titulo: '', itens: [['home', 'Painel']] },
+                { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira']] },
+                { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas']] },
+              ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
+                <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
+                  {grupo.titulo && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.itens.map(([a, label]) => (
+                    <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
+                      padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                      fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                      background: aba === a ? '#ffc00f' : 'transparent',
+                      fontSize: 14, transition: 'all 0.15s',
+                    }}>
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+              ))}
               <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>
                 <button onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} className={aba === 'inbox' ? 'soma10-no-invert' : undefined} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: aba === 'inbox' ? 700 : 500, color: aba === 'inbox' ? '#111' : '#888',
@@ -1456,7 +1464,7 @@ function Dashboard() {
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
                     background: 'none', border: 'none', cursor: 'pointer',
                   }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configuracoes</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
                   </button>
                   {configAberto && (

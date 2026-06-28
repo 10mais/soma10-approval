@@ -155,9 +155,10 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
             </div>
           )}
 
-          {/* Nav */}
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {NAV_ITEMS.filter(item => item.todos || (item.equipe && ehEquipe)).map(item => {
+          {/* Nav — agrupada: "O que o cliente vê" (todos) x "Ferramentas da equipe" (equipe).
+              O cliente vê apenas o primeiro grupo (sem cabecalhos). A equipe ve os dois separados. */}
+          {(() => {
+            const renderItem = (item: typeof NAV_ITEMS[number]) => {
               const href = `${basePath}${item.key}`
               const ativo = subpath === item.key || (item.key === '' && subpath === '')
               return (
@@ -170,8 +171,24 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                   {item.label}
                 </button>
               )
-            })}
-          </nav>
+            }
+            const grupoCliente = NAV_ITEMS.filter(i => i.todos)
+            const grupoEquipe = NAV_ITEMS.filter(i => i.equipe)
+            const rotulo = { display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }
+            return (
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {ehEquipe && <span style={rotulo}>O que o cliente vê</span>}
+                {grupoCliente.map(renderItem)}
+                {ehEquipe && grupoEquipe.length > 0 && (
+                  <>
+                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <span style={rotulo}>Ferramentas da equipe</span>
+                    {grupoEquipe.map(renderItem)}
+                  </>
+                )}
+              </nav>
+            )
+          })()}
 
           {/* Minha conta */}
           <div style={{ paddingTop: 16, borderTop: '1px solid #f0f0f0', marginTop: 20 }}>
