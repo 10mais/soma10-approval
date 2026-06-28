@@ -50,7 +50,7 @@ import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -102,6 +102,7 @@ const ENTREGAVEIS_OPCOES = [
   { key: 'consultoria', label: 'Consultoria' },
   { key: 'crm', label: 'Sistema CRM' },
   { key: 'google_meu_negocio', label: 'Google Meu Negocio' },
+  { key: 'hospedagem', label: 'Hospedagem / servidor de páginas' },
 ]
 
 // Ícones de contorno (substituem emojis por um visual mais profissional)
@@ -417,6 +418,10 @@ function Dashboard() {
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0, salarioFixo: 0, salarioVariavel: 0 })
+  // Lançamento de cobrança avulsa/modular no form de cliente
+  const [avMes, setAvMes] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
+  const [avValor, setAvValor] = useState('')
+  const [avDesc, setAvDesc] = useState('')
   const [mostrarFormUsuario, setMostrarFormUsuario] = useState(false)
   const [verSenhaNovo, setVerSenhaNovo] = useState(false)
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
@@ -1013,7 +1018,7 @@ function Dashboard() {
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
     setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
-      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo })
+      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, receitasAvulsas: (c as any).receitasAvulsas || [] })
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -2999,6 +3004,35 @@ function Dashboard() {
                               <option value="semestral">Semestral</option>
                               <option value="anual">Anual</option>
                             </select>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>Valor mensal recorrente. Para projeto pontual ou valores diferentes mês a mês, use as cobranças abaixo.</p>
+
+                          {/* Cobranças avulsas / modulares (pontual ou valor por mês) */}
+                          <div style={{ marginTop: 12 }}>
+                            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+                              <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input placeholder="Descrição (ex.: Landing page)" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                              <button type="button" onClick={() => {
+                                if (!avMes || !(Number(avValor) > 0)) return
+                                const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }
+                                setEdicaoCliente(p => ({ ...p, receitasAvulsas: [...(((p as any).receitasAvulsas) || []), nova] } as any))
+                                setAvValor(''); setAvDesc('')
+                              }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? '#111' : '#f0f0f0', color: (avMes && Number(avValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                            </div>
+                            {(((edicaoCliente as any).receitasAvulsas) || []).length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {((edicaoCliente as any).receitasAvulsas as any[]).map((r) => (
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
+                                    <span style={{ fontWeight: 700, color: '#111' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span style={{ color: '#aaa' }}>{r.mes}</span>
+                                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.descricao}</span>
+                                    <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, receitasAvulsas: (((p as any).receitasAvulsas) || []).filter((x: any) => x.id !== r.id) } as any))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14 }}>×</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

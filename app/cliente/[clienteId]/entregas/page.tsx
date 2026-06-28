@@ -11,7 +11,7 @@ const STATUS_COR: Record<string, string> = { planejado: '#9ca3af', em_andamento:
 const ENTREGAVEIS_LABEL: Record<string, string> = {
   social_media: 'Social Media', trafego_meta: 'Tráfego Meta Ads', trafego_google: 'Tráfego Google Ads',
   landing_page: 'Landing Page', branding: 'Branding', email_marketing: 'E-mail marketing',
-  consultoria: 'Consultoria', crm: 'CRM', google_meu_negocio: 'Google Meu Negócio',
+  consultoria: 'Consultoria', crm: 'CRM', google_meu_negocio: 'Google Meu Negócio', hospedagem: 'Hospedagem / servidor',
 }
 
 function fmt(iso?: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '' }

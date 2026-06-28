@@ -48,6 +48,13 @@ export type Apontamento = {
   criadoEm: string
 }
 
+export type ReceitaAvulsa = {
+  id: string
+  mes: string // competência 'YYYY-MM'
+  valor: number
+  descricao?: string
+}
+
 export type Cliente = {
   id: string
   nome: string
@@ -59,10 +66,13 @@ export type Cliente = {
   entregaveis?: string[] // ex.: ['social_media', 'trafego_meta', 'trafego_google', 'landing_page']
   postsMensais?: number // quantidade contratada de posts por mês (0 ou ausente = não se aplica)
   // Contrato (gestão de renovação)
-  contratoValor?: number // valor mensal/contratual em R$
+  contratoValor?: number // valor mensal RECORRENTE em R$ (modo mensal)
   contratoInicio?: string // ISO date — início do contrato
   contratoRenovacao?: string // ISO date — próxima renovação/vencimento
   contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'
+  // Cobranças avulsas/pontuais e modulares (valor por mês). Somam à receita do mês.
+  // Pontual = um lançamento; Modular = um lançamento por mês com valores diferentes.
+  receitasAvulsas?: ReceitaAvulsa[]
   criadoEm: string
   // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string

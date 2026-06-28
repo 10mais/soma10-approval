@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 
-type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
 type Despesa = { id: string; descricao: string; valor: number; tipo: 'fixo' | 'variavel'; categoria?: string; mes: string }
 
@@ -61,10 +61,11 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
 
   const linhasCliente = useMemo(() => clientes.filter(c => c.tipo !== 'interno').map(c => {
     const ag = porCliente[c.id] || { min: 0, custo: 0 }
-    const receita = Number(c.contratoValor) || 0
+    const avulsas = (c.receitasAvulsas || []).filter(r => !mes || r.mes === mes).reduce((s, r) => s + (Number(r.valor) || 0), 0)
+    const receita = (Number(c.contratoValor) || 0) + avulsas
     const margem = receita - ag.custo
     return { c, min: ag.min, custo: ag.custo, receita, margem, pct: receita > 0 ? (margem / receita) * 100 : null }
-  }).sort((a, b) => a.margem - b.margem), [clientes, porCliente])
+  }).sort((a, b) => a.margem - b.margem), [clientes, porCliente, mes])
 
   // Equipe (folha) — exclui clientes
   const equipe = usuarios.filter(u => u.role !== 'cliente')
@@ -78,7 +79,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const despVar = despesasMes.filter(d => d.tipo === 'variavel').reduce((s, d) => s + (Number(d.valor) || 0), 0)
   const despesasTotal = despFixas + despVar
 
-  const receitaTotal = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + (Number(c.contratoValor) || 0), 0)
+  const receitaTotal = linhasCliente.reduce((s, l) => s + l.receita, 0)
   const lucro = receitaTotal - folha - despesasTotal
   const margemPct = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : null
 

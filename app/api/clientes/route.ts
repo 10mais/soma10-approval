@@ -104,7 +104,7 @@ export async function PUT(req: NextRequest) {
   if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
   const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria', 'tipo', 'entregaveis', 'postsMensais',
-    'contratoValor', 'contratoInicio', 'contratoRenovacao', 'contratoCiclo',
+    'contratoValor', 'contratoInicio', 'contratoRenovacao', 'contratoCiclo', 'receitasAvulsas',
     'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos',
     'documentoMarca', 'documentoMarcaGeradoEm']
   const atualizado = { ...cliente }
