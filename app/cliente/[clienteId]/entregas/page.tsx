@@ -26,6 +26,19 @@ export default function EntregasPage() {
   const [postsCliente, setPostsCliente] = useState<any[]>([])
   const [cor, setCor] = useState('#16a34a')
   const [carregando, setCarregando] = useState(true)
+  // Edicao da meta de posts do mes (so equipe)
+  const [editandoMeta, setEditandoMeta] = useState(false)
+  const [metaInput, setMetaInput] = useState('')
+  const [salvandoMeta, setSalvandoMeta] = useState(false)
+  async function salvarMeta() {
+    const n = Math.max(0, parseInt(metaInput, 10) || 0)
+    setSalvandoMeta(true)
+    const r = await fetch('/api/clientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: clienteId, postsMensais: n }) }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
+    setSalvandoMeta(false)
+    if (r?.error) { alert('Não foi possível salvar a meta: ' + r.error); return }
+    setCliente((c: any) => ({ ...c, postsMensais: n }))
+    setEditandoMeta(false)
+  }
 
   useEffect(() => {
     Promise.all([
@@ -102,7 +115,7 @@ export default function EntregasPage() {
       )}
 
       {/* Escopo do contrato — o que está contratado x entregue no mês */}
-      {(entregaveis.length > 0 || postsContratados > 0) && (
+      {(entregaveis.length > 0 || postsContratados > 0 || ehEquipe) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Escopo do contrato</span>
           {entregaveis.length > 0 && (
@@ -112,16 +125,35 @@ export default function EntregasPage() {
               ))}
             </div>
           )}
-          {postsContratados > 0 && (
+          {(postsContratados > 0 || ehEquipe) && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12.5, color: '#555', fontWeight: 600 }}>Posts do mês</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{postsPublicadosMes} de {postsContratados}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
+                <span style={{ fontSize: 12.5, color: '#555', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  Meta de posts do mês
+                  {ehEquipe && !editandoMeta && (
+                    <button onClick={() => { setMetaInput(String(postsContratados)); setEditandoMeta(true) }} title="Editar meta do mês" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontSize: 11, fontWeight: 700, padding: 0 }}>editar</button>
+                  )}
+                </span>
+                {!editandoMeta && <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{postsPublicadosMes} de {postsContratados || '—'}</span>}
               </div>
-              <div style={{ height: 8, borderRadius: 999, background: '#eee', overflow: 'hidden' }}>
-                <div style={{ width: `${pctMes}%`, height: '100%', background: cor, borderRadius: 999, transition: 'width .3s' }} />
-              </div>
-              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>{postsPublicadosMes >= postsContratados ? 'Meta do mês atingida!' : `Faltam ${postsContratados - postsPublicadosMes} post(s) para o combinado do mês.`}</p>
+              {editandoMeta ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                  <input type="number" min="0" autoFocus value={metaInput} onChange={e => setMetaInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvarMeta() }}
+                    style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  <span style={{ fontSize: 12, color: '#888' }}>posts/mês</span>
+                  <button onClick={salvarMeta} disabled={salvandoMeta} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{salvandoMeta ? '...' : 'Salvar'}</button>
+                  <button onClick={() => setEditandoMeta(false)} style={{ padding: '8px 10px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                </div>
+              ) : postsContratados > 0 ? (
+                <>
+                  <div style={{ height: 8, borderRadius: 999, background: '#eee', overflow: 'hidden' }}>
+                    <div style={{ width: `${pctMes}%`, height: '100%', background: cor, borderRadius: 999, transition: 'width .3s' }} />
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>{postsPublicadosMes >= postsContratados ? 'Meta do mês atingida!' : `Faltam ${postsContratados - postsPublicadosMes} post(s) para o combinado do mês.`}</p>
+                </>
+              ) : (
+                <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#bbb' }}>Defina a meta mensal de posts deste cliente (clique em “editar”).</p>
+              )}
             </div>
           )}
         </div>

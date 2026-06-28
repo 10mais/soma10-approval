@@ -2,11 +2,13 @@
 import { useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import UploadProgress from '@/app/components/UploadProgress'
 
 export default function TrabalheConoscoPage() {
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', vaga: '', mensagem: '' })
   const [curriculo, setCurriculo] = useState<{ url: string; nome: string } | null>(null)
   const [enviandoCv, setEnviandoCv] = useState(false)
+  const [progCv, setProgCv] = useState<number | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [enviado, setEnviado] = useState(false)
@@ -15,12 +17,12 @@ export default function TrabalheConoscoPage() {
     setErro('')
     if (file.type !== 'application/pdf') { setErro('O currículo deve ser um arquivo PDF.'); return }
     if (file.size > 10 * 1024 * 1024) { setErro('O currículo deve ter no máximo 10 MB.'); return }
-    setEnviandoCv(true)
+    setEnviandoCv(true); setProgCv(0)
     try {
-      const blob = await upload(`curriculos/${uuid()}.pdf`, file, { access: 'public', handleUploadUrl: '/api/candidaturas/upload', contentType: 'application/pdf', clientPayload: 'application/pdf' })
+      const blob = await upload(`curriculos/${uuid()}.pdf`, file, { access: 'public', handleUploadUrl: '/api/candidaturas/upload', contentType: 'application/pdf', clientPayload: 'application/pdf', onUploadProgress: ({ percentage }) => setProgCv(percentage) })
       setCurriculo({ url: blob.url, nome: file.name })
     } catch (e: any) { setErro(e?.message || 'Erro ao enviar o currículo.') }
-    setEnviandoCv(false)
+    setEnviandoCv(false); setProgCv(null)
   }
 
   async function enviar() {
@@ -102,6 +104,7 @@ export default function TrabalheConoscoPage() {
                       onChange={e => { if (e.target.files?.[0]) enviarCurriculo(e.target.files[0]); e.target.value = '' }} />
                   </label>
                 )}
+                <UploadProgress valor={progCv} rotulo="Enviando currículo..." />
               </div>
               <button onClick={enviar} disabled={enviando || enviandoCv} style={{ marginTop: 6, padding: '13px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 15, cursor: enviando || enviandoCv ? 'not-allowed' : 'pointer' }}>
                 {enviando ? 'Enviando...' : 'Enviar candidatura'}

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import UploadProgress from './UploadProgress'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type Plano = { id: string; clienteId: string; clienteNome: string; mes: number; ano: number; titulo?: string }
@@ -79,6 +80,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [novaPautaModal, setNovaPautaModal] = useState(false)
   const [formPauta, setFormPauta] = useState({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' })
   const [enviandoRefImagem, setEnviandoRefImagem] = useState(false)
+  const [progRefImagem, setProgRefImagem] = useState<number | null>(null)
   const [gerandoIA, setGerandoIA] = useState(false)
   const [iaMsg, setIaMsg] = useState('')
   const [gerandoLegendaNova, setGerandoLegendaNova] = useState(false)
@@ -322,15 +324,16 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                     {enviandoRefImagem ? 'Enviando...' : '+ Anexar imagem'}
                     <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRefImagem} onChange={async e => {
                       if (!e.target.files?.[0]) return
-                      setEnviandoRefImagem(true)
+                      setEnviandoRefImagem(true); setProgRefImagem(0)
                       try {
                         const f = e.target.files[0]; const ext = f.name.split('.').pop() || 'jpg'
-                        const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type })
+                        const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type, onUploadProgress: ({ percentage }) => setProgRefImagem(percentage) })
                         setFormPauta(p => ({ ...p, refImagemUrl: blob.url }))
-                      } catch {} finally { setEnviandoRefImagem(false) }
+                      } catch {} finally { setEnviandoRefImagem(false); setProgRefImagem(null) }
                       e.target.value = ''
                     }} />
                   </label>
+                  <div style={{ width: '100%' }}><UploadProgress valor={progRefImagem} /></div>
                   <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
                   <input value={formPauta.refImagemUrl} onChange={e => setFormPauta(f => ({ ...f, refImagemUrl: e.target.value }))} placeholder="Link do Drive ou URL da referencia"
                     style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
@@ -427,6 +430,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
 
   const [refImgUrl, setRefImgUrl] = useState('')
   const [enviandoRef, setEnviandoRef] = useState(false)
+  const [progRef, setProgRef] = useState<number | null>(null)
 
   async function salvar(extra?: any) {
     setSalvando(true)
@@ -455,16 +459,17 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             {enviandoRef ? 'Enviando...' : '+ Anexar imagem'}
             <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRef} onChange={async e => {
               if (!e.target.files?.[0]) return
-              setEnviandoRef(true)
+              setEnviandoRef(true); setProgRef(0)
               try {
                 const f = e.target.files[0]; const ext = f.name.split('.').pop() || 'jpg'
-                const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type })
+                const blob = await upload(`refs/${uuid()}.${ext}`, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type, onUploadProgress: ({ percentage }) => setProgRef(percentage) })
                 setRefImgUrl(blob.url)
                 setSugestaoImagem(prev => [prev, blob.url].filter(Boolean).join('\n'))
-              } catch {} finally { setEnviandoRef(false) }
+              } catch {} finally { setEnviandoRef(false); setProgRef(null) }
               e.target.value = ''
             }} />
           </label>
+          <div style={{ width: '100%' }}><UploadProgress valor={progRef} /></div>
           <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
           <input value={refImgUrl} onChange={e => setRefImgUrl(e.target.value)} placeholder="Link do Drive ou URL da referencia"
             style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />

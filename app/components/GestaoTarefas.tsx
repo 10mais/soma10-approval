@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import OptImg from './OptImg'
+import UploadProgress from './UploadProgress'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
@@ -553,6 +554,7 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
   }
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
+  const [progAnexo, setProgAnexo] = useState<number | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
   const [novoComentario, setNovoComentario] = useState('')
@@ -573,14 +575,17 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
 
   async function enviarAnexo(arquivo: File) {
     setEnviandoAnexo(true)
+    setProgAnexo(0)
     try {
       const ext = arquivo.name.split('.').pop() || 'bin'
       const blob = await upload(`tarefas/${uuid()}.${ext}`, arquivo, {
         access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type,
+        onUploadProgress: ({ percentage }) => setProgAnexo(percentage),
       })
       setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
     } catch { /* erro silencioso */ }
     setEnviandoAnexo(false)
+    setProgAnexo(null)
   }
 
   async function enviarComentario() {
@@ -985,6 +990,7 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
               <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={enviandoAnexo}
                 onChange={e => { if (e.target.files?.[0]) enviarAnexo(e.target.files[0]); e.target.value = '' }} />
             </label>
+            <UploadProgress valor={progAnexo} rotulo="Enviando anexo..." />
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>

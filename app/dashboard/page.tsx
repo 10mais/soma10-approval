@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
+import UploadProgress from '../components/UploadProgress'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Esteira = dynamic(() => import('../components/Esteira'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -395,6 +396,7 @@ function Dashboard() {
   const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
   const [avisoFalhaOculto, setAvisoFalhaOculto] = useState(false)
   const [postPreview, setPostPreview] = useState<Post | null>(null)
+  const [progImagem, setProgImagem] = useState<number | null>(null)
   const [postPreviewSlide, setPostPreviewSlide] = useState(0)
   const [postLegendaExpandida, setPostLegendaExpandida] = useState(false)
   useEffect(() => { setPostPreviewSlide(0); setPostLegendaExpandida(false) }, [postPreview])
@@ -953,6 +955,7 @@ function Dashboard() {
   }
 
   async function enviarImagem(arquivo: File): Promise<string | null> {
+    setProgImagem(0)
     try {
       const ext = arquivo.name.split('.').pop() || 'bin'
       const blob = await upload(`midia/${uuid()}.${ext}`, arquivo, {
@@ -960,10 +963,13 @@ function Dashboard() {
         handleUploadUrl: '/api/upload',
         contentType: arquivo.type,
         clientPayload: arquivo.type,
+        onUploadProgress: ({ percentage }) => setProgImagem(percentage),
       })
       return blob.url
     } catch {
       return null
+    } finally {
+      setProgImagem(null)
     }
   }
 
@@ -3364,6 +3370,13 @@ function Dashboard() {
         )}
         </div>
       </div>
+
+      {/* Barra flutuante global de upload de imagem/logo/documento */}
+      {progImagem !== null && (
+        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 280, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 14, zIndex: 3000 }} className="soma10-no-invert">
+          <UploadProgress valor={progImagem} rotulo="Enviando arquivo..." />
+        </div>
+      )}
     </div>
   )
 }

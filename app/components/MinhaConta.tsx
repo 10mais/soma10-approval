@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import UploadProgress from './UploadProgress'
 
 const FUSOS = [
   { value: 'America/Sao_Paulo', label: '(GMT-03:00) Brasilia' },
@@ -19,6 +20,7 @@ export default function MinhaConta() {
   const [msg, setMsg] = useState('')
   const [erro, setErro] = useState('')
   const [enviandoFoto, setEnviandoFoto] = useState(false)
+  const [progFoto, setProgFoto] = useState<number | null>(null)
 
   // Senha
   const [senhaAtual, setSenhaAtual] = useState('')
@@ -56,13 +58,14 @@ export default function MinhaConta() {
 
   async function uploadFoto(arquivo: File) {
     setEnviandoFoto(true)
+    setProgFoto(0)
     try {
       const ext = arquivo.name.split('.').pop() || 'jpg'
-      const blob = await upload(`perfis/${uuid()}.${ext}`, arquivo, { access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type })
+      const blob = await upload(`perfis/${uuid()}.${ext}`, arquivo, { access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type, onUploadProgress: ({ percentage }) => setProgFoto(percentage) })
       setPerfil((p: any) => ({ ...p, foto: blob.url }))
       // Salva imediatamente
       await fetch('/api/meu-perfil', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ foto: blob.url }) })
-    } catch {} finally { setEnviandoFoto(false) }
+    } catch {} finally { setEnviandoFoto(false); setProgFoto(null) }
   }
 
   if (!perfil) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
@@ -103,7 +106,7 @@ export default function MinhaConta() {
                 </span>
                 <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoFoto} onChange={e => { if (e.target.files?.[0]) uploadFoto(e.target.files[0]); e.target.value = '' }} />
               </label>
-              {enviandoFoto && <span style={{ fontSize: 10, color: '#888' }}>Enviando...</span>}
+              {progFoto !== null && <div style={{ width: 140 }}><UploadProgress valor={progFoto} rotulo="Enviando foto..." /></div>}
             </div>
           </div>
           <div>
