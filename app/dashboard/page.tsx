@@ -19,6 +19,7 @@ const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: 
 const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -334,7 +335,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1428,7 +1429,7 @@ function Dashboard() {
           {!verComoClienteId && (
             <>
               {([
-                { titulo: '', itens: [['home', 'Painel']] },
+                { titulo: '', itens: [['meu-dia', 'Meu dia'], ['home', 'Painel']] },
                 { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira']] },
                 { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
               ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
@@ -3287,6 +3288,11 @@ function Dashboard() {
         {/* AUTOMAÇÕES (equipe) */}
         {aba === 'automacoes' && role !== 'cliente' && (
           <Automacoes />
+        )}
+
+        {/* MEU DIA (equipe) */}
+        {aba === 'meu-dia' && role !== 'cliente' && (
+          <MeuDia onAbrirTarefas={() => setAba('tarefas')} />
         )}
 
         {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}
