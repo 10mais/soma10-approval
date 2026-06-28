@@ -50,7 +50,7 @@ import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
-type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
+type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -330,7 +330,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1475,18 +1475,29 @@ function Dashboard() {
                   </button>
                   {configAberto && (
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {(['config', 'usuarios', 'clientes', 'candidaturas'] as const).map(a => (
+                    {([['config', 'Geral'], ['clientes', 'Clientes']] as [string, string][]).map(([a, label]) => (
                       <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
                         padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                         fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                         background: aba === a ? '#ffc00f' : 'transparent',
                         fontSize: 13, transition: 'all 0.15s',
-                      }}>
-                        {a === 'config' ? 'Geral' : a === 'usuarios' ? 'Colaboradores' : a === 'clientes' ? 'Clientes' : 'Trabalhe Conosco'}
-                      </button>
+                      }}>{label}</button>
                     ))}
                   </nav>
                   )}
+                  {/* Pessoas e Cultura */}
+                  <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                  <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
+                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {([['usuarios', 'Colaboradores'], ['candidaturas', 'Candidaturas'], ['recrutamento', 'Página Trabalhe Conosco']] as [string, string][]).map(([a, label]) => (
+                      <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
+                        padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
+                        background: aba === a ? '#ffc00f' : 'transparent',
+                        fontSize: 13, transition: 'all 0.15s',
+                      }}>{label}</button>
+                    ))}
+                  </nav>
                 </>
               )}
             </>
@@ -2611,7 +2622,20 @@ function Dashboard() {
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
-          <Candidaturas />
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button onClick={() => {
+                const url = `${window.location.origin}/trabalhe-conosco`
+                const nav: any = navigator
+                if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
+                else { navigator.clipboard?.writeText(url); alert('Link copiado:\n' + url) }
+              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+                Compartilhar link da candidatura
+              </button>
+            </div>
+            <Candidaturas />
+          </div>
         )}
 
         {aba === 'minha-conta' && (
@@ -3137,6 +3161,77 @@ function Dashboard() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* PÁGINA TRABALHE CONOSCO — personalização (admin only) */}
+        {aba === 'recrutamento' && role === 'admin' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 760 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Página Trabalhe Conosco</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Personalize o formulário público de candidaturas e compartilhe o link.</p>
+              </div>
+              <button onClick={() => {
+                const url = `${window.location.origin}/trabalhe-conosco`
+                const nav: any = navigator
+                if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
+                else { navigator.clipboard?.writeText(url); setConfigMsg('Link copiado: ' + url); setTimeout(() => setConfigMsg(''), 4000) }
+              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+                Compartilhar
+              </button>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <a href="/trabalhe-conosco" target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none' }}>Abrir página pública em nova aba →</a>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Logomarca (use a oficial do 10+)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {configAgencia.recrutamentoLogo ? <img src={configAgencia.recrutamentoLogo} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', background: '#f7f7f7', borderRadius: 8, padding: 4 }} /> : <span style={{ fontSize: 12, color: '#bbb' }}>Sem logo (usará o nome da agência)</span>}
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#444' }}>
+                    Enviar logo
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { if (e.target.files?.[0]) { const url = await enviarImagem(e.target.files[0]); if (url) setConfigAgencia(c => ({ ...c, recrutamentoLogo: url })) } e.target.value = '' }} />
+                  </label>
+                  {configAgencia.recrutamentoLogo && <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoLogo: '' }))} style={{ background: 'none', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Remover</button>}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Título</label>
+                  <input value={configAgencia.recrutamentoTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoTitulo: e.target.value }))} placeholder="Ex: Quer entrar para o time?" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Subtítulo</label>
+                  <input value={configAgencia.recrutamentoSubtitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoSubtitulo: e.target.value }))} placeholder="Frase curta abaixo do título" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição da empresa (aparece em destaque no formulário)</label>
+                <textarea value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+              </div>
+
+              <div style={{ height: 1, background: '#f0f0f0' }} />
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Mensagem final (após enviar)</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Título da confirmação</label>
+                  <input value={configAgencia.recrutamentoMensagemFinalTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinalTitulo: e.target.value }))} placeholder="Ex: Candidatura enviada!" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto da confirmação</label>
+                  <textarea value={configAgencia.recrutamentoMensagemFinal || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinal: e.target.value }))} placeholder="Mensagem que o candidato vê após enviar." style={{ width: '100%', minHeight: 70, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button onClick={salvarConfigAgencia} disabled={salvandoConfig} className="soma10-no-invert" style={{ padding: '11px 22px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: salvandoConfig ? 'not-allowed' : 'pointer' }}>{salvandoConfig ? 'Salvando...' : 'Salvar página'}</button>
+                {configMsg && <span style={{ fontSize: 13, color: configMsg.startsWith('Erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{configMsg}</span>}
+              </div>
             </div>
           </div>
         )}

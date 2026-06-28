@@ -73,6 +73,13 @@ export type ConfigAgencia = {
   corPrimaria?: string
   corSecundaria?: string
   atualizadoEm?: string
+  // Pessoas e Cultura — personalizacao da pagina publica "Trabalhe conosco"
+  recrutamentoLogo?: string
+  recrutamentoTitulo?: string
+  recrutamentoSubtitulo?: string
+  recrutamentoDescricao?: string
+  recrutamentoMensagemFinalTitulo?: string
+  recrutamentoMensagemFinal?: string
 }
 
 export type TipoNotificacao =

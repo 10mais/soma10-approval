@@ -1,10 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import UploadProgress from '@/app/components/UploadProgress'
 
+type RecrutCfg = { logo: string; titulo: string; subtitulo: string; descricao: string; mensagemFinalTitulo: string; mensagemFinal: string; nomeAgencia: string }
+
 export default function TrabalheConoscoPage() {
+  const [cfg, setCfg] = useState<RecrutCfg>({ logo: '', titulo: 'Trabalhe conosco', subtitulo: 'Preencha seus dados e anexe seu currículo. Vamos adorar conhecer você.', descricao: '', mensagemFinalTitulo: 'Candidatura enviada!', mensagemFinal: 'Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.', nomeAgencia: 'Grupo 10+' })
+  useEffect(() => { fetch('/api/recrutamento').then(r => r.json()).then(d => { if (d && !d.error) setCfg(d) }).catch(() => {}) }, [])
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', vaga: '', mensagem: '' })
   const [curriculo, setCurriculo] = useState<{ url: string; nome: string } | null>(null)
   const [enviandoCv, setEnviandoCv] = useState(false)
@@ -46,10 +50,9 @@ export default function TrabalheConoscoPage() {
     <div style={{ minHeight: '100vh', background: '#f4f4f4', fontFamily: 'Inter, system-ui, sans-serif', padding: '40px 16px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ background: '#111', borderRadius: 10, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            <img src="/logo-branco.svg" alt="" style={{ width: 26, height: 26, objectFit: 'contain' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: 18, color: '#111' }}>Grupo 10+</span>
+          {cfg.logo
+            ? <img src={cfg.logo} alt={cfg.nomeAgencia} style={{ maxHeight: 48, maxWidth: 200, objectFit: 'contain' }} />
+            : <span style={{ fontWeight: 800, fontSize: 18, color: '#111' }}>{cfg.nomeAgencia}</span>}
         </div>
 
         {enviado ? (
@@ -57,15 +60,19 @@ export default function TrabalheConoscoPage() {
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
             </div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 20, color: '#111' }}>Candidatura enviada!</h2>
-            <p style={{ margin: 0, fontSize: 14, color: '#888', lineHeight: 1.5 }}>Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.</p>
+            <h2 style={{ margin: '0 0 8px', fontSize: 20, color: '#111' }}>{cfg.mensagemFinalTitulo}</h2>
+            <p style={{ margin: 0, fontSize: 14, color: '#888', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{cfg.mensagemFinal}</p>
           </div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <h1 style={{ margin: '0 0 6px', fontSize: 22, color: '#111' }}>Trabalhe conosco</h1>
-            <p style={{ margin: '0 0 22px', fontSize: 14, color: '#999' }}>Preencha seus dados e anexe seu currículo. Vamos adorar conhecer você.</p>
+            <h1 style={{ margin: '0 0 6px', fontSize: 22, color: '#111' }}>{cfg.titulo}</h1>
+            <p style={{ margin: '0 0 18px', fontSize: 14, color: '#999' }}>{cfg.subtitulo}</p>
 
-            {erro && <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13, background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c' }}>{erro}</div>}
+            {cfg.descricao && (
+              <div style={{ margin: '0 0 20px', padding: '14px 16px', background: '#f8f9fb', border: '1px solid #eef0f4', borderRadius: 12, fontSize: 13.5, color: '#444', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{cfg.descricao}</div>
+            )}
+
+            {erro &&<div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13, background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c' }}>{erro}</div>}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
