@@ -1,6 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import EntregasMarco, { Entregas } from '@/app/components/EntregasMarco'
 
 type Marco = { id: string; titulo: string; descricao?: string; categoria: string; status: string; dataInicio: string; dataFim?: string }
@@ -17,6 +18,8 @@ function fmt(iso?: string) { return iso ? new Date(iso).toLocaleDateString('pt-B
 
 export default function EntregasPage() {
   const { clienteId } = useParams()
+  const { data: session } = useSession()
+  const ehEquipe = (session?.user as any)?.role && (session?.user as any).role !== 'cliente'
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
   const [cliente, setCliente] = useState<any>(null)
@@ -50,6 +53,17 @@ export default function EntregasPage() {
   const entregaveis: string[] = cliente?.entregaveis || []
   const pctMes = postsContratados > 0 ? Math.min(100, Math.round((postsPublicadosMes / postsContratados) * 100)) : 0
 
+  // Onboarding (início da jornada) — detectado automaticamente a partir dos dados
+  const onboarding = [
+    { ok: !!(cliente?.segmento || cliente?.descricao || (cliente?.palavrasChave)), label: 'Brand Board preenchido', dica: 'Aba Marca' },
+    { ok: !!(cliente?.metaConectado || cliente?.instagramConectado), label: 'Redes sociais conectadas', dica: 'Conectar Instagram/Facebook' },
+    { ok: entregaveis.length > 0 || postsContratados > 0, label: 'Escopo do contrato definido', dica: 'Editar cliente' },
+    { ok: marcos.length > 0, label: 'Playbook (etapas) criado', dica: 'Aba Playbook' },
+    { ok: postsCliente.some(p => p.status === 'publicado'), label: 'Primeiro conteúdo publicado', dica: 'Planner' },
+  ]
+  const onboardingFeitos = onboarding.filter(o => o.ok).length
+  const onboardingCompleto = onboardingFeitos === onboarding.length
+
   const ordenados = [...marcos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime())
 
   // Progresso geral do cliente
@@ -63,6 +77,29 @@ export default function EntregasPage() {
     <div style={{ maxWidth: 820 }}>
       <h2 style={{ margin: '0 0 4px', fontSize: 18, color: '#111' }}>Entregas</h2>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Acompanhe a evolução do seu projeto — o que foi contratado, o que já foi entregue e cada etapa da jornada.</p>
+
+      {/* Onboarding — só para a equipe (início da jornada do cliente). Some quando completo. */}
+      {ehEquipe && !onboardingCompleto && (
+        <div style={{ background: '#fff', border: '1.5px solid #fde68a', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Onboarding do cliente <span style={{ color: '#aaa', fontWeight: 600 }}>(visível só para a equipe)</span></span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#ca8a04' }}>{onboardingFeitos}/{onboarding.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {onboarding.map((o, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {o.ok ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+                ) : (
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #e0e0e0', flexShrink: 0 }} />
+                )}
+                <span style={{ fontSize: 13, color: o.ok ? '#999' : '#333', textDecoration: o.ok ? 'line-through' : 'none', flex: 1 }}>{o.label}</span>
+                {!o.ok && <span style={{ fontSize: 11, color: '#bbb' }}>{o.dica}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Escopo do contrato — o que está contratado x entregue no mês */}
       {(entregaveis.length > 0 || postsContratados > 0) && (
