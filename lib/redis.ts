@@ -20,6 +20,17 @@ export type Usuario = {
   bio?: string
   fusoHorario?: string
   clienteId?: string
+  custoHora?: number // custo/hora do profissional em R$ (para cálculo de rentabilidade)
+  criadoEm: string
+}
+
+export type Apontamento = {
+  id: string
+  usuarioEmail: string
+  usuarioNome: string
+  minutos: number
+  descricao?: string
+  data: string // ISO — dia do trabalho realizado
   criadoEm: string
 }
 
@@ -159,6 +170,7 @@ export type Tarefa = {
   anexos?: { nome: string; url: string; tipo: string }[]
   atividades?: TarefaAtividade[]
   comentarios?: TarefaComentario[]
+  apontamentos?: Apontamento[] // horas trabalhadas (apontamento de tempo)
   criadoPor: string
   criadoEm: string
   atualizadoEm: string

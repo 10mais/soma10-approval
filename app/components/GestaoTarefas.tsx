@@ -555,6 +555,46 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const [progAnexo, setProgAnexo] = useState<number | null>(null)
+  // Apontamento de horas
+  const [apontamentos, setApontamentos] = useState<any[]>((tarefa as any)?.apontamentos || [])
+  const [apontH, setApontH] = useState('')
+  const [apontM, setApontM] = useState('')
+  const [apontDesc, setApontDesc] = useState('')
+  const [salvandoApont, setSalvandoApont] = useState(false)
+  const [timerInicio, setTimerInicio] = useState<number | null>(null)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!tarefa?.id) return
+    const s = localStorage.getItem(`apont:${tarefa.id}`)
+    if (s) setTimerInicio(Number(s) || null)
+  }, [tarefa?.id])
+  useEffect(() => {
+    if (timerInicio === null) return
+    const t = setInterval(() => setTick(x => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [timerInicio])
+  const totalMin = apontamentos.reduce((s, a) => s + (Number(a.minutos) || 0), 0)
+  function fmtMin(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
+  async function registrarApont(minutos: number, descricao: string) {
+    if (!tarefa?.id || minutos <= 0) return
+    setSalvandoApont(true)
+    const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, apontarHoras: { minutos, descricao, data: new Date().toISOString() } }) }).then(x => x.json()).catch(() => null)
+    setSalvandoApont(false)
+    if (r?.tarefa) { setApontamentos(r.tarefa.apontamentos || []); setApontH(''); setApontM(''); setApontDesc(''); onRecarregar?.(r.tarefa) }
+  }
+  function iniciarTimer() { const t = Date.now(); setTimerInicio(t); if (tarefa?.id) localStorage.setItem(`apont:${tarefa.id}`, String(t)) }
+  async function pararTimer() {
+    if (timerInicio === null) return
+    const min = Math.max(1, Math.round((Date.now() - timerInicio) / 60000))
+    if (tarefa?.id) localStorage.removeItem(`apont:${tarefa.id}`)
+    setTimerInicio(null)
+    await registrarApont(min, 'Timer')
+  }
+  async function removerApont(apId: string) {
+    if (!tarefa?.id) return
+    const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, removerApontamento: apId }) }).then(x => x.json()).catch(() => null)
+    if (r?.tarefa) { setApontamentos(r.tarefa.apontamentos || []); onRecarregar?.(r.tarefa) }
+  }
   const [salvando, setSalvando] = useState(false)
   const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
   const [novoComentario, setNovoComentario] = useState('')
@@ -992,6 +1032,46 @@ function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCust
             </label>
             <UploadProgress valor={progAnexo} rotulo="Enviando anexo..." />
           </div>
+
+          {/* Apontamento de horas (só em tarefa já criada) */}
+          {tarefa?.id && (
+            <div style={{ marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Tempo trabalhado</label>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{fmtMin(totalMin)}</span>
+              </div>
+              {/* Timer + lançamento manual */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                {timerInicio === null ? (
+                  <button type="button" onClick={iniciarTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg> Iniciar timer
+                  </button>
+                ) : (
+                  <button type="button" onClick={pararTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar ({fmtMin(Math.max(0, (Date.now() - timerInicio) / 60000))})
+                  </button>
+                )}
+                <span style={{ fontSize: 11, color: '#bbb' }}>ou lançar manual:</span>
+                <input type="number" min="0" value={apontH} onChange={e => setApontH(e.target.value)} placeholder="h" style={{ width: 48, padding: '7px 8px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                <input type="number" min="0" max="59" value={apontM} onChange={e => setApontM(e.target.value)} placeholder="min" style={{ width: 54, padding: '7px 8px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                <input value={apontDesc} onChange={e => setApontDesc(e.target.value)} placeholder="o que foi feito (opcional)" style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                <button type="button" disabled={salvandoApont || (Number(apontH) || 0) * 60 + (Number(apontM) || 0) <= 0} onClick={() => registrarApont((Number(apontH) || 0) * 60 + (Number(apontM) || 0), apontDesc)}
+                  style={{ padding: '8px 14px', background: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? '#16a34a' : '#f0f0f0', color: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Registrar</button>
+              </div>
+              {apontamentos.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[...apontamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((a: any) => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#666', padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
+                      <span style={{ fontWeight: 700, color: '#111', width: 52 }}>{fmtMin(a.minutos)}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.usuarioNome}{a.descricao ? ` · ${a.descricao}` : ''}</span>
+                      <span style={{ color: '#aaa' }}>{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                      <button onClick={() => removerApont(a.id)} title="Remover" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
             <button onClick={salvar} disabled={salvando || !form.titulo.trim()} className="soma10-no-invert" style={{ flex: 1, padding: '11px 0', background: form.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.titulo.trim() ? 'pointer' : 'not-allowed' }}>

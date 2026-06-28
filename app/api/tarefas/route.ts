@@ -150,6 +150,27 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, tarefa: atualizado })
   }
 
+  // Apontamento de horas — adicionar
+  if (updates.apontarHoras) {
+    const { minutos, descricao, data } = updates.apontarHoras
+    const min = Math.max(0, Math.round(Number(minutos) || 0))
+    if (min > 0) {
+      const apont = { id: uuid(), usuarioEmail: (session.user as any).email, usuarioNome: autor, minutos: min, descricao: descricao || '', data: data || agora, criadoEm: agora }
+      atualizado.apontamentos = [...(tarefa.apontamentos || []), apont]
+      novasAtividades.push({ id: uuid(), tipo: 'comentario', descricao: `Apontou ${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')} de trabalho`, autor, criadoEm: agora })
+      atualizado.atividades = novasAtividades
+      await redis.set(`tarefa:${id}`, atualizado)
+    }
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
+  // Apontamento de horas — remover
+  if (updates.removerApontamento) {
+    atualizado.apontamentos = (tarefa.apontamentos || []).filter((a: any) => a.id !== updates.removerApontamento)
+    await redis.set(`tarefa:${id}`, atualizado)
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
   // Comentario novo
   if (updates.novoComentario) {
     const comentarios = [...(tarefa.comentarios || [])]
