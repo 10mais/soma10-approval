@@ -65,6 +65,11 @@ export default function EntregasPage() {
   const postsContratados = Number(cliente?.postsMensais) || 0
   const entregaveis: string[] = cliente?.entregaveis || []
   const pctMes = postsContratados > 0 ? Math.min(100, Math.round((postsPublicadosMes / postsContratados) * 100)) : 0
+  // Risco de atraso (preditivo): projeta o fechamento do mês no ritmo atual
+  const diaDoMes = agora.getDate()
+  const diasNoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate()
+  const projetado = diaDoMes > 0 ? Math.round((postsPublicadosMes / diaDoMes) * diasNoMes) : postsPublicadosMes
+  const emRisco = postsContratados > 0 && postsPublicadosMes < postsContratados && projetado < postsContratados
 
   // Onboarding (início da jornada) — detectado automaticamente a partir dos dados
   const onboarding = [
@@ -150,6 +155,15 @@ export default function EntregasPage() {
                     <div style={{ width: `${pctMes}%`, height: '100%', background: cor, borderRadius: 999, transition: 'width .3s' }} />
                   </div>
                   <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>{postsPublicadosMes >= postsContratados ? 'Meta do mês atingida!' : `Faltam ${postsContratados - postsPublicadosMes} post(s) para o combinado do mês.`}</p>
+                  {postsPublicadosMes < postsContratados && diaDoMes >= 3 && (
+                    emRisco ? (
+                      <p style={{ margin: '6px 0 0', fontSize: 11.5, fontWeight: 700, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '6px 10px' }}>
+                        ⚠ No ritmo atual, o mês fecha com ~{projetado} de {postsContratados} (faltariam {Math.max(0, postsContratados - projetado)}). Precisamos acelerar.
+                      </p>
+                    ) : (
+                      <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#16a34a' }}>No ritmo certo para bater a meta do mês.</p>
+                    )
+                  )}
                 </>
               ) : (
                 <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#bbb' }}>Defina a meta mensal de posts deste cliente (clique em “editar”).</p>

@@ -73,7 +73,12 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
     [...clientesSM].sort((a, b) => (contagemPorCliente[a.id] || 0) - (contagemPorCliente[b.id] || 0))
   , [clientesSM, contagemPorCliente])
 
-  const temAlertas = falhasPendentes > 0 || clientesSemBrand > 0 || clientesSemEntregaveis > 0 || clientesOrdenados.some(c => (contagemPorCliente[c.id] || 0) < 8)
+  // Risco de atraso: meta do mês (postsMensais) ainda não coberta por publicado+agendado
+  const clientesEmRisco = useMemo(() => agora.getDate() < 5 ? [] : clientesSM.filter(c => {
+    const meta = Number(c.postsMensais) || META_MIN
+    return (contagemPorCliente[c.id] || 0) < meta && (contagemPorCliente[c.id] || 0) >= 8
+  }), [clientesSM, contagemPorCliente])
+  const temAlertas = falhasPendentes > 0 || clientesSemBrand > 0 || clientesSemEntregaveis > 0 || clientesEmRisco.length > 0 || clientesOrdenados.some(c => (contagemPorCliente[c.id] || 0) < 8)
 
   return (
     <div>
@@ -140,6 +145,9 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
               {clientesOrdenados.filter(c => (contagemPorCliente[c.id] || 0) < 8).map(c => (
                 <p key={c.id} style={{ margin: 0, fontSize: 12.5, color: '#b91c1c' }}><strong>{c.nome}</strong> esta em nivel critico ({contagemPorCliente[c.id] || 0} posts no mes).</p>
               ))}
+              {clientesEmRisco.map(c => { const meta = Number(c.postsMensais) || META_MIN; return (
+                <p key={'r' + c.id} style={{ margin: 0, fontSize: 12.5, color: '#a16207' }}>⚠ <strong>{c.nome}</strong> abaixo da meta do mês: {contagemPorCliente[c.id] || 0} de {meta} (publicado + agendado). Faltam {meta - (contagemPorCliente[c.id] || 0)} a planejar.</p>
+              ) })}
               {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido: {clientesSemBrandLista.map(c => c.nome).join(', ')}.</p>}
               {clientesSemEntregaveis > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemEntregaveis} cliente(s) sem entregaveis definidos (configure em Clientes).</p>}
             </div>
