@@ -45,6 +45,8 @@ const ETAPAS: { key: string; label: string; cliente?: boolean }[] = [
   { key: 'aprovacao_criativo', label: 'Aprovação de criativo', cliente: true },
   { key: 'pronto', label: 'Pronto / Agendado' },
 ]
+// Limite de trabalho em andamento (WIP) por etapa de produção. 0 = sem limite.
+const LIMITE_WIP: Record<string, number> = { copy: 6, criativo: 6 }
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
 
@@ -269,13 +271,15 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
                   outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
+                {(() => { const limite = LIMITE_WIP[col.key] || 0; const excedeu = limite > 0 && cards.length > limite; return (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: '#444' }}>
                     {col.label}
-                    {ehGargalo && <span title="Etapa com mais itens acumulados" style={{ fontSize: 9.5, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Gargalo</span>}
+                    {(ehGargalo || excedeu) && <span title={excedeu ? `Acima do limite de ${limite} em produção` : 'Etapa com mais itens acumulados'} style={{ fontSize: 9.5, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{excedeu ? 'Limite' : 'Gargalo'}</span>}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: ehGargalo ? '#b91c1c' : '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
+                  <span title={limite > 0 ? `Limite de WIP: ${limite}` : undefined} style={{ fontSize: 11, fontWeight: 700, color: (ehGargalo || excedeu) ? '#b91c1c' : '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}{limite > 0 ? `/${limite}` : ''}</span>
                 </div>
+                ) })()}
                 {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: '#b45309' }}>Aguarda o cliente</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(p => {
