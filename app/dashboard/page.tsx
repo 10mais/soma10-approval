@@ -422,6 +422,27 @@ function Dashboard() {
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
   const [erroCliente, setErroCliente] = useState('')
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', role: 'gerente', cargo: '', custoHora: 0, salarioFixo: 0, valorPorProjeto: 0, qtdProjetos: 0 })
+  // Resumo semanal do cliente (WhatsApp + e-mail)
+  const [resumoCliente, setResumoCliente] = useState<string | null>(null)
+  const [resumoTexto, setResumoTexto] = useState('')
+  const [resumoInfo, setResumoInfo] = useState<{ publicados: number; aguardando: number; proximos: number; emailCliente: string } | null>(null)
+  const [resumoCarregando, setResumoCarregando] = useState(false)
+  const [enviandoResumo, setEnviandoResumo] = useState(false)
+  const [resumoMsg, setResumoMsg] = useState('')
+  async function abrirResumo(clienteId: string) {
+    setResumoCliente(clienteId); setResumoCarregando(true); setResumoTexto(''); setResumoInfo(null); setResumoMsg('')
+    const r = await fetch(`/api/resumo-semanal?clienteId=${clienteId}`).then(x => x.json()).catch(() => null)
+    setResumoCarregando(false)
+    if (r?.texto !== undefined) { setResumoTexto(r.texto); setResumoInfo({ publicados: r.publicados, aguardando: r.aguardando, proximos: r.proximos, emailCliente: r.emailCliente || '' }) }
+    else setResumoMsg('Não foi possível gerar o resumo.')
+  }
+  async function enviarResumoEmail() {
+    if (!resumoCliente || enviandoResumo) return
+    setEnviandoResumo(true); setResumoMsg('')
+    const r = await fetch('/api/resumo-semanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: resumoCliente }) }).then(x => x.json()).catch(() => null)
+    setEnviandoResumo(false)
+    setResumoMsg(r?.ok ? 'Resumo enviado por e-mail ao cliente!' : (r?.error || 'Falha ao enviar e-mail.'))
+  }
   // Lançamento de cobrança avulsa/modular no form de cliente
   const [avMes, setAvMes] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`)
   const [avValor, setAvValor] = useState('')
@@ -2927,6 +2948,13 @@ function Dashboard() {
                       })()}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {c.tipo !== 'interno' && (
+                        <button onClick={() => abrirResumo(c.id)} title="Gerar resumo da semana para enviar ao cliente"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#25D366', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.1.1.3 0 .5l-.4.5-.2.2c-.1.1-.3.3-.1.5.1.3.7 1.1 1.4 1.8.96.85 1.7 1.1 2 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.3.1.1.1.6-.1 1.2z" /></svg>
+                          Resumo semanal
+                        </button>
+                      )}
                       {role === 'admin' && (
                         <>
                           <button onClick={() => editandoCliente === c.id ? setEditandoCliente(null) : iniciarEdicaoCliente(c)}
@@ -3595,6 +3623,31 @@ function Dashboard() {
         )}
         </div>
       </div>
+
+      {/* Modal: resumo semanal do cliente */}
+      {resumoCliente && (
+        <div onClick={() => setResumoCliente(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Resumo da semana</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>
+            {resumoCarregando ? <p style={{ color: '#aaa' }}>Gerando...</p> : (
+              <>
+                {resumoInfo && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#666' }}>✅ {resumoInfo.publicados} publicados · ⏳ {resumoInfo.aguardando} aguardando · 📅 {resumoInfo.proximos} próximos</p>}
+                <textarea value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(resumoTexto)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#25D366', color: '#fff', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2z" /></svg> Abrir no WhatsApp
+                  </a>
+                  <button onClick={() => { navigator.clipboard?.writeText(resumoTexto); setResumoMsg('Copiado!') }} style={{ padding: '10px 16px', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Copiar</button>
+                  <button onClick={enviarResumoEmail} disabled={enviandoResumo || !resumoInfo?.emailCliente} title={resumoInfo?.emailCliente ? `Enviar para ${resumoInfo.emailCliente}` : 'Cliente sem e-mail cadastrado'} style={{ padding: '10px 16px', background: resumoInfo?.emailCliente ? '#111' : '#f0f0f0', color: resumoInfo?.emailCliente ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: resumoInfo?.emailCliente ? 'pointer' : 'not-allowed' }}>{enviandoResumo ? 'Enviando...' : 'Enviar por e-mail'}</button>
+                  <button onClick={() => setResumoCliente(null)} style={{ marginLeft: 'auto', padding: '10px 16px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                </div>
+                {resumoMsg && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: resumoMsg.includes('Falha') || resumoMsg.includes('Não') ? '#dc2626' : '#16a34a', fontWeight: 600 }}>{resumoMsg}</p>}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barra flutuante global de upload de imagem/logo/documento */}
       {progImagem !== null && (
