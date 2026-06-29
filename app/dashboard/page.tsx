@@ -142,6 +142,34 @@ const IconImage = (p: any) => <Icon {...p}><rect x="3" y="3" width="18" height="
 const IconFilm = (p: any) => <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 3v18M17 3v18M3 7.5h4M17 7.5h4M3 12h18M3 16.5h4M17 16.5h4" /></Icon>
 const IconTrend = (p: any) => <Icon {...p}><path d="m23 6-9.5 9.5-5-5L1 18" /><path d="M17 6h6v6" /></Icon>
 
+// Ícone (path único) por aba do menu — usado no modo recolhido (rail) e expandido.
+const ICONE_ABA: Record<string, string> = {
+  'meu-dia': 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM8 12l2.5 2.5L16 9',
+  'lista-pessoal': 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12l2 2 4-4',
+  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
+  tarefas: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  esteira: 'M3 4h7v7H3zM14 13h7v7h-7zM10 7.5h4a3 3 0 0 1 3 3V13M14 16.5H7a3 3 0 0 1-3-3V11',
+  carga: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  playbook: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5z',
+  campanhas: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6',
+  modelos: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  automacoes: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
+  inbox: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  mensagens: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  rentabilidade: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
+  config: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM19.4 13a7.5 7.5 0 0 0 0-2l2-1.5-2-3.5-2.3 1a7.5 7.5 0 0 0-1.7-1L15 2H9l-.4 2.5a7.5 7.5 0 0 0-1.7 1l-2.3-1-2 3.5L4.6 11a7.5 7.5 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7.5 7.5 0 0 0 1.7 1L9 22h6l.4-2.5a7.5 7.5 0 0 0 1.7-1l2.3 1 2-3.5z',
+  clientes: 'M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM10 5h4v2h-4z',
+  usuarios: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  candidaturas: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
+  recrutamento: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8',
+  planner: 'M3 4h18v18H3zM16 2v4M8 2v4M3 10h18',
+  aprovacoes: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  marca: 'M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L7.7 21l2.3-7.4-6-4.6h7.6z',
+  listening: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  analytics: 'M3 3v18h18M7 14v4M12 9v9M17 5v13',
+  default: 'M5 12h14',
+}
+
 // Miniatura de mídia do post — exibe um placeholder profissional quando a imagem não carrega
 function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: number; radius?: number }) {
   const [erro, setErro] = useState(false)
@@ -498,6 +526,10 @@ function Dashboard() {
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
+  // Sidebar recolhida (rail só com ícones) — preferência lembrada entre sessões
+  const [recolhida, setRecolhida] = useState(false)
+  useEffect(() => { try { setRecolhida(localStorage.getItem('sidebarRecolhida') === '1') } catch {} }, [])
+  function alternarRecolhida() { setRecolhida(v => { const n = !v; try { localStorage.setItem('sidebarRecolhida', n ? '1' : '0') } catch {}; return n }) }
   // Notificação aberta em modal (sem sair do Inbox)
   const [notifAberta, setNotifAberta] = useState<any | null>(null)
   // Abre o item relacionado a uma notificação (post/tarefa/mensagem) — usado pelo modal do Inbox
@@ -1271,6 +1303,22 @@ function Dashboard() {
   // Foto do usuário logado (para o avatar do cluster) — usa o cadastro ou a imagem da sessão
   const minhaFoto = (usuarios.find((u: any) => u.email === (session?.user as any)?.email) as any)?.foto || (session?.user as any)?.image || ''
 
+  // Item de menu com ícone — mostra só o ícone quando a sidebar está recolhida
+  function NavBtn({ chave, label, onClick, badge, fontSize = 14 }: { chave: string; label: string; onClick?: () => void; badge?: number; fontSize?: number }) {
+    const ativo = aba === chave
+    return (
+      <button title={recolhida ? label : undefined} onClick={onClick || (() => setAba(chave as any))} className={ativo ? 'soma10-no-invert' : undefined}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? '#111' : '#888', background: ativo ? '#ffc00f' : 'transparent', fontSize, transition: 'all 0.15s' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? '#111' : '#999' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
+          {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
+        </span>
+        {!recolhida && !!badge && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{badge > 99 ? '99+' : badge}</span>}
+        {recolhida && !!badge && <span style={{ position: 'absolute', top: 7, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />}
+      </button>
+    )
+  }
+
   // Validação do formulário de novo usuário — nome, e-mail, senha e nível de acesso obrigatórios
   const usuarioNomeValido = novoUsuario.nome.trim().length >= 2
   const usuarioEmailValido = emailValido(novoUsuario.email)
@@ -1391,12 +1439,14 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Sidebar */}
         <aside style={{
-          width: 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
-          minHeight: '100vh', position: 'sticky', top: 0, padding: '16px 14px', boxSizing: 'border-box',
+          width: recolhida ? 66 : 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
+          minHeight: '100vh', position: 'sticky', top: 0, padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
         }}>
-          {/* Logo (wordmark) no topo da sidebar — versão por tema (preta no claro, branca no escuro) */}
-          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
-            <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />
+          {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
+          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
+            {recolhida
+              ? <div style={{ background: '#111', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} /></div>
+              : <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />}
           </div>
           {/* PAINEL DO CLIENTE — nav simplificada */}
           {ehCliente && clienteEmVisualizacao && (
@@ -1423,7 +1473,7 @@ function Dashboard() {
           )}
 
           {/* Seletor de visualização por cliente — primeira coisa exibida (equipe) */}
-          {!ehCliente && <div style={{ marginBottom: 20 }}>
+          {!ehCliente && !recolhida && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
@@ -1525,55 +1575,32 @@ function Dashboard() {
                 { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
               ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
-                  {grupo.titulo && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
-                  {grupo.itens.map(([a, label]) => (
-                    <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
-                      padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                      fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                      background: aba === a ? '#ffc00f' : 'transparent',
-                      fontSize: 14, transition: 'all 0.15s',
-                    }}>
-                      {label}
-                    </button>
-                  ))}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
               <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>
-                <button onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} className={aba === 'inbox' ? 'soma10-no-invert' : undefined} style={{
-                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  fontWeight: aba === 'inbox' ? 700 : 500, color: aba === 'inbox' ? '#111' : '#888',
-                  background: aba === 'inbox' ? '#ffc00f' : 'transparent', fontSize: 14,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  Inbox
-                  {notificacoes.filter(n => !n.lida).length > 0 && (
-                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{notificacoes.filter(n => !n.lida).length > 99 ? '99+' : notificacoes.filter(n => !n.lida).length}</span>
-                  )}
-                </button>
-                <button onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} className={aba === 'mensagens' ? 'soma10-no-invert' : undefined} style={{
-                  padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  fontWeight: aba === 'mensagens' ? 700 : 500, color: aba === 'mensagens' ? '#111' : '#888',
-                  background: aba === 'mensagens' ? '#ffc00f' : 'transparent', fontSize: 14,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  Mensagens
-                  {chatNaoLidas > 0 && (
-                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{chatNaoLidas > 99 ? '99+' : chatNaoLidas}</span>
-                  )}
-                </button>
+                {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
+                <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
+                <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
               </nav>
-              {role === 'admin' && (
+              {role === 'admin' && (recolhida ? (
+                <>
+                  <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
+                  <NavBtn chave="rentabilidade" label="Rentabilidade" fontSize={13} />
+                  <NavBtn chave="config" label="Configurações" fontSize={13} />
+                  <NavBtn chave="clientes" label="Clientes" fontSize={13} />
+                  <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                  <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
+                  <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
+                </>
+              ) : (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                   <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
-                    <button onClick={() => setAba('rentabilidade' as any)} className={aba === 'rentabilidade' ? 'soma10-no-invert' : undefined} style={{
-                      padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                      fontWeight: aba === 'rentabilidade' ? 700 : 500, color: aba === 'rentabilidade' ? '#111' : '#888',
-                      background: aba === 'rentabilidade' ? '#ffc00f' : 'transparent', fontSize: 13, transition: 'all 0.15s',
-                    }}>Rentabilidade</button>
+                    <NavBtn chave="rentabilidade" label="Rentabilidade" fontSize={13} />
                   </nav>
                   <button onClick={() => setConfigAberto(v => !v)} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
@@ -1584,57 +1611,45 @@ function Dashboard() {
                   </button>
                   {configAberto && (
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {([['config', 'Geral'], ['clientes', 'Clientes']] as [string, string][]).map(([a, label]) => (
-                      <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
-                        padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                        fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                        background: aba === a ? '#ffc00f' : 'transparent',
-                        fontSize: 13, transition: 'all 0.15s',
-                      }}>{label}</button>
-                    ))}
+                    <NavBtn chave="config" label="Geral" fontSize={13} />
+                    <NavBtn chave="clientes" label="Clientes" fontSize={13} />
                   </nav>
                   )}
                   {/* Pessoas e Cultura */}
                   <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                   <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {([['usuarios', 'Colaboradores'], ['candidaturas', 'Candidaturas'], ['recrutamento', 'Página Trabalhe Conosco']] as [string, string][]).map(([a, label]) => (
-                      <button key={a} onClick={() => setAba(a as any)} className={aba === a ? 'soma10-no-invert' : undefined} style={{
-                        padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                        fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                        background: aba === a ? '#ffc00f' : 'transparent',
-                        fontSize: 13, transition: 'all 0.15s',
-                      }}>{label}</button>
-                    ))}
+                    <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                    <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
+                    <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
                   </nav>
                 </>
-              )}
+              ))}
             </>
           )}
 
           {/* NIVEL CLIENTE — so na visualizacao como cliente (equipe vendo como) */}
           {verComoClienteId && !ehCliente && (
             <div>
-              <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Cliente
-              </p>
-              <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>
-                Vendo como: {clienteEmVisualizacao?.nome}
-              </p>
+              {!recolhida && <>
+                <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente</p>
+                <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
+              </>}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['planner', 'esteira', 'aprovacoes', 'marca', 'listening', 'analytics'] as const).map(a => {
-                  const ativo = aba === a || (a === 'planner' && (aba === 'novo-post' || aba === 'biblioteca' || aba === 'calendario'))
-                  return (
-                  <button key={a} onClick={() => setAba(a as any)} style={{
-                    padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    fontWeight: ativo ? 700 : 500, color: ativo ? '#111' : '#888',
-                    background: ativo ? '#ffc00f' : 'transparent',
-                    fontSize: 14, transition: 'all 0.15s',
-                  }}>
-                    {a === 'planner' ? 'Planner' : a === 'esteira' ? 'Esteira' : a === 'aprovacoes' ? 'Aprovações' : a === 'marca' ? 'Marca (Brand Board)' : a === 'listening' ? 'Social Listening' : 'Analytics'}
-                  </button>
-                )})}
+                {([['planner', 'Planner'], ['esteira', 'Esteira'], ['aprovacoes', 'Aprovações'], ['marca', 'Marca (Brand Board)'], ['listening', 'Social Listening'], ['analytics', 'Analytics']] as [string, string][]).map(([a, label]) => (
+                  <NavBtn key={a} chave={a} label={label} onClick={() => setAba(a as any)} />
+                ))}
               </nav>
+            </div>
+          )}
+
+          {/* Botão recolher/expandir — rodapé da sidebar */}
+          {!ehCliente && (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f4f4f4', display: 'flex', justifyContent: recolhida ? 'center' : 'flex-end' }}>
+              <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f5f5f5', border: 'none', borderRadius: 8, padding: recolhida ? '8px' : '7px 12px', cursor: 'pointer', color: '#666', fontSize: 12, fontWeight: 700 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
+                {!recolhida && <span>Recolher</span>}
+              </button>
             </div>
           )}
         </aside>
