@@ -91,6 +91,8 @@ export type Cliente = {
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
   statusToken?: string // token do link público de status (sem login)
+  // Permissoes do portal do cliente (role 'cliente'). Flag ausente/undefined = liberado (default tudo-ligado).
+  permissoes?: PermissoesCliente
   // Brands Board — identidade e DNA do cliente
   segmento?: string // nicho (ex.: Cardiologia)
   palavrasChave?: string // palavras-chave separadas por vírgula
@@ -102,6 +104,22 @@ export type Cliente = {
   // Documento de marca aprofundado, gerado por IA a partir do Brand Board
   documentoMarca?: string
   documentoMarcaGeradoEm?: string
+}
+
+// Permissoes do portal do cliente. Cada flag controla um acesso/acao.
+// Ausente (undefined) = liberado, para nao alterar clientes ja existentes.
+export type PermissoesCliente = {
+  entregas?: boolean   // ve a aba Entregas
+  aprovacoes?: boolean // ve a aba Aprovacoes
+  aprovar?: boolean    // pode aprovar/reprovar (vs so visualizar)
+  solicitar?: boolean  // ve Solicitar conteudo
+  esteira?: boolean    // ve a Esteira
+  planner?: boolean    // ve o Planner
+}
+
+// Helper: a permissao esta liberada? (undefined/ausente = liberado)
+export function podeCliente(permissoes: PermissoesCliente | undefined, chave: keyof PermissoesCliente): boolean {
+  return permissoes?.[chave] !== false
 }
 
 export type ConfigAgencia = {

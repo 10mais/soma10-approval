@@ -1,5 +1,6 @@
 'use client'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 
 function capaDoPost(post: any): string {
@@ -25,17 +26,25 @@ function tempoEspera(aguardandoDesde?: string): { texto: string; atrasado: boole
 
 export default function AprovacoesPagina() {
   const { clienteId } = useParams()
+  const { data: session } = useSession()
   const [posts, setPosts] = useState<any[]>([])
   const [enviando, setEnviando] = useState<string | null>(null)
   const [comentario, setComentario] = useState<Record<string, string>>({})
   const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [aprovandoTodos, setAprovandoTodos] = useState(false)
+  // Permissao de aprovar (default true). So restringe o proprio cliente; equipe nao.
+  const [permAprovar, setPermAprovar] = useState(true)
 
   function carregar() {
     fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
   }
   useEffect(() => { carregar() }, [clienteId])
+  useEffect(() => {
+    const ehCliente = (session?.user as any)?.role === 'cliente'
+    if (!ehCliente) { setPermAprovar(true); return }
+    fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(c => { if (c && !c.error) setPermAprovar(c.permissoes?.aprovar !== false) }).catch(() => {})
+  }, [clienteId, session])
 
   const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
   // espera mais antiga (para o banner "o que está esperando você")
@@ -80,7 +89,7 @@ export default function AprovacoesPagina() {
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: urgente ? '#b91c1c' : '#92400e', opacity: 0.85 }}>Aprovar rápido mantém o ritmo das suas entregas.</p>
           </div>
-          {pendentes.length > 1 && (
+          {permAprovar && pendentes.length > 1 && (
             <button onClick={aprovarTodos} disabled={aprovandoTodos}
               style={{ padding: '10px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: aprovandoTodos ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
               {aprovandoTodos ? 'Aprovando...' : `Aprovar todos (${pendentes.length})`}
@@ -131,14 +140,18 @@ export default function AprovacoesPagina() {
                         ))}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
-                        style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar</button>
-                      <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Pedir ajuste</button>
-                      <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Rejeitar</button>
-                    </div>
+                    {permAprovar ? (
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
+                          style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar</button>
+                        <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
+                          style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Pedir ajuste</button>
+                        <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
+                          style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Rejeitar</button>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, textAlign: 'right', fontSize: 12, color: '#aaa', fontStyle: 'italic' }}>Somente visualização — a aprovação é feita pela equipe.</p>
+                    )}
                   </div>
                 </div>
               </div>

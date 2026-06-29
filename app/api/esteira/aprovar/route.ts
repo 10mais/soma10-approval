@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Post } from '@/lib/redis'
+import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
 import { notificarDono } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
@@ -26,6 +26,13 @@ export async function POST(req: NextRequest) {
   const clienteId = (session.user as any).clienteId
   if (role === 'cliente' && post.clienteId !== clienteId) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
+  }
+  // Permissao do portal: cliente sem "aprovar" pode visualizar, mas nao decidir
+  if (role === 'cliente') {
+    const cli = await redis.get<Cliente>(`cliente:${clienteId}`)
+    if (!podeCliente(cli?.permissoes, 'aprovar')) {
+      return NextResponse.json({ error: 'sem permissao para aprovar conteudo' }, { status: 403 })
+    }
   }
 
   const agora = new Date().toISOString()

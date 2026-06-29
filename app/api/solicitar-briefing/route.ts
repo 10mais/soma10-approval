@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Tarefa, Cliente } from '@/lib/redis'
+import { redis, Tarefa, Cliente, podeCliente } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificarEquipe } from '@/lib/notificacoes'
 
@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
 
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente nao encontrado' }, { status: 404 })
+
+  // Permissao do portal: cliente sem "solicitar" nao pode enviar solicitacao
+  if (role === 'cliente' && !podeCliente(cliente.permissoes, 'solicitar')) {
+    return NextResponse.json({ error: 'sem permissao para solicitar conteudo' }, { status: 403 })
+  }
 
   const tema = (body.tema || '').toString().trim()
   if (!tema) return NextResponse.json({ error: 'informe o tema/titulo' }, { status: 400 })

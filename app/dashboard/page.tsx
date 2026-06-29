@@ -55,7 +55,7 @@ import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[]; permissoes?: { entregas?: boolean; aprovacoes?: boolean; aprovar?: boolean; solicitar?: boolean; esteira?: boolean; planner?: boolean } }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string; recrutamentoVagas?: string[] }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -1110,7 +1110,8 @@ function Dashboard() {
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
     setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
-      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, receitasAvulsas: (c as any).receitasAvulsas || [] })
+      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, receitasAvulsas: (c as any).receitasAvulsas || [],
+      permissoes: (c as any).permissoes || {} })
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -3198,6 +3199,24 @@ function Dashboard() {
                           </div>
                         </div>
                       </div>
+                      {/* Permissoes do portal do cliente */}
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Permissões do portal</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo'], ['esteira', 'Esteira'], ['planner', 'Planner']] as [string, string][]).map(([chave, rotulo]) => {
+                            const ligado = (edicaoCliente as any).permissoes?.[chave] !== false
+                            return (
+                              <button key={chave} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, permissoes: { ...((p as any).permissoes || {}), [chave]: ((p as any).permissoes?.[chave] !== false) ? false : true } } as any))}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
+                                {rotulo}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                           <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

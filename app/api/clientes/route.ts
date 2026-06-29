@@ -118,7 +118,7 @@ export async function PUT(req: NextRequest) {
   const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria', 'tipo', 'entregaveis', 'postsMensais',
     'contratoValor', 'contratoInicio', 'contratoRenovacao', 'contratoCiclo', 'receitasAvulsas',
     'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos',
-    'documentoMarca', 'documentoMarcaGeradoEm']
+    'documentoMarca', 'documentoMarcaGeradoEm', 'permissoes']
   const atualizado = { ...cliente }
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]

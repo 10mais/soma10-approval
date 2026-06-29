@@ -4,13 +4,15 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
 
+// `perm` liga o item a uma flag de permissao do cliente (cliente.permissoes).
+// Ausente/undefined = liberado. Itens sem `perm` (Início) ficam sempre visíveis.
 const NAV_ITEMS = [
   { key: '', label: 'Início', todos: true },
-  { key: '/entregas', label: 'Entregas', todos: true },
-  { key: '/aprovacoes', label: 'Aprovações', todos: true },
-  { key: '/solicitar', label: 'Solicitar conteúdo', todos: true },
-  { key: '/esteira', label: 'Esteira', todos: true },
-  { key: '/planner', label: 'Planner', todos: true },
+  { key: '/entregas', label: 'Entregas', todos: true, perm: 'entregas' as const },
+  { key: '/aprovacoes', label: 'Aprovações', todos: true, perm: 'aprovacoes' as const },
+  { key: '/solicitar', label: 'Solicitar conteúdo', todos: true, perm: 'solicitar' as const },
+  { key: '/esteira', label: 'Esteira', todos: true, perm: 'esteira' as const },
+  { key: '/planner', label: 'Planner', todos: true, perm: 'planner' as const },
   { key: '/playbook', label: 'Playbook', equipe: true },
   { key: '/marca', label: 'Marca', equipe: true },
   { key: '/listening', label: 'Social Listening', equipe: true },
@@ -40,6 +42,21 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
   const basePath = `/cliente/${clienteId}`
   const subpath = pathname.replace(basePath, '') || ''
+
+  // Permissao do portal: ausente/undefined = liberado. Equipe editando ve tudo.
+  const clientePode = (perm?: string) => {
+    if (!perm) return true
+    if (ehEquipe) return true
+    return (cliente?.permissoes?.[perm]) !== false
+  }
+  // Guard de acesso direto por URL: se a pagina atual nao e permitida, volta ao Inicio.
+  useEffect(() => {
+    if (!cliente || ehEquipe) return
+    const item = NAV_ITEMS.find(i => i.key === subpath)
+    if (item && (item as any).perm && cliente.permissoes?.[(item as any).perm] === false) {
+      router.replace(basePath)
+    }
+  }, [cliente, subpath, ehEquipe])
 
   // Pendências de aprovação do cliente (banner "o que está esperando você", em todo o portal)
   const [pendentesAprov, setPendentesAprov] = useState(0)
@@ -194,7 +211,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                 </button>
               )
             }
-            const grupoCliente = NAV_ITEMS.filter(i => i.todos)
+            const grupoCliente = NAV_ITEMS.filter(i => i.todos && clientePode((i as any).perm))
             const grupoEquipe = NAV_ITEMS.filter(i => i.equipe)
             const rotulo = { display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }
             return (
