@@ -20,6 +20,7 @@ const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr
 const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
@@ -55,7 +56,7 @@ import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
 type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[] }
-type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string }
+type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string; recrutamentoVagas?: string[] }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -336,7 +337,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'carga'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -431,17 +432,40 @@ function Dashboard() {
   const [resumoCarregando, setResumoCarregando] = useState(false)
   const [enviandoResumo, setEnviandoResumo] = useState(false)
   const [resumoMsg, setResumoMsg] = useState('')
-  async function abrirResumo(clienteId: string) {
-    setResumoCliente(clienteId); setResumoCarregando(true); setResumoTexto(''); setResumoInfo(null); setResumoMsg('')
-    const r = await fetch(`/api/resumo-semanal?clienteId=${clienteId}`).then(x => x.json()).catch(() => null)
+  // Predefinicoes (templates) do resumo semanal
+  type ResumoPreset = { id: string; nome: string; intro: string; fechamento: string }
+  const [resumoTemplates, setResumoTemplates] = useState<ResumoPreset[]>([])
+  const [resumoTemplateId, setResumoTemplateId] = useState('')
+  const [gerirPresets, setGerirPresets] = useState(false)
+  const [salvandoPresets, setSalvandoPresets] = useState(false)
+  async function gerarResumoTexto(clienteId: string, templateId: string) {
+    setResumoCarregando(true); setResumoMsg('')
+    const q = `clienteId=${clienteId}${templateId ? `&templateId=${templateId}` : ''}`
+    const r = await fetch(`/api/resumo-semanal?${q}`).then(x => x.json()).catch(() => null)
     setResumoCarregando(false)
     if (r?.texto !== undefined) { setResumoTexto(r.texto); setResumoInfo({ publicados: r.publicados, aguardando: r.aguardando, proximos: r.proximos, emailCliente: r.emailCliente || '' }) }
     else setResumoMsg('Não foi possível gerar o resumo.')
   }
+  async function abrirResumo(clienteId: string) {
+    setResumoCliente(clienteId); setResumoTexto(''); setResumoInfo(null); setResumoMsg('')
+    fetch('/api/resumo-templates').then(r => r.json()).then(d => setResumoTemplates(Array.isArray(d) ? d : [])).catch(() => {})
+    gerarResumoTexto(clienteId, resumoTemplateId)
+  }
+  function aplicarTemplateResumo(id: string) {
+    setResumoTemplateId(id)
+    if (resumoCliente) gerarResumoTexto(resumoCliente, id)
+  }
+  async function salvarPresetsResumo() {
+    setSalvandoPresets(true)
+    const r = await fetch('/api/resumo-templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates: resumoTemplates }) }).then(x => x.json()).catch(() => null)
+    setSalvandoPresets(false)
+    if (r?.ok) { setResumoTemplates(r.templates); setResumoMsg('Predefinições salvas.') }
+    else setResumoMsg('Falha ao salvar predefinições.')
+  }
   async function enviarResumoEmail() {
     if (!resumoCliente || enviandoResumo) return
     setEnviandoResumo(true); setResumoMsg('')
-    const r = await fetch('/api/resumo-semanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: resumoCliente }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/resumo-semanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: resumoCliente, templateId: resumoTemplateId || undefined }) }).then(x => x.json()).catch(() => null)
     setEnviandoResumo(false)
     setResumoMsg(r?.ok ? 'Resumo enviado por e-mail ao cliente!' : (r?.error || 'Falha ao enviar e-mail.'))
   }
@@ -474,6 +498,15 @@ function Dashboard() {
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
+  // Notificação aberta em modal (sem sair do Inbox)
+  const [notifAberta, setNotifAberta] = useState<any | null>(null)
+  // Abre o item relacionado a uma notificação (post/tarefa/mensagem) — usado pelo modal do Inbox
+  function abrirItemNotificacao(n: any) {
+    setNotifAberta(null)
+    if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setPostPreview(p); return } }
+    if (n.tipo?.startsWith('tarefa_')) { setAba('tarefas' as any); return }
+    if (n.tipo === 'mensagem_privada') { setAba('mensagens' as any); return }
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -1484,7 +1517,7 @@ function Dashboard() {
           {!verComoClienteId && (
             <>
               {([
-                { titulo: '', itens: [['meu-dia', 'Meu dia'], ['home', 'Painel']] },
+                { titulo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['home', 'Painel']] },
                 { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
                 { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
               ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
@@ -2666,9 +2699,8 @@ function Dashboard() {
                   return (
                     <div key={n.id} onClick={() => {
                       if (!n.lida) marcarNotificacaoLida(n.id)
-                      if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) setPostPreview(p) }
-                      if (n.tipo?.startsWith('tarefa_')) setAba('tarefas' as any)
-                      if (n.tipo === 'mensagem_privada') setAba('mensagens' as any)
+                      // Abre a propria notificacao em modal, sem sair do Inbox
+                      setNotifAberta(n)
                     }} style={{
                       display: 'flex', gap: 14, padding: '14px 18px', background: n.lida ? '#fff' : '#fffbeb', borderRadius: 12,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', alignItems: 'flex-start',
@@ -2691,6 +2723,27 @@ function Dashboard() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Modal da notificacao aberta (abre dentro do Inbox, sem navegar) */}
+        {notifAberta && (
+          <div onClick={() => setNotifAberta(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <h3 style={{ margin: 0, fontSize: 17, color: '#111', lineHeight: 1.3 }}>{notifAberta.titulo}</h3>
+                <button onClick={() => setNotifAberta(null)} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+              </div>
+              <p style={{ margin: '0 0 14px', fontSize: 14, color: '#444', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notifAberta.mensagem}</p>
+              <span style={{ fontSize: 12, color: '#aaa' }}>{new Date(notifAberta.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              {(notifAberta.postId || notifAberta.tipo?.startsWith('tarefa_') || notifAberta.tipo === 'mensagem_privada') && (
+                <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => abrirItemNotificacao(notifAberta)} className="soma10-no-invert" style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+                    Abrir item relacionado →
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -3368,6 +3421,10 @@ function Dashboard() {
         )}
 
         {/* MEU DIA (equipe) */}
+        {aba === 'lista-pessoal' && role !== 'cliente' && (
+          <PersonalList />
+        )}
+
         {aba === 'meu-dia' && role !== 'cliente' && (
           <MeuDia onAbrirTarefas={() => setAba('tarefas')} clientes={clientes as any} usuarios={usuarios as any} />
         )}
@@ -3425,6 +3482,21 @@ function Dashboard() {
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição da empresa (aparece em destaque no formulário)</label>
                 <textarea value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+              </div>
+
+              <div style={{ height: 1, background: '#f0f0f0' }} />
+              <div>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Vagas / oportunidades</span>
+                <p style={{ margin: '4px 0 10px', fontSize: 12, color: '#999' }}>O candidato escolhe uma destas opções num menu. Se a lista ficar vazia, o formulário mostra um campo de texto livre.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(configAgencia.recrutamentoVagas || []).map((v, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input value={v} onChange={e => setConfigAgencia(c => { const arr = [...(c.recrutamentoVagas || [])]; arr[i] = e.target.value; return { ...c, recrutamentoVagas: arr } })} placeholder="Ex: Social Media" style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: (c.recrutamentoVagas || []).filter((_, j) => j !== i) }))} title="Remover" style={{ flexShrink: 0, padding: '8px 12px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Remover</button>
+                    </div>
+                  ))}
+                  <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: [...(c.recrutamentoVagas || []), ''] }))} style={{ alignSelf: 'flex-start', padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar vaga</button>
+                </div>
               </div>
 
               <div style={{ height: 1, background: '#f0f0f0' }} />
@@ -3681,12 +3753,43 @@ function Dashboard() {
       {/* Modal: resumo semanal do cliente */}
       {resumoCliente && (
         <div onClick={() => setResumoCliente(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 22 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Resumo da semana</h3>
             <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>
             {resumoCarregando ? <p style={{ color: '#aaa' }}>Gerando...</p> : (
               <>
                 {resumoInfo && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#666' }}>✅ {resumoInfo.publicados} publicados · ⏳ {resumoInfo.aguardando} aguardando · 📅 {resumoInfo.proximos} próximos</p>}
+                {/* Predefinicoes (templates): aplica saudacao/fechamento personalizados */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <select value={resumoTemplateId} onChange={e => aplicarTemplateResumo(e.target.value)} style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="">Texto padrão</option>
+                    {resumoTemplates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                  </select>
+                  {(role === 'admin' || role === 'gerente') && (
+                    <button onClick={() => setGerirPresets(v => !v)} style={{ flexShrink: 0, padding: '9px 14px', background: gerirPresets ? '#111' : '#f5f5f5', color: gerirPresets ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Predefinições</button>
+                  )}
+                </div>
+                {gerirPresets && (role === 'admin' || role === 'gerente') && (
+                  <div style={{ marginBottom: 12, padding: 14, background: '#fafafa', border: '1px solid #eee', borderRadius: 12 }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 11.5, color: '#888' }}>Saudação e fechamento personalizados. Use <b>{'{cliente}'}</b> e <b>{'{periodo}'}</b> — serão substituídos. O corpo (publicados/aguardando/próximos) é sempre automático.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {resumoTemplates.map((t, i) => (
+                        <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da predefinição" style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ flexShrink: 0, padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Remover</button>
+                          </div>
+                          <textarea value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <button onClick={() => setResumoTemplates(arr => [...arr, { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), nome: 'Nova predefinição', intro: '', fechamento: '' }])} style={{ padding: '8px 14px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                      <button onClick={salvarPresetsResumo} disabled={salvandoPresets} style={{ padding: '8px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvandoPresets ? 'not-allowed' : 'pointer' }}>{salvandoPresets ? 'Salvando...' : 'Salvar predefinições'}</button>
+                    </div>
+                  </div>
+                )}
                 <textarea value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                   <a href={`https://wa.me/?text=${encodeURIComponent(resumoTexto)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#25D366', color: '#fff', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>

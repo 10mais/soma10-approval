@@ -118,6 +118,7 @@ export type ConfigAgencia = {
   recrutamentoDescricao?: string
   recrutamentoMensagemFinalTitulo?: string
   recrutamentoMensagemFinal?: string
+  recrutamentoVagas?: string[] // vagas/oportunidades selecionaveis pelo candidato (dropdown)
 }
 
 export type TipoNotificacao =
@@ -180,7 +181,7 @@ export type Marco = {
 // Gestao de tarefas
 export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
-export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video'
+export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video' | 'briefing' | 'copy' | 'campanha'
 export type Tarefa = {
   id: string
   titulo: string
@@ -199,6 +200,8 @@ export type Tarefa = {
   comentarios?: TarefaComentario[]
   apontamentos?: Apontamento[] // horas trabalhadas (apontamento de tempo)
   checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
+  origemPostId?: string // pauta da Esteira que originou esta tarefa (vinculo)
+  origemBriefingId?: string // briefing de campanha que originou esta tarefa (vinculo)
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
@@ -266,6 +269,7 @@ export type BriefingCampanha = {
   oferta?: string
   observacoes?: string
   conteudo: string // o briefing completo (Markdown), gerado/editado
+  tarefaId?: string // tarefa (tipo campanha) vinculada a este briefing
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
@@ -326,4 +330,5 @@ export type Post = {
   aguardandoDesde?: string // ISO — quando a pauta entrou numa etapa de aprovação (SLA)
   etapaDesde?: string // ISO — quando a pauta entrou na etapa atual (cycle-time/aging)
   preAprovado?: boolean // conteúdo recorrente pré-aprovado pelo cliente (dispensa aprovação)
+  tarefaId?: string // tarefa criada a partir desta pauta da Esteira (vinculo)
 }

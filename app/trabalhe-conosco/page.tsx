@@ -4,10 +4,10 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import UploadProgress from '@/app/components/UploadProgress'
 
-type RecrutCfg = { logo: string; titulo: string; subtitulo: string; descricao: string; mensagemFinalTitulo: string; mensagemFinal: string; nomeAgencia: string }
+type RecrutCfg = { logo: string; titulo: string; subtitulo: string; descricao: string; mensagemFinalTitulo: string; mensagemFinal: string; nomeAgencia: string; vagas: string[] }
 
 export default function TrabalheConoscoPage() {
-  const [cfg, setCfg] = useState<RecrutCfg>({ logo: '', titulo: 'Trabalhe conosco', subtitulo: 'Preencha seus dados e anexe seu currículo. Vamos adorar conhecer você.', descricao: '', mensagemFinalTitulo: 'Candidatura enviada!', mensagemFinal: 'Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.', nomeAgencia: 'Grupo 10+' })
+  const [cfg, setCfg] = useState<RecrutCfg>({ logo: '', titulo: 'Trabalhe conosco', subtitulo: 'Preencha seus dados e anexe seu currículo. Vamos adorar conhecer você.', descricao: '', mensagemFinalTitulo: 'Candidatura enviada!', mensagemFinal: 'Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.', nomeAgencia: 'Grupo 10+', vagas: [] })
   useEffect(() => { fetch('/api/recrutamento').then(r => r.json()).then(d => { if (d && !d.error) setCfg(d) }).catch(() => {}) }, [])
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', vaga: '', mensagem: '' })
   const [curriculo, setCurriculo] = useState<{ url: string; nome: string } | null>(null)
@@ -91,7 +91,14 @@ export default function TrabalheConoscoPage() {
               </div>
               <div>
                 <label style={label}>Vaga / área de interesse</label>
-                <input value={form.vaga} onChange={e => setForm(f => ({ ...f, vaga: e.target.value }))} placeholder="Ex: Social Media, Designer, Tráfego..." style={inputStyle} />
+                {cfg.vagas.length > 0 ? (
+                  <select value={form.vaga} onChange={e => setForm(f => ({ ...f, vaga: e.target.value }))} style={{ ...inputStyle, background: '#fff' }}>
+                    <option value="">Selecione a vaga / área...</option>
+                    {cfg.vagas.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                ) : (
+                  <input value={form.vaga} onChange={e => setForm(f => ({ ...f, vaga: e.target.value }))} placeholder="Ex: Social Media, Designer, Tráfego..." style={inputStyle} />
+                )}
               </div>
               <div>
                 <label style={label}>Mensagem / sobre você</label>

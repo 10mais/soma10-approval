@@ -26,6 +26,8 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   const [salvando, setSalvando] = useState(false)
   const [refino, setRefino] = useState('')
   const [erro, setErro] = useState('')
+  const [relacionando, setRelacionando] = useState(false)
+  const [relMsg, setRelMsg] = useState('')
 
   function carregar() {
     fetch('/api/briefings').then(r => r.json()).then(d => setBriefings(Array.isArray(d) ? d : [])).catch(() => {})
@@ -82,6 +84,19 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
     if (!confirm('Excluir este briefing?')) return
     await fetch(`/api/briefings?id=${id}`, { method: 'DELETE' })
     carregar()
+  }
+
+  async function relacionarTarefa() {
+    if (!editId) return
+    setRelacionando(true); setRelMsg('')
+    const r = await fetch('/api/briefings/relacionar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ briefingId: editId }),
+    }).then(x => x.json()).catch(() => null)
+    setRelacionando(false)
+    if (!r || r.error) { setRelMsg(r?.error || 'Não foi possível relacionar.'); return }
+    setRelMsg(r.jaVinculada ? 'Já havia uma tarefa de campanha vinculada.' : 'Tarefa de campanha criada e vinculada.')
+    setTimeout(() => setRelMsg(''), 8000)
   }
 
   function togglePlataforma(p: string) {
@@ -216,9 +231,15 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
               {salvando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Salvar briefing'}
             </button>
             {editId && (
+              <button onClick={relacionarTarefa} disabled={relacionando} title="Cria uma tarefa do tipo Campanha vinculada a este briefing" style={{ padding: '11px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                {relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
+              </button>
+            )}
+            {editId && (
               <button onClick={() => excluir(editId)} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
             )}
           </div>
+          {relMsg && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Não') ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
         </div>
       </div>
     </div>

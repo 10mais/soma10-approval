@@ -6,8 +6,16 @@ function tituloPost(p: Post) { const l = (p.legenda || '').replace(/\s+/g, ' ').
 
 export type Resumo = { cliente: Cliente; texto: string; html: string; publicados: number; aguardando: number; proximos: number }
 
+// Predefinicao (template) das partes editaveis do resumo. {cliente} e {periodo} sao substituidos.
+export type ResumoTemplate = { intro?: string; fechamento?: string }
+
+function aplicar(txt: string, cliente: string, periodo: string) {
+  return txt.replace(/\{cliente\}/g, cliente).replace(/\{periodo\}/g, periodo)
+}
+
 // Monta o resumo da semana de um cliente a partir dos posts no Redis.
-export async function gerarResumoSemanal(clienteId: string): Promise<Resumo | null> {
+// tpl: predefinicao opcional (saudacao/fechamento personalizados). Sem tpl => texto padrao.
+export async function gerarResumoSemanal(clienteId: string, tpl?: ResumoTemplate): Promise<Resumo | null> {
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return null
 
@@ -28,10 +36,17 @@ export async function gerarResumoSemanal(clienteId: string): Promise<Resumo | nu
   const inicio = new Date(agora - SEMANA)
   const periodo = `${fmtDia(inicio)} a ${fmtDia(hoje)}`
 
+  // Partes personalizaveis (com placeholders) — default reproduz o texto atual
+  const introTxt = tpl?.intro && tpl.intro.trim()
+    ? aplicar(tpl.intro, cliente.nome, periodo)
+    : `*Resumo da semana — ${cliente.nome}*\n${periodo}`
+  const fechamentoTxt = tpl?.fechamento && tpl.fechamento.trim()
+    ? aplicar(tpl.fechamento, cliente.nome, periodo)
+    : 'Qualquer dúvida, é só chamar! 💛 — Grupo 10+'
+
   // Texto plano (WhatsApp)
   const linhas: string[] = []
-  linhas.push(`*Resumo da semana — ${cliente.nome}*`)
-  linhas.push(`${periodo}`)
+  linhas.push(introTxt)
   linhas.push('')
   linhas.push(`✅ Publicados nesta semana: ${publicados.length}`)
   publicados.slice(0, 8).forEach(p => linhas.push(`• ${tituloPost(p)}`))
@@ -47,7 +62,7 @@ export async function gerarResumoSemanal(clienteId: string): Promise<Resumo | nu
     proximos.slice(0, 8).forEach(p => linhas.push(`• ${fmtDia(new Date((p as any).dataAgendada))} — ${tituloPost(p)}`))
     linhas.push('')
   }
-  linhas.push('Qualquer dúvida, é só chamar! 💛 — Grupo 10+')
+  linhas.push(fechamentoTxt)
   const texto = linhas.join('\n')
 
   // HTML (e-mail)
@@ -60,9 +75,11 @@ export async function gerarResumoSemanal(clienteId: string): Promise<Resumo | nu
         <p style="color:#111;margin:4px 0 0;opacity:.8">${cliente.nome} · ${periodo}</p>
       </div>
       <div style="background:#fff;padding:22px;border-radius:0 0 12px 12px;border:1px solid #eee">
+        ${tpl?.intro && tpl.intro.trim() ? `<p style="margin:0 0 14px;color:#444;white-space:pre-wrap">${aplicar(tpl.intro, cliente.nome, periodo)}</p>` : ''}
         <h3 style="margin:0;color:#16a34a">✅ Publicados: ${publicados.length}</h3>${li(publicados)}
         <h3 style="margin:18px 0 0;color:#ca8a04">⏳ Aguardando sua aprovação: ${aguardando.length}</h3>${li(aguardando)}
         <h3 style="margin:18px 0 0;color:#111">📅 Próximas publicações</h3>${li(proximos, p => `${fmtDia(new Date((p as any).dataAgendada))} — `)}
+        ${tpl?.fechamento && tpl.fechamento.trim() ? `<p style="margin:16px 0 0;color:#444;white-space:pre-wrap">${aplicar(tpl.fechamento, cliente.nome, periodo)}</p>` : ''}
         <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
         <p style="color:#aaa;font-size:12px;text-align:center">Soma10 Approval · Grupo 10+</p>
       </div>

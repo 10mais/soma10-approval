@@ -98,6 +98,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [iaMsg, setIaMsg] = useState('')
   const [gerandoLegendaNova, setGerandoLegendaNova] = useState(false)
   const [legendaNovaMsg, setLegendaNovaMsg] = useState('')
+  const [relacionando, setRelacionando] = useState(false)
+  const [relMsg, setRelMsg] = useState('')
 
   async function gerarLegendaNovaPauta() {
     const plano = planos.find(p => p.id === planoSel)
@@ -179,6 +181,27 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
     finally { setGerandoIA(false) }
   }
 
+  async function relacionarTarefas() {
+    if (!planoSel) return
+    if (!confirm('Criar uma tarefa para cada pauta deste plano? O tipo da tarefa segue a etapa atual da pauta (briefing, copy, criativo). Pautas em "Pronto" são ignoradas e as já vinculadas não duplicam.')) return
+    setRelacionando(true); setRelMsg('')
+    try {
+      const r = await fetch('/api/esteira/relacionar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planoId: planoSel }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setRelMsg(d?.error || 'Falha ao relacionar.'); return }
+      const partes = [`${d.criadas} tarefa(s) criada(s)`]
+      if (d.jaVinculadas) partes.push(`${d.jaVinculadas} já vinculada(s)`)
+      if (d.puladas) partes.push(`${d.puladas} em "Pronto" ignorada(s)`)
+      setRelMsg(partes.join(' · '))
+      carregarPautas(planoSel)
+      setTimeout(() => setRelMsg(''), 8000)
+    } catch { setRelMsg('Erro de conexão ao relacionar.') }
+    finally { setRelacionando(false) }
+  }
+
   async function moverEtapa(pauta: Pauta, etapa: string) {
     if (pauta.etapa === etapa) return
     setPautas(ps => ps.map(p => p.id === pauta.id ? { ...p, etapa } : p))
@@ -204,7 +227,11 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
+          <button onClick={relacionarTarefas} disabled={relacionando} title="Cria uma tarefa por pauta (tipo = etapa atual)" style={{ padding: '9px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
+            {relacionando ? 'Relacionando...' : 'Relacionar à Tarefas'}
+          </button>
         </>}
+        {relMsg && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>{relMsg}</span>}
       </div>
 
       {/* Form de novo plano */}

@@ -15,5 +15,6 @@ export async function GET() {
     mensagemFinalTitulo: c.recrutamentoMensagemFinalTitulo || 'Candidatura enviada!',
     mensagemFinal: c.recrutamentoMensagemFinal || 'Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.',
     nomeAgencia: c.nomeAgencia || 'Grupo 10+',
+    vagas: Array.isArray(c.recrutamentoVagas) ? c.recrutamentoVagas.filter(Boolean) : [],
   })
 }
