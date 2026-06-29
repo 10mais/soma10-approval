@@ -10,19 +10,23 @@ export async function GET(req: NextRequest) {
   const contagem = req.nextUrl.searchParams.get('contagem') === 'true'
   const ids = await redis.smembers(`notificacoes:${session.user.email}`)
 
+  // Mensagens privadas vivem na aba Mensagens (badge próprio), não no Inbox.
+  const ehInbox = (n: Notificacao | null): n is Notificacao => !!n && n.tipo !== 'mensagem_privada'
+
   if (contagem) {
     if (ids.length === 0) return NextResponse.json({ total: 0, naoLidas: 0 })
     const keys = ids.map(id => `notificacao:${id}`)
     const raw = await redis.mget<(Notificacao | null)[]>(...keys)
-    const naoLidas = raw.filter(n => n && !n.lida).length
-    return NextResponse.json({ total: ids.length, naoLidas })
+    const doInbox = raw.filter(ehInbox)
+    const naoLidas = doInbox.filter(n => !n.lida).length
+    return NextResponse.json({ total: doInbox.length, naoLidas })
   }
 
   if (ids.length === 0) return NextResponse.json([])
   const limit = parseInt(req.nextUrl.searchParams.get('limit') || '50') || 50
   const keys = ids.map(id => `notificacao:${id}`)
   const raw = await redis.mget<(Notificacao | null)[]>(...keys)
-  const notificacoes = raw.filter(Boolean) as Notificacao[]
+  const notificacoes = raw.filter(ehInbox)
   notificacoes.sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime())
 
   return NextResponse.json(notificacoes.slice(0, limit))
