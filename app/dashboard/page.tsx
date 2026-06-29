@@ -1394,12 +1394,9 @@ function Dashboard() {
           width: 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
           minHeight: '100vh', position: 'sticky', top: 0, padding: '16px 14px', boxSizing: 'border-box',
         }}>
-          {/* Logo no topo da sidebar (substitui a logo da antiga barra preta) */}
-          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '2px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
-            <div style={{ background: '#111', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-              <img src="/logo.svg" alt="Soma10" style={{ width: 22, height: 22, objectFit: 'contain' }} />
-            </div>
-            <span style={{ fontWeight: 800, color: '#111', fontSize: 14 }}>Soma10</span>
+          {/* Logo (wordmark) no topo da sidebar — versão por tema (preta no claro, branca no escuro) */}
+          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
+            <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />
           </div>
           {/* PAINEL DO CLIENTE — nav simplificada */}
           {ehCliente && clienteEmVisualizacao && (
