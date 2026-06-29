@@ -1268,6 +1268,8 @@ function Dashboard() {
   const clienteInstagramValido = novoCliente.instagram.trim().length >= 2
   const clienteEmailValido = !novoCliente.loginEmail.trim() || emailValido(novoCliente.loginEmail)
   const clienteFormValido = clienteNomeValido && clienteInstagramValido && clienteEmailValido
+  // Foto do usuário logado (para o avatar do cluster) — usa o cadastro ou a imagem da sessão
+  const minhaFoto = (usuarios.find((u: any) => u.email === (session?.user as any)?.email) as any)?.foto || (session?.user as any)?.image || ''
 
   // Validação do formulário de novo usuário — nome, e-mail, senha e nível de acesso obrigatórios
   const usuarioNomeValido = novoUsuario.nome.trim().length >= 2
@@ -1374,8 +1376,10 @@ function Dashboard() {
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
-            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: '#111', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: minhaFoto ? '#eee' : '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {minhaFoto
+                ? <img src={minhaFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ color: '#111', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
             </div>
             <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>{session?.user?.name}</span>
           </button>
@@ -1638,8 +1642,8 @@ function Dashboard() {
           )}
         </aside>
 
-        {/* Conteúdo principal */}
-        <div style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
+        {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
+        <div style={{ flex: 1, minWidth: 0, padding: '70px 28px 28px' }}>
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (
