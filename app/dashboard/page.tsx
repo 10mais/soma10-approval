@@ -1,6 +1,6 @@
 'use client'
 import { useSession, signOut } from 'next-auth/react'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Calendar from '../components/Calendar'
@@ -526,6 +526,14 @@ function Dashboard() {
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
+  // Biblioteca = arquivo: carrega o histórico COMPLETO (sem a janela de 120 dias) uma vez
+  const histCarregadoRef = useRef(false)
+  useEffect(() => {
+    if (aba === 'biblioteca' && !histCarregadoRef.current && status === 'authenticated' && (session?.user as any)?.role !== 'cliente') {
+      histCarregadoRef.current = true
+      fetch('/api/posts?tudo=1').then(r => r.json()).then(d => { if (Array.isArray(d)) setPosts(d) }).catch(() => {})
+    }
+  }, [aba, status])
   // Sidebar recolhida (rail só com ícones) — preferência lembrada entre sessões
   const [recolhida, setRecolhida] = useState(false)
   useEffect(() => { try { setRecolhida(localStorage.getItem('sidebarRecolhida') === '1') } catch {} }, [])

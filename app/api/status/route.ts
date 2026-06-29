@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Post } from '@/lib/redis'
+import { getPostsDoCliente } from '@/lib/postsIndex'
 
 export const runtime = 'nodejs'
 
@@ -12,14 +13,18 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return NextResponse.json({ error: 'token obrigatório' }, { status: 400 })
 
-  const ids = await redis.smembers('clientes')
-  const clientes = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
-  const cliente = clientes.find(c => c.statusToken && c.statusToken === token)
+  // Lookup O(1) pelo mapa reverso; se faltar (token antigo), varre uma vez e backfilla.
+  let clienteId = await redis.get<string>(`statustoken:${token}`)
+  let cliente: Cliente | null = clienteId ? await redis.get<Cliente>(`cliente:${clienteId}`) : null
+  if (!cliente) {
+    const ids = await redis.smembers('clientes')
+    const clientes = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
+    cliente = clientes.find(c => c.statusToken && c.statusToken === token) || null
+    if (cliente) { clienteId = cliente.id; await redis.set(`statustoken:${token}`, cliente.id) }
+  }
   if (!cliente) return NextResponse.json({ error: 'link inválido' }, { status: 404 })
 
-  const pids = await redis.smembers('posts')
-  const posts = pids.length ? ((await redis.mget<(Post | null)[]>(...pids.map(i => `post:${i}`))).filter(Boolean) as Post[]) : []
-  const meus = posts.filter(p => p.clienteId === cliente.id)
+  const meus = await getPostsDoCliente(cliente.id)
 
   const agora = Date.now()
   const mes = new Date(), m = mes.getMonth(), y = mes.getFullYear()
@@ -53,5 +58,7 @@ export async function POST(req: NextRequest) {
     cliente.statusToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
     await redis.set(`cliente:${clienteId}`, cliente)
   }
+  // Mapa reverso token -> clienteId (lookup O(1) no GET público, sem varrer clientes)
+  await redis.set(`statustoken:${cliente.statusToken}`, clienteId)
   return NextResponse.json({ ok: true, token: cliente.statusToken })
 }

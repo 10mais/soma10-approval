@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
+import { getPostsDoCliente, indexarPost, desindexarPost } from '@/lib/postsIndex'
 import { v4 as uuid } from 'uuid'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+// Janela temporal da visão da equipe (todos os clientes): mantém posts recentes,
+// agendados/futuros ou atualizados nos últimos N dias. Posts antigos só com ?tudo=1.
+const JANELA_DIAS = 120
+function dentroDaJanela(p: Post, cutoff: number): boolean {
+  const datas = [p.dataAgendada, p.atualizadoEm, p.criadoEm].filter(Boolean).map(d => new Date(d as string).getTime()).filter(t => !isNaN(t))
+  return datas.length === 0 ? true : Math.max(...datas) >= cutoff
 }
 
 export async function GET(req: NextRequest) {
@@ -31,9 +40,20 @@ export async function GET(req: NextRequest) {
     clienteId = (session.user as any).clienteId
   }
 
-  const ids = await redis.smembers('posts')
-  const posts = ids.length > 0 ? await redis.mget<(Post | null)[]>(...ids.map(id => `post:${id}`)) : []
-  let filtrados = posts.filter(Boolean).filter(p => !clienteId || p!.clienteId === clienteId)
+  let filtrados: (Post | null)[]
+  if (clienteId) {
+    // Leitura por cliente: usa o índice por cliente (lazy). Cliente vê todo o histórico dele.
+    filtrados = await getPostsDoCliente(clienteId)
+  } else {
+    // Visão da equipe (todos os clientes): janela de 120 dias por padrão; ?tudo=1 traz tudo.
+    const ids = await redis.smembers('posts')
+    const posts = ids.length > 0 ? await redis.mget<(Post | null)[]>(...ids.map(id => `post:${id}`)) : []
+    filtrados = posts.filter(Boolean)
+    if (req.nextUrl.searchParams.get('tudo') !== '1') {
+      const cutoff = Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000
+      filtrados = (filtrados as Post[]).filter(p => dentroDaJanela(p, cutoff))
+    }
+  }
 
   // Rascunhos internos não devem ser visíveis para o cliente
   if (role === 'cliente') {
@@ -86,6 +106,8 @@ export async function POST(req: NextRequest) {
 
   await redis.set(`post:${post.id}`, post)
   await redis.sadd('posts', post.id)
+  // Índice por cliente (otimização de leitura do portal/cliente)
+  await indexarPost(post.clienteId, post.id)
   // Índice de agendados — o cron lê só este conjunto, não todos os posts
   if (post.status === 'agendado') await redis.sadd('agendados', post.id)
   // Índice de pautas por plano (esteira)
@@ -115,6 +137,11 @@ export async function PUT(req: NextRequest) {
   // Mantém o índice de agendados em dia
   if (atualizado.status === 'agendado') await redis.sadd('agendados', id)
   else await redis.srem('agendados', id)
+  // Se o cliente do post mudou (raro), move no índice por cliente
+  if ('clienteId' in updates && updates.clienteId !== post.clienteId) {
+    await desindexarPost(post.clienteId, id)
+    await indexarPost(updates.clienteId, id)
+  }
   return NextResponse.json({ ok: true, post: atualizado })
 }
 
@@ -139,6 +166,7 @@ export async function DELETE(req: NextRequest) {
   await redis.del(`post:${id}`)
   await redis.srem('posts', id)
   await redis.srem('agendados', id)
+  await desindexarPost(post.clienteId, id)
   if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
 
   return NextResponse.json({ ok: true })

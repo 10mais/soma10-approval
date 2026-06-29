@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Plano, Post } from '@/lib/redis'
+import { indexarPost } from '@/lib/postsIndex'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
 import { v4 as uuid } from 'uuid'
@@ -169,6 +170,7 @@ Responda APENAS com um JSON valido (sem markdown, sem explicacao, sem backticks)
       await redis.set(`post:${post.id}`, post)
       await redis.sadd('posts', post.id)
       await redis.sadd(`plano:${planoId}:pautas`, post.id)
+      await indexarPost(post.clienteId, post.id)
       postsCriados.push(post)
     }
 
