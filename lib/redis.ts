@@ -351,3 +351,60 @@ export type Post = {
   preAprovado?: boolean // conteúdo recorrente pré-aprovado pelo cliente (dispensa aprovação)
   tarefaId?: string // tarefa criada a partir desta pauta da Esteira (vinculo)
 }
+
+// ===== CRM de vendas (SDR/Closer) =====
+// Estágio do funil (configurável). Chaves: crm:estagios (array), índices crm:negocios, crm:contatos.
+export type CrmEstagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
+
+export type CrmContato = {
+  id: string
+  nome: string
+  email?: string
+  telefone?: string // WhatsApp — preparado para a integração oficial futura
+  empresa?: string
+  cargo?: string
+  observacoes?: string
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export type CrmAtividade = {
+  id: string
+  tipo: 'criacao' | 'nota' | 'ligacao' | 'email' | 'reuniao' | 'whatsapp' | 'estagio' | 'ganho' | 'perdido'
+  texto: string
+  autor: string
+  criadoEm: string
+}
+
+// Passagem de bastão Closer -> Gestor de Projetos (quanto mais detalhe, melhor o onboarding)
+export type CrmHandoff = {
+  escopoVendido?: string
+  expectativas?: string
+  detalhes?: string
+  observacoes?: string
+}
+
+export type CrmNegocioStatus = 'aberto' | 'ganho' | 'perdido'
+export type CrmNegocio = {
+  id: string
+  titulo: string
+  valor?: number
+  estagioId: string
+  status: CrmNegocioStatus
+  dono?: string // e-mail do responsável (SDR/closer)
+  donoNome?: string
+  contatoId?: string
+  origem?: string
+  probabilidade?: number
+  previsaoFechamento?: string // ISO date
+  motivoPerdido?: string
+  descricao?: string
+  handoff?: CrmHandoff
+  templateId?: string // modelo de entregas aplicado na conversão
+  clienteId?: string // cliente criado ao ganhar
+  atividades?: CrmAtividade[]
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+}
