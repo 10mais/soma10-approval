@@ -98,8 +98,6 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
   const [iaMsg, setIaMsg] = useState('')
   const [gerandoLegendaNova, setGerandoLegendaNova] = useState(false)
   const [legendaNovaMsg, setLegendaNovaMsg] = useState('')
-  const [relacionando, setRelacionando] = useState(false)
-  const [relMsg, setRelMsg] = useState('')
 
   async function gerarLegendaNovaPauta() {
     const plano = planos.find(p => p.id === planoSel)
@@ -181,26 +179,6 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
     finally { setGerandoIA(false) }
   }
 
-  async function relacionarTarefas() {
-    if (!planoSel) return
-    if (!confirm('Criar uma tarefa para cada pauta deste plano? O tipo da tarefa segue a etapa atual da pauta (briefing, copy, criativo). Pautas em "Pronto" são ignoradas e as já vinculadas não duplicam.')) return
-    setRelacionando(true); setRelMsg('')
-    try {
-      const r = await fetch('/api/esteira/relacionar', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planoId: planoSel }),
-      })
-      const d = await r.json()
-      if (!r.ok) { setRelMsg(d?.error || 'Falha ao relacionar.'); return }
-      const partes = [`${d.criadas} tarefa(s) criada(s)`]
-      if (d.jaVinculadas) partes.push(`${d.jaVinculadas} já vinculada(s)`)
-      if (d.puladas) partes.push(`${d.puladas} em "Pronto" ignorada(s)`)
-      setRelMsg(partes.join(' · '))
-      carregarPautas(planoSel)
-      setTimeout(() => setRelMsg(''), 8000)
-    } catch { setRelMsg('Erro de conexão ao relacionar.') }
-    finally { setRelacionando(false) }
-  }
 
   async function moverEtapa(pauta: Pauta, etapa: string) {
     if (pauta.etapa === etapa) return
@@ -227,11 +205,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
-          <button onClick={relacionarTarefas} disabled={relacionando} title="Cria uma tarefa por pauta (tipo = etapa atual)" style={{ padding: '9px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
-            {relacionando ? 'Relacionando...' : 'Relacionar à Tarefas'}
-          </button>
         </>}
-        {relMsg && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>{relMsg}</span>}
       </div>
 
       {/* Form de novo plano */}
@@ -467,6 +441,22 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   const [salvando, setSalvando] = useState(false)
   const [gerandoLegenda, setGerandoLegenda] = useState(false)
   const [legendaMsg, setLegendaMsg] = useState('')
+  // Relacionar esta pauta a uma tarefa (individual)
+  const [relacionando, setRelacionando] = useState(false)
+  const [vinculada, setVinculada] = useState(!!(pauta as any).tarefaId)
+  const [relMsg, setRelMsg] = useState('')
+  async function relacionarTarefa() {
+    setRelacionando(true); setRelMsg('')
+    const r = await fetch('/api/esteira/relacionar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId: pauta.id }),
+    }).then(x => x.json()).catch(() => null)
+    setRelacionando(false)
+    if (!r || r.error) { setRelMsg(r?.error || 'Falha ao relacionar.'); return }
+    if (r.resultado === 'pulada') { setRelMsg('Pautas em "Pronto" não geram tarefa (já viram post no Planner).'); return }
+    setVinculada(true)
+    setRelMsg(r.resultado === 'jaVinculada' ? 'Esta pauta já tinha uma tarefa vinculada.' : `Tarefa criada (tipo ${r.tipo}) e vinculada.`)
+  }
 
   async function gerarLegendaIA() {
     setGerandoLegenda(true); setLegendaMsg('Gerando legenda...')
@@ -614,6 +604,9 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
               Adicionar criativo
             </button>
           )}
+          <button onClick={relacionarTarefa} disabled={relacionando || vinculada} title="Cria uma tarefa para esta pauta (tipo = etapa atual)" style={{ padding: '11px 16px', background: vinculada ? '#f0fdf4' : '#fff', color: vinculada ? '#16a34a' : '#111', border: `1.5px solid ${vinculada ? '#bbf7d0' : '#111'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
+            {vinculada ? '✓ Tarefa vinculada' : relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
+          </button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onDescartar && (
             <button onClick={onDescartar} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -621,6 +614,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             </button>
           )}
         </div>
+        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
       </div>
     </div>
   )
