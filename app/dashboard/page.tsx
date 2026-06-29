@@ -530,6 +530,26 @@ function Dashboard() {
   const [recolhida, setRecolhida] = useState(false)
   useEffect(() => { try { setRecolhida(localStorage.getItem('sidebarRecolhida') === '1') } catch {} }, [])
   function alternarRecolhida() { setRecolhida(v => { const n = !v; try { localStorage.setItem('sidebarRecolhida', n ? '1' : '0') } catch {}; return n }) }
+  // Modo escuro: mantém botões amarelos AMARELOS (texto branco). O filtro de inversão
+  // deixaria-os marrons; marcamos por cor computada (#ffc00f) e a classe .btn-amarelo
+  // os re-inverte de volta. Reaplica via MutationObserver (modais/listas que surgem).
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (tema !== 'escuro') { document.querySelectorAll('.btn-amarelo').forEach(b => b.classList.remove('btn-amarelo')); return }
+    const marcar = () => {
+      document.querySelectorAll('button').forEach(b => {
+        const amarelo = getComputedStyle(b).backgroundColor === 'rgb(255, 192, 15)'
+        if (amarelo) b.classList.add('btn-amarelo')
+        else if (b.classList.contains('btn-amarelo')) b.classList.remove('btn-amarelo')
+      })
+    }
+    let raf = 0
+    const agendar = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(marcar) }
+    marcar()
+    const obs = new MutationObserver(agendar)
+    obs.observe(document.body, { childList: true, subtree: true })
+    return () => { obs.disconnect(); cancelAnimationFrame(raf) }
+  }, [tema])
   // Notificação aberta em modal (sem sair do Inbox)
   const [notifAberta, setNotifAberta] = useState<any | null>(null)
   // Abre o item relacionado a uma notificação (post/tarefa/mensagem) — usado pelo modal do Inbox
@@ -1346,6 +1366,12 @@ function Dashboard() {
         .soma10-tema-escuro .soma10-no-invert video {
           filter: none;
         }
+        /* Botoes amarelos (marcados via JS): continuam amarelos no escuro, com texto branco. */
+        .soma10-tema-escuro .btn-amarelo {
+          filter: invert(1) hue-rotate(180deg);
+          color: #fff !important;
+        }
+        .soma10-tema-escuro .btn-amarelo svg { stroke: #fff !important; }
         @keyframes shimmer {
           0% { opacity: 1; }
           50% { opacity: 0.4; }
