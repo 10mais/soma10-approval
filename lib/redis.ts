@@ -398,6 +398,13 @@ export type CrmNegocio = {
   origem?: string
   probabilidade?: number
   previsaoFechamento?: string // ISO date
+  // Qualificação da oportunidade (quanto mais rico, melhor a venda e o handoff)
+  empresa?: string
+  segmento?: string
+  faturamentoEstimado?: string // faixa em texto (ex.: "R$ 50-100k/mês")
+  instagram?: string // @ ou site da empresa
+  dores?: string // principais dores/desafios do prospect
+  solucoes?: string // possíveis soluções / o que oferecer
   motivoPerdido?: string
   descricao?: string
   handoff?: CrmHandoff

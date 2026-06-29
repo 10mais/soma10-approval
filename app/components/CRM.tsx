@@ -8,6 +8,7 @@ type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; status: string
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
+  empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
 }
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -105,7 +106,7 @@ const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', b
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
 
 function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; onClose: () => void; onSalvo: () => void }) {
-  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '' })
+  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
   const [salvando, setSalvando] = useState(false)
   const equipe = (usuarios || []).filter(u => u.role !== 'cliente')
 
@@ -114,13 +115,13 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
     setSalvando(true)
     let contatoId = ''
     if (f.contatoNome.trim()) {
-      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone }) }).then(r => r.json()).catch(() => null)
+      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
       contatoId = c?.contato?.id || ''
     }
     const dono = equipe.find(u => u.email === f.dono)
     await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: f.titulo, valor: Number(f.valor) || 0, contatoId, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId }),
+      body: JSON.stringify({ titulo: f.titulo, valor: Number(f.valor) || 0, contatoId, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
     }).catch(() => {})
     setSalvando(false); onSalvo()
   }
@@ -154,6 +155,19 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
             <div><label style={labelStyle}>Previsão</label><input type="date" value={f.previsaoFechamento} onChange={e => setF({ ...f, previsaoFechamento: e.target.value })} style={inputStyle} /></div>
           </div>
           <div><label style={labelStyle}>Origem</label><input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} placeholder="Indicação, Instagram, tráfego..." style={inputStyle} /></div>
+
+          <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
+          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder="Nome da empresa" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Faturamento estimado</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Instagram / site</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder="@empresa ou site" style={inputStyle} /></div>
+          </div>
+          <div><label style={labelStyle}>Principais dores / desafios</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={salvar} disabled={salvando || !f.titulo.trim()} style={{ flex: 1, padding: '11px 0', background: f.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.titulo.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
@@ -231,6 +245,19 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
             )}
           </div>
         )}
+
+        {/* Qualificação */}
+        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 14 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Segmento</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Faturamento estimado</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Instagram / site</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
+          </div>
+          <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Possíveis soluções</label><textarea value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+        </div>
 
         {/* Timeline */}
         <label style={labelStyle}>Atividades</label>

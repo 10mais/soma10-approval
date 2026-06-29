@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
     origem: b.origem || '',
     previsaoFechamento: b.previsaoFechamento || '',
     descricao: b.descricao || '',
+    empresa: b.empresa || '', segmento: b.segmento || '', faturamentoEstimado: b.faturamentoEstimado || '',
+    instagram: b.instagram || '', dores: b.dores || '', solucoes: b.solucoes || '',
     handoff: b.handoff || {},
     atividades: [atividade('criacao', 'Negócio criado', autor)],
     criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
@@ -93,7 +95,7 @@ export async function PUT(req: NextRequest) {
     else atualizado.status = 'aberto'
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'origem', 'probabilidade', 'previsaoFechamento', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'origem', 'probabilidade', 'previsaoFechamento', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 
