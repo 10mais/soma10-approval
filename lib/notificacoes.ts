@@ -1,5 +1,13 @@
 import { redis, Notificacao, TipoNotificacao, Usuario } from './redis'
 import { v4 as uuid } from 'uuid'
+import { enviarPush } from './webpush'
+
+// Para onde o clique na notificação push deve levar, por tipo.
+function urlDaNotificacao(tipo: TipoNotificacao): string {
+  if (tipo.startsWith('tarefa_')) return '/dashboard'
+  if (tipo === 'mensagem_privada') return '/dashboard'
+  return '/dashboard'
+}
 
 // Cria uma notificação para um destinatário específico (e-mail de usuário)
 export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string) {
@@ -15,6 +23,8 @@ export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao
   }
   await redis.set(`notificacao:${notificacao.id}`, notificacao)
   await redis.sadd(`notificacoes:${destinatarioEmail}`, notificacao.id)
+  // Push (best-effort): não bloqueia nem quebra a criação da notificação
+  enviarPush(destinatarioEmail, { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }).catch(() => {})
   return notificacao
 }
 

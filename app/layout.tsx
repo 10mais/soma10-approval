@@ -1,12 +1,20 @@
 import { Providers } from './providers'
+import PushSetup from './components/PushSetup'
 
-export const metadata = { title: 'Soma10 Approval — Grupo 10+' }
+export const metadata = {
+  title: 'Soma10 Approval — Grupo 10+',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Soma10', statusBarStyle: 'black-translucent' as const },
+  icons: { apple: '/apple-touch-icon.png' },
+}
+
+export const viewport = { themeColor: '#111111' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <body style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
-        <Providers>{children}</Providers>
+        <Providers>{children}<PushSetup /></Providers>
       </body>
     </html>
   )
