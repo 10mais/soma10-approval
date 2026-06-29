@@ -586,6 +586,21 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     setChecklist(novo)
     if (tarefa?.id) fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, checklist: novo }) }).catch(() => {})
   }
+  // Tarefas relacionadas (vinculo bidirecional manual)
+  const [relacionadas, setRelacionadas] = useState<string[]>((tarefa as any)?.relacionadas || [])
+  const [todasTarefas, setTodasTarefas] = useState<any[]>([])
+  const [buscaRel, setBuscaRel] = useState('')
+  const [pickerRel, setPickerRel] = useState(false)
+  useEffect(() => { if (tarefa?.id) fetch('/api/tarefas').then(r => r.json()).then(d => setTodasTarefas(Array.isArray(d) ? d : [])).catch(() => {}) }, [tarefa?.id])
+  async function relacionarTarefa(outroId: string) {
+    setRelacionadas(arr => Array.from(new Set([...arr, outroId])))
+    setPickerRel(false); setBuscaRel('')
+    if (tarefa?.id) await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, relacionarTarefa: outroId }) }).catch(() => {})
+  }
+  async function desrelacionarTarefa(outroId: string) {
+    setRelacionadas(arr => arr.filter(x => x !== outroId))
+    if (tarefa?.id) await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, desrelacionarTarefa: outroId }) }).catch(() => {})
+  }
   // Apontamento de horas
   const [apontamentos, setApontamentos] = useState<any[]>((tarefa as any)?.apontamentos || [])
   const [apontH, setApontH] = useState('')
@@ -1057,6 +1072,57 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? '#111' : '#f0f0f0', color: novoItemCheck.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
             </div>
           </div>
+
+          {/* Tarefas relacionadas */}
+          {tarefa?.id && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Relacionadas {relacionadas.length > 0 && <span style={{ color: '#1d4ed8' }}>({relacionadas.length})</span>}</label>
+                <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
+              </div>
+              {(() => {
+                const COR_STATUS: Record<string, string> = { a_fazer: '#9ca3af', em_andamento: '#2563eb', em_revisao: '#ca8a04', concluido: '#16a34a' }
+                const relTarefas = relacionadas.map(rid => todasTarefas.find(t => t.id === rid)).filter(Boolean)
+                return (
+                  <>
+                    {relTarefas.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: pickerRel ? 8 : 0 }}>
+                        {relTarefas.map((t: any) => (
+                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafafa', borderRadius: 8, border: '1px solid #f0f0f0' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_STATUS[t.status] || '#ccc', flexShrink: 0 }} title={t.status} />
+                            <span style={{ flex: 1, fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
+                            {t.clienteNome && <span style={{ fontSize: 10.5, color: '#aaa', flexShrink: 0 }}>{t.clienteNome}</span>}
+                            <button type="button" onClick={() => desrelacionarTarefa(t.id)} title="Desvincular" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {pickerRel && (
+                      <div>
+                        <input autoFocus value={buscaRel} onChange={e => setBuscaRel(e.target.value)} placeholder="Buscar tarefa pelo título..."
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 4 }} />
+                        <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+                          {todasTarefas
+                            .filter(t => t.id !== tarefa.id && !relacionadas.includes(t.id) && (!buscaRel.trim() || (t.titulo || '').toLowerCase().includes(buscaRel.toLowerCase())))
+                            .slice(0, 30)
+                            .map(t => (
+                              <button key={t.id} type="button" onClick={() => relacionarTarefa(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', borderBottom: '1px solid #f5f5f5', cursor: 'pointer' }}>
+                                <span style={{ fontSize: 12.5, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.titulo}</span>
+                                {t.clienteNome && <span style={{ fontSize: 10.5, color: '#aaa' }}>{t.clienteNome}</span>}
+                              </button>
+                            ))}
+                          {todasTarefas.filter(t => t.id !== tarefa.id && !relacionadas.includes(t.id) && (!buscaRel.trim() || (t.titulo || '').toLowerCase().includes(buscaRel.toLowerCase()))).length === 0 && (
+                            <p style={{ margin: 0, padding: '10px', fontSize: 12, color: '#bbb', textAlign: 'center' }}>Nenhuma tarefa encontrada.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {relTarefas.length === 0 && !pickerRel && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma tarefa relacionada.</p>}
+                  </>
+                )
+              })()}
+            </div>
+          )}
 
           {/* Anexos */}
           <div style={{ marginTop: 14 }}>

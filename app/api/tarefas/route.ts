@@ -164,6 +164,30 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, tarefa: atualizado })
   }
 
+  // Relacionar tarefa (vinculo bidirecional manual)
+  if (updates.relacionarTarefa) {
+    const outroId = String(updates.relacionarTarefa)
+    if (outroId !== id) {
+      const outro = await redis.get<Tarefa>(`tarefa:${outroId}`)
+      if (outro) {
+        atualizado.relacionadas = Array.from(new Set([...(tarefa.relacionadas || []), outroId]))
+        await redis.set(`tarefa:${id}`, atualizado)
+        await redis.set(`tarefa:${outroId}`, { ...outro, relacionadas: Array.from(new Set([...(outro.relacionadas || []), id])) })
+      }
+    }
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
+  // Desfazer relacionamento (remove dos dois lados)
+  if (updates.desrelacionarTarefa) {
+    const outroId = String(updates.desrelacionarTarefa)
+    atualizado.relacionadas = (tarefa.relacionadas || []).filter((x: string) => x !== outroId)
+    await redis.set(`tarefa:${id}`, atualizado)
+    const outro = await redis.get<Tarefa>(`tarefa:${outroId}`)
+    if (outro) await redis.set(`tarefa:${outroId}`, { ...outro, relacionadas: (outro.relacionadas || []).filter((x: string) => x !== id) })
+    return NextResponse.json({ ok: true, tarefa: atualizado })
+  }
+
   // Apontamento de horas — remover
   if (updates.removerApontamento) {
     atualizado.apontamentos = (tarefa.apontamentos || []).filter((a: any) => a.id !== updates.removerApontamento)

@@ -220,6 +220,7 @@ export type Tarefa = {
   checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
   origemPostId?: string // pauta da Esteira que originou esta tarefa (vinculo)
   origemBriefingId?: string // briefing de campanha que originou esta tarefa (vinculo)
+  relacionadas?: string[] // ids de outras tarefas relacionadas (vinculo bidirecional manual)
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
