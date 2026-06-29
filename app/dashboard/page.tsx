@@ -745,7 +745,15 @@ function Dashboard() {
       setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }
 
-    await fetch('/api/posts').then(r => r.json()).then(setPosts).catch(() => {})
+    // insere o novo post localmente; ao publicar, o status muda no servidor -> recarrega só ele
+    if (res?.post) {
+      if (acao === 'publicar') {
+        const atual = await fetch(`/api/posts?id=${res.post.id}`).then(r => r.json()).catch(() => null)
+        setPosts(ps => [atual && !atual.error ? atual : res.post, ...ps])
+      } else {
+        setPosts(ps => [res.post, ...ps])
+      }
+    }
     setCriandoPost(false)
     setTimeout(() => setRascunhoMsg(''), 8000)
   }
@@ -798,11 +806,12 @@ function Dashboard() {
     const novaISO = nova.toISOString()
     const status = post.status === 'publicado' ? post.status : 'agendado'
     setPosts(ps => ps.map(p => p && p.id === post.id ? { ...p, dataAgendada: novaISO, status } : p))
-    await fetch('/api/posts', {
+    const res = await fetch('/api/posts', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: post.id, dataAgendada: novaISO, status }),
     })
-    fetch('/api/posts').then(r => r.json()).then(setPosts)
+    // sucesso: estado já está otimista. Falha: ressincroniza só este post.
+    if (!res.ok) fetch(`/api/posts?id=${post.id}`).then(r => r.json()).then(p => p && !p.error && setPosts(ps => ps.map(x => x && x.id === post.id ? p : x))).catch(() => {})
   }
 
   // Link público de status (sem login) do cliente
@@ -820,7 +829,7 @@ function Dashboard() {
     const body = { clienteId: post.clienteId, clienteNome: post.clienteNome, imagens: post.imagens || [], legenda: post.legenda || '', formato, capasVideo: post.capasVideo || {}, redes: post.redes || ['instagram', 'facebook'], rascunhoInterno: true, ...(post.marcoId ? { marcoId: post.marcoId } : {}) }
     const res = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => null)
     if (res?.ok) {
-      await fetch('/api/posts').then(r => r.json()).then(setPosts).catch(() => {})
+      if (res.post) setPosts(ps => [res.post, ...ps])
       setPostPreview(null)
       alert(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`)
     } else alert('Não foi possível reaproveitar o post.')
@@ -838,17 +847,17 @@ function Dashboard() {
       status = valor.dataAgendada ? 'agendado' : 'rascunho'
     }
     const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
-    await fetch('/api/posts', {
+    const r = await fetch('/api/posts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: editandoPostId, ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome, status }),
-    })
+    }).then(x => x.json()).catch(() => null)
     setCriandoPost(false)
     setEditandoPostId(null)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
     setAba('planner')
-    fetch('/api/posts').then(r => r.json()).then(setPosts)
+    if (r?.post) setPosts(ps => ps.map(p => p && p.id === r.post.id ? r.post : p))
   }
 
   async function excluirPost(post: Post) {
@@ -870,7 +879,8 @@ function Dashboard() {
     }).catch(() => {})
     const r = await acompanharPublicacao(post.id)
     setRepublicandoId(null)
-    await fetch('/api/posts').then(x => x.json()).then(setPosts).catch(() => {})
+    const atual = await fetch(`/api/posts?id=${post.id}`).then(x => x.json()).catch(() => null)
+    if (atual && !atual.error) setPosts(ps => ps.map(p => p && p.id === post.id ? atual : p))
     if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB) antes de tentar de novo.`)
     else { setPostPreview(null); alert('Publicado com sucesso!') }
   }
@@ -892,8 +902,9 @@ function Dashboard() {
     if (!confirm(`Excluir definitivamente ${ids.length} post(s)? Esta ação não pode ser desfeita.`)) return
     setPosts(ps => ps.filter(p => !ids.includes(p!.id)))
     setBibSelecionados([])
-    await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
-    fetch('/api/posts').then(r => r.json()).then(setPosts)
+    const resultados = await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
+    // estado já atualizado de forma otimista; só ressincroniza se algum DELETE falhar
+    if (resultados.some(r => !r.ok)) fetch('/api/posts').then(r => r.json()).then(setPosts)
   }
 
   async function salvarVinculos() {
