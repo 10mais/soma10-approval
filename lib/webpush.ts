@@ -48,9 +48,11 @@ export async function enviarPushDetalhado(email: string, payload: PushPayload): 
 
   const corpo = JSON.stringify(payload)
   let enviadas = 0, falhas = 0, primeiroErro = ''
-  await Promise.all(inscricoes.map(async (raw) => {
-    let sub: any
-    try { sub = JSON.parse(raw) } catch { await redis.srem(`push:${email}`, raw); falhas++; return }
+  await Promise.all(inscricoes.map(async (raw: any) => {
+    // O Upstash auto-desserializa JSON: `raw` pode vir como objeto OU string.
+    let sub: any = raw
+    if (typeof raw === 'string') { try { sub = JSON.parse(raw) } catch { sub = null } }
+    if (!sub || !sub.endpoint) { falhas++; if (!primeiroErro) primeiroErro = 'inscrição ilegível'; return }
     try {
       await webpush.sendNotification(sub, corpo)
       enviadas++
