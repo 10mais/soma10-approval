@@ -1306,11 +1306,13 @@ function Dashboard() {
   // Item de menu com ícone — mostra só o ícone quando a sidebar está recolhida
   function NavBtn({ chave, label, onClick, badge, fontSize = 14 }: { chave: string; label: string; onClick?: () => void; badge?: number; fontSize?: number }) {
     const ativo = aba === chave
+    // Ao clicar com a sidebar recolhida, expande automaticamente
+    const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
     return (
-      <button title={recolhida ? label : undefined} onClick={onClick || (() => setAba(chave as any))} className={ativo ? 'soma10-no-invert' : undefined}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? '#111' : '#888', background: ativo ? '#ffc00f' : 'transparent', fontSize, transition: 'all 0.15s' }}>
+      <button title={recolhida ? label : undefined} onClick={aoClicar} className={ativo ? 'soma10-no-invert' : undefined}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? (tema === 'escuro' ? '#fff' : '#111') : '#888', background: ativo ? '#ffc00f' : 'transparent', fontSize, transition: 'all 0.15s' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? '#111' : '#999' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
+          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? (tema === 'escuro' ? '#fff' : '#111') : '#999' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
           {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
         </span>
         {!recolhida && !!badge && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{badge > 99 ? '99+' : badge}</span>}
@@ -1337,6 +1339,12 @@ function Dashboard() {
         }
         .soma10-tema-escuro .soma10-no-invert {
           filter: invert(1) hue-rotate(180deg);
+        }
+        /* Imagens/fotos dentro de container no-invert: ja sao re-invertidas pelo proprio
+           container, entao nao aplicar a inversao de imagem de novo (mantem cor natural). */
+        .soma10-tema-escuro .soma10-no-invert img,
+        .soma10-tema-escuro .soma10-no-invert video {
+          filter: none;
         }
         @keyframes shimmer {
           0% { opacity: 1; }
@@ -1643,16 +1651,16 @@ function Dashboard() {
             </div>
           )}
 
-          {/* Botão recolher/expandir — rodapé da sidebar */}
-          {!ehCliente && (
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f4f4f4', display: 'flex', justifyContent: recolhida ? 'center' : 'flex-end' }}>
-              <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f5f5f5', border: 'none', borderRadius: 8, padding: recolhida ? '8px' : '7px 12px', cursor: 'pointer', color: '#666', fontSize: 12, fontWeight: 700 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
-                {!recolhida && <span>Recolher</span>}
-              </button>
-            </div>
-          )}
         </aside>
+
+        {/* Botão recolher/expandir — flutuante, sempre visível no canto inferior esquerdo */}
+        {!ehCliente && (
+          <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-no-invert"
+            style={{ position: 'fixed', left: recolhida ? 15 : 168, bottom: 16, zIndex: 130, display: 'flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 999, padding: recolhida ? '9px' : '8px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
+            {!recolhida && <span>Recolher</span>}
+          </button>
+        )}
 
         {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
         <div style={{ flex: 1, minWidth: 0, padding: '70px 28px 28px' }}>

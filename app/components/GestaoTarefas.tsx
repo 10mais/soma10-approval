@@ -292,11 +292,17 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
     carregarLixeira()
   }
 
+  // Concluídas ficam ocultas por padrão; o toggle (✓) na barra as revela
+  const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
   const filtradas = tarefas.filter(t => {
     if (filtroCliente && t.clienteId !== filtroCliente) return false
     if (filtroResponsavel && t.responsavelEmail !== filtroResponsavel) return false
+    if (!mostrarConcluidas && t.status === 'concluido') return false
     return true
   })
+  const qtdConcluidas = tarefas.filter(t => t.status === 'concluido'
+    && (!filtroCliente || t.clienteId === filtroCliente)
+    && (!filtroResponsavel || t.responsavelEmail === filtroResponsavel)).length
 
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   function alternarSelecao(id: string) { setSelecionadas(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]) }
@@ -348,6 +354,14 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             {(filtroCliente || filtroResponsavel) && (
               <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
             )}
+            {/* Mostrar/ocultar concluídas */}
+            <button onClick={() => setMostrarConcluidas(v => !v)} title={mostrarConcluidas ? 'Ocultar concluídas' : 'Mostrar concluídas'} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              background: mostrarConcluidas ? '#16a34a' : '#f5f5f5', color: mostrarConcluidas ? '#fff' : '#666', border: mostrarConcluidas ? 'none' : '1px solid #e0e0e0',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              Concluídas{qtdConcluidas > 0 ? ` (${qtdConcluidas})` : ''}
+            </button>
           </>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
