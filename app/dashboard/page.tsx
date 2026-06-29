@@ -1294,18 +1294,12 @@ function Dashboard() {
           100% { opacity: 1; }
         }
       `}</style>
-      {/* Header */}
-      <div style={{ background: '#111', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, boxShadow: '0 2px 8px rgba(0,0,0,0.25)', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="Ir para o inicio">
-          <div style={{ background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            <img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} />
-          </div>
-          <span style={{ fontWeight: 800, color: '#fff', fontSize: 15 }}>Soma10 Approval</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      {/* Controles flutuantes (topo-direito) — substitui a antiga barra preta */}
+      <div className="soma10-no-invert" style={{ position: 'fixed', top: 14, right: 18, zIndex: 120, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #eee' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Alternar modo claro/escuro */}
           <button onClick={alternarTema} title={tema === 'escuro' ? 'Mudar para modo claro' : 'Mudar para modo escuro'} style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: '#fff',
+            background: 'none', border: 'none', cursor: 'pointer', color: '#444',
             width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {tema === 'escuro' ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -1314,14 +1308,14 @@ function Dashboard() {
           {/* Sininho de notificações — popup dropdown */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
-              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff',
+              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#444',
               width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <IconBell size={18} />
               {notificacoes.some(n => !n.lida) && (
                 <span style={{
                   position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
-                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #111',
+                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #fff',
                 }}>
                   {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
                 </span>
@@ -1371,7 +1365,7 @@ function Dashboard() {
               const u = usuarios.find((x: any) => x.email === v)
               if (u && (u as any).clienteId) { setViewAsClient(true); router.push(`/cliente/${(u as any).clienteId}`) }
               e.target.value = ''
-            }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #555', background: '#222', color: '#ccc', fontSize: 11, cursor: 'pointer' }}>
+            }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e0e0e0', background: '#fff', color: '#444', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
               <option value="_reset">Voltar a minha visao</option>
               <optgroup label="Clientes (visualizar)">
@@ -1380,13 +1374,13 @@ function Dashboard() {
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
-            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: '#888', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ color: '#111', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>
             </div>
-            <span style={{ fontSize: 13, color: '#ccc' }}>{session?.user?.name}</span>
+            <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>{session?.user?.name}</span>
           </button>
           <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
-          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #fff', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#fff' }}>Sair</button>
+          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #ddd', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#444' }}>Sair</button>
         </div>
       </div>
 
@@ -1394,8 +1388,15 @@ function Dashboard() {
         {/* Sidebar */}
         <aside style={{
           width: 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
-          minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56, padding: '20px 14px', boxSizing: 'border-box',
+          minHeight: '100vh', position: 'sticky', top: 0, padding: '16px 14px', boxSizing: 'border-box',
         }}>
+          {/* Logo no topo da sidebar (substitui a logo da antiga barra preta) */}
+          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '2px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
+            <div style={{ background: '#111', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              <img src="/logo.svg" alt="Soma10" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            </div>
+            <span style={{ fontWeight: 800, color: '#111', fontSize: 14 }}>Soma10</span>
+          </div>
           {/* PAINEL DO CLIENTE — nav simplificada */}
           {ehCliente && clienteEmVisualizacao && (
             <div style={{ marginBottom: 20 }}>
