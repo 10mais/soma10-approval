@@ -24,7 +24,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'funil' | 'contatos' | 'playbook'>('funil')
+  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'playbook'>('funil')
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
 
   function carregar() {
@@ -59,7 +59,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {([['funil', 'Funil'], ['contatos', 'Contatos'], ['playbook', 'Playbook']] as ['funil' | 'contatos' | 'playbook', string][]).map(([v, l]) => (
+          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
@@ -68,7 +68,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         )}
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'contatos' ? (
+      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
+        <PainelVendas negocios={negocios} estagios={estagios} usuarios={usuarios} />
+      ) : vista === 'contatos' ? (
         <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
@@ -119,6 +121,72 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+
+function PainelVendas({ negocios, estagios, usuarios }: { negocios: Negocio[]; estagios: Estagio[]; usuarios: any[] }) {
+  const agora = new Date(), m = agora.getMonth(), y = agora.getFullYear()
+  const noMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === m && d.getFullYear() === y }
+  const abertos = negocios.filter(n => n.status === 'aberto')
+  const ganhos = negocios.filter(n => n.status === 'ganho')
+  const perdidos = negocios.filter(n => n.status === 'perdido')
+  const ganhosMes = ganhos.filter(n => noMes(n.atualizadoEm))
+  const perdidosMes = perdidos.filter(n => noMes(n.atualizadoEm))
+  const valorAberto = abertos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  const valorGanhoMes = ganhosMes.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  const fechados = ganhosMes.length + perdidosMes.length
+  const winRate = fechados > 0 ? Math.round((ganhosMes.length / fechados) * 100) : 0
+  const ticket = ganhos.length > 0 ? ganhos.reduce((s, n) => s + (Number(n.valor) || 0), 0) / ganhos.length : 0
+  const colsAbertas = estagios.filter(e => !e.ganho && !e.perdido)
+  const porVendedor = Object.values(abertos.reduce((acc: any, n) => {
+    const k = n.donoNome || '—'; acc[k] = acc[k] || { nome: k, qtd: 0, valor: 0 }; acc[k].qtd++; acc[k].valor += Number(n.valor) || 0; return acc
+  }, {})).sort((a: any, b: any) => b.valor - a.valor)
+
+  const Card = ({ titulo, valor, sub, cor }: { titulo: string; valor: string; sub?: string; cor?: string }) => (
+    <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 12, color: '#999', fontWeight: 600 }}>{titulo}</p>
+      <p style={{ margin: '6px 0 0', fontSize: 24, fontWeight: 800, color: cor || '#111' }}>{valor}</p>
+      {sub && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#aaa' }}>{sub}</p>}
+    </div>
+  )
+
+  return (
+    <div style={{ maxWidth: 920 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
+        <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={`${abertos.length} negócio(s)`} />
+        <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="#16a34a" />
+        <Card titulo="Win rate (mês)" valor={`${winRate}%`} sub={`${ganhosMes.length} ganho / ${perdidosMes.length} perdido`} />
+        <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
+      </div>
+
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Funil (em aberto por etapa)</span>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+        {colsAbertas.map(e => {
+          const ns = abertos.filter(n => n.estagioId === e.id)
+          const val = ns.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+          const maxQtd = Math.max(1, ...colsAbertas.map(c => abertos.filter(n => n.estagioId === c.id).length))
+          return (
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: '#444', flexShrink: 0 }}>{e.nome}</span>
+              <div style={{ flex: 1, height: 22, background: '#f4f4f4', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ width: `${(ns.length / maxQtd) * 100}%`, height: '100%', background: '#ffc00f', minWidth: ns.length ? 6 : 0 }} />
+              </div>
+              <span style={{ width: 130, textAlign: 'right', fontSize: 12, color: '#888', flexShrink: 0 }}>{ns.length} · {fmtR$(val)}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Pipeline por vendedor</span>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Sem negócios em aberto.</p> : porVendedor.map((v: any) => (
+          <div key={v.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+            <span style={{ fontSize: 13, color: '#333' }}>{v.nome}</span>
+            <span style={{ fontSize: 12.5, color: '#888' }}>{v.qtd} negócio(s) · <b style={{ color: '#111' }}>{fmtR$(v.valor)}</b></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const CANAL: Record<string, { label: string; cor: string }> = {
   whatsapp: { label: 'WhatsApp', cor: '#16a34a' }, ligacao: { label: 'Ligação', cor: '#1d4ed8' }, email: { label: 'E-mail', cor: '#7c3aed' },
