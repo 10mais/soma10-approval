@@ -37,6 +37,19 @@ export type ContaBancaria = {
   atualizadoEm?: string
 }
 
+// Lançamento futuro (previsão de entrada/saída). Set `lancamentos`, chave `lancamento:{id}`.
+export type LancamentoFuturo = {
+  id: string
+  tipo: 'entrada' | 'saida'
+  descricao: string
+  valor: number
+  data: string // YYYY-MM-DD prevista
+  clienteId?: string
+  recebido?: boolean // marcado quando efetivado
+  criadoPor?: string
+  criadoEm: string
+}
+
 // Despesa da agência (folha entra à parte, via Usuario)
 export type Despesa = {
   id: string
@@ -81,6 +94,7 @@ export type Cliente = {
   contratoInicio?: string // ISO date — início do contrato
   contratoRenovacao?: string // ISO date — próxima renovação/vencimento
   contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'
+  diaVencimento?: number // dia do mês em que o cliente paga (1-31) — usado na previsão de saldo
   // Cobranças avulsas/pontuais e modulares (valor por mês). Somam à receita do mês.
   // Pontual = um lançamento; Modular = um lançamento por mês com valores diferentes.
   receitasAvulsas?: ReceitaAvulsa[]

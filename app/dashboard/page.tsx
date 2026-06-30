@@ -59,7 +59,7 @@ import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[]; permissoes?: { entregas?: boolean; aprovacoes?: boolean; aprovar?: boolean; solicitar?: boolean; esteira?: boolean; planner?: boolean }; handoffVendas?: string }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; diaVencimento?: number; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[]; permissoes?: { entregas?: boolean; aprovacoes?: boolean; aprovar?: boolean; solicitar?: boolean; esteira?: boolean; planner?: boolean }; handoffVendas?: string }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string; recrutamentoVagas?: string[] }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -1206,7 +1206,7 @@ function Dashboard() {
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
     setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
-      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, receitasAvulsas: (c as any).receitasAvulsas || [],
+      contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, diaVencimento: (c as any).diaVencimento, receitasAvulsas: (c as any).receitasAvulsas || [],
       permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '' })
   }
 
@@ -3317,6 +3317,9 @@ function Dashboard() {
                               <option value="semestral">Semestral</option>
                               <option value="anual">Anual</option>
                             </select>
+                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Dia de vencimento
+                              <input type="number" min="1" max="31" value={(edicaoCliente as any).diaVencimento || ''} onChange={e => setEdicaoCliente(p => ({ ...p, diaVencimento: Number(e.target.value) || undefined } as any))} placeholder="ex.: 10"
+                                style={{ width: 90, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
                           </div>
                           <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>Valor mensal recorrente. Para projeto pontual ou valores diferentes mês a mês, use as cobranças abaixo.</p>
 

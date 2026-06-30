@@ -15,6 +15,11 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [gerenciarContas, setGerenciarContas] = useState(false)
   const [salvandoContas, setSalvandoContas] = useState(false)
   const [periodoFluxo, setPeriodoFluxo] = useState(6) // meses no gráfico de fluxo de caixa
+  const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string }[]>([])
+  const [lTipo, setLTipo] = useState<'entrada' | 'saida'>('saida')
+  const [lDesc, setLDesc] = useState('')
+  const [lValor, setLValor] = useState('')
+  const [lData, setLData] = useState('')
   const [carregando, setCarregando] = useState(true)
   // #1 — ocultar/mostrar informacoes financeiras (privacidade; persistido)
   const [ocultar, setOcultar] = useState(false)
@@ -38,7 +43,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
       fetch('/api/tarefas').then(r => r.json()).catch(() => []),
       fetch('/api/despesas').then(r => r.json()).catch(() => []),
       fetch('/api/financeiro/contas').then(r => r.json()).catch(() => []),
-    ]).then(([t, d, ct]) => { setTarefas(Array.isArray(t) ? t : []); setDespesas(Array.isArray(d) ? d : []); setContas(Array.isArray(ct) ? ct : []); setCarregando(false) })
+      fetch('/api/financeiro/lancamentos').then(r => r.json()).catch(() => []),
+    ]).then(([t, d, ct, lc]) => { setTarefas(Array.isArray(t) ? t : []); setDespesas(Array.isArray(d) ? d : []); setContas(Array.isArray(ct) ? ct : []); setLancamentos(Array.isArray(lc) ? lc : []); setCarregando(false) })
   }, [])
 
   function mesesRecorrentes(inicio: string): string[] {
@@ -148,6 +154,45 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     return out
   }, [clientes, despesas, folha, periodoFluxo])
   const fluxoMax = Math.max(1, ...fluxo.map(f => Math.max(f.entradas, f.saidas)))
+
+  // Saldo PREVISTO — projeção do saldo ao longo do tempo conforme datas de
+  // recebimento (dia de vencimento por cliente) e lançamentos futuros.
+  async function addLancamento() {
+    if (!lDesc.trim() || !(Number(lValor) > 0) || !lData) return
+    const r = await fetch('/api/financeiro/lancamentos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: lTipo, descricao: lDesc.trim(), valor: Number(lValor), data: lData }) }).then(x => x.json()).catch(() => null)
+    if (r?.lancamento) { setLancamentos(ls => [...ls, r.lancamento].sort((a, b) => a.data.localeCompare(b.data))); setLDesc(''); setLValor(''); setLData('') }
+  }
+  async function delLancamento(id: string) {
+    await fetch(`/api/financeiro/lancamentos?id=${id}`, { method: 'DELETE' }).catch(() => {})
+    setLancamentos(ls => ls.filter(x => x.id !== id))
+  }
+
+  // Próximos eventos (60 dias): recebimentos recorrentes (dia de vencimento) + lançamentos futuros,
+  // com SALDO PREVISTO acumulado após cada evento, partindo do saldo atual das contas.
+  const previsao = useMemo(() => {
+    const hojeD = new Date(); hojeD.setHours(0, 0, 0, 0)
+    const limite = new Date(hojeD); limite.setDate(limite.getDate() + 60)
+    const eventos: { data: Date; tipo: 'entrada' | 'saida'; desc: string; valor: number }[] = []
+    for (const c of clientes) {
+      if (c.tipo === 'interno') continue
+      const v = Number(c.contratoValor) || 0
+      const dia = Number((c as any).diaVencimento) || 0
+      if (v <= 0 || dia < 1) continue
+      for (let k = 0; k <= 2; k++) {
+        const d = new Date(hojeD.getFullYear(), hojeD.getMonth() + k, Math.min(dia, 28))
+        if (d >= hojeD && d <= limite) eventos.push({ data: d, tipo: 'entrada', desc: `${c.nome} (mensalidade)`, valor: v })
+      }
+    }
+    for (const l of lancamentos) {
+      const d = new Date(l.data + 'T00:00:00')
+      if (d >= hojeD && d <= limite) eventos.push({ data: d, tipo: l.tipo, desc: l.descricao, valor: Number(l.valor) || 0 })
+    }
+    eventos.sort((a, b) => a.data.getTime() - b.data.getTime())
+    let saldo = saldoContas
+    const linhas = eventos.map(e => { saldo += e.tipo === 'entrada' ? e.valor : -e.valor; return { ...e, saldoApos: saldo } })
+    const menor = linhas.reduce((m, l) => Math.min(m, l.saldoApos), saldoContas)
+    return { linhas, saldoFinal: saldo, menor }
+  }, [clientes, lancamentos, saldoContas])
 
   const opcoesMes = useMemo(() => {
     const arr: { v: string; label: string }[] = [{ v: '', label: 'Tudo' }]
@@ -271,6 +316,61 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#dc2626' }} />Saídas</span>
               <span style={{ marginLeft: 'auto', color: '#bbb' }}>valores em milhares (k) abaixo de cada mês = saldo</span>
             </div>
+          </div>
+
+          {/* Saldo previsto (60 dias) */}
+          <div style={{ ...card, marginBottom: 18 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Saldo previsto · próximos 60 dias</p>
+            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: '#aaa' }}>Parte do saldo atual das contas e aplica os recebimentos (dia de vencimento de cada cliente) e os lançamentos futuros, na ordem das datas.</p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 120, background: '#fafafa', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#888' }}>Saldo atual</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: '#111' }}>{brl(saldoContas)}</p></div>
+              <div style={{ flex: 1, minWidth: 120, background: '#fafafa', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#888' }}>Previsto em 60d</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.saldoFinal >= 0 ? '#16a34a' : '#dc2626' }}>{brl(previsao.saldoFinal)}</p></div>
+              <div style={{ flex: 1, minWidth: 120, background: previsao.menor < 0 ? '#fef2f2' : '#fafafa', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#888' }}>Menor saldo no período</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.menor < 0 ? '#dc2626' : '#111' }}>{brl(previsao.menor)}</p></div>
+            </div>
+            {previsao.menor < 0 && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>Atenção: o saldo fica negativo em algum momento dos próximos 60 dias.</p>}
+            {previsao.linhas.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12.5, color: '#bbb' }}>Sem eventos previstos. Defina o dia de vencimento dos clientes (Configurações → Clientes) e adicione lançamentos futuros abaixo.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 240, overflowY: 'auto' }}>
+                {previsao.linhas.map((l, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, background: i % 2 ? '#fafafa' : '#fff', fontSize: 12.5 }}>
+                    <span style={{ width: 52, flexShrink: 0, color: '#888', fontWeight: 700 }}>{l.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span style={{ flex: 1, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.desc}</span>
+                    <span style={{ flexShrink: 0, fontWeight: 700, color: l.tipo === 'entrada' ? '#16a34a' : '#dc2626' }}>{l.tipo === 'entrada' ? '+' : '−'}{brl(l.valor)}</span>
+                    <span style={{ width: 110, flexShrink: 0, textAlign: 'right', fontWeight: 800, color: l.saldoApos < 0 ? '#dc2626' : '#111' }}>{brl(l.saldoApos)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Lançamentos futuros */}
+          <div style={{ ...card, marginBottom: 18 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Lançamentos futuros</p>
+            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: '#aaa' }}>Entradas e saídas planejadas que entram na previsão de saldo.</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 8, padding: 3 }}>
+                {(['entrada', 'saida'] as const).map(t => (
+                  <button key={t} onClick={() => setLTipo(t)} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, textTransform: 'capitalize', background: lTipo === t ? '#fff' : 'transparent', color: lTipo === t ? (t === 'entrada' ? '#16a34a' : '#dc2626') : '#888' }}>{t === 'saida' ? 'saída' : t}</button>
+                ))}
+              </div>
+              <input type="date" value={lData} onChange={e => setLData(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={lDesc} onChange={e => setLDesc(e.target.value)} placeholder="Descrição" style={{ flex: 1, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input type="number" min="0" value={lValor} onChange={e => setLValor(e.target.value)} placeholder="Valor R$" style={{ width: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <button onClick={addLancamento} disabled={!lDesc.trim() || !(Number(lValor) > 0) || !lData} style={{ padding: '8px 14px', background: (lDesc.trim() && Number(lValor) > 0 && lData) ? '#111' : '#f0f0f0', color: (lDesc.trim() && Number(lValor) > 0 && lData) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar</button>
+            </div>
+            {lancamentos.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {lancamentos.map(l => (
+                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#fafafa', borderRadius: 8, fontSize: 12.5 }}>
+                    <span style={{ width: 52, flexShrink: 0, color: '#888', fontWeight: 700 }}>{new Date(l.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span style={{ flex: 1, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.descricao}</span>
+                    <span style={{ flexShrink: 0, fontWeight: 700, color: l.tipo === 'entrada' ? '#16a34a' : '#dc2626' }}>{l.tipo === 'entrada' ? '+' : '−'}{brl(Number(l.valor) || 0)}</span>
+                    <button onClick={() => delLancamento(l.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Despesas */}
