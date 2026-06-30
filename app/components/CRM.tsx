@@ -244,9 +244,10 @@ function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
   const [salvando, setSalvando] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/crm/playbook').then(r => r.json()).then(d => { if (d && !d.error) { setRoteiro(d.roteiro || ''); setCadencia(Array.isArray(d.cadencia) ? d.cadencia : []) } setCarregando(false) }).catch(() => setCarregando(false))
-  }, [])
+  function carregar() {
+    return fetch('/api/crm/playbook').then(r => r.json()).then(d => { if (d && !d.error) { setRoteiro(d.roteiro || ''); setCadencia(Array.isArray(d.cadencia) ? d.cadencia : []) } setCarregando(false) }).catch(() => setCarregando(false))
+  }
+  useEffect(() => { carregar() }, [])
 
   function copiar(p: Passo) { navigator.clipboard?.writeText(p.script).then(() => { setCopiado(p.id); setTimeout(() => setCopiado(null), 1500) }).catch(() => {}) }
   async function salvar() {
@@ -266,6 +267,7 @@ function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
             <>
               <button onClick={() => setCadencia(c => [...c, { id: Math.random().toString(36).slice(2), dia: (c[c.length - 1]?.dia || 0) + 2, canal: 'whatsapp', titulo: '', script: '' }])} style={{ padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Passo</button>
               <button onClick={salvar} disabled={salvando} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+              <button onClick={() => { carregar(); setEditando(false) }} style={{ padding: '8px 16px', background: '#fff', color: '#666', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
             </>
           ) : (
             <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar playbook</button>

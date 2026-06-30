@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import OptImg from './OptImg'
@@ -246,6 +246,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [mostrarLixeira, setMostrarLixeira] = useState(false)
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [busca, setBusca] = useState('')
   const [novaModal, setNovaModal] = useState(false)
   const [editModal, setEditModal] = useState<Tarefa | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -297,6 +299,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const filtradas = tarefas.filter(t => {
     if (filtroCliente && t.clienteId !== filtroCliente) return false
     if (filtroResponsavel && t.responsavelEmail !== filtroResponsavel) return false
+    if (filtroTipo && (t.tipo || 'tarefa') !== filtroTipo) return false
+    if (busca.trim() && !((t.titulo || '') + ' ' + (t.descricao || '')).toLowerCase().includes(busca.toLowerCase())) return false
     if (!mostrarConcluidas && t.status === 'concluido') return false
     return true
   })
@@ -343,6 +347,10 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
         )}
         {!mostrarLixeira && (
           <>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 10, color: '#bbb', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
+              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
+            </div>
             <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os clientes</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -351,8 +359,12 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <option value="">Todos os responsaveis</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
-            {(filtroCliente || filtroResponsavel) && (
-              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
+            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
+              <option value="">Todos os tipos</option>
+              {[...TIPOS, ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+            {(filtroCliente || filtroResponsavel || filtroTipo || busca) && (
+              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setBusca('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
             )}
             {/* Mostrar/ocultar concluídas */}
             <button onClick={() => setMostrarConcluidas(v => !v)} title={mostrarConcluidas ? 'Ocultar concluídas' : 'Mostrar concluídas'} style={{
@@ -718,6 +730,16 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     }
   }
 
+  // Snapshot inicial para detectar alterações não salvas (guarda ao fechar)
+  const snapshotInicial = useRef<string | null>(null)
+  useEffect(() => { snapshotInicial.current = JSON.stringify({ ...form, anexos }) }, [])
+  function fechar() {
+    if (snapshotInicial.current !== null && JSON.stringify({ ...form, anexos }) !== snapshotInicial.current) {
+      if (!confirm('Há alterações não salvas nesta tarefa.\n\nOK = sair sem salvar  ·  Cancelar = continuar editando')) return
+    }
+    onClose()
+  }
+
   async function salvar() {
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     if (form.clienteId && !form.marcoId) { alert('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").'); return }
@@ -896,7 +918,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   )
 
   return (
-    <div onClick={viewMode !== 'sidebar' ? onClose : undefined} style={wrapperStyle[viewMode]}>
+    <div onClick={viewMode !== 'sidebar' ? fechar : undefined} style={wrapperStyle[viewMode]}>
       <div onClick={e => e.stopPropagation()} style={outerPanelStyle[viewMode]}>
         {/* Lado esquerdo — Detalhes */}
         <div style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'sidebar' ? 22 : 24, display: 'flex', flexDirection: 'column' }}>
@@ -917,7 +939,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   {m === 'sidebar' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M14 2v20" /></svg>}
                 </button>
               ))}
-              <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+              <button onClick={fechar} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
             </div>
           </div>
 
