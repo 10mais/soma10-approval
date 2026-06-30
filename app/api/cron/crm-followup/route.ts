@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, CrmNegocio } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
+import { cronAutorizado } from '@/lib/cronAuth'
 
 export const runtime = 'nodejs'
 
-// Cron diário (cron-job.org, com ?secret=CRON_SECRET): avisa o dono dos negócios
-// abertos cujo próximo follow-up venceu (hoje ou antes). Dedupe por dia.
+// Cron diário: avisa o dono dos negócios abertos cujo follow-up/agendamento
+// venceu (hoje ou antes). Dedupe por dia. Aceita ?secret= ou Authorization.
 export async function GET(req: NextRequest) {
-  if (process.env.CRON_SECRET && req.nextUrl.searchParams.get('secret') !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  }
+  if (!cronAutorizado(req)) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const ids = await redis.smembers('crm:negocios')
   const negocios = ids.length ? ((await redis.mget<(CrmNegocio | null)[]>(...ids.map(i => `negocio:${i}`))).filter(Boolean) as CrmNegocio[]) : []

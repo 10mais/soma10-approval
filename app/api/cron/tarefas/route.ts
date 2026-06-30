@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Tarefa } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
+import { cronAutorizado } from '@/lib/cronAuth'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret')
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
-  }
+  if (!cronAutorizado(req)) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
 
   const ids = await redis.smembers('tarefas')
   const tarefas = (await Promise.all(ids.map(id => redis.get<Tarefa>(`tarefa:${id}`)))).filter(Boolean) as Tarefa[]

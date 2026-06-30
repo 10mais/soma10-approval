@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Post, Cliente } from '@/lib/redis'
 import { notificar, notificarEquipe, notificarAdmins } from '@/lib/notificacoes'
+import { cronAutorizado } from '@/lib/cronAuth'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret')
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
-  }
+  if (!cronAutorizado(req)) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
 
   const agora = Date.now()
   const UM_DIA = 24 * 60 * 60 * 1000
