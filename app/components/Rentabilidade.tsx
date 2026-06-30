@@ -11,6 +11,9 @@ function fmtH(min: number) { return `${Math.floor(min / 60)}h${String(Math.round
 export default function Rentabilidade({ clientes, usuarios }: { clientes: Cliente[]; usuarios: Usuario[] }) {
   const [tarefas, setTarefas] = useState<any[]>([])
   const [despesas, setDespesas] = useState<Despesa[]>([])
+  const [contas, setContas] = useState<{ id: string; nome: string; saldo: number; atualizadoEm?: string }[]>([])
+  const [gerenciarContas, setGerenciarContas] = useState(false)
+  const [salvandoContas, setSalvandoContas] = useState(false)
   const [carregando, setCarregando] = useState(true)
   // #1 — ocultar/mostrar informacoes financeiras (privacidade; persistido)
   const [ocultar, setOcultar] = useState(false)
@@ -33,7 +36,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     Promise.all([
       fetch('/api/tarefas').then(r => r.json()).catch(() => []),
       fetch('/api/despesas').then(r => r.json()).catch(() => []),
-    ]).then(([t, d]) => { setTarefas(Array.isArray(t) ? t : []); setDespesas(Array.isArray(d) ? d : []); setCarregando(false) })
+      fetch('/api/financeiro/contas').then(r => r.json()).catch(() => []),
+    ]).then(([t, d, ct]) => { setTarefas(Array.isArray(t) ? t : []); setDespesas(Array.isArray(d) ? d : []); setContas(Array.isArray(ct) ? ct : []); setCarregando(false) })
   }, [])
 
   function mesesRecorrentes(inicio: string): string[] {
@@ -106,6 +110,26 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const lucro = receitaTotal - folha - despesasTotal
   const margemPct = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : null
 
+  // Saúde do Caixa — capacidade de arcar com a despesa operacional por 60 dias (open doors)
+  // = saldo das contas ÷ reserva p/ 60 dias (= 2 × despesa operacional mensal). 100% = cobre 2 meses.
+  const saldoContas = contas.reduce((s, c) => s + (Number(c.saldo) || 0), 0)
+  const mesesUlt2 = useMemo(() => [1, 2].map(i => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }), [])
+  const despMediaMensal = useMemo(() => {
+    const soma = mesesUlt2.reduce((acc, m) => acc + despesas.filter(d => d.mes === m).reduce((s, d) => s + (Number(d.valor) || 0), 0), 0)
+    return soma / 2
+  }, [despesas, mesesUlt2])
+  const despOpMensal = folha + despMediaMensal // despesa operacional mensal (folha + despesas)
+  const reserva60 = despOpMensal * 2
+  const saudeCaixa = reserva60 > 0 ? (saldoContas / reserva60) * 100 : null
+  const corSaude = saudeCaixa === null ? '#999' : saudeCaixa >= 80 ? '#16a34a' : saudeCaixa >= 50 ? '#f59e0b' : '#dc2626'
+
+  async function salvarContas(lista: typeof contas) {
+    setSalvandoContas(true)
+    const r = await fetch('/api/financeiro/contas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contas: lista }) }).then(x => x.json()).catch(() => null)
+    setSalvandoContas(false)
+    if (r?.contas) setContas(r.contas)
+  }
+
   const opcoesMes = useMemo(() => {
     const arr: { v: string; label: string }[] = [{ v: '', label: 'Tudo' }]
     for (let i = 0; i < 6; i++) { const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1); arr.push({ v: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }) }
@@ -146,6 +170,51 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Folha (fixo + variável)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(folha)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Despesas</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(despesasTotal)}</p></div>
             <div style={{ ...card, background: lucro >= 0 ? '#f0fdf4' : '#fef2f2' }}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? '#16a34a' : '#dc2626' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: '#999' }}> ({Math.round(margemPct)}%)</span>}</p></div>
+          </div>
+
+          {/* Saúde do Caixa — termômetro (open doors 60 dias) */}
+          <div style={{ ...card, marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+              {/* Termômetro */}
+              <div style={{ position: 'relative', width: 30, height: 156, flexShrink: 0 }}>
+                <div style={{ position: 'absolute', left: 9, top: 0, width: 12, height: 130, background: '#eee', borderRadius: 6 }} />
+                <div style={{ position: 'absolute', left: 9, bottom: 22, width: 12, height: Math.max(2, Math.min(100, saudeCaixa ?? 0) / 100 * 122), background: corSaude, borderRadius: 6, transition: 'height .3s' }} />
+                <div style={{ position: 'absolute', left: 3, bottom: 0, width: 24, height: 24, borderRadius: '50%', background: corSaude, border: '3px solid #fff', boxShadow: '0 0 0 1px #eee' }} />
+              </div>
+              {/* Indicador */}
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Saúde do Caixa</p>
+                <p style={{ margin: '2px 0 0', fontSize: 34, fontWeight: 800, color: corSaude, lineHeight: 1.1 }}>{saudeCaixa === null ? '—' : `${Math.round(saudeCaixa)}%`}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999' }}>
+                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * 60)} dias de operação sem nenhuma receita. Meta: 60 dias (100%).`}
+                </p>
+              </div>
+              {/* Composição */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: '#666', minWidth: 200 }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Saldo em contas <strong style={{ color: '#111' }}>{brl(saldoContas)}</strong></span>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Despesa op. mensal <strong style={{ color: '#dc2626' }}>{brl(despOpMensal)}</strong></span>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Reserva p/ 60 dias <strong style={{ color: '#111' }}>{brl(reserva60)}</strong></span>
+                <button onClick={() => setGerenciarContas(v => !v)} style={{ alignSelf: 'flex-start', marginTop: 2, background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{gerenciarContas ? 'Fechar' : 'Gerenciar contas bancárias'}</button>
+              </div>
+            </div>
+            {gerenciarContas && (
+              <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 14, paddingTop: 14 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 11.5, color: '#888' }}>Saldo atual de cada conta (atualize manualmente). A soma alimenta a Saúde do Caixa.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {contas.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input value={c.nome} onChange={e => setContas(cs => cs.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Conta (ex.: Itaú PJ)" style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                      <input type="number" value={c.saldo || ''} onChange={e => setContas(cs => cs.map((x, j) => j === i ? { ...x, saldo: Number(e.target.value) || 0 } : x))} placeholder="Saldo R$" style={{ width: 130, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                      <button onClick={() => setContas(cs => cs.filter((_, j) => j !== i))} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16, padding: 4 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button onClick={() => setContas(cs => [...cs, { id: '', nome: '', saldo: 0 }])} style={{ padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Conta</button>
+                  <button onClick={() => salvarContas(contas)} disabled={salvandoContas} style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{salvandoContas ? 'Salvando...' : 'Salvar contas'}</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Despesas */}

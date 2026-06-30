@@ -29,6 +29,14 @@ export type Usuario = {
   criadoEm: string
 }
 
+// Conta bancária (saldo manual) — base da Saúde do Caixa. Chave: config:contasBancarias (array)
+export type ContaBancaria = {
+  id: string
+  nome: string
+  saldo: number
+  atualizadoEm?: string
+}
+
 // Despesa da agência (folha entra à parte, via Usuario)
 export type Despesa = {
   id: string
