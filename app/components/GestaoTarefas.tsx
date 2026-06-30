@@ -649,6 +649,19 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   // Tarefas relacionadas (vinculo bidirecional manual)
   const [relacionadas, setRelacionadas] = useState<string[]>((tarefa as any)?.relacionadas || [])
   const [todasTarefas, setTodasTarefas] = useState<any[]>([])
+  const [novoSub, setNovoSub] = useState('')
+  function recarregarTodas() { fetch('/api/tarefas').then(r => r.json()).then(d => setTodasTarefas(Array.isArray(d) ? d : [])).catch(() => {}) }
+  const subtarefas = todasTarefas.filter(s => s.tarefaPaiId === tarefa?.id)
+  async function addSubtarefa() {
+    const t = novoSub.trim(); if (!t || !tarefa?.id) return
+    setNovoSub('')
+    await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: t, tarefaPaiId: tarefa.id, clienteId: tarefa.clienteId || '', clienteNome: tarefa.clienteNome || '', marcoId: (tarefa as any).marcoId || '' }) }).catch(() => {})
+    recarregarTodas()
+  }
+  async function toggleSubtarefa(s: any) {
+    await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: s.id, status: s.status === 'concluido' ? 'a_fazer' : 'concluido' }) }).catch(() => {})
+    recarregarTodas()
+  }
   const [buscaRel, setBuscaRel] = useState('')
   const [pickerRel, setPickerRel] = useState(false)
   useEffect(() => { if (tarefa?.id) fetch('/api/tarefas').then(r => r.json()).then(d => setTodasTarefas(Array.isArray(d) ? d : [])).catch(() => {}) }, [tarefa?.id])
@@ -1142,6 +1155,32 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? '#111' : '#f0f0f0', color: novoItemCheck.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
             </div>
           </div>
+
+          {/* Subtarefas */}
+          {tarefa?.id && (
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#888', display: 'block', marginBottom: 6 }}>Subtarefas {subtarefas.length > 0 && <span style={{ color: '#1d4ed8' }}>({subtarefas.filter(s => s.status === 'concluido').length}/{subtarefas.length})</span>}</label>
+              {subtarefas.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                  {subtarefas.map(s => (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafafa', borderRadius: 8 }}>
+                      <button type="button" onClick={() => toggleSubtarefa(s)} title={s.status === 'concluido' ? 'Reabrir' : 'Concluir'}
+                        style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${s.status === 'concluido' ? '#16a34a' : '#ccc'}`, background: s.status === 'concluido' ? '#16a34a' : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        {s.status === 'concluido' && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                      </button>
+                      <span style={{ flex: 1, fontSize: 13, color: s.status === 'concluido' ? '#aaa' : '#222', textDecoration: s.status === 'concluido' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
+                      {onRecarregar && <button type="button" onClick={() => onRecarregar(s)} title="Abrir subtarefa" style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>abrir</button>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input value={novoSub} onChange={e => setNovoSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtarefa() } }} placeholder="+ Nova subtarefa"
+                  style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+                <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? '#111' : '#f0f0f0', color: novoSub.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+              </div>
+            </div>
+          )}
 
           {/* Tarefas relacionadas */}
           {tarefa?.id && (
