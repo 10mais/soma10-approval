@@ -453,6 +453,9 @@ function Dashboard() {
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
   const [tarefaAbrirId, setTarefaAbrirId] = useState<string | null>(null)
   const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
+  // #7 — tela de Clientes: visao lista/blocos + expandir detalhes ao clicar
+  const [clientesView, setClientesView] = useState<'lista' | 'blocos'>(() => (typeof window !== 'undefined' && localStorage.getItem('clientesView') === 'blocos') ? 'blocos' : 'lista')
+  const [clienteAberto, setClienteAberto] = useState<string | null>(null)
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -3143,10 +3146,23 @@ function Dashboard() {
                 )}
               </div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {clientes.map(c => (
-                <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+            {/* Toggle de visualização lista/blocos */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+              <div style={{ display: 'inline-flex', background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+                {(['lista', 'blocos'] as const).map(v => (
+                  <button key={v} onClick={() => { setClientesView(v); try { localStorage.setItem('clientesView', v) } catch {} }}
+                    style={{ padding: '6px 16px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize', background: clientesView === v ? '#fff' : 'transparent', color: clientesView === v ? '#111' : '#888', boxShadow: clientesView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{v}</button>
+                ))}
+              </div>
+            </div>
+
+            {[{ titulo: 'Clientes', lista: clientes.filter(c => (c as any).tipo !== 'interno') }, { titulo: 'Projetos internos', lista: clientes.filter(c => (c as any).tipo === 'interno') }].map(g => g.lista.length === 0 ? null : (
+              <div key={g.titulo} style={{ marginBottom: 24 }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{g.titulo} <span style={{ color: '#ccc' }}>({g.lista.length})</span></h3>
+                <div style={clientesView === 'blocos' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 12 } : { display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {g.lista.map(c => (
+                <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden', height: 'fit-content' }}>
+                  <div onClick={() => setClienteAberto(clienteAberto === c.id ? null : c.id)} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, fontSize: 14, color: c.corSecundaria || '#111' }}>{c.nome[0]?.toUpperCase()}</span>}
                     </div>
@@ -3173,7 +3189,9 @@ function Dashboard() {
                         )
                       })()}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: clienteAberto === c.id ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+                    {clienteAberto === c.id && (
+                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       {c.tipo !== 'interno' && (
                         <button onClick={() => abrirResumo(c.id)} title="Gerar resumo da semana para enviar ao cliente"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#25D366', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
@@ -3241,10 +3259,11 @@ function Dashboard() {
                         )
                       })()}
                     </div>
+                    )}
                   </div>
 
                   {/* Painel de edição */}
-                  {editandoCliente === c.id && (
+                  {clienteAberto === c.id && editandoCliente === c.id && (
                     <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
@@ -3385,7 +3404,9 @@ function Dashboard() {
                   )}
                 </div>
               ))}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
