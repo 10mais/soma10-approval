@@ -203,7 +203,7 @@ export default function AssistenteIA() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800 }}>{ehVendas ? 'Assistente de Vendas' : 'Assistente de IA'}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>{ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e estratégia'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>{ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema'}</p>
             </div>
             {msgs.length > 0 && (
               <button onClick={limpar} title="Limpar conversa" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -227,9 +227,9 @@ export default function AssistenteIA() {
                       'Quebre esta objeção do cliente:',
                       'Escreva um script de follow-up para...',
                     ] : [
+                      'Quantas tarefas atrasadas temos?',
+                      'Como está o funil de vendas?',
                       'Escreva uma legenda de Reels para...',
-                      'Me dê 5 ideias de conteúdo para...',
-                      'Reescreva esse texto mais persuasivo:',
                     ]),
                   ].map((s, i) => (
                     <button key={i} onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 30) }}

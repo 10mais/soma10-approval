@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, ConfigAgencia } from '@/lib/redis'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
+import { ferramentasPara, executarFerramenta } from '@/lib/assistenteTools'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
@@ -129,31 +130,60 @@ Regras de estilo:
 - Use Markdown (negrito, listas, titulos) para organizar respostas longas.
 - Quando gerar copy/legenda, entregue pronta para usar.
 - Se faltar contexto essencial (ex.: qual cliente, qual objetivo), faca 1 pergunta curta antes de produzir.
-- Voce nao tem acesso direto ao banco de dados nem executa acoes no sistema; voce orienta e produz texto.`
+- Voce TEM acesso de LEITURA aos dados reais do sistema atraves de ferramentas (consultar_tarefas, consultar_clientes, consultar_crm${role === 'admin' ? ', consultar_financeiro' : ''}). Quando o usuario perguntar numeros, status, prazos ou qualquer dado real (ex.: "quantas tarefas tenho hoje"), USE as ferramentas e responda com os dados reais — nao diga que nao tem acesso. Voce so LE dados; nao executa acoes nem altera nada.`
   }
 
   const client = new Anthropic({ apiKey: KEY })
   const encoder = new TextEncoder()
 
+  // Ferramentas de leitura do banco (so para a equipe nao-vendas; vendas usa web search)
+  const ferramentasDB = ehVendas ? [] : ferramentasPara(role)
+  const tools: any[] = [
+    ...(usarWebSearch ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }] : []),
+    ...ferramentasDB,
+  ]
+
   const stream = new ReadableStream({
     async start(controller) {
+      let convo: any[] = [...messages]
+      let custoTotal = 0
       try {
-        const s = client.messages.stream({
-          model: 'claude-opus-4-8',
-          max_tokens: 2500,
-          thinking: { type: 'adaptive' },
-          output_config: { effort: 'low' } as any,
-          system,
-          messages,
-          ...(usarWebSearch ? { tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }] } : {}),
-        } as any)
+        // Loop de tool-use: o modelo pode consultar o banco e continuar respondendo
+        for (let i = 0; i < 6; i++) {
+          const s = client.messages.stream({
+            model: 'claude-opus-4-8',
+            max_tokens: 2500,
+            thinking: { type: 'adaptive' },
+            output_config: { effort: 'low' } as any,
+            system,
+            messages: convo,
+            ...(tools.length ? { tools } : {}),
+          } as any)
 
-        s.on('text', (delta: string) => {
-          controller.enqueue(encoder.encode(delta))
-        })
+          s.on('text', (delta: string) => controller.enqueue(encoder.encode(delta)))
 
-        const final = await s.finalMessage()
-        await registrarGasto(custoEstimado(final.usage)).catch(() => {})
+          const final = await s.finalMessage()
+          custoTotal += custoEstimado(final.usage)
+
+          // Executa as ferramentas do app que o modelo pediu (tool_use)
+          const chamadas = (final.content || []).filter((b: any) => b.type === 'tool_use')
+          if (final.stop_reason === 'tool_use' && chamadas.length) {
+            const resultados = await Promise.all(chamadas.map(async (b: any) => ({
+              type: 'tool_result',
+              tool_use_id: b.id,
+              content: await executarFerramenta(b.name, b.input, { role }),
+            })))
+            convo = [...convo, { role: 'assistant', content: final.content }, { role: 'user', content: resultados }]
+            continue
+          }
+          // pause_turn (busca na web): retoma o mesmo turno
+          if (final.stop_reason === 'pause_turn') {
+            convo = [...convo, { role: 'assistant', content: final.content }]
+            continue
+          }
+          break
+        }
+        await registrarGasto(custoTotal).catch(() => {})
       } catch (err: any) {
         controller.enqueue(encoder.encode(`\n\n[Erro: ${err?.message || 'falha ao gerar resposta'}]`))
       } finally {
