@@ -138,15 +138,85 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 - Cor da marca do cliente: `var(--marca)` no portal; em alguns componentes a cor é passada direto do cliente.
 - Auto-aprovar (global CLAUDE.md): criar arquivos/pastas novos, instalar pacotes pedidos, componentes visuais. **Perguntar antes:** modificar arquivo existente, comandos de banco, `.env`/auth, refator >3 arquivos, deletar.
 
-## 12. Pendências / próximos passos
+## 12. Pendências / próximos passos (atualizado 2026-06-30)
 
-- Subir a **logomarca oficial do 10+** em Pessoas e Cultura → Página Trabalhe Conosco.
-- Confirmar/agendar o **cron `/api/cron/resumo-semanal`** no cron-job.org.
-- **Registro corrompido antigo** (ex.: Brand Board trocado) deve ser limpo manualmente onde houver.
-- Roadmap aberto: dashboard de **Ads read-only** (Meta `ads_read` + Google Ads dev token) — aguarda acesso às APIs.
-- Sugestões pendentes de fluxo (a pedido do dono, "vou pensar"): subtítulos nas telas (Esteira/Planner/Aprovações), Aprovações read-only para a equipe, "→ foi para o Planner" no card aprovado.
+**Ação do dono (externo ao código):**
+- **WhatsApp oficial — provisionar:** número comercial dedicado + verificação Meta Business + credenciais. Adicionar no Vercel: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`. Configurar o webhook na Meta apontando para `https://approval.soma10.com.br/api/whatsapp/webhook` (mesmo verify token, assinar campo `messages`). O scaffold backend já está pronto (ver §14).
+- **Agendar cron** `/api/cron/crm-followup?secret=CRON_SECRET` no cron-job.org (1x/dia de manhã).
+- Confirmar/agendar `/api/cron/resumo-semanal`.
+- Adicionar chaves **VAPID** no Vercel se ainda faltar (push já funcionando): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+
+**A construir (código):**
+- **WhatsApp inbox no CRM** (ver conversas `wa:conversas`, ler `wa:msgs:{tel}`, responder via `enviarWhatsApp`, vincular conversa↔contato/negócio) + **templates HSM** (fora da janela de 24h). Fazer com as credenciais para testar de verdade.
+- **CRM Fase 2 restante:** lembretes já feitos; falta refinar empresas (drill-down) se quiser.
+- **Backlog antigo (2 grandes):** **Assistente de IA** (canto inferior direito, chat com Claude — SDK já existe) e **Mapas mentais** (editor de nós+conexões). Planejar antes.
+- **Otimização de fundo opcional:** ZSET cronológico para limitar a LEITURA do Redis da equipe (hoje a janela de 120d filtra após o mget). Índice por cliente para TAREFAS (pulado — sem consumidor).
+
+**Roadmap aberto / menores:** dashboard de Ads read-only (aguarda APIs Meta/Google); registro corrompido antigo a limpar; logomarca oficial em Trabalhe Conosco; dívida técnica do modo escuro (filtro de inversão — ideal um tema escuro real).
 
 ## 13. Arquivos-chave
 
 `lib/redis.ts` (tipos/chaves) · `lib/publicar.ts` (publicação Meta) · `lib/notificacoes.ts` (`notificar`, `notificarEquipe`, **`notificarAdmins`**) · `lib/automacoes.ts` · `lib/resumoSemanal.ts` · `lib/relatorioMensal.ts` · `lib/anthropicSaldo.ts` · `lib/cache.ts` · `lib/auth.ts` · `lib/modoCliente.ts`.
 Componentes: `GestaoTarefas.tsx` (+ `TarefaModal` exportado), `Esteira.tsx`, `PostComposer.tsx`, `Playbook.tsx`, `EntregasMarco.tsx`, `DashboardHome.tsx`, `Rentabilidade.tsx`, `Modelos.tsx`, `Automacoes.tsx`, `MeuDia.tsx`, `CargaEquipe.tsx`, `DriveButton.tsx`, `UploadProgress.tsx`, `Candidaturas.tsx`, `Briefings.tsx`, `MinhaConta.tsx`, `Calendar.tsx`, `ChatInterno.tsx`, `ConectarRedesModal.tsx`, `OptImg.tsx`.
+**Novos (esta evolução):** `CRM.tsx` (módulo de vendas), `PersonalList.tsx`, `PushSetup.tsx`. Libs novas: `lib/webpush.ts`, `lib/whatsapp.ts`, `lib/postsIndex.ts`.
+
+## 14. Evolução 2026-06-29/30 (sessão grande) — novidades
+
+> Tudo abaixo já está **deployado na `main`**. Fluxo: o dono prefere **push direto na main a cada implementação** (sem testar local). Type-check antes de cada commit.
+
+### 14.1 Performance
+- **Update otimista no dashboard:** ações de post (criar/editar/mover/duplicar/excluir/publicar) não rebaixam mais a coleção inteira; atualizam o estado local. Onde depende do servidor (publicar/republicar), busca 1 post.
+- **Índice de posts por cliente** (`lib/postsIndex.ts`): `cliente:{id}:posts` construído **lazy** na 1ª leitura (flag `cliente:{id}:posts:indexed`), mantido em posts POST/PUT/DELETE e `esteira/gerar-plano`. `/api/posts?clienteId` e `role cliente` leem só o subconjunto.
+- **Janela de 120 dias** na visão da equipe de `/api/posts` (recentes/futuros/atualizados); `?tudo=1` traz tudo; a aba **Biblioteca** carrega histórico completo.
+- **`/api/status`** (link público): mapa reverso `statustoken:{token}→clienteId` (O(1)) + posts por cliente.
+
+### 14.2 UI / shell
+- **Barra superior preta removida** → cluster flutuante no topo-direito (tema/sino/“visualizar como”/conta/sair). **Logo (wordmark SOMA)** no topo da sidebar — arquivos `public/soma10-logo.png` (claro) e `soma10-logo-dark.png` (escuro); ícone `public/logo.svg` no modo recolhido.
+- **Sidebar colapsável** (rail de ícones, preferência em `localStorage 'sidebarRecolhida'`); botão recolher flutuante; clicar item recolhido expande. Mapa de ícones por aba: `ICONE_ABA` no `dashboard/page.tsx`.
+- **Modo escuro:** imagens em `.soma10-no-invert` ficam naturais; botões amarelos (#ffc00f) re-marcados via efeito (`.btn-amarelo`) para seguirem amarelos com texto branco. (Continua sendo dark mode por filtro de inversão — dívida técnica.)
+
+### 14.3 Tarefas (`GestaoTarefas.tsx`)
+- **Concluídas ocultas por padrão** + toggle “Concluídas (n)”. **Busca** (lupa, título/descrição) e **filtro por tipo**.
+- **Guarda ao fechar:** fechar o modal (overlay/x) com alterações não salvas pede confirmação.
+- **Subtarefas:** `Tarefa.tarefaPaiId`. Lista mostra mãe + subtarefas aninhadas (chevron recolhe/expande); botão `+` na linha da mãe = quick-add (nome + Enter). Kanban: subtarefas fora das colunas, card mostra “N subtarefa(s)”. Modal da mãe: seção **Subtarefas** (toggle concluir, quick-add, “abrir”) + **Anexos das subtarefas** (só leitura, agrega os anexos das filhas). Órfãs (mãe excluída) sobem ao topo.
+- **Relacionar tarefa↔tarefa** (vínculo bidirecional manual): `Tarefa.relacionadas[]`, PUT ações `relacionarTarefa`/`desrelacionarTarefa`. Seção “Relacionadas” no modal.
+
+### 14.4 Esteira / Briefings → Tarefa
+- Esteira: botão **“Relacionar a tarefa”** dentro da pauta (individual) cria 1 tarefa (tipo = etapa: briefing/copy/criativo; pronto ignorado). `Post.tarefaId` ↔ `Tarefa.origemPostId`. Rota `/api/esteira/relacionar` (aceita `postId` ou `planoId`).
+- Briefings: botão “Relacionar a tarefa” cria tarefa tipo **campanha**. `/api/briefings/relacionar`. Novos tipos de tarefa: **briefing, copy, campanha** (em `TarefaTipo` e no catálogo do `GestaoTarefas`).
+
+### 14.5 Permissões de cliente
+- `Cliente.permissoes` (`entregas/aprovacoes/aprovar/solicitar/esteira/planner`), default tudo-ligado (flag ausente = liberado). Editável em Configurações → Clientes. Enforcement: menu do portal filtrado + guard de URL no `app/cliente/[clienteId]/layout.tsx`; servidor bloqueia `/api/esteira/aprovar` (aprovar) e `/api/solicitar-briefing` (solicitar). Helper `podeCliente()` em `lib/redis.ts`.
+
+### 14.6 Push + PWA (FUNCIONANDO)
+- **Web Push:** `lib/webpush.ts` (`enviarPush` via `web-push`, no-op sem VAPID; poda inscrições 404/410). `/api/push/subscribe` (GET config+publicKey, POST/DELETE inscrição em `push:{email}`). `notificar()` dispara o push. `/api/push/test` (GET/POST) = diagnóstico (envia ao próprio usuário + checa se o par de chaves casa). Env: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+- **PWA:** `app/manifest.ts` + `public/sw.js` (push + clique) + ícones `public/icon-192/512.png`, `apple-touch-icon.png`. `PushSetup.tsx` (registra SW, botões Instalar/Ativar notificações). **Mensagens privadas** disparam push mas NÃO entram no Inbox (só na aba Mensagens) — `/api/notificacoes` filtra `mensagem_privada`.
+
+### 14.7 Outras features
+- **Personal list:** item de menu próprio (abaixo de Meu dia), área privada por usuário (`personal:{email}`), rascunho + microtarefas. `/api/personal`. `PersonalList.tsx`.
+- **Notificação em modal:** clicar no Inbox abre a notificação em modal (não navega).
+- **Resumo semanal com templates:** predefinições (intro/fechamento com `{cliente}`/`{periodo}`) em `config:resumoTemplates`; `/api/resumo-templates`; aplicado por `templateId` em `lib/resumoSemanal.ts`.
+- **Vagas em dropdown** no Trabalhe Conosco: `config:agencia.recrutamentoVagas[]`, editável na Página Trabalhe Conosco; `/api/recrutamento` expõe.
+
+### 14.8 CRM de vendas (módulo novo — grupo de menu “Vendas” → aba `crm`, `CRM.tsx`)
+Abas internas: **Painel / Funil / Contatos / Empresas / Playbook**.
+- **Entidades (Redis):** `negocio:{id}` (índice `crm:negocios`), `contato:{id}` (`crm:contatos`), `empresa:{id}` (`crm:empresas`). Config: `crm:estagios` (funil configurável, semente padrão Lead→…→Negociação + Ganho/Perdido), `crm:playbookQualificacao` (roteiro + cadência). Tipos: `CrmNegocio` (qualificação rica: empresa/segmento/faturamentoEstimado/instagram/dores/solucoes; `handoff`; `proximoFollowUp`; `contatoId`/`empresaId`; `clienteId`; timeline `atividades[]`), `CrmContato`, `CrmEmpresa`, `CrmEstagio`, `CrmHandoff`.
+- **APIs:** `/api/crm/{negocios,contatos,empresas,estagios,playbook}` (CRUD) e **`/api/crm/converter`** (Ganho→Cliente).
+- **Funil kanban** (arrastar entre etapas, mover registra na timeline). **Nome da oportunidade = nome do responsável (contato).**
+- **Conversão Ganho→Cliente (`/api/crm/converter`):** modal de **passagem de bastão** (Closer→Gestor) → cria o Cliente (login opcional), **aplica um Modelo de projeto** (gera marcos+tarefas no Playbook), grava o handoff em `cliente.handoffVendas` (visível em Clientes→Editar), vincula o negócio e **notifica a equipe** (push+inbox) com a ficha. Refresh dos clientes no dashboard via prop `onClienteCriado`.
+- **Contatos:** CRUD + **Adicionar vários** (cola N linhas), **Importar CSV** e **Exportar CSV** (POST aceita `{lote:[...]}`).
+- **Empresas:** CRUD; agrupa contatos/negócios por `empresaId` OU por nome (texto) batendo.
+- **Playbook de qualificação:** roteiro + cadência (dia/canal/título/script) com “Copiar script”; admin/gerente editam (com Cancelar).
+- **Painel de vendas:** em aberto, ganho no mês, win rate, ticket médio, funil por etapa, pipeline por vendedor.
+- **Lembretes:** `negocio.proximoFollowUp`; selo no card; cron `/api/cron/crm-followup` (diário, avisa o dono, dedupe 1x/dia).
+
+### 14.9 WhatsApp oficial — scaffold backend (inativo até credenciais)
+- `lib/whatsapp.ts`: `enviarWhatsApp(tel, texto)` via Graph API (no-op sem credenciais); `salvarMensagem` armazena conversa (`wa:conversa:{tel}`, `wa:msgs:{tel}` lista, índice `wa:conversas`). `whatsappConfigurado()`.
+- `/api/whatsapp/webhook`: GET verificação (`hub.challenge` com `WHATSAPP_VERIFY_TOKEN`) + POST recebe mensagens → armazena → notifica equipe.
+- Env: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN` (reusa `META_API_VERSION_PUBLISH`). **Falta:** inbox no CRM + templates (ver §12).
+
+### 14.10 Novas chaves Redis (resumo)
+`cliente:{id}:posts` (+ `:indexed`), `statustoken:{token}`, `push:{email}`, `personal:{email}`, `config:resumoTemplates`, `crm:negocios`/`negocio:{id}`, `crm:contatos`/`contato:{id}`, `crm:empresas`/`empresa:{id}`, `crm:estagios`, `crm:playbookQualificacao`, `crm_followup_notif:{id}:{data}` (dedupe TTL), `wa:conversas`/`wa:conversa:{tel}`/`wa:msgs:{tel}`. Campos novos: `Cliente.permissoes`/`handoffVendas`/`recrutamentoVagas`(config); `Post.tarefaId`; `Tarefa.tarefaPaiId`/`relacionadas`/`origemPostId`/`origemBriefingId`; `BriefingCampanha.tarefaId`.
+
+### 14.11 Novas rotas API (resumo)
+`/api/personal`, `/api/push/subscribe`, `/api/push/test`, `/api/resumo-templates`, `/api/esteira/relacionar`, `/api/briefings/relacionar`, `/api/crm/{negocios,contatos,empresas,estagios,playbook,converter}`, `/api/cron/crm-followup`, `/api/whatsapp/webhook`.
