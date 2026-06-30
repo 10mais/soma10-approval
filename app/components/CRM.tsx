@@ -26,6 +26,32 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [overCol, setOverCol] = useState<string | null>(null)
   const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'playbook'>('funil')
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
+  const [bulkModal, setBulkModal] = useState(false)
+
+  function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  function exportarCSV() {
+    const linhas = [['Nome', 'Telefone', 'Email', 'Empresa', 'Cargo', 'Observações'].join(';')]
+    contatos.forEach((c: any) => linhas.push([c.nome, c.telefone, c.email, c.empresa, c.cargo, c.observacoes].map(csvEscape).join(';')))
+    const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url)
+  }
+  async function importarCSV(file: File) {
+    const txt = await file.text()
+    const linhas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
+    if (!linhas.length) return
+    const sep = (linhas[0].match(/;/g) || []).length >= (linhas[0].match(/,/g) || []).length ? ';' : ','
+    let inicio = 0
+    if (/nome/i.test(linhas[0]) && /(email|telefone|empresa)/i.test(linhas[0])) inicio = 1 // pula cabeçalho
+    const lote = linhas.slice(inicio).map(l => {
+      const cols = l.split(sep).map(s => s.trim().replace(/^"|"$/g, ''))
+      return { nome: cols[0] || '', telefone: cols[1] || '', email: cols[2] || '', empresa: cols[3] || '', cargo: cols[4] || '' }
+    }).filter(c => c.nome)
+    if (!lote.length) { alert('Nenhum contato válido encontrado no arquivo.'); return }
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { alert(`${r.criados} contato(s) importado(s).`); carregar() }
+    else alert('Falha ao importar.')
+  }
 
   function carregar() {
     Promise.all([
@@ -63,8 +89,19 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
-        {vista !== 'playbook' && (
-          <button onClick={() => vista === 'funil' ? setNovoModal(true) : setContatoModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {vista === 'funil' ? 'Novo negócio' : 'Novo contato'}</button>
+        {vista === 'funil' && (
+          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo negócio</button>
+        )}
+        {vista === 'contatos' && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={exportarCSV} style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
+            <label style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+              Importar CSV
+              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0]); e.target.value = '' }} />
+            </label>
+            <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>
+            <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>
+          </div>
         )}
       </div>
 
@@ -120,6 +157,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
     </div>
   )
 }
@@ -281,6 +319,38 @@ function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
   )
 }
 
+function BulkContatosModal({ onClose, onSalvo }: { onClose: () => void; onSalvo: () => void }) {
+  const [texto, setTexto] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const linhas = texto.split('\n').filter(l => l.trim())
+  async function salvar() {
+    const lote = linhas.map(l => {
+      const sep = (l.match(/;/g) || []).length >= (l.match(/,/g) || []).length ? ';' : ','
+      const c = l.split(sep).map(s => s.trim())
+      return { nome: c[0] || '', telefone: c[1] || '', email: c[2] || '', empresa: c[3] || '' }
+    }).filter(c => c.nome)
+    if (!lote.length) return
+    setSalvando(true)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { alert(`${r.criados} contato(s) adicionado(s).`); onSalvo() } else alert('Falha ao adicionar.')
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Adicionar vários contatos</h3>
+        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#999' }}>Um contato por linha, separando por <b>;</b> (ou vírgula): <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+        <textarea value={texto} onChange={e => setTexto(e.target.value)} autoFocus placeholder={'João Silva ; +5511999990000 ; joao@empresa.com ; Clínica X\nMaria Souza ; +5511988887777 ; maria@loja.com ; Loja Y'}
+          style={{ width: '100%', minHeight: 200, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.6 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
+          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Adicionando...' : `Adicionar ${linhas.length || ''} contato(s)`}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ContatosLista({ contatos, negocios, onAbrir }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void }) {
   if (contatos.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p></div>
   return (
@@ -348,17 +418,15 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
   const equipe = (usuarios || []).filter(u => u.role !== 'cliente')
 
   async function salvar() {
-    if (!f.titulo.trim()) return
+    if (!f.contatoNome.trim()) return
     setSalvando(true)
-    let contatoId = ''
-    if (f.contatoNome.trim()) {
-      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
-      contatoId = c?.contato?.id || ''
-    }
+    // O contato (responsável) é também o nome da oportunidade
+    const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
+    const contatoId = c?.contato?.id || ''
     const dono = equipe.find(u => u.email === f.dono)
     await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: f.titulo, valor: Number(f.valor) || 0, contatoId, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
+      body: JSON.stringify({ titulo: f.contatoNome.trim(), valor: Number(f.valor) || 0, contatoId, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
     }).catch(() => {})
     setSalvando(false); onSalvo()
   }
@@ -368,7 +436,10 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo negócio</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><label style={labelStyle}>Título *</label><input value={f.titulo} onChange={e => setF({ ...f, titulo: e.target.value })} placeholder="Ex: Social Media - Clínica X" style={inputStyle} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Responsável (contato) *</label><input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome do responsável" style={inputStyle} /></div>
+            <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelStyle}>Valor (R$)</label><input type="number" min="0" value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} placeholder="0" style={inputStyle} /></div>
             <div><label style={labelStyle}>Etapa</label>
@@ -379,11 +450,7 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Contato</label><input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome" style={inputStyle} /></div>
-            <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Responsável</label>
+            <div><label style={labelStyle}>Vendedor responsável</label>
               <select value={f.dono} onChange={e => setF({ ...f, dono: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Eu</option>
                 {equipe.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
@@ -407,7 +474,7 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
           <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.titulo.trim()} style={{ flex: 1, padding: '11px 0', background: f.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.titulo.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
+          <button onClick={salvar} disabled={salvando || !f.contatoNome.trim()} style={{ flex: 1, padding: '11px 0', background: f.contatoNome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.contatoNome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>

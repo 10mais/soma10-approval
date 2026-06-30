@@ -31,14 +31,24 @@ export async function POST(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const b = await req.json()
-  if (!String(b.nome || '').trim()) return NextResponse.json({ error: 'informe o nome' }, { status: 400 })
-  const agora = new Date().toISOString()
-  const contato: CrmContato = {
-    id: uuid(),
-    nome: String(b.nome).trim(),
-    email: b.email || '', telefone: b.telefone || '', empresa: b.empresa || '', cargo: b.cargo || '', observacoes: b.observacoes || '',
-    criadoPor: session.user?.name || '', criadoEm: agora, atualizadoEm: agora,
+  const autor = session.user?.name || ''
+  const novo = (d: any): CrmContato => {
+    const agora = new Date().toISOString()
+    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
   }
+
+  // Criação em LOTE (adicionar vários / importar)
+  if (Array.isArray(b.lote)) {
+    const validos = b.lote.filter((d: any) => String(d?.nome || '').trim())
+    const contatos = validos.map(novo)
+    for (const c of contatos) await redis.set(`contato:${c.id}`, c)
+    if (contatos.length) await redis.sadd('crm:contatos', ...(contatos.map(c => c.id) as [string, ...string[]]))
+    return NextResponse.json({ ok: true, criados: contatos.length })
+  }
+
+  // Criação individual
+  if (!String(b.nome || '').trim()) return NextResponse.json({ error: 'informe o nome' }, { status: 400 })
+  const contato = novo(b)
   await redis.set(`contato:${contato.id}`, contato)
   await redis.sadd('crm:contatos', contato.id)
   return NextResponse.json({ ok: true, contato })
