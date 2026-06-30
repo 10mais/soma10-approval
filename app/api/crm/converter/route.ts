@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Usuario, CrmNegocio, CrmContato, TemplateProjeto, Marco, Tarefa } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
+import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -137,6 +138,10 @@ export async function POST(req: NextRequest) {
     atualizadoEm: agora,
   }
   await redis.set(`negocio:${negocioId}`, negAtualizado)
+
+  // 4) Avisa a equipe (gestores) com a "ficha" do cliente para completar o Playbook de entregas
+  const resumoNotif = `Venda fechada por ${negocio.donoNome || autor}.${negocio.valor ? ` Valor: ${Number(negocio.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.` : ''}${templateId ? ` ${marcosCriados} etapas e ${tarefasCriadas} tarefas aplicadas.` : ''}\n\n${handoffVendas}`.slice(0, 900)
+  await notificarEquipe('geral', `Novo cliente: ${cliente.nome} — passagem de bastão`, resumoNotif).catch(() => {})
 
   return NextResponse.json({ ok: true, clienteId: cliente.id, marcos: marcosCriados, tarefas: tarefasCriadas, loginSenha: senhaPlana || undefined })
 }

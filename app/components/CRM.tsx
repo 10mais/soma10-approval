@@ -24,6 +24,8 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
+  const [vista, setVista] = useState<'funil' | 'contatos'>('funil')
+  const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
 
   function carregar() {
     Promise.all([
@@ -53,13 +55,20 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>CRM — Funil de vendas</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>CRM</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : 'Contatos de prospects e clientes.'}</p>
         </div>
-        <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo negócio</button>
+        <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+          {(['funil', 'contatos'] as const).map(v => (
+            <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{v === 'funil' ? 'Funil' : 'Contatos'}</button>
+          ))}
+        </div>
+        <button onClick={() => vista === 'funil' ? setNovoModal(true) : setContatoModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {vista === 'funil' ? 'Novo negócio' : 'Novo contato'}</button>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
+      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'contatos' ? (
+        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} />
+      ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
           {estagios.map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id)
@@ -99,12 +108,74 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
 
       {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
     </div>
   )
 }
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+
+function ContatosLista({ contatos, negocios, onAbrir }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void }) {
+  if (contatos.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p></div>
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+      {contatos.map(c => {
+        const nNeg = negocios.filter(n => n.contatoId === c.id).length
+        return (
+          <div key={c.id} onClick={() => onAbrir(c)} style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>{c.nome}</p>
+            {c.empresa && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#888' }}>{c.empresa}</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {c.telefone && <span style={{ fontSize: 12, color: '#555' }}>{c.telefone}</span>}
+              {c.email && <span style={{ fontSize: 12, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
+            </div>
+            {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ContatoModal({ contato, onClose, onSalvo }: { contato: Contato | null; onClose: () => void; onSalvo: () => void }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '' })
+  const [salvando, setSalvando] = useState(false)
+  async function salvar() {
+    if (!f.nome.trim()) return
+    setSalvando(true)
+    if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...f }) }).catch(() => {})
+    else await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) }).catch(() => {})
+    setSalvando(false); onSalvo()
+  }
+  async function excluir() {
+    if (!contato?.id || !confirm('Excluir este contato?')) return
+    await fetch(`/api/crm/contatos?id=${contato.id}`, { method: 'DELETE' }).catch(() => {})
+    onSalvo()
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{contato ? 'Editar contato' : 'Novo contato'}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+            <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>
+          {contato && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
