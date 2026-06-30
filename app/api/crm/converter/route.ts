@@ -22,7 +22,8 @@ function gerarSenha() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  // Closer (vendas) faz a passagem de bastao Ganho->Cliente; admin/gerente tambem
+  if (!session || (role !== 'admin' && role !== 'gerente' && role !== 'vendas')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const { negocioId, cliente: dados, handoff, templateId, dataInicio } = await req.json()
   const negocio = await redis.get<CrmNegocio>(`negocio:${negocioId}`)

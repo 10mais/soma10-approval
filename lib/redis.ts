@@ -6,7 +6,7 @@ export const redis = new Redis({
 })
 
 // Tipos
-export type Role = 'admin' | 'gerente' | 'cliente'
+export type Role = 'admin' | 'gerente' | 'cliente' | 'vendas'
 
 export type Usuario = {
   id: string
@@ -15,6 +15,7 @@ export type Usuario = {
   senha: string
   role: Role
   cargo?: string
+  funcaoVendas?: 'sdr' | 'closer' // sub-funcao do papel 'vendas' (SDR/BDR ou Closer)
   foto?: string
   telefone?: string
   bio?: string

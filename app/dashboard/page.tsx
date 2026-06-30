@@ -594,11 +594,17 @@ function Dashboard() {
     if (status !== 'authenticated') return
     const role = (session?.user as any)?.role
     const fetches: Promise<void>[] = [
-      fetch('/api/posts').then(r => r.json()).then(setPosts),
       fetch('/api/clientes').then(r => r.json()).then(setClientes),
     ]
+    // Vendas nao acessa a operacao: nao carrega posts da equipe
+    if (role !== 'vendas') {
+      fetches.push(fetch('/api/posts').then(r => r.json()).then(setPosts))
+    }
     if (role === 'admin' || role === 'gerente') {
       fetches.push(fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {}))
+    } else if (role === 'vendas') {
+      // Roster seguro (sem folha) para o dropdown de dono no CRM
+      fetches.push(fetch('/api/equipe').then(r => r.json()).then(setUsuarios).catch(() => {}))
     }
     if (role === 'admin') {
       fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
@@ -712,6 +718,14 @@ function Dashboard() {
       setAba('aprovacoes')
     }
   }, [ehCliente, session])
+
+  // Vendas: papel isolado da operacao. So acessa CRM, Meu dia, Personal list,
+  // Mensagens (direct) e a propria conta. Qualquer outra aba cai no CRM.
+  const ehVendas = role === 'vendas'
+  const ABAS_VENDAS = ['crm', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
+  useEffect(() => {
+    if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
+  }, [ehVendas, aba])
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
   useEffect(() => {
@@ -1317,7 +1331,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1325,7 +1339,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -1534,7 +1548,7 @@ function Dashboard() {
           )}
 
           {/* Seletor de visualização por cliente — primeira coisa exibida (equipe) */}
-          {!ehCliente && !recolhida && <div style={{ marginBottom: 20 }}>
+          {!ehCliente && !ehVendas && !recolhida && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
@@ -1625,10 +1639,21 @@ function Dashboard() {
             )}
           </div>}
 
-          {!ehCliente && <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />}
+          {!ehCliente && !ehVendas && <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />}
 
-          {/* NIVEL AGENCIA — oculto na visao de cliente */}
-          {!verComoClienteId && (
+          {/* NIVEL VENDAS — papel isolado: so CRM, Meu dia, Personal list, Mensagens */}
+          {ehVendas && (
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
+              <NavBtn chave="crm" label="CRM" />
+              <NavBtn chave="meu-dia" label="Meu dia" />
+              <NavBtn chave="lista-pessoal" label="Personal list" />
+              <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
+            </nav>
+          )}
+
+          {/* NIVEL AGENCIA — oculto na visao de cliente e de vendas */}
+          {!verComoClienteId && !ehVendas && (
             <>
               {([
                 { titulo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['home', 'Painel']] },
@@ -2858,7 +2883,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente' || role === 'vendas'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
@@ -3425,8 +3450,17 @@ function Dashboard() {
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
                       <option value="gerente">Gerente</option>
                       <option value="admin">Admin</option>
+                      <option value="vendas">Vendas</option>
                       <option value="cliente">Cliente</option>
                     </select>
+                    {novoUsuario.role === 'vendas' && (
+                      <select value={(novoUsuario as any).funcaoVendas || ''} onChange={e => setNovoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        <option value="">Função...</option>
+                        <option value="sdr">SDR / BDR</option>
+                        <option value="closer">Closer</option>
+                      </select>
+                    )}
                     {novoUsuario.role === 'cliente' && (
                       <select value={(novoUsuario as any).clienteId || ''} onChange={e => setNovoUsuario(p => ({ ...p, clienteId: e.target.value }))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
@@ -3509,8 +3543,17 @@ function Dashboard() {
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                           <option value="gerente">Gerente</option>
                           <option value="admin">Admin</option>
+                          <option value="vendas">Vendas</option>
                           <option value="cliente">Cliente</option>
                         </select>
+                        {edicaoUsuario.role === 'vendas' && (
+                          <select value={(edicaoUsuario as any).funcaoVendas || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            <option value="">Função...</option>
+                            <option value="sdr">SDR / BDR</option>
+                            <option value="closer">Closer</option>
+                          </select>
+                        )}
                         {edicaoUsuario.role === 'cliente' && (
                           <select value={(edicaoUsuario as any).clienteId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, clienteId: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
