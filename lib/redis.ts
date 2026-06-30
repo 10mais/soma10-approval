@@ -400,6 +400,7 @@ export type CrmNegocio = {
   origem?: string
   probabilidade?: number
   previsaoFechamento?: string // ISO date
+  proximoFollowUp?: string // ISO date — lembrete do próximo contato (cron avisa o dono)
   // Qualificação da oportunidade (quanto mais rico, melhor a venda e o handoff)
   empresa?: string
   segmento?: string

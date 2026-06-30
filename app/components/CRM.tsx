@@ -6,7 +6,7 @@ type Contato = { id: string; nome: string; telefone?: string; email?: string; em
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; status: string
-  dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string
+  dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
@@ -102,6 +102,11 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                           <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || 'Sem contato'}</span>
                           {n.donoNome && <span style={{ fontSize: 10, color: '#aaa', flexShrink: 0 }}>{n.donoNome.split(' ')[0]}</span>}
                         </div>
+                        {n.proximoFollowUp && (() => { const atrasado = new Date(new Date(n.proximoFollowUp).setHours(23, 59, 59, 999)).getTime() < Date.now(); return (
+                          <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700, color: atrasado ? '#b91c1c' : '#888', background: atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '2px 8px' }}>
+                            {atrasado ? 'Follow-up atrasado' : 'Follow-up'} · {new Date(n.proximoFollowUp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                        ) })()}
                       </div>
                     )
                   })}
@@ -465,6 +470,12 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
           </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Próximo follow-up</label>
+          <input type="date" value={(neg.proximoFollowUp || '').slice(0, 10)} onChange={e => setNeg({ ...neg, proximoFollowUp: e.target.value })} onBlur={() => patch({ proximoFollowUp: neg.proximoFollowUp })} style={inputStyle} />
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>No dia, o responsável recebe um lembrete (push + inbox).</p>
         </div>
 
         {contato && (

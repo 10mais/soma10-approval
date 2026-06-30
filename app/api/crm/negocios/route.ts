@@ -95,7 +95,7 @@ export async function PUT(req: NextRequest) {
     else atualizado.status = 'aberto'
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'origem', 'probabilidade', 'previsaoFechamento', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 
