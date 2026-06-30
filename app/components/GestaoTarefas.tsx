@@ -1029,6 +1029,21 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             </div>
           </div>
 
+          {/* Breadcrumb de subtarefa — identifica que esta tarefa e filha e de quem (estilo ClickUp) */}
+          {tarefa?.tarefaPaiId && (() => {
+            const mae = todasTarefas.find(t => t.id === tarefa.tarefaPaiId)
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', margin: '-6px 0 16px', padding: '6px 12px', background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 8, fontSize: 12, color: '#1d4ed8' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7" /><path d="M16 10l4 4-4 4" /></svg>
+                <span style={{ color: '#60a5fa', fontWeight: 600 }}>Subtarefa de</span>
+                <button type="button" onClick={() => mae && onRecarregar?.(mae)} disabled={!mae}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 800, color: '#1d4ed8', cursor: mae ? 'pointer' : 'default', textDecoration: mae ? 'underline' : 'none', fontFamily: 'inherit' }}>
+                  {mae?.titulo || 'tarefa-mãe'}
+                </button>
+              </div>
+            )
+          })()}
+
           {/* Abas internas — so no sidebar (sem espaco lateral pra activity) */}
           {tarefa && viewMode === 'sidebar' && (
             <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
