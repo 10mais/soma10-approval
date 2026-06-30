@@ -5,7 +5,7 @@ type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; 
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
 type Despesa = { id: string; descricao: string; valor: number; tipo: 'fixo' | 'variavel'; categoria?: string; mes: string }
 
-function brl(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
+function brlFmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
 function fmtH(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
 
 export default function Rentabilidade({ clientes, usuarios }: { clientes: Cliente[]; usuarios: Usuario[] }) {
@@ -25,6 +25,9 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [ocultar, setOcultar] = useState(false)
   useEffect(() => { try { setOcultar(localStorage.getItem('rent_ocultar') === '1') } catch {} }, [])
   function toggleOcultar() { setOcultar(v => { const n = !v; try { localStorage.setItem('rent_ocultar', n ? '1' : '0') } catch {} return n }) }
+  // Mascara só os VALORES quando o olho está ativo (não desfoca a tela toda)
+  const brl = (v: number) => ocultar ? 'R$ •••••' : brlFmt(v)
+  const mascP = (s: string | number) => ocultar ? '•••' : String(s)
   const hoje = new Date()
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`)
 
@@ -129,6 +132,10 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const reserva60 = despOpMensal * 2
   const saudeCaixa = reserva60 > 0 ? (saldoContas / reserva60) * 100 : null
   const corSaude = saudeCaixa === null ? '#999' : saudeCaixa >= 80 ? '#16a34a' : saudeCaixa >= 50 ? '#f59e0b' : '#dc2626'
+  // Contagiro (medidor de ponteiro) da Saúde do Caixa
+  const gaugePt = (v: number, r: number) => { const a = (180 - Math.max(0, Math.min(100, v)) / 100 * 180) * Math.PI / 180; return [100 + r * Math.cos(a), 100 - r * Math.sin(a)] as const }
+  const gaugeArc = (v0: number, v1: number, r = 80) => { const [x0, y0] = gaugePt(v0, r); const [x1, y1] = gaugePt(v1, r); return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}` }
+  const ponteiro = gaugePt(saudeCaixa ?? 0, 62)
 
   async function salvarContas(lista: typeof contas) {
     setSalvandoContas(true)
@@ -232,30 +239,35 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
       </div>
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
-        <div style={{ filter: ocultar ? 'blur(7px)' : 'none', pointerEvents: ocultar ? 'none' : 'auto', userSelect: ocultar ? 'none' : 'auto', transition: 'filter .18s' }}>
+        <div>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita (contratos)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Folha (fixo + variável)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(folha)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Despesas</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(despesasTotal)}</p></div>
-            <div style={{ ...card, background: lucro >= 0 ? '#f0fdf4' : '#fef2f2' }}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? '#16a34a' : '#dc2626' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: '#999' }}> ({Math.round(margemPct)}%)</span>}</p></div>
+            <div style={{ ...card, background: lucro >= 0 ? '#f0fdf4' : '#fef2f2' }}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? '#16a34a' : '#dc2626' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: '#999' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>
           </div>
 
           {/* Saúde do Caixa — termômetro (open doors 60 dias) */}
           <div style={{ ...card, marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-              {/* Termômetro */}
-              <div style={{ position: 'relative', width: 30, height: 156, flexShrink: 0 }}>
-                <div style={{ position: 'absolute', left: 9, top: 0, width: 12, height: 130, background: '#eee', borderRadius: 6 }} />
-                <div style={{ position: 'absolute', left: 9, bottom: 22, width: 12, height: Math.max(2, Math.min(100, saudeCaixa ?? 0) / 100 * 122), background: corSaude, borderRadius: 6, transition: 'height .3s' }} />
-                <div style={{ position: 'absolute', left: 3, bottom: 0, width: 24, height: 24, borderRadius: '50%', background: corSaude, border: '3px solid #fff', boxShadow: '0 0 0 1px #eee' }} />
+              {/* Contagiro (medidor de ponteiro) */}
+              <div style={{ position: 'relative', width: 160, flexShrink: 0 }}>
+                <svg viewBox="0 0 200 116" width={160} height={93}>
+                  <path d={gaugeArc(0, 100)} stroke="#eee" strokeWidth={13} fill="none" strokeLinecap="round" />
+                  <path d={gaugeArc(0, 50)} stroke="#dc2626" strokeWidth={13} fill="none" strokeLinecap="round" />
+                  <path d={gaugeArc(50, 80)} stroke="#f59e0b" strokeWidth={13} fill="none" />
+                  <path d={gaugeArc(80, 100)} stroke="#16a34a" strokeWidth={13} fill="none" strokeLinecap="round" />
+                  <line x1={100} y1={100} x2={ponteiro[0]} y2={ponteiro[1]} stroke="#111" strokeWidth={3.5} strokeLinecap="round" style={{ transition: 'all .4s' }} />
+                  <circle cx={100} cy={100} r={7} fill="#111" />
+                </svg>
+                <p style={{ position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center', margin: 0, fontSize: 22, fontWeight: 800, color: corSaude }}>{saudeCaixa === null ? '—' : ocultar ? '•••' : `${Math.round(saudeCaixa)}%`}</p>
               </div>
               {/* Indicador */}
               <div style={{ flex: 1, minWidth: 180 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Saúde do Caixa</p>
-                <p style={{ margin: '2px 0 0', fontSize: 34, fontWeight: 800, color: corSaude, lineHeight: 1.1 }}>{saudeCaixa === null ? '—' : `${Math.round(saudeCaixa)}%`}</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999' }}>
-                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * 60)} dias de operação sem nenhuma receita. Meta: 60 dias (100%).`}
+                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : ocultar ? 'Valores ocultos (clique no olho para mostrar).' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * 60)} dias de operação sem nenhuma receita. Meta: 60 dias (100%).`}
                 </p>
               </div>
               {/* Composição */}
@@ -307,7 +319,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                     <div style={{ width: 11, height: `${Math.max(2, f.saidas / fluxoMax * 118)}px`, background: '#dc2626', borderRadius: '3px 3px 0 0' }} />
                   </div>
                   <span style={{ fontSize: 10.5, color: f.futuro ? '#aaa' : '#888', fontWeight: f.mes === `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}` ? 800 : 500, whiteSpace: 'nowrap' }}>{f.label}</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: f.saldo >= 0 ? '#16a34a' : '#dc2626' }}>{f.saldo >= 0 ? '+' : ''}{Math.round(f.saldo / 1000)}k</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: f.saldo >= 0 ? '#16a34a' : '#dc2626' }}>{ocultar ? '•••' : `${f.saldo >= 0 ? '+' : ''}${Math.round(f.saldo / 1000)}k`}</span>
                 </div>
               ))}
             </div>
@@ -460,7 +472,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#555' }}>{fmtH(l.min)}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#555' }}>{brl(l.custo)}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#555' }}>{l.receita > 0 ? brl(l.receita) : <span style={{ color: '#ccc' }}>—</span>}</td>
-                      <td style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 800, color: l.receita === 0 ? '#bbb' : l.margem >= 0 ? '#16a34a' : '#dc2626' }}>{l.receita > 0 ? brl(l.margem) : '—'}{l.pct !== null && <span style={{ fontSize: 11, fontWeight: 600, color: '#aaa' }}> ({Math.round(l.pct)}%)</span>}</td>
+                      <td style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 800, color: l.receita === 0 ? '#bbb' : l.margem >= 0 ? '#16a34a' : '#dc2626' }}>{l.receita > 0 ? brl(l.margem) : '—'}{l.pct !== null && <span style={{ fontSize: 11, fontWeight: 600, color: '#aaa' }}> ({mascP(Math.round(l.pct))}%)</span>}</td>
                     </tr>
                   ))}
                   {linhasCliente.length === 0 && <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#bbb' }}>Sem dados no período.</td></tr>}
