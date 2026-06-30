@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast } from '@/lib/toast'
+import RichText from './RichText'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 
@@ -310,7 +311,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
     if (filtroCliente && t.clienteId !== filtroCliente) return false
     if (filtroResponsavel && t.responsavelEmail !== filtroResponsavel) return false
     if (filtroTipo && (t.tipo || 'tarefa') !== filtroTipo) return false
-    if (busca.trim() && !((t.titulo || '') + ' ' + (t.descricao || '')).toLowerCase().includes(busca.toLowerCase())) return false
+    if (busca.trim() && !((t.titulo || '') + ' ' + (t.descricao || '').replace(/<[^>]+>/g, ' ')).toLowerCase().includes(busca.toLowerCase())) return false
     if (!mostrarConcluidas && t.status === 'concluido') return false
     return true
   })
@@ -1177,8 +1178,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descricao</label>
-              <textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, contexto, links..."
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <RichText value={form.descricao} onChange={d => setForm(f => ({ ...f, descricao: d }))} placeholder="Detalhes, contexto, links..." minHeight={80} />
             </div>
           </div>
           {/* Checklist (Definition of Done) */}
