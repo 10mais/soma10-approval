@@ -359,12 +359,27 @@ export type Post = {
 // Estágio do funil (configurável). Chaves: crm:estagios (array), índices crm:negocios, crm:contatos.
 export type CrmEstagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
 
+// Empresa/conta — agrupa contatos e negócios
+export type CrmEmpresa = {
+  id: string
+  nome: string
+  segmento?: string
+  site?: string
+  instagram?: string
+  telefone?: string
+  observacoes?: string
+  criadoPor: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 export type CrmContato = {
   id: string
   nome: string
   email?: string
   telefone?: string // WhatsApp — preparado para a integração oficial futura
   empresa?: string
+  empresaId?: string // vínculo com a entidade Empresa
   cargo?: string
   observacoes?: string
   criadoPor: string
@@ -398,6 +413,7 @@ export type CrmNegocio = {
   dono?: string // e-mail do responsável (SDR/closer)
   donoNome?: string
   contatoId?: string
+  empresaId?: string // vínculo com a entidade Empresa
   origem?: string
   probabilidade?: number
   previsaoFechamento?: string // ISO date

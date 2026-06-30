@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const autor = session.user?.name || ''
   const novo = (d: any): CrmContato => {
     const agora = new Date().toISOString()
-    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
   }
 
   // Criação em LOTE (adicionar vários / importar)
@@ -60,7 +60,7 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const contato = await redis.get<CrmContato>(`contato:${id}`)
   if (!contato) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'cargo', 'observacoes']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'cargo', 'observacoes']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   await redis.set(`contato:${id}`, atualizado)

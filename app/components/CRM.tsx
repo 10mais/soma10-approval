@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string }
+type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; status: string
@@ -10,6 +11,7 @@ type Negocio = {
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
+  empresaId?: string
 }
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -19,13 +21,15 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [carregando, setCarregando] = useState(true)
   const [novoModal, setNovoModal] = useState(false)
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'playbook'>('funil')
+  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'playbook'>('funil')
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
+  const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
@@ -58,10 +62,12 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       fetch('/api/crm/estagios').then(r => r.json()),
       fetch('/api/crm/negocios').then(r => r.json()),
       fetch('/api/crm/contatos').then(r => r.json()),
-    ]).then(([e, n, c]) => {
+      fetch('/api/crm/empresas').then(r => r.json()),
+    ]).then(([e, n, c, emp]) => {
       setEstagios(Array.isArray(e) ? e : [])
       setNegocios(Array.isArray(n) ? n : [])
       setContatos(Array.isArray(c) ? c : [])
+      setEmpresas(Array.isArray(emp) ? emp : [])
       setCarregando(false)
     }).catch(() => setCarregando(false))
   }
@@ -85,7 +91,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'playbook', string][]).map(([v, l]) => (
+          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'empresas' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
@@ -103,12 +109,17 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>
           </div>
         )}
+        {vista === 'empresas' && (
+          <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
+        )}
       </div>
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negocios} estagios={estagios} usuarios={usuarios} />
       ) : vista === 'contatos' ? (
         <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} />
+      ) : vista === 'empresas' ? (
+        <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
@@ -158,6 +169,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
+      {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
     </div>
   )
 }
@@ -346,6 +358,83 @@ function BulkContatosModal({ onClose, onSalvo }: { onClose: () => void; onSalvo:
           style={{ width: '100%', minHeight: 200, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.6 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
           <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Adicionando...' : `Adicionar ${linhas.length || ''} contato(s)`}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Vincula contato/negócio a uma empresa por empresaId OU pelo nome (texto) batendo
+function ligadosEmpresa(emp: Empresa, contatos: Contato[], negocios: Negocio[]) {
+  const nome = (emp.nome || '').toLowerCase()
+  const cts = contatos.filter(c => c.empresaId === emp.id || (c.empresa && c.empresa.toLowerCase() === nome))
+  const negs = negocios.filter(n => n.empresaId === emp.id || ((n as any).empresa && (n as any).empresa.toLowerCase() === nome))
+  return { cts, negs }
+}
+
+function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Empresa[]; contatos: Contato[]; negocios: Negocio[]; onAbrir: (e: Empresa) => void }) {
+  if (empresas.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhuma empresa ainda.</p></div>
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+      {empresas.map(e => {
+        const { cts, negs } = ligadosEmpresa(e, contatos, negocios)
+        const aberto = negs.filter(n => n.status === 'aberto').reduce((s, n) => s + (Number(n.valor) || 0), 0)
+        return (
+          <div key={e.id} onClick={() => onAbrir(e)} style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>{e.nome}</p>
+            {e.segmento && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888' }}>{e.segmento}</p>}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '2px 8px' }}>{cts.length} contato(s)</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{negs.length} negócio(s)</span>
+              {aberto > 0 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: 999, padding: '2px 8px' }}>{fmtR$(aberto)} em aberto</span>}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void }) {
+  const [f, setF] = useState<any>({ nome: empresa?.nome || '', segmento: empresa?.segmento || '', site: empresa?.site || '', instagram: empresa?.instagram || '', telefone: empresa?.telefone || '', observacoes: empresa?.observacoes || '' })
+  const [salvando, setSalvando] = useState(false)
+  const lig = empresa ? ligadosEmpresa(empresa, contatos, negocios) : { cts: [], negs: [] }
+  async function salvar() {
+    if (!f.nome.trim()) return
+    setSalvando(true)
+    if (empresa?.id) await fetch('/api/crm/empresas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: empresa.id, ...f }) }).catch(() => {})
+    else await fetch('/api/crm/empresas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) }).catch(() => {})
+    setSalvando(false); onSalvo()
+  }
+  async function excluir() {
+    if (!empresa?.id || !confirm('Excluir esta empresa? Os contatos e negócios não são apagados.')) return
+    await fetch(`/api/crm/empresas?id=${empresa.id}`, { method: 'DELETE' }).catch(() => {})
+    onSalvo()
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{empresa ? 'Editar empresa' : 'Nova empresa'}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Segmento</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Site</label><input value={f.site} onChange={e => setF({ ...f, site: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Instagram</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+        </div>
+        {empresa && (lig.cts.length > 0 || lig.negs.length > 0) && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+            {lig.cts.length > 0 && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}><b>Contatos:</b> {lig.cts.map(c => c.nome).join(', ')}</p>}
+            {lig.negs.length > 0 && <p style={{ margin: 0, fontSize: 12, color: '#888' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
+          {empresa && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
