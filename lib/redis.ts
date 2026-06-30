@@ -6,7 +6,8 @@ export const redis = new Redis({
 })
 
 // Tipos
-export type Role = 'admin' | 'gerente' | 'cliente' | 'vendas'
+// Hierarquia: admin > gerente > usuario > vendas > cliente
+export type Role = 'admin' | 'gerente' | 'usuario' | 'cliente' | 'vendas'
 
 export type Usuario = {
   id: string

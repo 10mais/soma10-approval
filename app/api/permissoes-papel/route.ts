@@ -19,7 +19,11 @@ export async function PUT(req: NextRequest) {
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const body = await req.json()
   const atual = await getPermissoesPapel()
-  const novo: PermissoesPapel = { ...atual, gerente: { ...atual.gerente, ...(body.gerente || {}) } }
+  const novo: PermissoesPapel = {
+    ...atual,
+    ...(body.gerente ? { gerente: { ...atual.gerente, ...body.gerente } } : {}),
+    ...(body.usuario ? { usuario: { ...atual.usuario, ...body.usuario } } : {}),
+  }
   await redis.set('config:permissoesPapel', novo)
   return NextResponse.json({ ok: true, permissoes: novo })
 }

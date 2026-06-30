@@ -1,46 +1,47 @@
 import { redis } from './redis'
 
 // Permissões por PAPEL (refina o que cada papel vê, sem ser por usuário).
-// Admin = sempre tudo. Vendas = navegação isolada própria. Cliente = portal.
-// Configurável só o GERENTE por enquanto.
+// Só o ADMIN configura. Hierarquia: admin > gerente > usuario > vendas > cliente.
+// Admin = tudo. Vendas = navegação isolada própria. Cliente = portal.
+// O FINANCEIRO é exclusivo do admin (não configurável para ninguém).
+// Configuráveis: Gerente e Usuário.
 
-export type GrupoPermissao = 'producao' | 'estrategia' | 'crm' | 'financeiro' | 'clientes'
+export type GrupoPermissao = 'producao' | 'estrategia' | 'crm' | 'clientes'
+export type PapelConfig = 'gerente' | 'usuario'
 
-export type PermissoesPapel = {
-  gerente?: Partial<Record<GrupoPermissao, boolean>>
+export type PermissoesPapel = Partial<Record<PapelConfig, Partial<Record<GrupoPermissao, boolean>>>>
+
+// Padrões por papel (Gerente amplo; Usuário limitado). Admin pode editar.
+export const PADRAO: Record<PapelConfig, Record<GrupoPermissao, boolean>> = {
+  gerente: { producao: true, estrategia: true, crm: true, clientes: false },
+  usuario: { producao: true, estrategia: false, crm: false, clientes: false },
 }
 
-// Padrão = comportamento atual do sistema
-export const PADRAO_GERENTE: Record<GrupoPermissao, boolean> = {
-  producao: true,
-  estrategia: true,
-  crm: true,
-  financeiro: false,
-  clientes: false,
-}
-
-export const GRUPOS_LABEL: Record<GrupoPermissao, string> = {
-  producao: 'Produção (Tarefas, Esteira, Carga)',
-  estrategia: 'Estratégia (Playbook, Campanhas, Modelos, Automações)',
-  crm: 'Vendas (CRM)',
-  financeiro: 'Financeiro',
-  clientes: 'Clientes',
-}
+export const GRUPOS: { chave: GrupoPermissao; label: string }[] = [
+  { chave: 'producao', label: 'Produção' },
+  { chave: 'estrategia', label: 'Estratégia' },
+  { chave: 'crm', label: 'Vendas (CRM)' },
+  { chave: 'clientes', label: 'Clientes' },
+]
 
 export async function getPermissoesPapel(): Promise<PermissoesPapel> {
   return (await redis.get<PermissoesPapel>('config:permissoesPapel')) || {}
 }
 
-// O papel pode ver o grupo? (server e client usam a mesma lógica)
-export function podePapel(role: string | undefined, grupo: GrupoPermissao, perms?: PermissoesPapel | null): boolean {
+// O papel pode ver o grupo? Financeiro só admin. (server e client usam a mesma lógica)
+export function podePapel(role: string | undefined, grupo: GrupoPermissao | 'financeiro', perms?: PermissoesPapel | null): boolean {
   if (role === 'admin') return true
-  if (role === 'gerente') return perms?.gerente?.[grupo] ?? PADRAO_GERENTE[grupo]
+  if (grupo === 'financeiro') return false // exclusivo do admin
+  if (role === 'gerente' || role === 'usuario') {
+    return perms?.[role]?.[grupo] ?? PADRAO[role][grupo]
+  }
   return false
 }
 
-// Versão servidor (lê a config). Use nas rotas para liberar gerente com permissão.
-export async function papelPode(role: string | undefined, grupo: GrupoPermissao): Promise<boolean> {
+// Versão servidor (lê a config).
+export async function papelPode(role: string | undefined, grupo: GrupoPermissao | 'financeiro'): Promise<boolean> {
   if (role === 'admin') return true
-  if (role === 'gerente') return podePapel('gerente', grupo, await getPermissoesPapel())
+  if (grupo === 'financeiro') return false
+  if (role === 'gerente' || role === 'usuario') return podePapel(role, grupo, await getPermissoesPapel())
   return false
 }

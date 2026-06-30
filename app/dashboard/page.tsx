@@ -514,7 +514,7 @@ function Dashboard() {
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
   const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
-  const [permPapel, setPermPapel] = useState<{ gerente?: Record<string, boolean> }>({})
+  const [permPapel, setPermPapel] = useState<Record<string, Record<string, boolean>>>({})
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
   const [perfilAberto, setPerfilAberto] = useState(false)
@@ -607,10 +607,13 @@ function Dashboard() {
     }
     if (role === 'admin' || role === 'gerente') {
       fetches.push(fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {}))
-      fetches.push(fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {}))
-    } else if (role === 'vendas') {
+    } else if (role === 'vendas' || role === 'usuario') {
       // Roster seguro (sem folha) para o dropdown de dono no CRM
       fetches.push(fetch('/api/equipe').then(r => r.json()).then(setUsuarios).catch(() => {}))
+    }
+    // Permissões por papel: admin (edita), gerente e usuario (gateiam o menu)
+    if (role === 'admin' || role === 'gerente' || role === 'usuario') {
+      fetches.push(fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {}))
     }
     if (role === 'admin') {
       fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
@@ -733,20 +736,28 @@ function Dashboard() {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
 
-  // Permissões por papel (refina o que o GERENTE vê). Admin = tudo.
-  const PADRAO_GERENTE: Record<string, boolean> = { producao: true, estrategia: true, crm: true, financeiro: false, clientes: false }
-  const podeGrupo = (grupo: string) => role === 'admin' ? true : role === 'gerente' ? (permPapel.gerente?.[grupo] ?? PADRAO_GERENTE[grupo]) : false
+  // Permissões por papel (refina o que Gerente/Usuário veem). Admin = tudo. Financeiro só admin.
+  const PADRAO_PAPEL: Record<string, Record<string, boolean>> = {
+    gerente: { producao: true, estrategia: true, crm: true, clientes: false },
+    usuario: { producao: true, estrategia: false, crm: false, clientes: false },
+  }
+  const podeGrupo = (grupo: string) => {
+    if (role === 'admin') return true
+    if (grupo === 'financeiro') return false // exclusivo do admin
+    if (role === 'gerente' || role === 'usuario') return permPapel[role]?.[grupo] ?? PADRAO_PAPEL[role]?.[grupo] ?? false
+    return false
+  }
   // Mapa aba -> grupo (para esconder e proteger o acesso direto via sessionStorage)
   const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
-    if (role !== 'gerente') return
+    if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
     if (g && !podeGrupo(g)) setAba('home')
   }, [role, aba, permPapel])
-  async function togglePermGerente(grupo: string) {
-    const novoVal = !(permPapel.gerente?.[grupo] ?? PADRAO_GERENTE[grupo])
-    setPermPapel(p => ({ gerente: { ...(p.gerente || {}), [grupo]: novoVal } }))
-    await fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gerente: { [grupo]: novoVal } }) }).catch(() => {})
+  async function togglePerm(papel: 'gerente' | 'usuario', grupo: string) {
+    const novoVal = !(permPapel[papel]?.[grupo] ?? PADRAO_PAPEL[papel]?.[grupo] ?? false)
+    setPermPapel(p => ({ ...p, [papel]: { ...(p[papel] || {}), [grupo]: novoVal } }))
+    await fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [papel]: { [grupo]: novoVal } }) }).catch(() => {})
   }
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
@@ -2913,7 +2924,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente' || role === 'vendas'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente' || role === 'vendas' || role === 'usuario'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
@@ -3445,24 +3456,27 @@ function Dashboard() {
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Colaboradores</h2>
 
-            {/* Permissões por papel — refina o que o Gerente acessa */}
+            {/* Permissões por papel — refina o que Gerente e Usuário acessam */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: 0, fontSize: 15 }}>Permissões por papel</h3>
-              <p style={{ margin: '4px 0 14px', fontSize: 12.5, color: '#999' }}>O que o <b>Gerente</b> acessa no menu. Admin vê tudo; Vendas e Cliente têm acesso próprio.</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#111', minWidth: 70 }}>Gerente</span>
-                {([['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['financeiro', 'Financeiro'], ['clientes', 'Clientes']] as [string, string][]).map(([g, label]) => {
-                  const ligado = (permPapel.gerente?.[g] ?? PADRAO_GERENTE[g])
-                  return (
-                    <button key={g} onClick={() => togglePermGerente(g)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
-                      {label}
-                    </button>
-                  )
-                })}
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>O que cada papel acessa no menu. <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b> e <b>Cliente</b> têm acesso próprio. O <b>Financeiro é exclusivo do admin</b>.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {(['gerente', 'usuario'] as const).map(papel => (
+                  <div key={papel} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111', width: 78 }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    {([['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['clientes', 'Clientes']] as [string, string][]).map(([g, label]) => {
+                      const ligado = (permPapel[papel]?.[g] ?? PADRAO_PAPEL[papel]?.[g] ?? false)
+                      return (
+                        <button key={g} onClick={() => togglePerm(papel, g)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
-              <p style={{ margin: '12px 0 0', fontSize: 11, color: '#bbb' }}>Liberar o Financeiro mostra receita, folha e despesas ao gerente.</p>
             </div>
 
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -3521,6 +3535,7 @@ function Dashboard() {
                     <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
                       <option value="gerente">Gerente</option>
+                      <option value="usuario">Usuário</option>
                       <option value="admin">Admin</option>
                       <option value="vendas">Vendas</option>
                       <option value="cliente">Cliente</option>
@@ -3614,6 +3629,7 @@ function Dashboard() {
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                           <option value="gerente">Gerente</option>
+                          <option value="usuario">Usuário</option>
                           <option value="admin">Admin</option>
                           <option value="vendas">Vendas</option>
                           <option value="cliente">Cliente</option>
