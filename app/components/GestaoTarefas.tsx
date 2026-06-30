@@ -251,6 +251,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [busca, setBusca] = useState('')
   const [quickSubId, setQuickSubId] = useState<string | null>(null)
   const [quickSubTexto, setQuickSubTexto] = useState('')
+  const [subsRecolhidas, setSubsRecolhidas] = useState<Record<string, boolean>>({})
   async function criarSubtarefa(pai: any, titulo: string) {
     const t = titulo.trim(); if (!t) return
     await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: t, tarefaPaiId: pai.id, clienteId: pai.clienteId || '', clienteNome: pai.clienteNome || '', marcoId: pai.marcoId || '' }) }).catch(() => {})
@@ -492,6 +493,11 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                   </span>
                   <span style={{ fontWeight: ehSub ? 500 : 600, color: ehSub ? '#444' : '#111', display: 'flex', alignItems: 'center', gap: 8, paddingLeft: ehSub ? 22 : 0, minWidth: 0 }}>
                     {ehSub && <span style={{ color: '#ccc', flexShrink: 0 }}>↳</span>}
+                    {!ehSub && subs.length > 0 && (
+                      <button onClick={e => { e.stopPropagation(); setSubsRecolhidas(r => ({ ...r, [x.id]: !r[x.id] })) }} title={subsRecolhidas[x.id] ? 'Expandir subtarefas' : 'Recolher subtarefas'} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', display: 'flex' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: subsRecolhidas[x.id] ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+                      </button>
+                    )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
                     {!ehSub && subs.length > 0 && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 7px' }}>{subs.length}</span>}
                     {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid #e0e0e0', background: '#fff', color: '#888', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
@@ -507,7 +513,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             return (
               <div key={t.id}>
                 {linha(t, false)}
-                {subs.map(s => linha(s, true))}
+                {!subsRecolhidas[t.id] && subs.map(s => linha(s, true))}
                 {quickSubId === t.id && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid #f8f8f8', background: '#fff' }}>
                     <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
@@ -1266,6 +1272,26 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 onChange={e => { if (e.target.files?.[0]) enviarAnexo(e.target.files[0]); e.target.value = '' }} />
             </label>
             <UploadProgress valor={progAnexo} rotulo="Enviando anexo..." />
+            {/* Anexos das subtarefas — somente leitura, visíveis também aqui na tarefa-mãe */}
+            {(() => {
+              const anexosSubs = subtarefas.flatMap((s: any) => (s.anexos || []).map((a: any) => ({ ...a, subNome: s.titulo })))
+              if (anexosSubs.length === 0) return null
+              return (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed #eee' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#888' }}>Anexos das subtarefas ({anexosSubs.length})</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {anexosSubs.map((a: any, i: number) => (
+                      <a key={i} href={a.url} target="_blank" rel="noreferrer" title={`${a.nome} — subtarefa: ${a.subNome}`} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block', textDecoration: 'none' }}>
+                        {(a.tipo || '').startsWith('video') ? <video src={a.url} style={{ width: 72, height: 72, objectFit: 'cover' }} muted preload="metadata" />
+                          : (a.tipo || '').startsWith('image') ? <img src={a.url} alt={a.nome} style={{ width: 72, height: 72, objectFit: 'cover' }} />
+                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, background: '#f5f5f5', fontSize: 9, color: '#666', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>}
+                        <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 8, padding: '1px 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.subNome}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Apontamento de horas (só em tarefa já criada) */}
