@@ -15,7 +15,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any[]; onClienteCriado?: () => void }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -24,7 +24,7 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'funil' | 'contatos'>('funil')
+  const [vista, setVista] = useState<'funil' | 'contatos' | 'playbook'>('funil')
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
 
   function carregar() {
@@ -56,18 +56,22 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>CRM</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : 'Contatos de prospects e clientes.'}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {(['funil', 'contatos'] as const).map(v => (
-            <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{v === 'funil' ? 'Funil' : 'Contatos'}</button>
+          {([['funil', 'Funil'], ['contatos', 'Contatos'], ['playbook', 'Playbook']] as ['funil' | 'contatos' | 'playbook', string][]).map(([v, l]) => (
+            <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
-        <button onClick={() => vista === 'funil' ? setNovoModal(true) : setContatoModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {vista === 'funil' ? 'Novo negócio' : 'Novo contato'}</button>
+        {vista !== 'playbook' && (
+          <button onClick={() => vista === 'funil' ? setNovoModal(true) : setContatoModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {vista === 'funil' ? 'Novo negócio' : 'Novo contato'}</button>
+        )}
       </div>
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'contatos' ? (
         <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} />
+      ) : vista === 'playbook' ? (
+        <PlaybookVendas podeEditar={podeEditar} />
       ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
           {estagios.map(est => {
@@ -115,6 +119,94 @@ export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+
+const CANAL: Record<string, { label: string; cor: string }> = {
+  whatsapp: { label: 'WhatsApp', cor: '#16a34a' }, ligacao: { label: 'Ligação', cor: '#1d4ed8' }, email: { label: 'E-mail', cor: '#7c3aed' },
+}
+type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
+
+function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
+  const [roteiro, setRoteiro] = useState('')
+  const [cadencia, setCadencia] = useState<Passo[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [editando, setEditando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [copiado, setCopiado] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/crm/playbook').then(r => r.json()).then(d => { if (d && !d.error) { setRoteiro(d.roteiro || ''); setCadencia(Array.isArray(d.cadencia) ? d.cadencia : []) } setCarregando(false) }).catch(() => setCarregando(false))
+  }, [])
+
+  function copiar(p: Passo) { navigator.clipboard?.writeText(p.script).then(() => { setCopiado(p.id); setTimeout(() => setCopiado(null), 1500) }).catch(() => {}) }
+  async function salvar() {
+    setSalvando(true)
+    const r = await fetch('/api/crm/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roteiro, cadencia }) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { setCadencia(r.playbook.cadencia); setEditando(false) }
+  }
+
+  if (carregando) return <p style={{ color: '#aaa' }}>Carregando...</p>
+
+  return (
+    <div style={{ maxWidth: 820 }}>
+      {podeEditar && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+          {editando ? (
+            <>
+              <button onClick={() => setCadencia(c => [...c, { id: Math.random().toString(36).slice(2), dia: (c[c.length - 1]?.dia || 0) + 2, canal: 'whatsapp', titulo: '', script: '' }])} style={{ padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Passo</button>
+              <button onClick={salvar} disabled={salvando} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+            </>
+          ) : (
+            <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar playbook</button>
+          )}
+        </div>
+      )}
+
+      {/* Roteiro de qualificação */}
+      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Roteiro de qualificação</span>
+        {editando
+          ? <textarea value={roteiro} onChange={e => setRoteiro(e.target.value)} style={{ ...inputStyle, minHeight: 140, resize: 'vertical', lineHeight: 1.6 }} />
+          : <p style={{ margin: 0, fontSize: 13.5, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{roteiro || '—'}</p>}
+      </div>
+
+      {/* Cadência */}
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Cadência de contato</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {cadencia.map((p, i) => {
+          const c = CANAL[p.canal] || CANAL.whatsapp
+          return (
+            <div key={p.id} style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee' }}>
+              {editando ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: 11, color: '#888' }}>Dia<input type="number" value={p.dia} onChange={e => setCadencia(arr => arr.map((x, j) => j === i ? { ...x, dia: Number(e.target.value) } : x))} style={{ width: 56, marginLeft: 6, padding: '6px 8px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12 }} /></label>
+                    <select value={p.canal} onChange={e => setCadencia(arr => arr.map((x, j) => j === i ? { ...x, canal: e.target.value } : x))} style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, background: '#fff' }}>
+                      {Object.entries(CANAL).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                    <input value={p.titulo} onChange={e => setCadencia(arr => arr.map((x, j) => j === i ? { ...x, titulo: e.target.value } : x))} placeholder="Título do passo" style={{ flex: 1, minWidth: 140, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontWeight: 700 }} />
+                    <button onClick={() => setCadencia(arr => arr.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                  </div>
+                  <textarea value={p.script} onChange={e => setCadencia(arr => arr.map((x, j) => j === i ? { ...x, script: e.target.value } : x))} placeholder="Script / mensagem..." style={{ ...inputStyle, minHeight: 64, resize: 'vertical', fontSize: 12.5 }} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: '#111', borderRadius: 999, padding: '3px 10px' }}>D{p.dia}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: c.cor, background: `${c.cor}18`, borderRadius: 999, padding: '3px 10px' }}>{c.label}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>{p.titulo}</span>
+                    <button onClick={() => copiar(p)} style={{ marginLeft: 'auto', padding: '6px 12px', background: copiado === p.id ? '#16a34a' : '#f5f5f5', color: copiado === p.id ? '#fff' : '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>{copiado === p.id ? 'Copiado!' : 'Copiar script'}</button>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: '#444', whiteSpace: 'pre-wrap', lineHeight: 1.6, background: '#fafafa', borderRadius: 8, padding: '10px 12px' }}>{p.script}</p>
+                </>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function ContatosLista({ contatos, negocios, onAbrir }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void }) {
   if (contatos.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p></div>

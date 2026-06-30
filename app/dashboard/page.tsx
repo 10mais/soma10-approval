@@ -2819,7 +2819,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
