@@ -330,6 +330,18 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       }
     })
   }
+  // Exclusao individual a partir do "X" na linha da lista (tarefa ou subtarefa)
+  function excluirUma(id: string, titulo: string) {
+    setConfirmPopup({
+      mensagem: `Excluir "${titulo}"?`,
+      onConfirm: async () => {
+        setConfirmPopup(null)
+        setTarefas(ts => ts.filter(t => t.id !== id)) // remocao otimista
+        await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' }).catch(() => {})
+        carregar()
+      }
+    })
+  }
 
   function diasRestantes(excluidoEm?: string) {
     if (!excluidoEm) return 30
@@ -490,8 +502,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       {/* LISTA */}
       {view === 'lista' && (
         <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
-            <span>Tipo</span><span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
+            <span>Tipo</span><span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
           {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
@@ -500,7 +512,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             const linha = (x: any, ehSub: boolean) => {
               const xp = tipoInfo(x.tipo)
               return (
-                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : '#fff' }}>
+                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : '#fff' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={xp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={xp.icone} /></svg>
                     {xp.label}
@@ -521,6 +533,10 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                   <span style={{ color: ehAtrasado(x.prazo, x.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
                   <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade}</span>
                   <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === x.status)?.label || x.status}</span>
+                  <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
+                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', color: '#ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1, padding: 0 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#dc2626'; (e.currentTarget as HTMLButtonElement).style.background = '#fef2f2' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ccc'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}>×</button>
                 </div>
               )
             }
