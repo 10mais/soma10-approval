@@ -64,6 +64,7 @@ function renderMarkdown(texto: string) {
 export default function AssistenteIA() {
   const { data: session, status } = useSession()
   const role = (session?.user as any)?.role
+  const ehVendas = role === 'vendas'
 
   const [aberto, setAberto] = useState(false)
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -201,8 +202,8 @@ export default function AssistenteIA() {
               </svg>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800 }}>Assistente de IA</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>Copy, ideias e estratégia</p>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800 }}>{ehVendas ? 'Assistente de Vendas' : 'Assistente de IA'}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>{ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e estratégia'}</p>
             </div>
             {msgs.length > 0 && (
               <button onClick={limpar} title="Limpar conversa" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -221,9 +222,15 @@ export default function AssistenteIA() {
                 <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#555' }}>Olá! Como posso ajudar?</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {[
-                    'Escreva uma legenda de Reels para...',
-                    'Me dê 5 ideias de conteúdo para...',
-                    'Reescreva esse texto mais persuasivo:',
+                    ...(ehVendas ? [
+                      'Como está meu funil? O que priorizar?',
+                      'Quebre esta objeção do cliente:',
+                      'Escreva um script de follow-up para...',
+                    ] : [
+                      'Escreva uma legenda de Reels para...',
+                      'Me dê 5 ideias de conteúdo para...',
+                      'Reescreva esse texto mais persuasivo:',
+                    ]),
                   ].map((s, i) => (
                     <button key={i} onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 30) }}
                       style={{ textAlign: 'left', background: '#fff', border: '1px solid #eaeaea', borderRadius: 10, padding: '9px 12px', fontSize: 12.5, color: '#444', cursor: 'pointer' }}>

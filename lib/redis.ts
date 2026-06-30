@@ -158,6 +158,11 @@ export type TipoNotificacao =
   | 'contrato_renovacao'
   | 'briefing_solicitado'
   | 'candidatura'
+  // Vendas (CRM) — unicos tipos que aparecem no Inbox do papel 'vendas'
+  | 'crm_followup'
+  | 'crm_lead'
+  | 'crm_reuniao'
+  | 'crm_briefing'
   | 'geral'
 
 export type Notificacao = {

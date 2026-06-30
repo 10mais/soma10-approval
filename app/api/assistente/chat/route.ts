@@ -36,22 +36,82 @@ export async function POST(req: NextRequest) {
     return new Response('mensagem do usuario obrigatoria', { status: 400 })
   }
 
-  // Contexto vivo: dados do usuario, agencia e roster de clientes
+  // Contexto vivo: dados do usuario e agencia
   const usuario = session.user as any
+  const meuEmail = session.user?.email || ''
   const config = await redis.get<ConfigAgencia>('config:agencia').catch(() => null)
   const nomeAgencia = config?.nomeAgencia || 'Grupo 10+'
+  const ehVendas = role === 'vendas'
 
-  let listaClientes = ''
-  try {
-    const ids = await redis.smembers('clientes')
-    const clientes = (await Promise.all(ids.map(id => redis.get<Cliente>(`cliente:${id}`)))).filter(Boolean) as Cliente[]
-    listaClientes = clientes
-      .filter(c => c.tipo !== 'interno')
-      .map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`)
-      .join('\n')
-  } catch { /* roster e opcional */ }
+  let system: string
+  let usarWebSearch = false
 
-  const system = `Voce e o assistente de IA interno da ${nomeAgencia}, uma agencia de marketing digital. Voce ajuda a EQUIPE da agencia (nao os clientes finais) dentro do sistema Soma10 — a plataforma de gestao da agencia (aprovacao de conteudo, esteira de producao, publicacao em Instagram/Facebook, tarefas, playbook, CRM de vendas e financeiro).
+  if (ehVendas) {
+    // Assistente de VENDAS: so fala de vendas/funil, navega o pipeline interno e
+    // pesquisa sobre vendas na web. Injeta um resumo do CRM como contexto.
+    usarWebSearch = true
+    let resumoFunil = ''
+    let meusNegocios = ''
+    try {
+      const estagios = (await redis.get<any[]>('crm:estagios')) || []
+      const ids = await redis.smembers('crm:negocios')
+      const negocios = (await Promise.all(ids.map(id => redis.get<any>(`negocio:${id}`)))).filter(Boolean) as any[]
+      const abertos = negocios.filter(n => n.status === 'aberto')
+      const nomeEstagio = (eid: string) => estagios.find((e: any) => e.id === eid)?.nome || '—'
+      const fmt = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      // Funil: contagem + valor por etapa (so abertos)
+      resumoFunil = (Array.isArray(estagios) ? estagios : [])
+        .map((e: any) => {
+          const ns = abertos.filter(n => n.estagioId === e.id)
+          const soma = ns.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+          return `- ${e.nome}: ${ns.length} negocio(s), ${fmt(soma)}`
+        }).join('\n')
+      // Os negocios DESTE vendedor (dono), com proximo follow-up
+      meusNegocios = abertos
+        .filter(n => n.dono === meuEmail)
+        .slice(0, 25)
+        .map(n => `- ${n.titulo || n.empresa || 'Negocio'} · ${nomeEstagio(n.estagioId)} · ${fmt(Number(n.valor) || 0)}${n.proximoFollowUp ? ` · follow-up: ${new Date(n.proximoFollowUp).toLocaleDateString('pt-BR')}` : ''}`)
+        .join('\n')
+    } catch { /* contexto e best-effort */ }
+
+    system = `Voce e o assistente de VENDAS da ${nomeAgencia}, uma agencia de marketing digital. Voce atende exclusivamente o time comercial dentro do CRM do sistema Soma10.
+
+Voce esta conversando com ${usuario?.name || 'um vendedor'}${usuario?.funcaoVendas ? ` (${usuario.funcaoVendas === 'closer' ? 'Closer' : 'SDR/BDR'})` : ''}.
+
+ESCOPO — fale SOMENTE sobre vendas. Voce ajuda com:
+- Prospeccao, qualificacao (SDR/BDR) e fechamento (Closer).
+- Funil, etapas, pipeline, follow-up, cadencia e proximos passos.
+- Scripts de abordagem, quebra de objecoes, propostas e mensagens de venda.
+- Interpretar os dados do funil interno (abaixo) e sugerir acoes.
+- Pesquisar na web tecnicas, benchmarks e referencias de vendas quando util.
+
+Se perguntarem algo FORA de vendas (operacao, criativo, social media, tarefas, financeiro), responda gentilmente que voce e o assistente de vendas e so trata de temas comerciais.
+
+FUNIL ATUAL (negocios abertos por etapa):
+${resumoFunil || '(sem dados de funil)'}
+
+NEGOCIOS DESTE VENDEDOR:
+${meusNegocios || '(nenhum negocio atribuido a voce no momento)'}
+
+Regras de estilo:
+- Responda SEMPRE em portugues do Brasil.
+- Seja direto, pratico e acionavel.
+- Use Markdown para organizar respostas longas.
+- Ao citar o funil, use os numeros reais acima.
+- Voce nao executa acoes no sistema; voce orienta e produz texto.`
+  } else {
+    // Assistente geral da equipe (admin/gerente)
+    let listaClientes = ''
+    try {
+      const ids = await redis.smembers('clientes')
+      const clientes = (await Promise.all(ids.map(id => redis.get<Cliente>(`cliente:${id}`)))).filter(Boolean) as Cliente[]
+      listaClientes = clientes
+        .filter(c => c.tipo !== 'interno')
+        .map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`)
+        .join('\n')
+    } catch { /* roster e opcional */ }
+
+    system = `Voce e o assistente de IA interno da ${nomeAgencia}, uma agencia de marketing digital. Voce ajuda a EQUIPE da agencia (nao os clientes finais) dentro do sistema Soma10 — a plataforma de gestao da agencia (aprovacao de conteudo, esteira de producao, publicacao em Instagram/Facebook, tarefas, playbook, CRM de vendas e financeiro).
 
 Voce esta conversando com ${usuario?.name || 'um membro da equipe'}${usuario?.cargo ? `, ${usuario.cargo}` : ''} (papel no sistema: ${role}).
 
@@ -70,6 +130,7 @@ Regras de estilo:
 - Quando gerar copy/legenda, entregue pronta para usar.
 - Se faltar contexto essencial (ex.: qual cliente, qual objetivo), faca 1 pergunta curta antes de produzir.
 - Voce nao tem acesso direto ao banco de dados nem executa acoes no sistema; voce orienta e produz texto.`
+  }
 
   const client = new Anthropic({ apiKey: KEY })
   const encoder = new TextEncoder()
@@ -84,6 +145,7 @@ Regras de estilo:
           output_config: { effort: 'low' } as any,
           system,
           messages,
+          ...(usarWebSearch ? { tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }] } : {}),
         } as any)
 
         s.on('text', (delta: string) => {

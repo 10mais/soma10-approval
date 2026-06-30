@@ -10,8 +10,11 @@ export async function GET(req: NextRequest) {
   const contagem = req.nextUrl.searchParams.get('contagem') === 'true'
   const ids = await redis.smembers(`notificacoes:${session.user.email}`)
 
+  // Papel 'vendas' so enxerga notificacoes de vendas (CRM) no Inbox — nada da operacao.
+  const ehVendas = (session.user as any).role === 'vendas'
   // Mensagens privadas vivem na aba Mensagens (badge próprio), não no Inbox.
-  const ehInbox = (n: Notificacao | null): n is Notificacao => !!n && n.tipo !== 'mensagem_privada'
+  const ehInbox = (n: Notificacao | null): n is Notificacao =>
+    !!n && n.tipo !== 'mensagem_privada' && (!ehVendas || n.tipo.startsWith('crm_'))
 
   if (contagem) {
     if (ids.length === 0) return NextResponse.json({ total: 0, naoLidas: 0 })

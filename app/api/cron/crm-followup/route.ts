@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const jaAvisou = await redis.set(chaveDedupe, '1', { nx: true, ex: 60 * 60 * 26 })
     if (jaAvisou !== 'OK') continue
     const venc = new Date(n.proximoFollowUp).toLocaleDateString('pt-BR')
-    await notificar(n.dono, 'geral', `Follow-up: ${n.titulo}`, `Hora de retomar o contato (follow-up previsto para ${venc})${n.empresa ? ` — ${n.empresa}` : ''}.`).catch(() => {})
+    await notificar(n.dono, 'crm_followup', `Follow-up: ${n.titulo}`, `Hora de retomar o contato (follow-up previsto para ${venc})${n.empresa ? ` — ${n.empresa}` : ''}.`).catch(() => {})
     avisados++
   }
 
