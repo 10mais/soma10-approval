@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Despesa } from '@/lib/redis'
+import { papelPode } from '@/lib/permissoesPapel'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
 
+// Admin sempre; gerente quando o admin liberar o Financeiro para o papel.
 async function ehAdmin() {
   const session = await getServerSession(authOptions)
-  return (session?.user as any)?.role === 'admin' ? session : null
+  const role = (session?.user as any)?.role
+  if (role === 'admin') return session
+  if (role === 'gerente' && await papelPode('gerente', 'financeiro')) return session
+  return null
 }
 
 export async function GET() {

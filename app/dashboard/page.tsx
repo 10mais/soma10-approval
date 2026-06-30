@@ -514,6 +514,7 @@ function Dashboard() {
   const [verSenhaEdicao, setVerSenhaEdicao] = useState(false)
   const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
+  const [permPapel, setPermPapel] = useState<{ gerente?: Record<string, boolean> }>({})
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
   const [perfilAberto, setPerfilAberto] = useState(false)
@@ -606,6 +607,7 @@ function Dashboard() {
     }
     if (role === 'admin' || role === 'gerente') {
       fetches.push(fetch('/api/usuarios').then(r => r.json()).then(setUsuarios).catch(() => {}))
+      fetches.push(fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {}))
     } else if (role === 'vendas') {
       // Roster seguro (sem folha) para o dropdown de dono no CRM
       fetches.push(fetch('/api/equipe').then(r => r.json()).then(setUsuarios).catch(() => {}))
@@ -730,6 +732,22 @@ function Dashboard() {
   useEffect(() => {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
+
+  // Permissões por papel (refina o que o GERENTE vê). Admin = tudo.
+  const PADRAO_GERENTE: Record<string, boolean> = { producao: true, estrategia: true, crm: true, financeiro: false, clientes: false }
+  const podeGrupo = (grupo: string) => role === 'admin' ? true : role === 'gerente' ? (permPapel.gerente?.[grupo] ?? PADRAO_GERENTE[grupo]) : false
+  // Mapa aba -> grupo (para esconder e proteger o acesso direto via sessionStorage)
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  useEffect(() => {
+    if (role !== 'gerente') return
+    const g = ABA_GRUPO[aba]
+    if (g && !podeGrupo(g)) setAba('home')
+  }, [role, aba, permPapel])
+  async function togglePermGerente(grupo: string) {
+    const novoVal = !(permPapel.gerente?.[grupo] ?? PADRAO_GERENTE[grupo])
+    setPermPapel(p => ({ gerente: { ...(p.gerente || {}), [grupo]: novoVal } }))
+    await fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gerente: { [grupo]: novoVal } }) }).catch(() => {})
+  }
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
   useEffect(() => {
@@ -1660,11 +1678,11 @@ function Dashboard() {
           {!verComoClienteId && !ehVendas && (
             <>
               {([
-                { titulo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['home', 'Painel']] },
-                { titulo: 'Produção', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
-                { titulo: 'Estratégia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
-                { titulo: 'Vendas', itens: [['crm', 'CRM']] },
-              ] as { titulo: string; itens: [string, string][] }[]).map((grupo, gi) => (
+                { titulo: '', grupo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['home', 'Painel']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
+                { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
+                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM']] },
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
@@ -1676,44 +1694,52 @@ function Dashboard() {
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
                 <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
               </nav>
-              {role === 'admin' && (recolhida ? (
+              {(role === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
-                  <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
-                  <NavBtn chave="config" label="Configurações" fontSize={13} />
-                  <NavBtn chave="clientes" label="Clientes" fontSize={13} />
-                  <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
-                  <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
-                  <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
+                  {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
+                  {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
+                  {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
+                  {role === 'admin' && (<>
+                    <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                    <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
+                    <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
+                  </>)}
                 </>
               ) : (
                 <>
-                  <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                  <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
-                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
-                    <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
-                  </nav>
-                  <button onClick={() => setConfigAberto(v => !v)} style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
-                  </button>
-                  {configAberto && (
-                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <NavBtn chave="config" label="Geral" fontSize={13} />
-                    <NavBtn chave="clientes" label="Clientes" fontSize={13} />
-                  </nav>
-                  )}
-                  {/* Pessoas e Cultura */}
-                  <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                  <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
-                  <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
-                    <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
-                    <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
-                  </nav>
+                  {podeGrupo('financeiro') && (<>
+                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
+                      <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
+                    </nav>
+                  </>)}
+                  {(role === 'admin' || podeGrupo('clientes')) && (<>
+                    <button onClick={() => setConfigAberto(v => !v)} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                    }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                    {configAberto && (
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {role === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
+                      {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
+                    </nav>
+                    )}
+                  </>)}
+                  {role === 'admin' && (<>
+                    {/* Pessoas e Cultura */}
+                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                      <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
+                      <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
+                    </nav>
+                  </>)}
                 </>
               ))}
             </>
@@ -3418,6 +3444,27 @@ function Dashboard() {
         {aba === 'usuarios' && role === 'admin' && (
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Colaboradores</h2>
+
+            {/* Permissões por papel — refina o que o Gerente acessa */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>Permissões por papel</h3>
+              <p style={{ margin: '4px 0 14px', fontSize: 12.5, color: '#999' }}>O que o <b>Gerente</b> acessa no menu. Admin vê tudo; Vendas e Cliente têm acesso próprio.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111', minWidth: 70 }}>Gerente</span>
+                {([['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['financeiro', 'Financeiro'], ['clientes', 'Clientes']] as [string, string][]).map(([g, label]) => {
+                  const ligado = (permPapel.gerente?.[g] ?? PADRAO_GERENTE[g])
+                  return (
+                    <button key={g} onClick={() => togglePermGerente(g)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p style={{ margin: '12px 0 0', fontSize: 11, color: '#bbb' }}>Liberar o Financeiro mostra receita, folha e despesas ao gerente.</p>
+            </div>
+
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 15 }}>Adicionar colaborador</h3>
@@ -3608,7 +3655,7 @@ function Dashboard() {
         )}
 
         {/* RENTABILIDADE (admin only) */}
-        {aba === 'rentabilidade' && role === 'admin' && (
+        {aba === 'rentabilidade' && podeGrupo('financeiro') && (
           <Rentabilidade clientes={clientes as any} usuarios={usuarios as any} />
         )}
 
