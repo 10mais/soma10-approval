@@ -383,6 +383,20 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
               Concluídas{qtdConcluidas > 0 ? ` (${qtdConcluidas})` : ''}
             </button>
+            {/* Recolher/expandir todas as subtarefas (só na lista, só se houver subtarefas) */}
+            {view === 'lista' && (() => {
+              const maesComSubs = Array.from(new Set(tarefas.filter((s: any) => s.tarefaPaiId).map((s: any) => s.tarefaPaiId))) as string[]
+              if (maesComSubs.length === 0) return null
+              const todasRecolhidas = maesComSubs.every(id => subsRecolhidas[id])
+              return (
+                <button onClick={() => setSubsRecolhidas(todasRecolhidas ? {} : Object.fromEntries(maesComSubs.map(id => [id, true])))}
+                  title={todasRecolhidas ? 'Expandir todas as subtarefas' : 'Recolher todas as subtarefas'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: '#f5f5f5', color: '#666', border: '1px solid #e0e0e0' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: todasRecolhidas ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+                  {todasRecolhidas ? 'Expandir subtarefas' : 'Recolher subtarefas'}
+                </button>
+              )
+            })()}
           </>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -721,6 +735,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     if (r?.tarefa) { setApontamentos(r.tarefa.apontamentos || []); onRecarregar?.(r.tarefa) }
   }
   const [salvando, setSalvando] = useState(false)
+  const [confirmarFechar, setConfirmarFechar] = useState(false)
   const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
   const [novoComentario, setNovoComentario] = useState('')
   const [enviandoComentario, setEnviandoComentario] = useState(false)
@@ -788,7 +803,8 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   useEffect(() => { snapshotInicial.current = JSON.stringify({ ...form, anexos }) }, [])
   function fechar() {
     if (snapshotInicial.current !== null && JSON.stringify({ ...form, anexos }) !== snapshotInicial.current) {
-      if (!confirm('Há alterações não salvas nesta tarefa.\n\nOK = sair sem salvar  ·  Cancelar = continuar editando')) return
+      setConfirmarFechar(true)
+      return
     }
     onClose()
   }
@@ -1365,6 +1381,26 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           onAddAnotacao={addAnotacao}
           onRemoveAnotacao={removeAnotacao}
         />
+      )}
+
+      {/* Confirmação de alterações não salvas (substitui o confirm nativo do navegador) */}
+      {confirmarFechar && (
+        <div onClick={e => { e.stopPropagation(); setConfirmarFechar(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 380, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              </div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111' }}>Alterações não salvas</h3>
+            </div>
+            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: '#555', lineHeight: 1.5 }}>Você fez alterações nesta tarefa que ainda não foram salvas. Se sair agora, elas serão perdidas.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirmarFechar(false)} style={{ flex: 1, padding: '11px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Continuar editando</button>
+              <button onClick={() => { setConfirmarFechar(false); onClose() }} style={{ flex: 1, padding: '11px 0', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Sair sem salvar</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

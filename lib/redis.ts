@@ -166,6 +166,7 @@ export type Notificacao = {
   titulo: string
   mensagem: string
   postId?: string
+  tarefaId?: string // destino: abre a tarefa em modal ao clicar na notificacao
   lida: boolean
   criadoEm: string
 }

@@ -23,6 +23,8 @@ const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loadi
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+// Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
+const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -562,9 +564,23 @@ function Dashboard() {
   }, [tema])
   // Notificação aberta em modal (sem sair do Inbox)
   const [notifAberta, setNotifAberta] = useState<any | null>(null)
-  // Abre o item relacionado a uma notificação (post/tarefa/mensagem) — usado pelo modal do Inbox
+  // Tarefa aberta em modal a partir de uma notificação (sobreposto, sem trocar de aba)
+  const [tarefaNotif, setTarefaNotif] = useState<any | null>(null)
+  const [carregandoTarefaNotif, setCarregandoTarefaNotif] = useState(false)
+  // Busca a tarefa pelo id e abre o modal por cima da tela atual (mantém o usuário nas notificações)
+  async function abrirTarefaPorId(id: string) {
+    setNotifAberta(null); setInboxAberto(false)
+    setCarregandoTarefaNotif(true)
+    const lista = await fetch('/api/tarefas').then(r => r.json()).catch(() => [])
+    setCarregandoTarefaNotif(false)
+    const t = Array.isArray(lista) ? lista.find((x: any) => x.id === id) : null
+    if (t) setTarefaNotif(t)
+    else setAba('tarefas' as any) // fallback: tarefa não encontrada (talvez excluída)
+  }
+  // Abre o item relacionado a uma notificação (tarefa/post/mensagem) — usado pelo Inbox e pelo sino
   function abrirItemNotificacao(n: any) {
     setNotifAberta(null)
+    if (n.tarefaId) { abrirTarefaPorId(n.tarefaId); return }
     if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setPostPreview(p); return } }
     if (n.tipo?.startsWith('tarefa_')) { setAba('tarefas' as any); return }
     if (n.tipo === 'mensagem_privada') { setAba('mensagens' as any); return }
@@ -1430,7 +1446,8 @@ function Dashboard() {
                     notificacoes.slice(0, 12).map(n => (
                       <div key={n.id} onClick={() => {
                         if (!n.lida) marcarNotificacaoLida(n.id)
-                        if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setInboxAberto(false); setPostPreview(p) } }
+                        if (n.tarefaId) { setInboxAberto(false); abrirTarefaPorId(n.tarefaId) }
+                        else if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setInboxAberto(false); setPostPreview(p) } }
                         else if (n.tipo?.startsWith('tarefa_')) { setInboxAberto(false); setAba('tarefas' as any) }
                         else if (n.tipo === 'mensagem_privada') { setInboxAberto(false); setAba('mensagens' as any) }
                       }} style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -2762,8 +2779,10 @@ function Dashboard() {
                   return (
                     <div key={n.id} onClick={() => {
                       if (!n.lida) marcarNotificacaoLida(n.id)
-                      // Abre a propria notificacao em modal, sem sair do Inbox
-                      setNotifAberta(n)
+                      // Com destino (tarefa/post): vai direto. Sem destino: abre o detalhe da notificacao.
+                      const temDestino = n.tarefaId || (n.postId && posts.some((x: any) => x.id === n.postId))
+                      if (temDestino) abrirItemNotificacao(n)
+                      else setNotifAberta(n)
                     }} style={{
                       display: 'flex', gap: 14, padding: '14px 18px', background: n.lida ? '#fff' : '#fffbeb', borderRadius: 12,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', alignItems: 'flex-start',
@@ -2799,15 +2818,35 @@ function Dashboard() {
               </div>
               <p style={{ margin: '0 0 14px', fontSize: 14, color: '#444', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notifAberta.mensagem}</p>
               <span style={{ fontSize: 12, color: '#aaa' }}>{new Date(notifAberta.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-              {(notifAberta.postId || notifAberta.tipo?.startsWith('tarefa_') || notifAberta.tipo === 'mensagem_privada') && (
+              {(notifAberta.tarefaId || notifAberta.postId || notifAberta.tipo?.startsWith('tarefa_') || notifAberta.tipo === 'mensagem_privada') && (
                 <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
                   <button onClick={() => abrirItemNotificacao(notifAberta)} className="soma10-no-invert" style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-                    Abrir item relacionado →
+                    {notifAberta.tarefaId ? 'Abrir tarefa →' : 'Abrir item relacionado →'}
                   </button>
                 </div>
               )}
             </div>
           </div>
+        )}
+
+        {/* Carregando a tarefa de uma notificação */}
+        {carregandoTarefaNotif && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: '16px 22px', fontSize: 13, fontWeight: 700, color: '#555', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Abrindo tarefa...</div>
+          </div>
+        )}
+
+        {/* Tarefa aberta a partir de uma notificação (sobreposto, sem trocar de aba) */}
+        {tarefaNotif && (
+          <TarefaModalNotif
+            tarefa={tarefaNotif}
+            clientes={clientes as any}
+            usuarios={usuarios as any}
+            onClose={() => setTarefaNotif(null)}
+            onSalvo={() => setTarefaNotif(null)}
+            onRecarregar={(t: any) => setTarefaNotif(t)}
+            onExcluir={async () => { await fetch(`/api/tarefas?id=${tarefaNotif.id}`, { method: 'DELETE' }).catch(() => {}); setTarefaNotif(null) }}
+          />
         )}
 
         {aba === 'tarefas' && (

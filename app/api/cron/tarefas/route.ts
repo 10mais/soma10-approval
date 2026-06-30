@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (diff > 0 && diff <= UMA_HORA) {
       const jaNotificou = await redis.get(chaveProximo)
       if (!jaNotificou) {
-        await notificar(t.responsavelEmail, 'tarefa_prazo_proximo', 'Prazo proximo', `A tarefa "${t.titulo}" vence em menos de 1 hora.`)
+        await notificar(t.responsavelEmail, 'tarefa_prazo_proximo', 'Prazo proximo', `A tarefa "${t.titulo}" vence em menos de 1 hora.`, undefined, t.id)
         await redis.set(chaveProximo, '1')
         await redis.expire(chaveProximo, 7200)
         notificados++
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (diff < 0 && diff > -2 * UMA_HORA) {
       const jaNotificou = await redis.get(chaveVencida)
       if (!jaNotificou) {
-        await notificar(t.responsavelEmail, 'tarefa_vencida', 'Tarefa vencida', `A tarefa "${t.titulo}" venceu o prazo.`)
+        await notificar(t.responsavelEmail, 'tarefa_vencida', 'Tarefa vencida', `A tarefa "${t.titulo}" venceu o prazo.`, undefined, t.id)
         await redis.set(chaveVencida, '1')
         await redis.expire(chaveVencida, 86400)
         notificados++

@@ -10,7 +10,7 @@ function urlDaNotificacao(tipo: TipoNotificacao): string {
 }
 
 // Cria uma notificação para um destinatário específico (e-mail de usuário)
-export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string) {
+export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string, tarefaId?: string) {
   const notificacao: Notificacao = {
     id: uuid(),
     destinatarioEmail,
@@ -18,6 +18,7 @@ export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao
     titulo,
     mensagem,
     postId,
+    tarefaId,
     lida: false,
     criadoEm: new Date().toISOString(),
   }

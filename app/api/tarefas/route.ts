@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   await redis.sadd('tarefas', tarefa.id)
   // Notifica o responsavel se for diferente de quem criou
   if (tarefa.responsavelEmail && tarefa.responsavelEmail !== (session.user as any).email) {
-    await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${new Date(tarefa.prazo).toLocaleDateString('pt-BR')}.` : ''}`)
+    await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${new Date(tarefa.prazo).toLocaleDateString('pt-BR')}.` : ''}`, undefined, tarefa.id)
   }
   return NextResponse.json({ ok: true, tarefa })
 }
@@ -209,7 +209,7 @@ export async function PUT(req: NextRequest) {
     for (const nome of mencoes) {
       const email = await resolverEmailPorNome(nome)
       if (email && email !== (session.user as any).email) {
-        await notificar(email, 'tarefa_mencao', `Voce foi mencionado`, `${autor} mencionou voce na tarefa "${tarefa.titulo}": "${updates.novoComentario.slice(0, 80)}"`)
+        await notificar(email, 'tarefa_mencao', `Voce foi mencionado`, `${autor} mencionou voce na tarefa "${tarefa.titulo}": "${updates.novoComentario.slice(0, 80)}"`, undefined, id)
       }
     }
   }
@@ -222,7 +222,7 @@ export async function PUT(req: NextRequest) {
   const meuEmail = (session.user as any).email
   // Notificar responsavel quando tarefa e reatribuida
   if (updates.responsavelEmail && updates.responsavelEmail !== tarefa.responsavelEmail && updates.responsavelEmail !== meuEmail) {
-    await notificar(updates.responsavelEmail, 'tarefa_atribuida', 'Tarefa atribuida a voce', `${autor} atribuiu a tarefa "${tarefa.titulo}" a voce.`)
+    await notificar(updates.responsavelEmail, 'tarefa_atribuida', 'Tarefa atribuida a voce', `${autor} atribuiu a tarefa "${tarefa.titulo}" a voce.`, undefined, id)
   }
   // Notificar criador e responsavel sobre alteracoes (exceto quem fez a mudanca)
   const alterou = (updates.status && updates.status !== tarefa.status) || (updates.prioridade && updates.prioridade !== tarefa.prioridade) || (updates.prazo && updates.prazo !== tarefa.prazo)
@@ -237,7 +237,7 @@ export async function PUT(req: NextRequest) {
     const criadorEmail = await resolverEmailPorNome(tarefa.criadoPor)
     if (criadorEmail && criadorEmail !== meuEmail && !notifEmails.includes(criadorEmail)) notifEmails.push(criadorEmail)
     for (const e of notifEmails) {
-      await notificar(e, 'tarefa_alterada', `Tarefa alterada`, `${autor} alterou "${tarefa.titulo}": ${desc}.`)
+      await notificar(e, 'tarefa_alterada', `Tarefa alterada`, `${autor} alterou "${tarefa.titulo}": ${desc}.`, undefined, id)
     }
   }
 
