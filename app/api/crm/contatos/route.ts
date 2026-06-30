@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmContato } from '@/lib/redis'
+import { redis, CrmContato, CrmEmpresa } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -10,6 +10,25 @@ async function autorizado() {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role === 'cliente') return null
   return session
+}
+
+// #4 — vincula Contato (PF) a Empresa (PJ): acha a empresa pelo nome ou cria uma
+// nova, devolvendo o id. Usa um cache para nao reler a lista a cada contato.
+async function carregarEmpresas(): Promise<CrmEmpresa[]> {
+  const ids = await redis.smembers('crm:empresas')
+  return ids.length ? ((await redis.mget<(CrmEmpresa | null)[]>(...ids.map(i => `empresa:${i}`))).filter(Boolean) as CrmEmpresa[]) : []
+}
+async function acharOuCriarEmpresa(nome: string, autor: string, cache: CrmEmpresa[]): Promise<string> {
+  const alvo = nome.trim().toLowerCase()
+  if (!alvo) return ''
+  const existente = cache.find(e => (e.nome || '').trim().toLowerCase() === alvo)
+  if (existente) return existente.id
+  const agora = new Date().toISOString()
+  const nova: CrmEmpresa = { id: uuid(), nome: nome.trim(), criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+  await redis.set(`empresa:${nova.id}`, nova)
+  await redis.sadd('crm:empresas', nova.id)
+  cache.push(nova)
+  return nova.id
 }
 
 export async function GET(req: NextRequest) {
@@ -41,7 +60,11 @@ export async function POST(req: NextRequest) {
   if (Array.isArray(b.lote)) {
     const validos = b.lote.filter((d: any) => String(d?.nome || '').trim())
     const contatos = validos.map(novo)
-    for (const c of contatos) await redis.set(`contato:${c.id}`, c)
+    const cacheEmpresas = await carregarEmpresas()
+    for (const c of contatos) {
+      if (c.empresa && !c.empresaId) c.empresaId = await acharOuCriarEmpresa(c.empresa, autor, cacheEmpresas)
+      await redis.set(`contato:${c.id}`, c)
+    }
     if (contatos.length) await redis.sadd('crm:contatos', ...(contatos.map(c => c.id) as [string, ...string[]]))
     return NextResponse.json({ ok: true, criados: contatos.length })
   }
@@ -49,6 +72,10 @@ export async function POST(req: NextRequest) {
   // Criação individual
   if (!String(b.nome || '').trim()) return NextResponse.json({ error: 'informe o nome' }, { status: 400 })
   const contato = novo(b)
+  // #4 — se veio nome de empresa sem vinculo, acha/cria a empresa e amarra
+  if (contato.empresa && !contato.empresaId) {
+    contato.empresaId = await acharOuCriarEmpresa(contato.empresa, autor, await carregarEmpresas())
+  }
   await redis.set(`contato:${contato.id}`, contato)
   await redis.sadd('crm:contatos', contato.id)
   return NextResponse.json({ ok: true, contato })
@@ -63,6 +90,10 @@ export async function PUT(req: NextRequest) {
   const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'cargo', 'observacoes']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
+  // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra
+  if (atualizado.empresa && (!atualizado.empresaId || ('empresa' in updates && !('empresaId' in updates)))) {
+    atualizado.empresaId = await acharOuCriarEmpresa(atualizado.empresa, session.user?.name || '', await carregarEmpresas())
+  }
   await redis.set(`contato:${id}`, atualizado)
   return NextResponse.json({ ok: true, contato: atualizado })
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmNegocio, CrmEstagio, CrmAtividade } from '@/lib/redis'
+import { redis, CrmNegocio, CrmEstagio, CrmAtividade, Usuario } from '@/lib/redis'
+import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -19,6 +20,28 @@ async function estagios(): Promise<CrmEstagio[]> {
 
 function atividade(tipo: CrmAtividade['tipo'], texto: string, autor: string): CrmAtividade {
   return { id: uuid(), tipo, texto, autor, criadoEm: new Date().toISOString() }
+}
+
+// #6 — ao agendar reuniao (negocio entra numa etapa de "Reuniao"), passa o
+// briefing de qualificacao para TODOS os closers do time.
+async function passarBriefingAosClosers(n: CrmNegocio, contatoNome: string) {
+  const emails = await redis.smembers('usuarios')
+  const usuarios = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+  const closers = usuarios.filter(u => u.role === 'vendas' && u.funcaoVendas === 'closer')
+  if (!closers.length) return
+  const fmt = (v?: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const linhas = [
+    contatoNome ? `Contato: ${contatoNome}` : '',
+    n.empresa ? `Empresa: ${n.empresa}` : '',
+    n.valor ? `Valor: ${fmt(n.valor)}` : '',
+    n.segmento ? `Segmento: ${n.segmento}` : '',
+    n.faturamentoEstimado ? `Faturamento: ${n.faturamentoEstimado}` : '',
+    n.dores ? `Dores: ${n.dores}` : '',
+    n.solucoes ? `Soluções: ${n.solucoes}` : '',
+  ].filter(Boolean).join(' · ')
+  const titulo = `Reunião agendada: ${n.titulo}`
+  const msg = `Briefing para a reunião — ${linhas || 'sem detalhes de qualificação preenchidos.'}`
+  await Promise.all(closers.map(c => notificar(c.email, 'crm_briefing', titulo, msg).catch(() => {})))
 }
 
 export async function GET(req: NextRequest) {
@@ -40,6 +63,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const b = await req.json()
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
+  // #5 — toda oportunidade precisa estar atribuida a um contato
+  if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
 
   const ests = await estagios()
   const estagioId = b.estagioId || (ests.find(e => !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''
@@ -86,6 +111,7 @@ export async function PUT(req: NextRequest) {
   }
 
   // Mudança de estágio (kanban) — registra na timeline e ajusta status terminal
+  let entrouEmReuniao = false
   if (updates.estagioId && updates.estagioId !== negocio.estagioId) {
     const ests = await estagios()
     const novo = ests.find(e => e.id === updates.estagioId)
@@ -94,6 +120,8 @@ export async function PUT(req: NextRequest) {
     if (novo?.ganho) { atualizado.status = 'ganho'; atividades.push(atividade('ganho', 'Negócio ganho', autor)) }
     else if (novo?.perdido) { atualizado.status = 'perdido'; atividades.push(atividade('perdido', 'Negócio perdido', autor)) }
     else atualizado.status = 'aberto'
+    // #6 — entrou numa etapa de "Reunião": passa o briefing aos closers
+    if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
   const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
@@ -101,6 +129,17 @@ export async function PUT(req: NextRequest) {
   atualizado.atividades = atividades
 
   await redis.set(`negocio:${id}`, atualizado)
+
+  // #6 — dispara o briefing aos closers (best-effort, nao bloqueia a resposta)
+  if (entrouEmReuniao) {
+    let contatoNome = ''
+    if (atualizado.contatoId) {
+      const ct = await redis.get<{ nome?: string }>(`contato:${atualizado.contatoId}`).catch(() => null)
+      contatoNome = ct?.nome || ''
+    }
+    await passarBriefingAosClosers(atualizado, contatoNome).catch(() => {})
+  }
+
   return NextResponse.json({ ok: true, negocio: atualizado })
 }
 

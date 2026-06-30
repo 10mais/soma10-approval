@@ -166,7 +166,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
+      {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} contatos={contatos} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
@@ -504,23 +504,37 @@ function ContatoModal({ contato, onClose, onSalvo }: { contato: Contato | null; 
   )
 }
 
-function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; onClose: () => void; onSalvo: () => void }) {
+function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; contatos: Contato[]; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
+  // #5 — toda oportunidade precisa de um contato: existente ou novo
+  const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
+  const [contatoId, setContatoId] = useState('')
   const [salvando, setSalvando] = useState(false)
   const equipe = (usuarios || []).filter(u => u.role !== 'cliente')
 
+  const contatoSel = (contatos || []).find(c => c.id === contatoId)
+  const valido = modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()
+
   async function salvar() {
-    if (!f.contatoNome.trim()) return
+    if (!valido) { toast('Atribua a oportunidade a um contato (existente ou novo).', 'erro'); return }
     setSalvando(true)
-    // O contato (responsável) é também o nome da oportunidade
-    const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
-    const contatoId = c?.contato?.id || ''
+    // Define o contato: usa o existente ou cria um novo. O nome do contato é o nome da oportunidade.
+    let idContato = contatoId
+    let nomeNegocio = contatoSel?.nome || ''
+    if (modoContato === 'novo') {
+      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
+      idContato = c?.contato?.id || ''
+      nomeNegocio = f.contatoNome.trim()
+    }
+    if (!idContato) { setSalvando(false); toast('Não foi possível vincular o contato. Tente novamente.', 'erro'); return }
     const dono = equipe.find(u => u.email === f.dono)
-    await fetch('/api/crm/negocios', {
+    const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: f.contatoNome.trim(), valor: Number(f.valor) || 0, contatoId, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
-    }).catch(() => {})
-    setSalvando(false); onSalvo()
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
+    }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
+    onSalvo()
   }
 
   return (
@@ -528,9 +542,26 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo negócio</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Responsável (contato) *</label><input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome do responsável" style={inputStyle} /></div>
-            <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+          {/* #5 — contato obrigatorio: existente ou novo */}
+          <div>
+            <label style={labelStyle}>Contato da oportunidade *</label>
+            <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 9, padding: 3, marginBottom: 8 }}>
+              {([['existente', 'Contato existente'], ['novo', 'Novo contato']] as const).map(([k, lab]) => (
+                <button key={k} type="button" onClick={() => setModoContato(k)} disabled={k === 'existente' && !(contatos || []).length}
+                  style={{ flex: 1, padding: '7px 10px', border: 'none', borderRadius: 7, cursor: (k === 'existente' && !(contatos || []).length) ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, background: modoContato === k ? '#fff' : 'transparent', color: modoContato === k ? '#111' : '#888', boxShadow: modoContato === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{lab}</button>
+              ))}
+            </div>
+            {modoContato === 'existente' ? (
+              <select value={contatoId} onChange={e => setContatoId(e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">Selecione um contato...</option>
+                {(contatos || []).map(c => <option key={c.id} value={c.id}>{c.nome}{c.empresa ? ` — ${c.empresa}` : ''}</option>)}
+              </select>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome do responsável" style={inputStyle} />
+                <input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="WhatsApp / telefone" style={inputStyle} />
+              </div>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelStyle}>Valor (R$)</label><input type="number" min="0" value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} placeholder="0" style={inputStyle} /></div>
@@ -566,7 +597,7 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
           <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.contatoNome.trim()} style={{ flex: 1, padding: '11px 0', background: f.contatoNome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.contatoNome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
+          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
