@@ -15,7 +15,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [] }: { usuarios?: any[] }) {
+export default function CRM({ usuarios = [], onClienteCriado }: { usuarios?: any[]; onClienteCriado?: () => void }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -98,7 +98,7 @@ export default function CRM({ usuarios = [] }: { usuarios?: any[] }) {
       )}
 
       {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
     </div>
   )
 }
@@ -179,7 +179,7 @@ function NovoNegocioModal({ estagios, usuarios, onClose, onSalvo }: { estagios: 
   )
 }
 
-function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, onFechar }: { negocio: Negocio; estagios: Estagio[]; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void }) {
+function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, onFechar, onClienteCriado }: { negocio: Negocio; estagios: Estagio[]; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
@@ -297,7 +297,7 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
           <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
         </div>
       </div>
-      {converter && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou() }} />}
+      {converter && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
     </div>
   )
 }
