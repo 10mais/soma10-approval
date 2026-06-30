@@ -214,6 +214,7 @@ export type Tarefa = {
   clienteId?: string
   clienteNome?: string
   marcoId?: string // etapa do Playbook a que a tarefa pertence
+  tarefaPaiId?: string // tarefa-mãe (subtarefa = filha de outra tarefa)
   prazo?: string // ISO date
   anexos?: { nome: string; url: string; tipo: string }[]
   atividades?: TarefaAtividade[]

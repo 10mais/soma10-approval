@@ -12,6 +12,7 @@ type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[] }
 type Tarefa = {
   id: string; titulo: string; descricao?: string; tipo?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
+  marcoId?: string; tarefaPaiId?: string
   prazo?: string; anexos?: Anexo[]
   atividades?: any[]; comentarios?: any[]
   criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
@@ -248,6 +249,13 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [busca, setBusca] = useState('')
+  const [quickSubId, setQuickSubId] = useState<string | null>(null)
+  const [quickSubTexto, setQuickSubTexto] = useState('')
+  async function criarSubtarefa(pai: any, titulo: string) {
+    const t = titulo.trim(); if (!t) return
+    await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: t, tarefaPaiId: pai.id, clienteId: pai.clienteId || '', clienteNome: pai.clienteNome || '', marcoId: pai.marcoId || '' }) }).catch(() => {})
+    setQuickSubTexto(''); carregar()
+  }
   const [novaModal, setNovaModal] = useState(false)
   const [editModal, setEditModal] = useState<Tarefa | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -403,7 +411,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       {view === 'kanban' && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {COLUNAS.map(col => {
-            const cards = filtradas.filter(t => t.status === col.key)
+            const cards = filtradas.filter(t => t.status === col.key && !t.tarefaPaiId)
             return (
               <div key={col.key}
                 onDragOver={e => { if (dragId) { e.preventDefault(); setOverCol(col.key) } }}
@@ -430,6 +438,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                         </span>
                       )})()}
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
+                      {(() => { const ns = tarefas.filter((s: any) => s.tarefaPaiId === t.id).length; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>
@@ -470,22 +479,47 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             <span>Tipo</span><span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
-          {filtradas.map(t => {
+          {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
             const tp = tipoInfo(t.tipo)
+            const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || s.status !== 'concluido'))
+            const linha = (x: any, ehSub: boolean) => {
+              const xp = tipoInfo(x.tipo)
+              return (
+                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : '#fff' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={xp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={xp.icone} /></svg>
+                    {xp.label}
+                  </span>
+                  <span style={{ fontWeight: ehSub ? 500 : 600, color: ehSub ? '#444' : '#111', display: 'flex', alignItems: 'center', gap: 8, paddingLeft: ehSub ? 22 : 0, minWidth: 0 }}>
+                    {ehSub && <span style={{ color: '#ccc', flexShrink: 0 }}>↳</span>}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
+                    {!ehSub && subs.length > 0 && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 7px' }}>{subs.length}</span>}
+                    {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid #e0e0e0', background: '#fff', color: '#888', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
+                  </span>
+                  <span style={{ color: '#555' }}>{x.responsavelNome || '--'}</span>
+                  <span style={{ color: '#888' }}>{x.clienteNome || '--'}</span>
+                  <span style={{ color: ehAtrasado(x.prazo, x.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
+                  <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade}</span>
+                  <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === x.status)?.label || x.status}</span>
+                </div>
+              )
+            }
             return (
-            <div key={t.id} onClick={() => setEditModal(t)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: tp.cor, fontWeight: 600 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
-                {tp.label}
-              </span>
-              <span style={{ fontWeight: 600, color: '#111' }}>{t.titulo}</span>
-              <span style={{ color: '#555' }}>{t.responsavelNome || '--'}</span>
-              <span style={{ color: '#888' }}>{t.clienteNome || '--'}</span>
-              <span style={{ color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo) || '--'}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>
-              <span style={{ color: corPrioridade(t.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === t.prioridade)?.label || t.prioridade}</span>
-              <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === t.status)?.label || t.status}</span>
-            </div>
-          )})}
+              <div key={t.id}>
+                {linha(t, false)}
+                {subs.map(s => linha(s, true))}
+                {quickSubId === t.id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid #f8f8f8', background: '#fff' }}>
+                    <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) { criarSubtarefa(t, quickSubTexto) } if (e.key === 'Escape') setQuickSubId(null) }}
+                      placeholder="Nome da subtarefa — Enter para adicionar, Esc para fechar"
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
+                    <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()} style={{ padding: '7px 12px', background: quickSubTexto.trim() ? '#111' : '#f0f0f0', color: quickSubTexto.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

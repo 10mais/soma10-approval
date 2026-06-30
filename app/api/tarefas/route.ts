@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     clienteId: body.clienteId || '',
     clienteNome: body.clienteNome || '',
     marcoId: body.marcoId || '',
+    ...(body.tarefaPaiId ? { tarefaPaiId: body.tarefaPaiId } : {}),
     prazo: body.prazo || '',
     criadoPor: session.user?.name || '',
     criadoEm: agora,
