@@ -252,8 +252,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
           <div style={{ ...card, marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
               {/* Contagiro (medidor de ponteiro) */}
-              <div style={{ position: 'relative', width: 160, flexShrink: 0 }}>
-                <svg viewBox="0 0 200 116" width={160} height={93}>
+              <div style={{ width: 160, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <svg viewBox="0 0 200 112" width={160} height={90}>
                   <path d={gaugeArc(0, 100)} stroke="#eee" strokeWidth={13} fill="none" strokeLinecap="round" />
                   <path d={gaugeArc(0, 50)} stroke="#dc2626" strokeWidth={13} fill="none" strokeLinecap="round" />
                   <path d={gaugeArc(50, 80)} stroke="#f59e0b" strokeWidth={13} fill="none" />
@@ -261,7 +261,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                   <line x1={100} y1={100} x2={ponteiro[0]} y2={ponteiro[1]} stroke="#111" strokeWidth={3.5} strokeLinecap="round" style={{ transition: 'all .4s' }} />
                   <circle cx={100} cy={100} r={7} fill="#111" />
                 </svg>
-                <p style={{ position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center', margin: 0, fontSize: 22, fontWeight: 800, color: corSaude }}>{saudeCaixa === null ? '—' : ocultar ? '•••' : `${Math.round(saudeCaixa)}%`}</p>
+                <p style={{ margin: '-4px 0 0', fontSize: 24, fontWeight: 800, color: corSaude, lineHeight: 1 }}>{saudeCaixa === null ? '—' : ocultar ? '•••' : `${Math.round(saudeCaixa)}%`}</p>
               </div>
               {/* Indicador */}
               <div style={{ flex: 1, minWidth: 180 }}>
