@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
   // #5 — toda oportunidade precisa estar atribuida a um contato
   if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
+  // #2 — empresa obrigatoria
+  if (!String(b.empresa || '').trim()) return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
 
   const ests = await estagios()
   const estagioId = b.estagioId || (ests.find(e => !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''

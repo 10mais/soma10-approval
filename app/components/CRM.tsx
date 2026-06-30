@@ -510,13 +510,15 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
   const [contatoId, setContatoId] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const equipe = (usuarios || []).filter(u => u.role !== 'cliente')
+  // #3 — responsavel: somente admins ou quem tem funcao de vendas
+  const equipe = (usuarios || []).filter(u => u.role === 'admin' || u.role === 'vendas')
 
   const contatoSel = (contatos || []).find(c => c.id === contatoId)
-  const valido = modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()
+  // #2 — empresa obrigatoria na criacao da oportunidade (alem do contato)
+  const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && !!f.empresa.trim()
 
   async function salvar() {
-    if (!valido) { toast('Atribua a oportunidade a um contato (existente ou novo).', 'erro'); return }
+    if (!valido) { toast('Preencha o contato e a empresa da oportunidade.', 'erro'); return }
     setSalvando(true)
     // Define o contato: usa o existente ou cria um novo. O nome do contato é o nome da oportunidade.
     let idContato = contatoId
@@ -552,7 +554,7 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
               ))}
             </div>
             {modoContato === 'existente' ? (
-              <select value={contatoId} onChange={e => setContatoId(e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={contatoId} onChange={e => { setContatoId(e.target.value); const ct = (contatos || []).find(c => c.id === e.target.value); if (ct?.empresa) setF(prev => ({ ...prev, empresa: ct.empresa! })) }} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Selecione um contato...</option>
                 {(contatos || []).map(c => <option key={c.id} value={c.id}>{c.nome}{c.empresa ? ` — ${c.empresa}` : ''}</option>)}
               </select>
@@ -586,7 +588,7 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
           <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
           <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder="Nome da empresa" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Empresa *</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder="Nome da empresa" style={inputStyle} /></div>
             <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -657,7 +659,7 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
             <label style={labelStyle}>Responsável</label>
             <select value={neg.dono || ''} onChange={e => { const u = (usuarios || []).find((x: any) => x.email === e.target.value); patch({ dono: e.target.value, donoNome: u?.nome || '' }) }} style={{ ...inputStyle, background: '#fff' }}>
               <option value="">—</option>
-              {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+              {(usuarios || []).filter(u => u.role === 'admin' || u.role === 'vendas').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
           </div>
         </div>
