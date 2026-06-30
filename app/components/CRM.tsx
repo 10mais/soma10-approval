@@ -13,6 +13,7 @@ type Negocio = {
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
   empresaId?: string
+  agendamentos?: { id: string; quando: string; canal: string; titulo: string; nota?: string; feito?: boolean }[]
 }
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -158,6 +159,16 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                             {atrasado ? 'Follow-up atrasado' : 'Follow-up'} · {new Date(n.proximoFollowUp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           </span>
                         ) })()}
+                        {(() => {
+                          const prox = [...(n.agendamentos || [])].filter(a => !a.feito).sort((a, b) => a.quando.localeCompare(b.quando))[0]
+                          if (!prox) return null
+                          const atrasado = new Date(prox.quando + 'T23:59:59').getTime() < Date.now()
+                          return (
+                            <span style={{ display: 'inline-block', marginTop: 6, marginLeft: 6, fontSize: 10, fontWeight: 700, color: atrasado ? '#b91c1c' : '#1d4ed8', background: atrasado ? '#fee2e2' : '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>
+                              {prox.canal} · {new Date(prox.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                            </span>
+                          )
+                        })()}
                       </div>
                     )
                   })}
@@ -614,6 +625,10 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
   const [converter, setConverter] = useState(false)
+  // Cadência / agendamentos (Fase 2)
+  const [agQuando, setAgQuando] = useState('')
+  const [agCanal, setAgCanal] = useState('whatsapp')
+  const [agTitulo, setAgTitulo] = useState('')
   const estagio = estagios.find(e => e.id === neg.estagioId)
 
   async function patch(updates: any) {
@@ -625,6 +640,11 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
     if (!textoAtiv.trim()) return
     await patch({ novaAtividade: { tipo: tipoAtiv, texto: textoAtiv.trim() } })
     setTextoAtiv('')
+  }
+  async function addAgendamento() {
+    if (!agQuando || !agTitulo.trim()) return
+    await patch({ novoAgendamento: { quando: agQuando, canal: agCanal, titulo: agTitulo.trim() } })
+    setAgQuando(''); setAgTitulo('')
   }
   async function excluir() {
     if (!(await confirmar('Excluir este negócio?', { titulo: 'Excluir negócio', okLabel: 'Excluir', perigo: true }))) return
@@ -670,6 +690,40 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
           <label style={labelStyle}>Próximo follow-up</label>
           <input type="date" value={(neg.proximoFollowUp || '').slice(0, 10)} onChange={e => setNeg({ ...neg, proximoFollowUp: e.target.value })} onBlur={() => patch({ proximoFollowUp: neg.proximoFollowUp })} style={inputStyle} />
           <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>No dia, o responsável recebe um lembrete (push + inbox).</p>
+        </div>
+
+        {/* Cadência / agendamentos */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <label style={{ ...labelStyle, margin: 0 }}>Cadência / agendamentos</label>
+            <button type="button" onClick={() => patch({ aplicarCadencia: true })} title="Gera os toques a partir da cadência do Playbook (a contar de hoje)"
+              style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Aplicar cadência do Playbook</button>
+          </div>
+          {(neg.agendamentos || []).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+              {[...(neg.agendamentos || [])].sort((a, b) => a.quando.localeCompare(b.quando)).map(a => {
+                const venceu = !a.feito && new Date(a.quando + 'T23:59:59').getTime() < Date.now()
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: a.feito ? '#f5f5f5' : venceu ? '#fef2f2' : '#fafafa', borderRadius: 8, fontSize: 12.5 }}>
+                    <input type="checkbox" checked={!!a.feito} onChange={() => patch({ toggleAgendamento: a.id })} style={{ cursor: 'pointer', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, color: venceu ? '#b91c1c' : '#444', flexShrink: 0 }}>{new Date(a.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#888', background: '#fff', border: '1px solid #eee', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{a.canal}</span>
+                    <span style={{ flex: 1, color: '#333', textDecoration: a.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titulo}</span>
+                    <button type="button" onClick={() => patch({ removerAgendamento: a.id })} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="date" value={agQuando} onChange={e => setAgQuando(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+            <select value={agCanal} onChange={e => setAgCanal(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', fontFamily: 'inherit' }}>
+              {(['whatsapp', 'ligacao', 'email', 'reuniao', 'outro'] as const).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input value={agTitulo} onChange={e => setAgTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAgendamento() }} placeholder="O que fazer (ex.: enviar proposta)" style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+            <button type="button" onClick={addAgendamento} disabled={!agQuando || !agTitulo.trim()} style={{ padding: '7px 12px', background: (agQuando && agTitulo.trim()) ? '#111' : '#f0f0f0', color: (agQuando && agTitulo.trim()) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Cada toque vira lembrete (push + inbox) para o responsável no dia agendado.</p>
         </div>
 
         {contato && (

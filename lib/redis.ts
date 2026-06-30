@@ -402,6 +402,17 @@ export type CrmAtividade = {
   criadoEm: string
 }
 
+// Agendamento/cadência de contato com o lead (mensagem, ligação, reunião…)
+export type CrmAgendamento = {
+  id: string
+  quando: string // YYYY-MM-DD — data prevista do toque
+  canal: 'whatsapp' | 'ligacao' | 'email' | 'reuniao' | 'outro'
+  titulo: string
+  nota?: string
+  feito?: boolean
+  criadoEm: string
+}
+
 // Passagem de bastão Closer -> Gestor de Projetos (quanto mais detalhe, melhor o onboarding)
 export type CrmHandoff = {
   escopoVendido?: string
@@ -437,6 +448,7 @@ export type CrmNegocio = {
   handoff?: CrmHandoff
   templateId?: string // modelo de entregas aplicado na conversão
   clienteId?: string // cliente criado ao ganhar
+  agendamentos?: CrmAgendamento[] // cadência de toques agendados (lembretes via cron)
   atividades?: CrmAtividade[]
   criadoPor: string
   criadoEm: string

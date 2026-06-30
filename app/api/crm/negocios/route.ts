@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmNegocio, CrmEstagio, CrmAtividade, Usuario } from '@/lib/redis'
+import { redis, CrmNegocio, CrmEstagio, CrmAtividade, CrmAgendamento, Usuario } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 
@@ -111,6 +111,30 @@ export async function PUT(req: NextRequest) {
   if (updates.novaAtividade?.texto) {
     atividades.push(atividade(updates.novaAtividade.tipo || 'nota', String(updates.novaAtividade.texto), autor))
   }
+
+  // Cadência / agendamentos (Fase 2)
+  let agendamentos: CrmAgendamento[] = [...(negocio.agendamentos || [])]
+  if (updates.novoAgendamento?.quando && updates.novoAgendamento?.titulo) {
+    const a = updates.novoAgendamento
+    agendamentos.push({ id: uuid(), quando: String(a.quando).slice(0, 10), canal: a.canal || 'whatsapp', titulo: String(a.titulo), nota: a.nota || '', feito: false, criadoEm: new Date().toISOString() })
+  }
+  if (updates.toggleAgendamento) {
+    agendamentos = agendamentos.map(a => a.id === updates.toggleAgendamento ? { ...a, feito: !a.feito } : a)
+  }
+  if (updates.removerAgendamento) {
+    agendamentos = agendamentos.filter(a => a.id !== updates.removerAgendamento)
+  }
+  // Aplicar a cadência do playbook de qualificação (gera toques a partir de hoje + dia)
+  if (updates.aplicarCadencia) {
+    const pb = await redis.get<any>('crm:playbookQualificacao')
+    const cad: any[] = Array.isArray(pb?.cadencia) ? pb.cadencia : []
+    const base = new Date(); base.setHours(0, 0, 0, 0)
+    for (const c of cad) {
+      const d = new Date(base); d.setDate(d.getDate() + (Number(c.dia) || 0))
+      agendamentos.push({ id: uuid(), quando: d.toISOString().slice(0, 10), canal: (c.canal || 'whatsapp'), titulo: c.titulo || 'Contato', nota: c.script || '', feito: false, criadoEm: new Date().toISOString() })
+    }
+  }
+  atualizado.agendamentos = agendamentos
 
   // Mudança de estágio (kanban) — registra na timeline e ajusta status terminal
   let entrouEmReuniao = false
