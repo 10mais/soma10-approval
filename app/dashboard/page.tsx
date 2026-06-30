@@ -1736,9 +1736,8 @@ function Dashboard() {
         {/* Botão recolher/expandir — flutuante, sempre visível no canto inferior esquerdo */}
         {!ehCliente && (
           <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-no-invert"
-            style={{ position: 'fixed', left: recolhida ? 15 : 168, bottom: 16, zIndex: 130, display: 'flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 999, padding: recolhida ? '9px' : '8px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
+            style={{ position: 'fixed', left: recolhida ? 15 : 194, bottom: 16, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: '#fff', border: 'none', borderRadius: 999, padding: '9px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
-            {!recolhida && <span>Recolher</span>}
           </button>
         )}
 

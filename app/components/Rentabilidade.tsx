@@ -12,6 +12,10 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [tarefas, setTarefas] = useState<any[]>([])
   const [despesas, setDespesas] = useState<Despesa[]>([])
   const [carregando, setCarregando] = useState(true)
+  // #1 — ocultar/mostrar informacoes financeiras (privacidade; persistido)
+  const [ocultar, setOcultar] = useState(false)
+  useEffect(() => { try { setOcultar(localStorage.getItem('rent_ocultar') === '1') } catch {} }, [])
+  function toggleOcultar() { setOcultar(v => { const n = !v; try { localStorage.setItem('rent_ocultar', n ? '1' : '0') } catch {} return n }) }
   const hoje = new Date()
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`)
 
@@ -119,13 +123,23 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Rentabilidade</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Resultado financeiro: receita dos contratos menos folha (fixo + variável) e despesas.</p>
         </div>
-        <select value={mes} onChange={e => setMes(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-          {opcoesMes.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={toggleOcultar} title={ocultar ? 'Mostrar valores' : 'Ocultar valores'} aria-label={ocultar ? 'Mostrar valores' : 'Ocultar valores'}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, border: '1.5px solid #e0e0e0', background: '#fff', color: '#555', cursor: 'pointer' }}>
+            {ocultar ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            )}
+          </button>
+          <select value={mes} onChange={e => setMes(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+            {opcoesMes.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
-        <>
+        <div style={{ filter: ocultar ? 'blur(7px)' : 'none', pointerEvents: ocultar ? 'none' : 'auto', userSelect: ocultar ? 'none' : 'auto', transition: 'filter .18s' }}>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita (contratos)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p></div>
@@ -246,7 +260,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
               </table>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

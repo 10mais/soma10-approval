@@ -171,7 +171,7 @@ export default function AssistenteIA() {
           style={{
             position: 'fixed', right: 20, bottom: 20, zIndex: 3500,
             width: 56, height: 56, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: '#111', color: '#ffc00f',
+            background: '#ffc00f', color: '#111',
             boxShadow: '0 8px 24px rgba(0,0,0,0.28)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
