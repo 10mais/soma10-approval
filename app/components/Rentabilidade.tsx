@@ -14,6 +14,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [contas, setContas] = useState<{ id: string; nome: string; saldo: number; atualizadoEm?: string }[]>([])
   const [gerenciarContas, setGerenciarContas] = useState(false)
   const [salvandoContas, setSalvandoContas] = useState(false)
+  const [periodoFluxo, setPeriodoFluxo] = useState(6) // meses no gráfico de fluxo de caixa
   const [carregando, setCarregando] = useState(true)
   // #1 — ocultar/mostrar informacoes financeiras (privacidade; persistido)
   const [ocultar, setOcultar] = useState(false)
@@ -130,9 +131,32 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     if (r?.contas) setContas(r.contas)
   }
 
+  // Fluxo de caixa — entradas (receita) x saídas (folha + despesas) por mês.
+  // Janela: termina 3 meses no futuro (meses futuros = previsão dos recorrentes já lançados).
+  const fluxo = useMemo(() => {
+    const recorrente = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + (Number(c.contratoValor) || 0), 0)
+    const out: { mes: string; label: string; entradas: number; saidas: number; saldo: number; futuro: boolean }[] = []
+    for (let i = -(periodoFluxo - 4); i <= 3; i++) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
+      const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const avulsas = clientes.reduce((s, c) => s + (c.receitasAvulsas || []).filter(r => r.mes === mk).reduce((a, r) => a + (Number(r.valor) || 0), 0), 0)
+      const desp = despesas.filter(x => x.mes === mk).reduce((s, x) => s + (Number(x.valor) || 0), 0)
+      const entradas = recorrente + avulsas
+      const saidas = folha + desp
+      out.push({ mes: mk, label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''), entradas, saidas, saldo: entradas - saidas, futuro: i > 0 })
+    }
+    return out
+  }, [clientes, despesas, folha, periodoFluxo])
+  const fluxoMax = Math.max(1, ...fluxo.map(f => Math.max(f.entradas, f.saidas)))
+
   const opcoesMes = useMemo(() => {
     const arr: { v: string; label: string }[] = [{ v: '', label: 'Tudo' }]
-    for (let i = 0; i < 6; i++) { const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1); arr.push({ v: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) }) }
+    // Do mais futuro (+6) ao mais passado (-6); meses futuros servem para previsão/lançamentos futuros
+    for (let i = 6; i >= -6; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
+      const base = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      arr.push({ v: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: i === 0 ? `${base} (atual)` : i > 0 ? `${base} (previsto)` : base })
+    }
     return arr
   }, [])
 
@@ -144,7 +168,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Rentabilidade</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Financeiro</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Resultado financeiro: receita dos contratos menos folha (fixo + variável) e despesas.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -215,6 +239,38 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Fluxo de caixa */}
+          <div style={{ ...card, marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Fluxo de caixa</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#aaa' }}>Entradas (receita) e saídas (folha + despesas) por mês. Meses à frente = previsão dos recorrentes já lançados.</p>
+              </div>
+              <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+                {[6, 12].map(p => (
+                  <button key={p} onClick={() => setPeriodoFluxo(p)} style={{ padding: '6px 14px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: periodoFluxo === p ? '#fff' : 'transparent', color: periodoFluxo === p ? '#111' : '#888', boxShadow: periodoFluxo === p ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{p}m</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 150, overflowX: 'auto', paddingBottom: 4 }}>
+              {fluxo.map(f => (
+                <div key={f.mes} title={`${f.label}: entradas ${brl(f.entradas)} · saídas ${brl(f.saidas)} · saldo ${brl(f.saldo)}`} style={{ flex: '1 0 38px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: f.futuro ? 0.55 : 1 }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 3, width: '100%', justifyContent: 'center' }}>
+                    <div style={{ width: 11, height: `${Math.max(2, f.entradas / fluxoMax * 118)}px`, background: '#16a34a', borderRadius: '3px 3px 0 0' }} />
+                    <div style={{ width: 11, height: `${Math.max(2, f.saidas / fluxoMax * 118)}px`, background: '#dc2626', borderRadius: '3px 3px 0 0' }} />
+                  </div>
+                  <span style={{ fontSize: 10.5, color: f.futuro ? '#aaa' : '#888', fontWeight: f.mes === `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}` ? 800 : 500, whiteSpace: 'nowrap' }}>{f.label}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: f.saldo >= 0 ? '#16a34a' : '#dc2626' }}>{f.saldo >= 0 ? '+' : ''}{Math.round(f.saldo / 1000)}k</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11.5, color: '#888' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#16a34a' }} />Entradas</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#dc2626' }} />Saídas</span>
+              <span style={{ marginLeft: 'auto', color: '#bbb' }}>valores em milhares (k) abaixo de cada mês = saldo</span>
+            </div>
           </div>
 
           {/* Despesas */}

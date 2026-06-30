@@ -1679,7 +1679,7 @@ function Dashboard() {
               {role === 'admin' && (recolhida ? (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
-                  <NavBtn chave="rentabilidade" label="Rentabilidade" fontSize={13} />
+                  <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                   <NavBtn chave="config" label="Configurações" fontSize={13} />
                   <NavBtn chave="clientes" label="Clientes" fontSize={13} />
                   <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
@@ -1691,7 +1691,7 @@ function Dashboard() {
                   <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                   <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
-                    <NavBtn chave="rentabilidade" label="Rentabilidade" fontSize={13} />
+                    <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                   </nav>
                   <button onClick={() => setConfigAberto(v => !v)} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
