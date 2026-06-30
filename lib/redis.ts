@@ -93,6 +93,8 @@ export type Cliente = {
   statusToken?: string // token do link público de status (sem login)
   // Permissoes do portal do cliente (role 'cliente'). Flag ausente/undefined = liberado (default tudo-ligado).
   permissoes?: PermissoesCliente
+  // Passagem de bastao (Closer -> Gestor) gravada na conversao Ganho->Cliente do CRM
+  handoffVendas?: string
   // Brands Board — identidade e DNA do cliente
   segmento?: string // nicho (ex.: Cardiologia)
   palavrasChave?: string // palavras-chave separadas por vírgula

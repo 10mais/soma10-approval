@@ -56,7 +56,7 @@ import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
-type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[]; permissoes?: { entregas?: boolean; aprovacoes?: boolean; aprovar?: boolean; solicitar?: boolean; esteira?: boolean; planner?: boolean } }
+type Cliente = { id: string; nome: string; instagram: string; metaConectado?: boolean; instagramUsername?: string; instagramConectado?: boolean; instagramUserId?: string; facebookPageId?: string; loginEmail?: string; loginSenha?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: 'cliente' | 'interno'; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: 'mensal' | 'trimestral' | 'semestral' | 'anual'; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]; segmento?: string; palavrasChave?: string; descricao?: string; publicoAlvo?: string; tomDeVoz?: string; preferencias?: string; documentos?: { nome: string; url: string }[]; permissoes?: { entregas?: boolean; aprovacoes?: boolean; aprovar?: boolean; solicitar?: boolean; esteira?: boolean; planner?: boolean }; handoffVendas?: string }
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string; recrutamentoVagas?: string[] }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
@@ -1173,7 +1173,7 @@ function Dashboard() {
     setEditandoCliente(c.id)
     setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
       contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, receitasAvulsas: (c as any).receitasAvulsas || [],
-      permissoes: (c as any).permissoes || {} })
+      permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '' })
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -3265,6 +3265,16 @@ function Dashboard() {
                           </div>
                         </div>
                       </div>
+                      {/* Passagem de bastão (vendas → gestão) — vem da conversão do CRM */}
+                      {'handoffVendas' in edicaoCliente && (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Passagem de bastão (vendas → onboarding)</label>
+                          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Contexto da venda transmitido pelo closer. Edite/complemente conforme o onboarding avança.</p>
+                          <textarea value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder="Sem passagem de bastão registrada (clientes criados pela conversão do CRM trazem este resumo automaticamente)."
+                            style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', whiteSpace: 'pre-wrap' }} />
+                        </div>
+                      )}
+
                       {/* Permissoes do portal do cliente */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Permissões do portal</label>

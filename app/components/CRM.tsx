@@ -9,6 +9,7 @@ type Negocio = {
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
+  clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
 }
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -182,6 +183,7 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
   const [neg, setNeg] = useState<Negocio>(negocio)
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
+  const [converter, setConverter] = useState(false)
   const estagio = estagios.find(e => e.id === neg.estagioId)
 
   async function patch(updates: any) {
@@ -281,11 +283,110 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
           ))}
         </div>
 
+        {/* Concretizar venda (Ganho -> Cliente) */}
+        {neg.clienteId ? (
+          <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
+        ) : (
+          <button onClick={() => setConverter(true)} style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+            Concretizar venda → criar cliente
+          </button>
+        )}
+
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
         </div>
-        <p style={{ margin: '10px 0 0', fontSize: 11, color: '#bbb', textAlign: 'center' }}>A conversão "Ganho → Cliente" (passagem de bastão + entregas) chega na próxima etapa.</p>
+      </div>
+      {converter && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou() }} />}
+    </div>
+  )
+}
+
+function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: Negocio; contato?: Contato; onClose: () => void; onConvertido: (clienteId: string) => void }) {
+  const [c, setC] = useState({
+    nome: negocio.empresa || contato?.nome || negocio.titulo || '',
+    instagram: negocio.instagram || '',
+    loginEmail: contato?.email || '',
+    contratoValor: String(negocio.valor || ''),
+  })
+  const [h, setH] = useState({ escopoVendido: negocio.solucoes || '', expectativas: '', detalhes: negocio.dores || '', observacoes: '' })
+  const [templates, setTemplates] = useState<{ id: string; nome: string }[]>([])
+  const [templateId, setTemplateId] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState('')
+  const [resultado, setResultado] = useState<{ clienteId: string; marcos: number; tarefas: number; loginSenha?: string } | null>(null)
+
+  useEffect(() => { fetch('/api/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => {}) }, [])
+
+  async function concretizar() {
+    if (!c.nome.trim()) { setErro('Informe o nome do cliente.'); return }
+    setSalvando(true); setErro('')
+    const r = await fetch('/api/crm/converter', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ negocioId: negocio.id, cliente: { nome: c.nome, instagram: c.instagram, loginEmail: c.loginEmail || '', contratoValor: Number(c.contratoValor) || 0 }, handoff: h, templateId }),
+    }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r || r.error) { setErro(r?.error || 'Falha ao converter.'); return }
+    setResultado(r)
+  }
+
+  if (resultado) {
+    return (
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 24, textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          </div>
+          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#111' }}>Venda concretizada! 🎉</h3>
+          <p style={{ margin: '0 0 6px', fontSize: 13.5, color: '#555' }}>Cliente <b>{c.nome}</b> criado, com <b>{resultado.marcos}</b> etapas e <b>{resultado.tarefas}</b> tarefas no Playbook.</p>
+          {resultado.loginSenha && (
+            <div style={{ margin: '10px 0', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 12.5, color: '#92400e' }}>
+              Acesso do cliente criado. Senha: <b style={{ userSelect: 'all' }}>{resultado.loginSenha}</b> — anote/envie ao cliente.
+            </div>
+          )}
+          <button onClick={() => onConvertido(resultado.clienteId)} style={{ marginTop: 10, width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Concluir</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111' }}>Passagem de bastão → Onboarding</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Quanto mais detalhe o closer passar, melhor o onboarding do cliente pelo Gestor.</p>
+
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Cliente</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '8px 0 16px' }}>
+          <div><label style={labelStyle}>Nome *</label><input value={c.nome} onChange={e => setC({ ...c, nome: e.target.value })} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Instagram</label><input value={c.instagram} onChange={e => setC({ ...c, instagram: e.target.value })} placeholder="@cliente" style={inputStyle} /></div>
+          <div><label style={labelStyle}>E-mail de acesso (opcional)</label><input value={c.loginEmail} onChange={e => setC({ ...c, loginEmail: e.target.value })} placeholder="cria login do portal" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Valor do contrato (R$)</label><input type="number" min="0" value={c.contratoValor} onChange={e => setC({ ...c, contratoValor: e.target.value })} style={inputStyle} /></div>
+        </div>
+
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Handoff (Closer → Gestor)</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 16px' }}>
+          <div><label style={labelStyle}>Escopo vendido / entregáveis</label><textarea value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Expectativas e objetivos do cliente</label><textarea value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Detalhes importantes (decisor, prazos prometidos, sensibilidades)</label><textarea value={h.detalhes} onChange={e => setH({ ...h, detalhes: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Observações</label><textarea value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
+        </div>
+
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Entregas (onboarding)</span>
+        <div style={{ margin: '8px 0 16px' }}>
+          <label style={labelStyle}>Modelo de projeto a aplicar (gera marcos + tarefas)</label>
+          <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+            <option value="">Não aplicar modelo agora</option>
+            {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+          {templates.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Nenhum modelo cadastrado. Crie em Modelos para montar o escopo automaticamente.</p>}
+        </div>
+
+        {erro && <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#b91c1c', fontWeight: 700 }}>{erro}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={concretizar} disabled={salvando || !c.nome.trim()} style={{ flex: 1, padding: '12px 0', background: c.nome.trim() ? '#16a34a' : '#f0f0f0', color: c.nome.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: c.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Concretizando...' : 'Concretizar venda'}</button>
+          <button onClick={onClose} style={{ padding: '12px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
       </div>
     </div>
   )
