@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { toast } from '@/lib/toast'
 
 type Annotation = { x: number; y: number; text: string; id: number }
 type Brief = { id: string; cliente: string; clienteNome?: string; imagens: string[]; legenda: string; status: string }
@@ -211,7 +212,7 @@ export default function ApprovalPage() {
               </button>
 
               <button onClick={() => {
-                if (annotations.length === 0) { alert('Clique na imagem para marcar os pontos que precisam de ajuste antes de solicitar correção.'); return; }
+                if (annotations.length === 0) { toast('Clique na imagem para marcar os pontos que precisam de ajuste antes de solicitar correção.', 'erro'); return; }
                 submitDecision('corrected')
               }} disabled={submitting} style={{
                 padding: '16px 8px', background: '#ffc00f', color: '#111', border: 'none',
@@ -251,7 +252,7 @@ export default function ApprovalPage() {
                 Voltar
               </button>
               <button onClick={() => {
-                if (!rejectReason.trim()) { alert('Por favor, descreva o motivo da reprovação.'); return; }
+                if (!rejectReason.trim()) { toast('Por favor, descreva o motivo da reprovação.', 'erro'); return; }
                 submitDecision('rejected')
               }} disabled={submitting} style={{ flex: 2, padding: '13px 0', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
                 Confirmar reprovação

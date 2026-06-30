@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { confirmar } from '@/lib/toast'
 import { TarefaModal } from './GestaoTarefas'
 
 const PRIO_COR: Record<string, string> = { urgente: '#dc2626', alta: '#ea580c', media: '#ca8a04', baixa: '#9ca3af' }
@@ -122,7 +123,7 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
           onClose={() => setTarefaAberta(null)}
           onSalvo={() => { setTarefaAberta(null); carregar() }}
           onRecarregar={(t: any) => { setTarefaAberta(t); carregar() }}
-          onExcluir={async () => { if (confirm('Excluir esta tarefa?')) { await fetch(`/api/tarefas?id=${tarefaAberta.id}`, { method: 'DELETE' }).catch(() => {}); setTarefaAberta(null); carregar() } }}
+          onExcluir={async () => { if (await confirmar('Excluir esta tarefa?', { titulo: 'Excluir tarefa', okLabel: 'Excluir', perigo: true })) { await fetch(`/api/tarefas?id=${tarefaAberta.id}`, { method: 'DELETE' }).catch(() => {}); setTarefaAberta(null); carregar() } }}
         />
       )}
     </div>

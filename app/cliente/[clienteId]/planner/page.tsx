@@ -3,6 +3,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
+import { toast, confirmar } from '@/lib/toast'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -144,9 +145,9 @@ export default function PlannerPage() {
   }
 
   async function excluirPost(id: string) {
-    if (!confirm('Excluir este post? Esta ação não pode ser desfeita.')) return
+    if (!(await confirmar('Excluir este post? Esta ação não pode ser desfeita.', { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true }))) return
     const r = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
-    if (r?.error) { alert(`Não foi possível excluir: ${r.error}`); return }
+    if (r?.error) { toast(`Não foi possível excluir: ${r.error}`, 'erro'); return }
     setPreview(null)
     carregar()
   }

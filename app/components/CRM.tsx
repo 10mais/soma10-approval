@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -51,10 +52,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       const cols = l.split(sep).map(s => s.trim().replace(/^"|"$/g, ''))
       return { nome: cols[0] || '', telefone: cols[1] || '', email: cols[2] || '', empresa: cols[3] || '', cargo: cols[4] || '' }
     }).filter(c => c.nome)
-    if (!lote.length) { alert('Nenhum contato válido encontrado no arquivo.'); return }
+    if (!lote.length) { toast('Nenhum contato válido encontrado no arquivo.', 'erro'); return }
     const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { alert(`${r.criados} contato(s) importado(s).`); carregar() }
-    else alert('Falha ao importar.')
+    if (r?.ok) { toast(`${r.criados} contato(s) importado(s).`, 'sucesso'); carregar() }
+    else toast('Falha ao importar.', 'erro')
   }
 
   function carregar() {
@@ -347,7 +348,7 @@ function BulkContatosModal({ onClose, onSalvo }: { onClose: () => void; onSalvo:
     setSalvando(true)
     const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { alert(`${r.criados} contato(s) adicionado(s).`); onSalvo() } else alert('Falha ao adicionar.')
+    if (r?.ok) { toast(`${r.criados} contato(s) adicionado(s).`, 'sucesso'); onSalvo() } else toast('Falha ao adicionar.', 'erro')
   }
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
@@ -408,7 +409,7 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo }: { empre
     setSalvando(false); onSalvo()
   }
   async function excluir() {
-    if (!empresa?.id || !confirm('Excluir esta empresa? Os contatos e negócios não são apagados.')) return
+    if (!empresa?.id || !(await confirmar('Excluir esta empresa? Os contatos e negócios não são apagados.', { titulo: 'Excluir empresa', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/crm/empresas?id=${empresa.id}`, { method: 'DELETE' }).catch(() => {})
     onSalvo()
   }
@@ -475,7 +476,7 @@ function ContatoModal({ contato, onClose, onSalvo }: { contato: Contato | null; 
     setSalvando(false); onSalvo()
   }
   async function excluir() {
-    if (!contato?.id || !confirm('Excluir este contato?')) return
+    if (!contato?.id || !(await confirmar('Excluir este contato?', { titulo: 'Excluir contato', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/crm/contatos?id=${contato.id}`, { method: 'DELETE' }).catch(() => {})
     onSalvo()
   }
@@ -591,7 +592,7 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
     setTextoAtiv('')
   }
   async function excluir() {
-    if (!confirm('Excluir este negócio?')) return
+    if (!(await confirmar('Excluir este negócio?', { titulo: 'Excluir negócio', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/crm/negocios?id=${neg.id}`, { method: 'DELETE' }).catch(() => {})
     onFechar()
   }

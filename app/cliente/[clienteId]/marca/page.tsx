@@ -3,6 +3,7 @@ import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { isViewAsClient } from '@/lib/modoCliente'
+import { confirmar } from '@/lib/toast'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -31,7 +32,7 @@ export default function MarcaPage() {
   async function gerarDocumento() {
     const tem = (cliente?.segmento || '').trim() || (cliente?.palavrasChave || '').trim()
     if (!tem) { setMsg({ texto: 'Preencha ao menos Segmento/Nicho e palavras-chave antes de gerar o documento.', erro: true }); return }
-    if (cliente?.documentoMarca && !confirm('Já existe um documento. Regenerar vai consumir créditos de IA e substituir o atual. Continuar?')) return
+    if (cliente?.documentoMarca && !(await confirmar('Já existe um documento. Regenerar vai consumir créditos de IA e substituir o atual. Continuar?', { titulo: 'Regenerar documento', okLabel: 'Continuar' }))) return
     setGerandoDoc(true); setMsg(null)
     const r = await fetch('/api/brand/gerar-documento', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -71,7 +72,7 @@ export default function MarcaPage() {
   }
 
   async function excluir() {
-    if (!confirm('Excluir o Brand Board deste cliente? As informações da marca serão apagadas (o documento de marca por IA, se houver, é mantido).')) return
+    if (!(await confirmar('Excluir o Brand Board deste cliente? As informações da marca serão apagadas (o documento de marca por IA, se houver, é mantido).', { titulo: 'Excluir Brand Board', okLabel: 'Excluir', perigo: true }))) return
     setSalvando(true); setMsg(null)
     const vazio = { segmento: '', palavrasChave: '', descricao: '', publicoAlvo: '', tomDeVoz: '', preferencias: '' }
     const r = await fetch('/api/clientes', {

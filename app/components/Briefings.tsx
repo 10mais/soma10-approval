@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { confirmar } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; segmento?: string; palavrasChave?: string }
 type Briefing = {
@@ -81,7 +82,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este briefing?')) return
+    if (!(await confirmar('Excluir este briefing?', { titulo: 'Excluir briefing', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/briefings?id=${id}`, { method: 'DELETE' })
     carregar()
   }

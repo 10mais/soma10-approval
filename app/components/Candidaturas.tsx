@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { confirmar } from '@/lib/toast'
 
 type Candidatura = {
   id: string; nome: string; email: string; telefone?: string; vaga?: string; mensagem?: string
@@ -29,7 +30,7 @@ export default function Candidaturas() {
     await fetch('/api/candidaturas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
   }
   async function excluir(id: string) {
-    if (!confirm('Excluir esta candidatura?')) return
+    if (!(await confirmar('Excluir esta candidatura?', { titulo: 'Excluir candidatura', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/candidaturas?id=${id}`, { method: 'DELETE' })
     setAberta(null)
     carregar()

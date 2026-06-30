@@ -3,6 +3,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import EntregasMarco, { Entregas } from '@/app/components/EntregasMarco'
+import { toast } from '@/lib/toast'
 
 type Marco = { id: string; titulo: string; descricao?: string; categoria: string; status: string; dataInicio: string; dataFim?: string; atualizadoEm?: string }
 
@@ -51,7 +52,7 @@ export default function EntregasPage() {
     setSalvandoMeta(true)
     const r = await fetch('/api/clientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: clienteId, postsMensais: n }) }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
     setSalvandoMeta(false)
-    if (r?.error) { alert('Não foi possível salvar a meta: ' + r.error); return }
+    if (r?.error) { toast('Não foi possível salvar a meta: ' + r.error, 'erro'); return }
     setCliente((c: any) => ({ ...c, postsMensais: n }))
     setEditandoMeta(false)
   }

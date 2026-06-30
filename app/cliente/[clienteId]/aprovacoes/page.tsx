@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { toast, confirmar } from '@/lib/toast'
 
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
@@ -51,7 +52,7 @@ export default function AprovacoesPagina() {
   const maisAntiga = pendentes.reduce<string | undefined>((min, p) => (p.aguardandoDesde && (!min || p.aguardandoDesde < min)) ? p.aguardandoDesde : min, undefined)
 
   async function aprovarTodos() {
-    if (!confirm(`Aprovar todos os ${pendentes.length} itens pendentes?`)) return
+    if (!(await confirmar(`Aprovar todos os ${pendentes.length} itens pendentes?`, { titulo: 'Aprovar em lote', okLabel: 'Aprovar todos' }))) return
     setAprovandoTodos(true)
     const semData: string[] = []
     for (const p of pendentes) {
@@ -61,7 +62,7 @@ export default function AprovacoesPagina() {
     }
     setAprovandoTodos(false)
     carregar()
-    if (semData.length) alert(`Estes criativos precisam de data/horário definidos antes de aprovar (peça à equipe):\n- ${semData.join('\n- ')}`)
+    if (semData.length) toast(`Estes criativos precisam de data/horário definidos antes de aprovar (peça à equipe): ${semData.join(', ')}`, 'erro')
   }
 
   async function agir(postId: string, acao: string, comentarioOverride?: string) {
@@ -70,8 +71,8 @@ export default function AprovacoesPagina() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
-    if (r?.semData) { alert('Defina a data e horario da postagem antes de aprovar o criativo.'); setEnviando(null); return }
-    if (r?.error) { alert(r.error); setEnviando(null); return }
+    if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
+    if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
     setEnviando(null)
     carregar()
   }

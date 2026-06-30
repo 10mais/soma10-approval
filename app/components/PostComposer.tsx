@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import { confirmar } from '@/lib/toast'
 import DriveButton from './DriveButton'
 
 type Cliente = { id: string; nome: string; instagram: string; logo?: string }
@@ -305,7 +306,7 @@ export default function PostComposer({
 
   const videosSemCapa = midias.filter(m => m.tipo === 'video' && !m.capa).length
 
-  function submeter(acao: ComposerValue['acao']) {
+  async function submeter(acao: ComposerValue['acao']) {
     // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
     if ((acao === 'publicar' || acao === 'agendar') && videosSemCapa > 0) {
       setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
@@ -320,11 +321,9 @@ export default function PostComposer({
     if (acao === 'publicar' && dataAgendada) {
       const dt = new Date(dataAgendada)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() + 60000) {
-        const ok = window.confirm(
-          `Atenção: você definiu o horário ${dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.\n\n` +
-          `"Publicar agora" vai postar IMEDIATAMENTE, ignorando esse horário.\n` +
-          `Para publicar no horário definido, use o botão "Agendar".\n\n` +
-          `Deseja mesmo publicar AGORA?`
+        const ok = await confirmar(
+          `Você definiu o horário ${dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}. "Publicar agora" vai postar IMEDIATAMENTE, ignorando esse horário. Para publicar no horário definido, use "Agendar". Deseja mesmo publicar AGORA?`,
+          { titulo: 'Publicar agora?', okLabel: 'Publicar agora', perigo: true }
         )
         if (!ok) return
       }

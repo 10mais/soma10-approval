@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import { toast, confirmar } from '@/lib/toast'
 import UploadProgress from './UploadProgress'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
@@ -163,7 +164,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
 
   async function gerarPlanoIA() {
     if (!planoSel) return
-    if (!confirm('A IA vai gerar pautas para o mes inteiro com base no Brand Board. Isso consome creditos da IA. Continuar?')) return
+    if (!(await confirmar('A IA vai gerar pautas para o mes inteiro com base no Brand Board. Isso consome creditos da IA. Continuar?', { titulo: 'Gerar pautas com IA', okLabel: 'Continuar' }))) return
     setGerandoIA(true); setIaMsg('Gerando pautas com IA... (pode levar ate 1 minuto)')
     try {
       const r = await fetch('/api/esteira/gerar-plano', {
@@ -420,7 +421,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           onAbrirComposer={onAbrirComposer}
           onSalvo={() => { setPautaModal(null); carregarPautas(planoSel) }}
           onDescartar={async () => {
-            if (!confirm('Descartar esta pauta? Ela será removida permanentemente.')) return
+            if (!(await confirmar('Descartar esta pauta? Ela será removida permanentemente.', { titulo: 'Descartar pauta', okLabel: 'Descartar', perigo: true }))) return
             await fetch(`/api/posts?id=${pautaModal.id}`, { method: 'DELETE' }).catch(() => {})
             setPautaModal(null); carregarPautas(planoSel)
           }} />
@@ -590,7 +591,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             pauta.formato ? `FORMATO: ${pauta.formato}` : '',
             pauta.dataAgendada ? `DATA: ${new Date(pauta.dataAgendada).toLocaleString('pt-BR')}` : '',
           ].filter(Boolean).join('\n\n')
-          navigator.clipboard.writeText(txt).then(() => alert('Instrucoes copiadas para a area de transferencia!')).catch(() => alert(txt))
+          navigator.clipboard.writeText(txt).then(() => toast('Instrucoes copiadas para a area de transferencia!', 'sucesso')).catch(() => toast('Nao foi possivel copiar. Selecione e copie manualmente.', 'erro'))
         }} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#555', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Copiar instrucoes para producao
         </button>

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import { toast } from '@/lib/toast'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 
@@ -641,9 +642,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         setForm(f => ({ ...f, tipo: d.tipo.key }))
         setNovoTipoLabel(''); setNovoTipoCor('#6b7280'); setCriandoTipo(false)
       } else {
-        alert('Nao foi possivel criar o tipo: ' + (d?.error || 'erro desconhecido'))
+        toast('Nao foi possivel criar o tipo: ' + (d?.error || 'erro desconhecido'), 'erro')
       }
-    } catch { alert('Nao foi possivel criar o tipo.') } finally { setSalvandoTipo(false) }
+    } catch { toast('Nao foi possivel criar o tipo.', 'erro') } finally { setSalvandoTipo(false) }
   }
   useEffect(() => {
     if (!form.clienteId) { setMarcos([]); return }
@@ -666,9 +667,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         setForm(f => ({ ...f, marcoId: d.marco.id }))
         setNovaEtapaTitulo(''); setCriandoEtapa(false)
       } else {
-        alert('Nao foi possivel criar a etapa: ' + (d?.error || 'erro desconhecido'))
+        toast('Nao foi possivel criar a etapa: ' + (d?.error || 'erro desconhecido'), 'erro')
       }
-    } catch { alert('Nao foi possivel criar a etapa.') } finally { setSalvandoEtapa(false) }
+    } catch { toast('Nao foi possivel criar a etapa.', 'erro') } finally { setSalvandoEtapa(false) }
   }
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
@@ -827,7 +828,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
   async function salvar() {
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
-    if (form.clienteId && !form.marcoId) { alert('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").'); return }
+    if (form.clienteId && !form.marcoId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)

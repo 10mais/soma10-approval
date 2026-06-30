@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import EntregasMarco, { Entregas } from './EntregasMarco'
+import { confirmar } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -314,7 +315,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
           </button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onExcluir && (
-            <button onClick={() => { if (confirm('Excluir este marco?')) onExcluir() }} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+            <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
           )}
         </div>
       </div>

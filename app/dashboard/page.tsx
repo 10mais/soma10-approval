@@ -54,6 +54,7 @@ function LoadingPlaceholder() {
 }
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
+import { toast, confirmar } from '@/lib/toast'
 import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
@@ -222,8 +223,8 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
-    if (r?.semData) { alert('Defina a data e horario da postagem antes de aprovar o criativo.'); setEnviando(null); return }
-    if (r?.error) { alert(r.error); setEnviando(null); return }
+    if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
+    if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
     setEnviando(null)
     onAtualizado()
   }
@@ -805,7 +806,7 @@ function Dashboard() {
       doc.save(`analytics-${(cliente?.nome || 'cliente').toLowerCase().replace(/\s+/g, '-')}-${analyticsDesde}-a-${analyticsAte}.pdf`)
     } catch (e: any) {
       console.error('[pdf] erro:', e)
-      alert(`Não foi possível gerar o PDF: ${e?.message || 'erro desconhecido'}`)
+      toast(`Não foi possível gerar o PDF: ${e?.message || 'erro desconhecido'}`, 'erro')
     }
     setExportandoPdf(false)
   }
@@ -829,7 +830,7 @@ function Dashboard() {
       await gerarRelatorioMensal({ cliente, analyticsData, entregue, mesRef: `${MESES[mes]}/${ano}` })
     } catch (e: any) {
       console.error('[relatorio] erro:', e)
-      alert(`Não foi possível gerar o relatório: ${e?.message || 'erro desconhecido'}`)
+      toast(`Não foi possível gerar o relatório: ${e?.message || 'erro desconhecido'}`, 'erro')
     }
     setGerandoRelatorio(false)
   }
@@ -946,7 +947,7 @@ function Dashboard() {
       const link = `${window.location.origin}/status/${r.token}`
       navigator.clipboard?.writeText(link).catch(() => {})
       window.open(link, '_blank')
-    } else alert('Não foi possível gerar o link de status.')
+    } else toast('Não foi possível gerar o link de status.', 'erro')
   }
 
   // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
@@ -956,8 +957,8 @@ function Dashboard() {
     if (res?.ok) {
       if (res.post) setPosts(ps => [res.post, ...ps])
       setPostPreview(null)
-      alert(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`)
-    } else alert('Não foi possível reaproveitar o post.')
+      toast(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`, 'sucesso')
+    } else toast('Não foi possível reaproveitar o post.', 'erro')
   }
 
   async function salvarEdicaoPost(valor: any) {
@@ -986,12 +987,12 @@ function Dashboard() {
   }
 
   async function excluirPost(post: Post) {
-    if (!confirm(`Excluir definitivamente este post${post.clienteNome ? ' de ' + post.clienteNome : ''}? Esta ação não pode ser desfeita.`)) return
+    if (!(await confirmar(`Excluir definitivamente este post${post.clienteNome ? ' de ' + post.clienteNome : ''}? Esta ação não pode ser desfeita.`, { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true }))) return
     setPosts(ps => ps.filter(p => p!.id !== post.id))
     const res = await fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' })
     if (!res.ok) {
       fetch('/api/posts').then(r => r.json()).then(setPosts)
-      alert('Não foi possível excluir o post.')
+      toast('Não foi possível excluir o post.', 'erro')
     }
   }
 
@@ -1006,8 +1007,8 @@ function Dashboard() {
     setRepublicandoId(null)
     const atual = await fetch(`/api/posts?id=${post.id}`).then(x => x.json()).catch(() => null)
     if (atual && !atual.error) setPosts(ps => ps.map(p => p && p.id === post.id ? atual : p))
-    if (!r.ok) alert(`Ainda não foi possível publicar: ${r.error}\n\nDica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB) antes de tentar de novo.`)
-    else { setPostPreview(null); alert('Publicado com sucesso!') }
+    if (!r.ok) toast(`Ainda não foi possível publicar: ${r.error}. Dica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB) antes de tentar de novo.`, 'erro')
+    else { setPostPreview(null); toast('Publicado com sucesso!', 'sucesso') }
   }
 
   function alternarSelecaoPost(id: string) {
@@ -1018,13 +1019,13 @@ function Dashboard() {
     setPosts(ps => ps.filter(p => p!.id !== id))
     setBibSelecionados(lista => lista.filter(x => x !== id))
     const res = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' })
-    if (!res.ok) { fetch('/api/posts').then(r => r.json()).then(setPosts); alert('Não foi possível excluir o post.') }
+    if (!res.ok) { fetch('/api/posts').then(r => r.json()).then(setPosts); toast('Não foi possível excluir o post.', 'erro') }
   }
 
   async function excluirSelecionados() {
     const ids = [...bibSelecionados]
     if (ids.length === 0) return
-    if (!confirm(`Excluir definitivamente ${ids.length} post(s)? Esta ação não pode ser desfeita.`)) return
+    if (!(await confirmar(`Excluir definitivamente ${ids.length} post(s)? Esta ação não pode ser desfeita.`, { titulo: 'Excluir posts', okLabel: 'Excluir', perigo: true }))) return
     setPosts(ps => ps.filter(p => !ids.includes(p!.id)))
     setBibSelecionados([])
     const resultados = await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
@@ -1246,7 +1247,7 @@ function Dashboard() {
     const clienteAtual: any = clientes.find(c => c.id === verComoClienteId)
     const tinhaDados = !!(clienteAtual && (clienteAtual.segmento || clienteAtual.palavrasChave || clienteAtual.descricao || clienteAtual.publicoAlvo || clienteAtual.tomDeVoz || clienteAtual.preferencias || clienteAtual.documentoMarca))
     if (formVazio && tinhaDados) {
-      if (!confirm('O Brand Board está vazio e este cliente já tinha dados salvos. Salvar vai APAGAR o Brand Board. Tem certeza?')) return
+      if (!(await confirmar('O Brand Board está vazio e este cliente já tinha dados salvos. Salvar vai APAGAR o Brand Board. Tem certeza?', { titulo: 'Brand Board vazio', okLabel: 'Salvar mesmo assim', perigo: true }))) return
     }
     setSalvandoBrand(true); setBrandMsg('')
     const r = await fetch('/api/clientes', {
@@ -1264,7 +1265,7 @@ function Dashboard() {
 
   async function excluirBrand() {
     if (!verComoClienteId) return
-    if (!confirm('Excluir o Brand Board deste cliente? As informações e o DNA da marca serão apagados.')) return
+    if (!(await confirmar('Excluir o Brand Board deste cliente? As informações e o DNA da marca serão apagados.', { titulo: 'Excluir Brand Board', okLabel: 'Excluir', perigo: true }))) return
     const vazio = { segmento: '', palavrasChave: '', descricao: '', publicoAlvo: '', tomDeVoz: '', preferencias: '', documentos: [], documentoMarca: '', documentoMarcaGeradoEm: '' }
     await fetch('/api/clientes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1285,7 +1286,7 @@ function Dashboard() {
   async function gerarDocumentoIA() {
     if (!verComoClienteId) return
     // Regenerar consome créditos da IA — confirmar antes
-    if (brandForm.documentoMarca && !confirm('Regenerar o documento vai consumir créditos da IA e substituir o documento atual. Deseja continuar?')) return
+    if (brandForm.documentoMarca && !(await confirmar('Regenerar o documento vai consumir créditos da IA e substituir o documento atual. Deseja continuar?', { titulo: 'Regenerar documento', okLabel: 'Continuar' }))) return
     // Garante que o Brand Board atual está salvo antes de gerar
     await salvarBrand()
     setGerandoDocIA(true); setDocIAMsg('Pesquisando o nicho e gerando o documento... (pode levar até 1 minuto)')
@@ -1320,7 +1321,7 @@ function Dashboard() {
   }
 
   async function excluirCliente(id: string, nome: string) {
-    if (!confirm(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`)) return
+    if (!(await confirmar(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`, { titulo: 'Excluir cliente', okLabel: 'Excluir', perigo: true }))) return
     await fetch('/api/clientes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -1346,7 +1347,7 @@ function Dashboard() {
   }
 
   async function excluirUsuario(email: string, nome: string) {
-    if (!confirm(`Tem certeza que deseja excluir o colaborador "${nome}"?`)) return
+    if (!(await confirmar(`Tem certeza que deseja excluir o colaborador "${nome}"?`, { titulo: 'Excluir colaborador', okLabel: 'Excluir', perigo: true }))) return
     await fetch('/api/usuarios', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -2034,7 +2035,7 @@ function Dashboard() {
                           }}>{bibSelecionados.includes(post.id) ? <IconCheck size={13} /> : null}</span>
 
                         {/* Lixeira — canto inferior direito */}
-                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir este post? Esta ação não pode ser desfeita.')) excluirPostDireto(post.id) }} title="Excluir"
+                        <button onClick={async (e) => { e.stopPropagation(); if (await confirmar('Excluir este post? Esta ação não pode ser desfeita.', { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true })) excluirPostDireto(post.id) }} title="Excluir"
                           style={{
                             position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: '50%', cursor: 'pointer',
                             background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
@@ -2099,7 +2100,7 @@ function Dashboard() {
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
                     <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || '#333', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
-                      onClick={() => { if (postPreview.erroPublicacao) alert(`Motivo da falha:\n\n${postPreview.erroPublicacao}`) }}
+                      onClick={() => { if (postPreview.erroPublicacao) toast(postPreview.erroPublicacao, 'erro', 'Motivo da falha') }}
                       title={postPreview.erroPublicacao || ''}>
                       {STATUS_LABEL[postPreview.status] || postPreview.status}
                     </span>
@@ -2893,7 +2894,7 @@ function Dashboard() {
                 const url = `${window.location.origin}/trabalhe-conosco`
                 const nav: any = navigator
                 if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
-                else { navigator.clipboard?.writeText(url); alert('Link copiado:\n' + url) }
+                else { navigator.clipboard?.writeText(url); toast('Link copiado para a área de transferência.', 'sucesso') }
               }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                 Compartilhar link da candidatura
@@ -3228,7 +3229,7 @@ function Dashboard() {
                                   </a>
                                 )}
                                 {(temFB || temIG) && (
-                                  <button onClick={() => { if (confirm(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`)) desconectarInstagram(c.id) }}
+                                  <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }}
                                     style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 10px', fontSize: 12, color: '#aaa', cursor: 'pointer' }}>
                                     Desconectar
                                   </button>
@@ -3895,7 +3896,7 @@ function Dashboard() {
                       <span><span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
                       <span style={{ fontSize: 13, color: '#666' }}>{row.tipo}</span>
                       {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
-                        <button onClick={() => { if (confirm(`Desconectar as contas de ${row.c.nome}?`)) desconectarInstagram(row.c.id) }} title="Desconectar"
+                        <button onClick={async () => { if (await confirmar(`Desconectar as contas de ${row.c.nome}?`, { titulo: 'Desconectar contas', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(row.c.id) }} title="Desconectar"
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
                       ) : <span />}
                     </div>

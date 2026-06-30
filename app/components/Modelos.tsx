@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { toast, confirmar } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; tipo?: string }
 type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
@@ -28,10 +29,10 @@ export default function Modelos({ clientes }: { clientes: Cliente[] }) {
     if (!editor || !editor.nome.trim()) return
     const metodo = editor.id ? 'PUT' : 'POST'
     const r = await fetch('/api/templates', { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { setEditor(null); carregar() } else alert('Não foi possível salvar o modelo.')
+    if (r?.ok) { setEditor(null); carregar() } else toast('Não foi possível salvar o modelo.', 'erro')
   }
   async function excluir(id: string) {
-    if (!confirm('Excluir este modelo?')) return
+    if (!(await confirmar('Excluir este modelo?', { titulo: 'Excluir modelo', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/templates?id=${id}`, { method: 'DELETE' }).catch(() => {})
     carregar()
   }
@@ -136,7 +137,7 @@ function AplicarModal({ template, clientes, onClose, onOk }: { template: Templat
     setSalvando(true)
     const r = await fetch('/api/templates/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: template.id, clienteId, dataInicio }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) onOk(r); else alert('Não foi possível aplicar: ' + (r?.error || 'erro'))
+    if (r?.ok) onOk(r); else toast('Não foi possível aplicar: ' + (r?.error || 'erro'), 'erro')
   }
   const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }
   return (
