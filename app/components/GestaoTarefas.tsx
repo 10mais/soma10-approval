@@ -589,7 +589,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
 
       {/* Modal nova/editar tarefa */}
       {(novaModal || editModal) && (
-        <TarefaModal tarefa={editModal} clientes={clientes} usuarios={usuarios}
+        <TarefaModal key={editModal?.id || 'novo'} tarefa={editModal} clientes={clientes} usuarios={usuarios}
           tiposCustom={tiposCustom} onTiposCustom={aplicarTiposCustom}
           viewMode={editModal ? tarefaViewMode : 'modal'}
           onChangeViewMode={setTarefaViewMode}

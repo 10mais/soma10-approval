@@ -2867,6 +2867,7 @@ function Dashboard() {
         {/* Tarefa aberta a partir de uma notificação (sobreposto, sem trocar de aba) */}
         {tarefaNotif && (
           <TarefaModalNotif
+            key={tarefaNotif.id}
             tarefa={tarefaNotif}
             clientes={clientes as any}
             usuarios={usuarios as any}

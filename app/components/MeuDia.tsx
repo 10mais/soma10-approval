@@ -117,6 +117,7 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
       {/* Abre a tarefa no MESMO modal de Tarefas, sem sair de "Meu dia" */}
       {tarefaAberta && (
         <TarefaModal
+          key={tarefaAberta.id}
           tarefa={tarefaAberta}
           clientes={clientes}
           usuarios={usuarios}
