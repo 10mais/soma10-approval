@@ -13,7 +13,9 @@ function escapeHtml(s: string) {
 function linkify(s: string) {
   return s.replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noreferrer">${u}</a>`)
 }
-const ehHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s)
+// Conteúdo já é HTML se tiver uma tag OU uma entidade (&nbsp; &amp; etc.).
+// Sem checar entidades, um espaço (&nbsp;) fazia re-escapar e virar literal na tela.
+const ehHtml = (s: string) => /<[a-z!/][\s\S]*>/i.test(s) || /&(nbsp|amp|lt|gt|quot|#\d+);/i.test(s)
 
 export default function RichText({ value, onChange, placeholder = '', minHeight = 80 }: { value: string; onChange: (html: string) => void; placeholder?: string; minHeight?: number }) {
   const ref = useRef<HTMLDivElement>(null)
