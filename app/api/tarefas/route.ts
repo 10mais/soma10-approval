@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
     marcoId: body.marcoId || '',
     ...(body.tarefaPaiId ? { tarefaPaiId: body.tarefaPaiId } : {}),
     prazo: body.prazo || '',
+    ...(body.recorrencia ? { recorrencia: body.recorrencia } : {}),
     criadoPor: session.user?.name || '',
     criadoEm: agora,
     atualizadoEm: agora,
@@ -114,7 +115,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'anexos', 'checklist']
+  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
   const agora = new Date().toISOString()
@@ -223,6 +224,28 @@ export async function PUT(req: NextRequest) {
 
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') {
     await dispararEvento('tarefa_concluida', { tarefaId: id, titulo: atualizado.titulo, tipo: atualizado.tipo, prioridade: atualizado.prioridade, clienteId: atualizado.clienteId, clienteNome: atualizado.clienteNome, responsavelEmail: atualizado.responsavelEmail, responsavelNome: atualizado.responsavelNome })
+
+    // Tarefa recorrente: ao concluir, gera a próxima ocorrência (nova, a fazer)
+    if (atualizado.recorrencia) {
+      const base = atualizado.prazo ? new Date(atualizado.prazo) : new Date()
+      const d = new Date(base)
+      if (atualizado.recorrencia === 'diaria') d.setDate(d.getDate() + 1)
+      else if (atualizado.recorrencia === 'semanal') d.setDate(d.getDate() + 7)
+      else if (atualizado.recorrencia === 'quinzenal') d.setDate(d.getDate() + 14)
+      else if (atualizado.recorrencia === 'mensal') d.setMonth(d.getMonth() + 1)
+      const nova: Tarefa = {
+        ...atualizado, id: uuid(), status: 'a_fazer', prazo: d.toISOString(),
+        criadoPor: 'Recorrência', criadoEm: agora, atualizadoEm: agora, concluidoEm: undefined,
+        atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Gerada por recorrência', autor: 'Recorrência', criadoEm: agora }],
+        comentarios: [], apontamentos: [],
+        checklist: (atualizado.checklist || []).map((c: any) => ({ ...c, feito: false })),
+      }
+      await redis.set(`tarefa:${nova.id}`, nova)
+      await redis.sadd('tarefas', nova.id)
+      if (nova.responsavelEmail && nova.responsavelEmail !== (session.user as any).email) {
+        await notificar(nova.responsavelEmail, 'tarefa_atribuida', 'Tarefa recorrente', `Nova ocorrência de "${nova.titulo}".`, undefined, nova.id).catch(() => {})
+      }
+    }
   }
 
   const meuEmail = (session.user as any).email

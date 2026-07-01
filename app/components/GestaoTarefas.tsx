@@ -624,6 +624,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
     marcoId: (tarefa as any)?.marcoId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
+    recorrencia: (tarefa as any)?.recorrencia || '',
   })
   const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
   // Criar novo tipo de tarefa (padrao) direto daqui — fica fixo no dropdown e vale para tudo
@@ -1178,6 +1179,18 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Recorrência</label>
+              <select value={(form as any).recorrencia} onChange={e => setForm(f => ({ ...f, recorrencia: e.target.value }))}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                <option value="">Não repete</option>
+                <option value="diaria">Diária</option>
+                <option value="semanal">Semanal</option>
+                <option value="quinzenal">Quinzenal</option>
+                <option value="mensal">Mensal</option>
+              </select>
+              {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Ao concluir, uma nova ocorrência é criada com o prazo avançado.</p>}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descricao</label>

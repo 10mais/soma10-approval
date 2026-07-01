@@ -274,6 +274,7 @@ export type Tarefa = {
   marcoId?: string // etapa do Playbook a que a tarefa pertence
   tarefaPaiId?: string // tarefa-mãe (subtarefa = filha de outra tarefa)
   prazo?: string // ISO date
+  recorrencia?: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' // ao concluir, gera a próxima ocorrência
   anexos?: { nome: string; url: string; tipo: string }[]
   atividades?: TarefaAtividade[]
   comentarios?: TarefaComentario[]
