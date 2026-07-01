@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
         const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
         if (!senhaCorreta) return null
 
-        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId } as any
+        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId, permissoes: usuario.permissoes } as any
       },
     }),
   ],
@@ -29,6 +29,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role
         token.clienteId = (user as any).clienteId
+        ;(token as any).permissoes = (user as any).permissoes
       }
       return token
     },
@@ -36,6 +37,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).role = token.role
         ;(session.user as any).clienteId = token.clienteId
+        ;(session.user as any).permissoes = (token as any).permissoes
       }
       return session
     },

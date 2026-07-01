@@ -741,10 +741,39 @@ function Dashboard() {
     gerente: { producao: true, estrategia: true, crm: true, clientes: false },
     usuario: { producao: true, estrategia: false, crm: false, clientes: false },
   }
+  const minhasPermissoes = (session?.user as any)?.permissoes || {}
+  const padraoPapel = (r: string, g: string) => permPapel[r]?.[g] ?? PADRAO_PAPEL[r]?.[g] ?? false
+  // Caixinhas de permissão por usuário (só p/ gerente e usuario; admin=tudo, vendas/cliente=próprio)
+  const MODULOS_PERM: [string, string][] = [['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['clientes', 'Clientes']]
+  function renderPermissoes(r: string, perm: any, onChange: (p: any) => void) {
+    if (r !== 'gerente' && r !== 'usuario') return null
+    return (
+      <div style={{ width: '100%', marginTop: 4, background: '#fafafa', borderRadius: 10, padding: 12 }}>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões deste usuário</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {MODULOS_PERM.map(([k, label]) => {
+            const on = (perm && perm[k] !== undefined) ? !!perm[k] : padraoPapel(r, k)
+            return (
+              <button key={k} type="button" onClick={() => onChange({ ...(perm || {}), [k]: !on })}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 8, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#f0fdf4' : '#fff', color: on ? '#16a34a' : '#999', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                <span style={{ width: 16, height: 16, borderRadius: 4, border: on ? 'none' : '1.5px solid #ccc', background: on ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, lineHeight: 1 }}>{on ? '✓' : ''}</span>
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>Começa no padrão do papel; ajuste clicando. O Financeiro é exclusivo do admin.</p>
+      </div>
+    )
+  }
   const podeGrupo = (grupo: string) => {
     if (role === 'admin') return true
     if (grupo === 'financeiro') return false // exclusivo do admin
-    if (role === 'gerente' || role === 'usuario') return permPapel[role]?.[grupo] ?? PADRAO_PAPEL[role]?.[grupo] ?? false
+    if (role === 'gerente' || role === 'usuario') {
+      // Override por usuário tem prioridade; senão, o padrão do papel
+      if (minhasPermissoes[grupo] !== undefined) return !!minhasPermissoes[grupo]
+      return padraoPapel(role, grupo)
+    }
     return false
   }
   // Mapa aba -> grupo (para esconder e proteger o acesso direto via sessionStorage)
@@ -1364,7 +1393,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', permissoes: (u as any).permissoes, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1372,7 +1401,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', permissoes: (edicaoUsuario as any).permissoes ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -3560,6 +3589,7 @@ function Dashboard() {
                       fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
                     }}>Adicionar</button>
                   </div>
+                  {renderPermissoes(novoUsuario.role, (novoUsuario as any).permissoes, (p: any) => setNovoUsuario(u => ({ ...u, permissoes: p } as any)))}
                   {erroUsuario && (
                     <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
                   )}
@@ -3658,6 +3688,7 @@ function Dashboard() {
                           </button>
                         </div>
                       </div>
+                      {renderPermissoes(edicaoUsuario.role, (edicaoUsuario as any).permissoes, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoes: p } as any)))}
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
                         <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>

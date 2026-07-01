@@ -17,6 +17,8 @@ export type Usuario = {
   role: Role
   cargo?: string
   funcaoVendas?: 'sdr' | 'closer' // sub-funcao do papel 'vendas' (SDR/BDR ou Closer)
+  // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
+  permissoes?: { producao?: boolean; estrategia?: boolean; crm?: boolean; clientes?: boolean }
   foto?: string
   telefone?: string
   bio?: string
