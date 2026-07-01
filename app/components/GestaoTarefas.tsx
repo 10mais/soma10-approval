@@ -771,17 +771,20 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: (a.anotacoes || []).filter(an => an.id !== anotacaoId) } : a))
   }
 
-  async function enviarAnexo(arquivo: File) {
+  async function enviarAnexos(arquivos: File[]) {
+    if (!arquivos.length) return
     setEnviandoAnexo(true)
-    setProgAnexo(0)
-    try {
-      const ext = arquivo.name.split('.').pop() || 'bin'
-      const blob = await upload(`tarefas/${uuid()}.${ext}`, arquivo, {
-        access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type,
-        onUploadProgress: ({ percentage }) => setProgAnexo(percentage),
-      })
-      setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
-    } catch { /* erro silencioso */ }
+    for (const arquivo of arquivos) {
+      setProgAnexo(0)
+      try {
+        const ext = arquivo.name.split('.').pop() || 'bin'
+        const blob = await upload(`tarefas/${uuid()}.${ext}`, arquivo, {
+          access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type,
+          onUploadProgress: ({ percentage }) => setProgAnexo(percentage),
+        })
+        setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
+      } catch { /* erro silencioso — segue para o próximo */ }
+    }
     setEnviandoAnexo(false)
     setProgAnexo(null)
   }
@@ -1315,9 +1318,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               </div>
             )}
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#444' }}>
-              {enviandoAnexo ? 'Enviando...' : '+ Adicionar anexo'}
-              <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={enviandoAnexo}
-                onChange={e => { if (e.target.files?.[0]) enviarAnexo(e.target.files[0]); e.target.value = '' }} />
+              {enviandoAnexo ? 'Enviando...' : '+ Adicionar anexo(s)'}
+              <input type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={enviandoAnexo}
+                onChange={e => { enviarAnexos(Array.from(e.target.files || [])); e.target.value = '' }} />
             </label>
             <UploadProgress valor={progAnexo} rotulo="Enviando anexo..." />
             {/* Anexos das subtarefas — somente leitura, visíveis também aqui na tarefa-mãe */}
