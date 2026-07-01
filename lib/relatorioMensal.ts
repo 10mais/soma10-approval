@@ -45,13 +45,50 @@ async function carregarLogoBase64(url?: string): Promise<{ data: string; w: numb
   }
 }
 
-export async function gerarRelatorioMensal(opts: {
-  cliente: any
-  analyticsData: any
-  entregue: number
-  mesRef: string // ex.: "Junho/2026"
-}) {
-  const { cliente, analyticsData, entregue, mesRef } = opts
+// Modelo EDITÁVEL do relatório (o usuário ajusta antes de exportar).
+export type RelatorioMensalModelo = {
+  tituloRelatorio: string           // "Relatório mensal"
+  mesRef: string                    // "Junho/2026"
+  entrega: { label: string; valor: string }[]
+  observacoes: string               // texto livre (destaques do mês)
+  metricas: { label: string; atual: string; variacao: string }[]
+  topPosts: { data: string; tipo: string; legenda: string; curtidas: string; comentarios: string; alcance: string }[]
+  incluir: { entrega: boolean; observacoes: boolean; desempenho: boolean; topPosts: boolean }
+}
+
+// Constrói o modelo inicial a partir do payload de /api/analytics + entrega.
+export function montarModeloRelatorio(cliente: any, analyticsData: any, entregue: number, mesRef: string): RelatorioMensalModelo {
+  const totais = analyticsData?.totais || {}
+  const ant = analyticsData?.totaisAnterior || {}
+  const perfil = analyticsData?.perfil || {}
+  const contratado = Number(cliente?.postsMensais) || 0
+  const metrica = (label: string, key: string) => ({ label, atual: String(totais[key] ?? 0), variacao: variacao(totais[key] ?? 0, ant[key] ?? 0) })
+  return {
+    tituloRelatorio: 'Relatório mensal',
+    mesRef,
+    entrega: [
+      { label: 'Posts entregues', valor: contratado > 0 ? `${entregue} de ${contratado}` : `${entregue}` },
+      { label: 'Cumprimento', valor: contratado > 0 ? `${Math.round((entregue / contratado) * 100)}%` : '—' },
+      { label: 'Seguidores', valor: `${perfil.followers_count ?? '—'}` },
+    ],
+    observacoes: '',
+    metricas: [
+      metrica('Alcance', 'alcance'), metrica('Impressões', 'impressoes'), metrica('Curtidas', 'curtidas'),
+      metrica('Comentários', 'comentarios'), metrica('Salvamentos', 'salvamentos'), metrica('Compartilhamentos', 'compartilhamentos'),
+    ],
+    topPosts: (analyticsData?.posts || []).slice(0, 10).map((p: any) => ({
+      data: p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
+      tipo: p.tipo || '—',
+      legenda: (p.legenda || '').slice(0, 60),
+      curtidas: String(p.curtidas ?? 0), comentarios: String(p.comentarios ?? 0), alcance: String(p.alcance ?? 0),
+    })),
+    incluir: { entrega: true, observacoes: false, desempenho: true, topPosts: true },
+  }
+}
+
+// Gera o PDF a partir do modelo (já editado pelo usuário).
+export async function gerarRelatorioMensal(opts: { cliente: any; modelo: RelatorioMensalModelo }) {
+  const { cliente, modelo } = opts
   const { default: jsPDF } = await import('jspdf')
   const { default: autoTable } = await import('jspdf-autotable')
 
@@ -63,80 +100,38 @@ export async function gerarRelatorioMensal(opts: {
   // ---- Cabecalho branded ----
   doc.setFillColor(corPrim[0], corPrim[1], corPrim[2])
   doc.rect(0, 0, larguraPg, 34, 'F')
-
   const logo = await carregarLogoBase64(cliente?.logo)
   if (logo) {
-    try {
-      const h = 20, w = Math.min(40, (logo.w / logo.h) * h)
-      doc.addImage(logo.data, 'PNG', larguraPg - w - 14, 7, w, h)
-    } catch { /* ignora logo invalido */ }
+    try { const h = 20, w = Math.min(40, (logo.w / logo.h) * h); doc.addImage(logo.data, 'PNG', larguraPg - w - 14, 7, w, h) } catch {}
   }
-
   doc.setTextColor(corTxt[0], corTxt[1], corTxt[2])
-  doc.setFontSize(18)
-  doc.text(cliente?.nome || analyticsData?.instagramUsername || 'Cliente', 14, 16)
-  doc.setFontSize(11)
-  doc.text(`Relatório mensal · ${mesRef}`, 14, 25)
+  doc.setFontSize(18); doc.text(cliente?.nome || 'Cliente', 14, 16)
+  doc.setFontSize(11); doc.text(`${modelo.tituloRelatorio} · ${modelo.mesRef}`, 14, 25)
+  doc.setTextColor(120); doc.setFontSize(9); doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 42)
 
-  doc.setTextColor(120)
-  doc.setFontSize(9)
-  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 42)
+  let y = 48
+  const nextY = () => ((doc as any).lastAutoTable?.finalY || y) + 10
 
-  const totais = analyticsData?.totais || {}
-  const ant = analyticsData?.totaisAnterior || {}
-  const perfil = analyticsData?.perfil || {}
-  const contratado = Number(cliente?.postsMensais) || 0
-
-  // ---- Resumo de entrega ----
-  autoTable(doc, {
-    startY: 48,
-    head: [['Entrega do mês', '']],
-    body: [
-      ['Posts entregues', contratado > 0 ? `${entregue} de ${contratado}` : `${entregue}`],
-      ['Cumprimento', contratado > 0 ? `${Math.round((entregue / contratado) * 100)}%` : '—'],
-      ['Seguidores', `${perfil.followers_count ?? '—'}`],
-    ],
-    theme: 'grid',
-    headStyles: { fillColor: corPrim, textColor: corTxt },
-    styles: { fontSize: 10 },
-  })
-
-  // ---- Desempenho vs periodo anterior ----
-  autoTable(doc, {
-    startY: ((doc as any).lastAutoTable?.finalY || 48) + 10,
-    head: [['Métrica', 'Mês atual', 'Variação']],
-    body: [
-      ['Alcance', totais.alcance ?? 0, variacao(totais.alcance ?? 0, ant.alcance ?? 0)],
-      ['Impressões', totais.impressoes ?? 0, variacao(totais.impressoes ?? 0, ant.impressoes ?? 0)],
-      ['Curtidas', totais.curtidas ?? 0, variacao(totais.curtidas ?? 0, ant.curtidas ?? 0)],
-      ['Comentários', totais.comentarios ?? 0, variacao(totais.comentarios ?? 0, ant.comentarios ?? 0)],
-      ['Salvamentos', totais.salvamentos ?? 0, variacao(totais.salvamentos ?? 0, ant.salvamentos ?? 0)],
-      ['Compartilhamentos', totais.compartilhamentos ?? 0, variacao(totais.compartilhamentos ?? 0, ant.compartilhamentos ?? 0)],
-    ],
-    theme: 'striped',
-    headStyles: { fillColor: corPrim, textColor: corTxt },
-    styles: { fontSize: 9 },
-  })
-
-  // ---- Top posts ----
-  const posts: any[] = (analyticsData?.posts || []).slice(0, 10)
-  if (posts.length > 0) {
+  if (modelo.incluir.entrega) {
+    autoTable(doc, { startY: y, head: [['Entrega do mês', '']], body: modelo.entrega.map(e => [e.label, e.valor]), theme: 'grid', headStyles: { fillColor: corPrim, textColor: corTxt }, styles: { fontSize: 10 } })
+    y = nextY()
+  }
+  if (modelo.incluir.observacoes && modelo.observacoes.trim()) {
+    autoTable(doc, { startY: y, head: [['Destaques do mês']], body: [[modelo.observacoes.trim()]], theme: 'grid', headStyles: { fillColor: corPrim, textColor: corTxt }, styles: { fontSize: 10, cellPadding: 4 } })
+    y = nextY()
+  }
+  if (modelo.incluir.desempenho) {
+    autoTable(doc, { startY: y, head: [['Métrica', 'Mês atual', 'Variação']], body: modelo.metricas.map(m => [m.label, m.atual, m.variacao]), theme: 'striped', headStyles: { fillColor: corPrim, textColor: corTxt }, styles: { fontSize: 9 } })
+    y = nextY()
+  }
+  if (modelo.incluir.topPosts && modelo.topPosts.length > 0) {
     autoTable(doc, {
-      startY: ((doc as any).lastAutoTable?.finalY || 48) + 10,
-      head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Coment.', 'Alcance']],
-      body: posts.map(p => [
-        p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
-        p.tipo || '—',
-        (p.legenda || '').slice(0, 55) + ((p.legenda || '').length > 55 ? '…' : ''),
-        p.curtidas ?? 0, p.comentarios ?? 0, p.alcance ?? 0,
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: corPrim, textColor: corTxt },
-      styles: { fontSize: 8 },
-      columnStyles: { 2: { cellWidth: 70 } },
+      startY: y, head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Coment.', 'Alcance']],
+      body: modelo.topPosts.map(p => [p.data, p.tipo, p.legenda, p.curtidas, p.comentarios, p.alcance]),
+      theme: 'striped', headStyles: { fillColor: corPrim, textColor: corTxt }, styles: { fontSize: 8 }, columnStyles: { 2: { cellWidth: 70 } },
     })
   }
 
   const nome = (cliente?.nome || 'cliente').toLowerCase().replace(/\s+/g, '-')
-  doc.save(`relatorio-mensal-${nome}-${mesRef.toLowerCase().replace(/[\s/]+/g, '-')}.pdf`)
+  doc.save(`relatorio-mensal-${nome}-${modelo.mesRef.toLowerCase().replace(/[\s/]+/g, '-')}.pdf`)
 }

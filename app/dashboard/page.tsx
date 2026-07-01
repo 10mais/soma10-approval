@@ -23,6 +23,7 @@ const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loadi
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
 
@@ -55,7 +56,6 @@ function LoadingPlaceholder() {
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast, confirmar } from '@/lib/toast'
-import { gerarRelatorioMensal } from '@/lib/relatorioMensal'
 import { setViewAsClient } from '@/lib/modoCliente'
 
 type Post = { id: string; clienteId?: string; clienteNome: string; status: string; dataAgendada?: string; legenda: string; imagens: string[]; codigo?: string; formato?: string; erroPublicacao?: string; criadoEm?: string; atualizadoEm?: string; thumbnail?: string }
@@ -409,6 +409,7 @@ function Dashboard() {
   const [analyticsErro, setAnalyticsErro] = useState('')
   const [exportandoPdf, setExportandoPdf] = useState(false)
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false)
+  const [relatorioEditor, setRelatorioEditor] = useState<any>(null)
 
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
@@ -888,7 +889,9 @@ function Dashboard() {
         return false
       }).length
       const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-      await gerarRelatorioMensal({ cliente, analyticsData, entregue, mesRef: `${MESES[mes]}/${ano}` })
+      const { montarModeloRelatorio } = await import('@/lib/relatorioMensal')
+      const modelo = montarModeloRelatorio(cliente, analyticsData, entregue, `${MESES[mes]}/${ano}`)
+      setRelatorioEditor({ cliente, modelo }) // abre o editor; exporta lá dentro
     } catch (e: any) {
       console.error('[relatorio] erro:', e)
       toast(`Não foi possível gerar o relatório: ${e?.message || 'erro desconhecido'}`, 'erro')
@@ -4104,6 +4107,8 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {relatorioEditor && <RelatorioMensalEditor cliente={relatorioEditor.cliente} inicial={relatorioEditor.modelo} onClose={() => setRelatorioEditor(null)} />}
 
       {/* Barra flutuante global de upload de imagem/logo/documento */}
       {progImagem !== null && (
