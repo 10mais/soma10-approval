@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest) {
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   await redis.set(`marco:${id}`, atualizado)
 
-  // Automação: etapa concluída -> notifica a equipe
+  // Automação legada (toggle antigo): etapa concluída -> notifica a equipe
   if (updates.status === 'concluido' && marco.status !== 'concluido') {
     try {
       const { getAutomacoes } = await import('@/lib/automacoes')
@@ -68,6 +68,8 @@ export async function PUT(req: NextRequest) {
         await notificarEquipe('geral', 'Etapa concluída', `A etapa "${marco.titulo}"${marco.clienteNome ? ` (${marco.clienteNome})` : ''} foi marcada como concluída.`)
       }
     } catch { /* não bloqueia */ }
+    const { dispararEvento } = await import('@/lib/automacoesEngine')
+    await dispararEvento('etapa_concluida', { marcoId: id, titulo: atualizado.titulo, categoria: atualizado.categoria, clienteId: atualizado.clienteId, clienteNome: atualizado.clienteNome })
   }
 
   return NextResponse.json({ ok: true, marco: atualizado })

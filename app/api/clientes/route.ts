@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   revalidateTag('clientes')
   if (cliente.loginEmail) revalidateTag('usuarios')
 
-  // Automação: cliente novo -> notifica a equipe
+  // Automação legada (toggle antigo): cliente novo -> notifica a equipe
   try {
     const { getAutomacoes } = await import('@/lib/automacoes')
     const aut = await getAutomacoes()
@@ -100,6 +100,10 @@ export async function POST(req: NextRequest) {
       await notificarEquipe('geral', 'Novo cliente cadastrado', `O cliente "${cliente.nome}" foi adicionado.`)
     }
   } catch { /* automação não bloqueia o cadastro */ }
+
+  // Motor de automações flexível
+  const { dispararEvento } = await import('@/lib/automacoesEngine')
+  await dispararEvento('cliente_novo', { clienteId: cliente.id, clienteNome: cliente.nome, segmento: (cliente as any).segmento || '', contratoValor: (cliente as any).contratoValor || 0 })
 
   return NextResponse.json({ ok: true, cliente })
 }

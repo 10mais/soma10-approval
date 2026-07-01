@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
   const atualizado = { ...post, status: novoStatus, anotacoes: annotations, motivoReprovacao: rejectReason, atualizadoEm: new Date().toISOString() }
   await redis.set(`post:${id}`, atualizado)
 
+  {
+    const { dispararEvento } = await import('@/lib/automacoesEngine')
+    const ctxPost = { postId: id, clienteId: (post as any).clienteId || '', clienteNome: (post as any).clienteNome || (post as any).cliente || '', formato: (post as any).formato || '' }
+    await dispararEvento(type === 'approved' ? 'post_aprovado' : 'post_reprovado', ctxPost)
+  }
+
   // Notificar a equipe interna sobre a decisão do cliente
   try {
     const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'

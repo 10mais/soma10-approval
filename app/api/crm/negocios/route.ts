@@ -93,6 +93,8 @@ export async function POST(req: NextRequest) {
   }
   await redis.set(`negocio:${negocio.id}`, negocio)
   await redis.sadd('crm:negocios', negocio.id)
+  const { dispararEvento } = await import('@/lib/automacoesEngine')
+  await dispararEvento('negocio_novo', { negocioId: negocio.id, valor: Number(negocio.valor) || 0, empresa: negocio.empresa || '', donoNome: negocio.donoNome || '', donoEmail: negocio.dono || '' })
   return NextResponse.json({ ok: true, negocio })
 }
 
@@ -164,6 +166,13 @@ export async function PUT(req: NextRequest) {
       contatoNome = ct?.nome || ''
     }
     await passarBriefingAosClosers(atualizado, contatoNome).catch(() => {})
+    const { dispararEvento } = await import('@/lib/automacoesEngine')
+    await dispararEvento('reuniao_agendada', { negocioId: id, empresa: atualizado.empresa || '', valor: Number(atualizado.valor) || 0, donoNome: atualizado.donoNome || '', donoEmail: atualizado.dono || '' })
+  }
+  // Negócio perdido (via mudança de etapa)
+  if (atualizado.status === 'perdido' && negocio.status !== 'perdido') {
+    const { dispararEvento } = await import('@/lib/automacoesEngine')
+    await dispararEvento('negocio_perdido', { negocioId: id, valor: Number(atualizado.valor) || 0, donoNome: atualizado.donoNome || '', donoEmail: atualizado.dono || '' })
   }
 
   return NextResponse.json({ ok: true, negocio: atualizado })

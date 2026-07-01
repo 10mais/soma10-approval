@@ -3682,7 +3682,7 @@ function Dashboard() {
 
         {/* AUTOMAÇÕES (equipe) */}
         {aba === 'automacoes' && role !== 'cliente' && (
-          <Automacoes />
+          <Automacoes clientes={clientes.filter(c => (c as any).tipo !== 'interno').map(c => ({ id: c.id, nome: c.nome }))} />
         )}
 
         {/* MEU DIA (equipe) */}

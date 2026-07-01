@@ -144,5 +144,11 @@ export async function POST(req: NextRequest) {
   const resumoNotif = `Venda fechada por ${negocio.donoNome || autor}.${negocio.valor ? ` Valor: ${Number(negocio.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.` : ''}${templateId ? ` ${marcosCriados} etapas e ${tarefasCriadas} tarefas aplicadas.` : ''}\n\n${handoffVendas}`.slice(0, 900)
   await notificarEquipe('geral', `Novo cliente: ${cliente.nome} — passagem de bastão`, resumoNotif).catch(() => {})
 
+  // Motor de automações: negócio ganho + cliente novo
+  const { dispararEvento } = await import('@/lib/automacoesEngine')
+  const ctxAuto = { clienteId: cliente.id, clienteNome: cliente.nome, valor: Number(negocio.valor) || 0, segmento: negocio.segmento || '', donoNome: negocio.donoNome || '', donoEmail: negocio.dono || '' }
+  await dispararEvento('negocio_ganho', ctxAuto)
+  await dispararEvento('cliente_novo', { clienteId: cliente.id, clienteNome: cliente.nome, segmento: negocio.segmento || '', contratoValor: Number((cliente as any).contratoValor) || 0 })
+
   return NextResponse.json({ ok: true, clienteId: cliente.id, marcos: marcosCriados, tarefas: tarefasCriadas, loginSenha: senhaPlana || undefined })
 }

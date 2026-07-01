@@ -51,6 +51,34 @@ export type LancamentoFuturo = {
   criadoEm: string
 }
 
+// Motor de automações flexível (gatilho + condições + sequência de passos).
+// Chaves: config:automacoesRegras (Automacao[]); automacoes:pendentes (ZSET por vencimento).
+export type AutomacaoCondicao = {
+  campo: string
+  operador: 'igual' | 'diferente' | 'contem' | 'maior' | 'menor' | 'preenchido' | 'vazio'
+  valor?: string
+}
+export type AutomacaoPasso = {
+  id: string
+  atrasoDias: number // 0 = imediato; N = executa N dias após o gatilho
+  acao: string       // chave do registry de ações
+  params: Record<string, any>
+}
+export type Automacao = {
+  id: string
+  nome: string
+  ativo: boolean
+  gatilho: string    // chave do registry de gatilhos
+  condicoes?: AutomacaoCondicao[]
+  condicaoLogica?: 'todas' | 'qualquer'
+  alvo: 'todos' | 'selecionados'
+  clienteIds?: string[]          // quando alvo='selecionados'
+  clienteIdsExcluidos?: string[] // override: desliga p/ clientes X quando alvo='todos'
+  passos: AutomacaoPasso[]
+  criadoPor?: string
+  criadoEm: string
+}
+
 // Despesa da agência (folha entra à parte, via Usuario)
 export type Despesa = {
   id: string

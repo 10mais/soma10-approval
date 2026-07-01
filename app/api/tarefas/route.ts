@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Tarefa, Usuario } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
+import { dispararEvento } from '@/lib/automacoesEngine'
 
 function extrairMencoes(texto: string): string[] {
   const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
   if (tarefa.responsavelEmail && tarefa.responsavelEmail !== (session.user as any).email) {
     await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${new Date(tarefa.prazo).toLocaleDateString('pt-BR')}.` : ''}`, undefined, tarefa.id)
   }
+  await dispararEvento('tarefa_criada', { tarefaId: tarefa.id, titulo: tarefa.titulo, tipo: tarefa.tipo, prioridade: tarefa.prioridade, clienteId: tarefa.clienteId, clienteNome: tarefa.clienteNome, responsavelEmail: tarefa.responsavelEmail, responsavelNome: tarefa.responsavelNome })
   return NextResponse.json({ ok: true, tarefa })
 }
 
@@ -218,6 +220,10 @@ export async function PUT(req: NextRequest) {
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
   await redis.set(`tarefa:${id}`, atualizado)
+
+  if (updates.status === 'concluido' && tarefa.status !== 'concluido') {
+    await dispararEvento('tarefa_concluida', { tarefaId: id, titulo: atualizado.titulo, tipo: atualizado.tipo, prioridade: atualizado.prioridade, clienteId: atualizado.clienteId, clienteNome: atualizado.clienteNome, responsavelEmail: atualizado.responsavelEmail, responsavelNome: atualizado.responsavelNome })
+  }
 
   const meuEmail = (session.user as any).email
   // Notificar responsavel quando tarefa e reatribuida
