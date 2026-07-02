@@ -4,7 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; status: string
@@ -119,7 +119,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negocios} estagios={estagios} usuarios={usuarios} />
       ) : vista === 'contatos' ? (
-        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} />
+        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} />
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
@@ -456,30 +456,117 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
   )
 }
 
-function ContatosLista({ contatos, negocios, onAbrir }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void }) {
+function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void }) {
+  const [vista, setVista] = useState<'lista' | 'cards'>('lista')
+  const [sel, setSel] = useState<Set<string>>(new Set())
+  const [excluindo, setExcluindo] = useState(false)
+
+  const toggle = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const todos = contatos.length > 0 && sel.size === contatos.length
+  const toggleTodos = () => setSel(todos ? new Set() : new Set(contatos.map(c => c.id)))
+  const empresaLabel = (c: Contato) => c.profissionalAutonomo ? 'Autônomo' : (c.empresa || '—')
+
+  async function excluirSelecionados() {
+    if (sel.size === 0) return
+    if (!(await confirmar(`Excluir ${sel.size} contato(s) selecionado(s)? Esta ação não pode ser desfeita.`, { titulo: 'Excluir contatos', okLabel: `Excluir ${sel.size}`, perigo: true }))) return
+    setExcluindo(true)
+    const r = await fetch(`/api/crm/contatos?ids=${Array.from(sel).join(',')}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    setExcluindo(false)
+    if (r?.ok) { toast(`${r.excluidos} contato(s) excluído(s).`, 'sucesso'); setSel(new Set()); onRecarregar() }
+    else toast('Falha ao excluir.', 'erro')
+  }
+
   if (contatos.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p></div>
+
+  const barraSel = sel.size > 0 && (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#111', color: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+      <span style={{ fontSize: 13, fontWeight: 700 }}>{sel.size} selecionado(s)</span>
+      {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? 'Excluindo...' : 'Excluir selecionados'}</button>}
+      <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: '#ddd', border: '1px solid #555', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Limpar seleção</button>
+    </div>
+  )
+
+  const toggleVista = (
+    <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, marginBottom: 12, width: 'fit-content' }}>
+      {([['lista', 'Lista'], ['cards', 'Cards']] as const).map(([v, l]) => (
+        <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+      ))}
+    </div>
+  )
+
+  if (vista === 'cards') {
+    return (
+      <div>
+        {toggleVista}
+        {barraSel}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+          {contatos.map(c => {
+            const nNeg = negocios.filter(n => n.contatoId === c.id).length
+            const marcado = sel.has(c.id)
+            return (
+              <div key={c.id} style={{ position: 'relative', background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: `1px solid ${marcado ? '#111' : '#eee'}`, cursor: 'pointer' }} onClick={() => onAbrir(c)}>
+                <input type="checkbox" checked={marcado} onClick={e => e.stopPropagation()} onChange={() => toggle(c.id)} style={{ position: 'absolute', top: 12, right: 12, width: 16, height: 16, cursor: 'pointer' }} />
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111', paddingRight: 22 }}>{c.nome}</p>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: '#888' }}>{empresaLabel(c)}</p>
+                {c.areaAtuacao && <p style={{ margin: '0 0 4px', fontSize: 11.5, color: '#7c3aed', fontWeight: 600 }}>{c.areaAtuacao}</p>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {c.telefone && <span style={{ fontSize: 12, color: '#555' }}>{c.telefone}</span>}
+                  {c.email && <span style={{ fontSize: 12, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
+                </div>
+                {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Vista LISTA (tabela) com seleção
+  const th: React.CSSProperties = { textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { fontSize: 13, color: '#333', padding: '10px 12px', borderTop: '1px solid #f2f2f2' }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-      {contatos.map(c => {
-        const nNeg = negocios.filter(n => n.contatoId === c.id).length
-        return (
-          <div key={c.id} onClick={() => onAbrir(c)} style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
-            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>{c.nome}</p>
-            {c.empresa && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#888' }}>{c.empresa}</p>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {c.telefone && <span style={{ fontSize: 12, color: '#555' }}>{c.telefone}</span>}
-              {c.email && <span style={{ fontSize: 12, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
-            </div>
-            {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
-          </div>
-        )
-      })}
+    <div>
+      {toggleVista}
+      {barraSel}
+      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, width: 40 }}><input type="checkbox" checked={todos} onChange={toggleTodos} style={{ width: 16, height: 16, cursor: 'pointer' }} title="Selecionar todos" /></th>
+              <th style={th}>Nome</th>
+              <th style={th}>Empresa</th>
+              <th style={th}>Área de atuação</th>
+              <th style={th}>Telefone</th>
+              <th style={th}>E-mail</th>
+              <th style={{ ...th, textAlign: 'center' }}>Neg.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {contatos.map(c => {
+              const nNeg = negocios.filter(n => n.contatoId === c.id).length
+              const marcado = sel.has(c.id)
+              return (
+                <tr key={c.id} style={{ background: marcado ? '#fffbeb' : '#fff', cursor: 'pointer' }} onClick={() => onAbrir(c)}>
+                  <td style={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={marcado} onChange={() => toggle(c.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} /></td>
+                  <td style={{ ...td, fontWeight: 700, color: '#111' }}>{c.nome}</td>
+                  <td style={td}>{empresaLabel(c)}</td>
+                  <td style={{ ...td, color: c.areaAtuacao ? '#7c3aed' : '#bbb' }}>{c.areaAtuacao || '—'}</td>
+                  <td style={td}>{c.telefone || '—'}</td>
+                  <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>{nNeg > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
 function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '' })
+  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '' })
   const [salvando, setSalvando] = useState(false)
   async function salvar() {
     if (!f.nome.trim()) return
@@ -499,8 +586,13 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { cont
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{contato ? 'Editar contato' : 'Novo contato'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+            <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+            Profissional Autônomo (sem empresa)
+          </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+            <div><label style={labelStyle}>Área de atuação</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder="Ex: Odontologia, Advocacia..." style={inputStyle} /></div>
             <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
             <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
@@ -518,26 +610,31 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { cont
 }
 
 function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; contatos: Contato[]; onClose: () => void; onSalvo: () => void }) {
-  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
+  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
   const [contatoId, setContatoId] = useState('')
+  const [buscaContato, setBuscaContato] = useState('') // pesquisa do contato pelo nome
   const [salvando, setSalvando] = useState(false)
   // #3 — responsavel: somente admins ou quem tem funcao de vendas
   const equipe = (usuarios || []).filter(u => u.role === 'admin' || u.role === 'vendas')
 
   const contatoSel = (contatos || []).find(c => c.id === contatoId)
-  // #2 — empresa obrigatoria na criacao da oportunidade (alem do contato)
-  const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && !!f.empresa.trim()
+  const buscaLc = buscaContato.trim().toLowerCase()
+  const contatosFiltrados = buscaLc
+    ? (contatos || []).filter(c => c.nome.toLowerCase().includes(buscaLc) || (c.empresa || '').toLowerCase().includes(buscaLc))
+    : (contatos || [])
+  // #2 — empresa obrigatoria na criacao da oportunidade, exceto profissional autonomo (alem do contato)
+  const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && (!!f.empresa.trim() || f.profissionalAutonomo)
 
   async function salvar() {
-    if (!valido) { toast('Preencha o contato e a empresa da oportunidade.', 'erro'); return }
+    if (!valido) { toast('Preencha o contato e a empresa (ou marque Profissional Autônomo).', 'erro'); return }
     setSalvando(true)
     // Define o contato: usa o existente ou cria um novo. O nome do contato é o nome da oportunidade.
     let idContato = contatoId
     let nomeNegocio = contatoSel?.nome || ''
     if (modoContato === 'novo') {
-      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.empresa }) }).then(r => r.json()).catch(() => null)
+      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.profissionalAutonomo ? '' : f.empresa, profissionalAutonomo: f.profissionalAutonomo }) }).then(r => r.json()).catch(() => null)
       idContato = c?.contato?.id || ''
       nomeNegocio = f.contatoNome.trim()
     }
@@ -567,10 +664,29 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
               ))}
             </div>
             {modoContato === 'existente' ? (
-              <select value={contatoId} onChange={e => { setContatoId(e.target.value); const ct = (contatos || []).find(c => c.id === e.target.value); if (ct?.empresa) setF(prev => ({ ...prev, empresa: ct.empresa! })) }} style={{ ...inputStyle, background: '#fff' }}>
-                <option value="">Selecione um contato...</option>
-                {(contatos || []).map(c => <option key={c.id} value={c.id}>{c.nome}{c.empresa ? ` — ${c.empresa}` : ''}</option>)}
-              </select>
+              contatoSel ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 9, padding: '9px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{contatoSel.nome}</p>
+                    {(contatoSel.empresa || contatoSel.profissionalAutonomo) && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#888' }}>{contatoSel.empresa || 'Autônomo'}</p>}
+                  </div>
+                  <button type="button" onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Trocar</button>
+                </div>
+              ) : (
+                <div>
+                  <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} autoFocus placeholder="Pesquisar contato pelo nome..." style={inputStyle} />
+                  <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #eee', borderRadius: 9, marginTop: 6 }}>
+                    {contatosFiltrados.length === 0 ? (
+                      <p style={{ margin: 0, padding: 12, fontSize: 12.5, color: '#888' }}>Nenhum contato encontrado.{buscaContato.trim() ? ' Use "Novo contato" para criar.' : ''}</p>
+                    ) : contatosFiltrados.slice(0, 50).map(c => (
+                      <button key={c.id} type="button" onClick={() => { setContatoId(c.id); setF(prev => ({ ...prev, empresa: c.empresa || '', profissionalAutonomo: !!c.profissionalAutonomo })) }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: '#fff', border: 'none', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', fontSize: 13 }}>
+                        <span style={{ fontWeight: 700, color: '#111' }}>{c.nome}</span>{c.empresa ? <span style={{ color: '#888' }}> — {c.empresa}</span> : c.profissionalAutonomo ? <span style={{ color: '#888' }}> — Autônomo</span> : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome do responsável" style={inputStyle} />
@@ -600,8 +716,12 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
 
           <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
           <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+            <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+            Profissional Autônomo (sem empresa)
+          </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Empresa *</label><input value={f.empresa} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder="Nome da empresa" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
             <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

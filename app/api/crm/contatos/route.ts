@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const autor = session.user?.name || ''
   const novo = (d: any): CrmContato => {
     const agora = new Date().toISOString()
-    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
   }
 
   // Criação em LOTE (adicionar vários / importar)
@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const contato = await redis.get<CrmContato>(`contato:${id}`)
   if (!contato) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'cargo', 'observacoes']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra
@@ -105,6 +105,15 @@ export async function DELETE(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  // Exclusão em massa: ?ids=a,b,c  (alem do ?id= individual)
+  const idsParam = req.nextUrl.searchParams.get('ids')
+  if (idsParam) {
+    const ids = idsParam.split(',').map(s => s.trim()).filter(Boolean)
+    if (!ids.length) return NextResponse.json({ error: 'ids obrigatório' }, { status: 400 })
+    for (const cid of ids) await redis.del(`contato:${cid}`)
+    await redis.srem('crm:contatos', ...(ids as [string, ...string[]]))
+    return NextResponse.json({ ok: true, excluidos: ids.length })
+  }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
   await redis.del(`contato:${id}`)

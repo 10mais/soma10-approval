@@ -442,6 +442,8 @@ export type CrmContato = {
   telefone?: string // WhatsApp — preparado para a integração oficial futura
   empresa?: string
   empresaId?: string // vínculo com a entidade Empresa
+  profissionalAutonomo?: boolean // PF sem empresa (autônomo) — dispensa vínculo com Empresa
+  areaAtuacao?: string // área/segmento de atuação do contato
   cargo?: string
   observacoes?: string
   criadoPor: string
