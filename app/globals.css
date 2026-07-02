@@ -1,0 +1,27 @@
+/* Comportamento "de app" (PWA instalada) — toques nativos que o web responsivo nao tem. */
+
+html,
+body {
+  -webkit-tap-highlight-color: transparent; /* sem flash azul ao tocar */
+}
+
+body {
+  overscroll-behavior-y: none; /* evita "puxar para atualizar" / bounce vertical */
+}
+
+/* Elementos de UI nao devem permitir selecao de texto acidental (parece app). */
+button,
+nav,
+aside,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Quando aberto como app instalado, sem bounce elastico. */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior: none;
+  }
+}

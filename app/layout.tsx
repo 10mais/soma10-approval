@@ -1,3 +1,4 @@
+import './globals.css'
 import { Providers } from './providers'
 import PushSetup from './components/PushSetup'
 import AssistenteIA from './components/AssistenteIA'
@@ -10,7 +11,7 @@ export const metadata = {
   icons: { apple: '/apple-touch-icon.png' },
 }
 
-export const viewport = { themeColor: '#111111' }
+export const viewport = { themeColor: '#111111', viewportFit: 'cover' as const, width: 'device-width', initialScale: 1 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -19,6 +19,14 @@ const NAV_ITEMS = [
   { key: '/analytics', label: 'Analytics', equipe: true },
 ]
 
+// Icones da barra inferior (mobile / cara de app)
+const ICON_PATH: Record<string, string> = {
+  inicio: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+  aprovacoes: 'M20 6 9 17l-5-5',
+  entregas: 'M21 8 12 3 3 8l9 5 9-5zM3 8v8l9 5 9-5V8',
+  menu: 'M3 6h18M3 12h18M3 18h18',
+}
+
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
   const params = useParams()
   const pathname = usePathname()
@@ -88,20 +96,15 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
   const asideBase: React.CSSProperties = { width: mobile ? 264 : 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box', padding: '20px 14px' }
   const asideStyle: React.CSSProperties = mobile
-    ? { ...asideBase, position: 'fixed', top: 56, left: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: menuAberto ? '2px 0 16px rgba(0,0,0,0.18)' : 'none' }
+    ? { ...asideBase, position: 'fixed', top: 'calc(56px + env(safe-area-inset-top))', left: 0, height: 'calc(100vh - 56px - env(safe-area-inset-top))', overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: menuAberto ? '2px 0 16px rgba(0,0,0,0.18)' : 'none' }
     : { ...asideBase, minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56 }
   const irPara = (href: string) => { router.push(href); if (mobile) setMenuAberto(false) }
 
   return (
     <div style={{ ['--marca' as any]: MARCA, ['--marca-texto' as any]: MARCA_TEXTO }}>
       {/* Header padrao da agencia (neutro) — igual para todos os clientes */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: mobile ? '0 12px' : '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 4 : 12 }}>
-          {mobile && (
-            <button onClick={() => setMenuAberto(o => !o)} aria-label="Menu" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-            </button>
-          )}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', paddingLeft: mobile ? 14 : 24, paddingRight: mobile ? 14 : 24, paddingTop: mobile ? 'env(safe-area-inset-top)' : 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, height: mobile ? undefined : 56, position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
             <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>{mobile ? 'Soma10' : 'Soma10 Approval'}</span>
@@ -148,7 +151,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
       {/* Backdrop do drawer no mobile */}
       {mobile && menuAberto && (
-        <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
+        <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 'calc(56px + env(safe-area-inset-top))', background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
       )}
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -220,10 +223,36 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </aside>
 
         {/* Conteudo */}
-        <main style={{ flex: 1, minWidth: 0, padding: mobile ? '16px 14px' : '24px 28px', width: mobile ? '100%' : undefined }}>
+        <main style={{ flex: 1, minWidth: 0, padding: mobile ? '16px 14px calc(78px + env(safe-area-inset-bottom))' : '24px 28px', width: mobile ? '100%' : undefined }}>
           {children}
         </main>
       </div>
+
+      {/* Barra de navegacao inferior (mobile / cara de app) */}
+      {mobile && (() => {
+        const itens = [
+          { key: '', label: 'Início', icon: 'inicio' },
+          { key: '/aprovacoes', label: 'Aprovar', icon: 'aprovacoes', perm: 'aprovacoes' },
+          { key: '/entregas', label: 'Entregas', icon: 'entregas', perm: 'entregas' },
+        ].filter(i => clientePode((i as any).perm))
+        const btn = (ativo: boolean, icon: string, label: string, onClick: () => void, badge?: number) => (
+          <button key={label} onClick={onClick} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? '#111' : '#9aa0a6', position: 'relative' }}>
+            <span style={{ position: 'relative', display: 'flex' }}>
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICON_PATH[icon]} /></svg>
+              {!!badge && badge > 0 && (
+                <span style={{ position: 'absolute', top: -5, right: -8, background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 800, padding: '0 4px' }}>{badge > 9 ? '9+' : badge}</span>
+              )}
+            </span>
+            <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{label}</span>
+          </button>
+        )
+        return (
+          <nav style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', alignItems: 'stretch', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
+            {itens.map(i => btn(subpath === i.key && !menuAberto, i.icon, i.label, () => irPara(`${basePath}${i.key}`), i.key === '/aprovacoes' ? pendentesAprov : undefined))}
+            {btn(menuAberto, 'menu', 'Menu', () => setMenuAberto(v => !v))}
+          </nav>
+        )
+      })()}
     </div>
   )
 }
