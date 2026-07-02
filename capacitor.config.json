@@ -1,0 +1,13 @@
+{
+  "appId": "br.com.soma10.approval",
+  "appName": "Soma10",
+  "webDir": "public",
+  "server": {
+    "url": "https://approval.soma10.com.br",
+    "cleartext": false
+  },
+  "backgroundColor": "#111111",
+  "ios": {
+    "contentInset": "always"
+  }
+}

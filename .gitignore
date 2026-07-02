@@ -5,3 +5,9 @@ node_modules
 data/pendentes/*.json
 clientes/*/. env
 tsconfig.tsbuildinfo
+
+# Capacitor — pastas nativas geradas por `cap add` (Xcode/Android Studio)
+/android
+/ios
+*.keystore
+*.p12
