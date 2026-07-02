@@ -7,7 +7,7 @@ type No = { id: string; texto: string; x: number; y: number; cor?: string }
 type Conexao = { id: string; de: string; para: string }
 type MapaMeta = { id: string; titulo: string; atualizadoEm: string; nosQtd?: number }
 
-const CORES = ['#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626', '#111827']
+const CORES = ['#ffc00f', '#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626']
 const LARG = 170, ALT = 46 // largura fixa do nó e altura aproximada (p/ centro das conexões)
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
@@ -360,6 +360,12 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
                       }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? '#fff' : '#222', background: 'transparent', minHeight: 30 }} rows={2} />
                   : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? '#fff' : (no.texto ? '#222' : '#bbb'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
+                {selecionado && !editando && (
+                  <button onPointerDown={e => e.stopPropagation()} onClick={() => addNo(no)} title="Adicionar nó filho"
+                    style={{ position: 'absolute', right: -13, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, borderRadius: '50%', background: '#fff', border: '1.5px solid #d0d0d5', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  </button>
+                )}
               </div>
             )
           })}

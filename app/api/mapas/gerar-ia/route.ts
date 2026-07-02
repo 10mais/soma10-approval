@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const CORES = ['#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626', '#111827']
+const CORES = ['#ffc00f', '#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626']
 const NW = 190, NH = 110
 
 type Raw = { texto?: string; filhos?: Raw[] }
