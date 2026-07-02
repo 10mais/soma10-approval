@@ -1,16 +1,20 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
+import RichText from './RichText'
 
 type Item = { id: string; texto: string; feito: boolean }
-type Nota = { id: string; texto: string; cor?: string }
+type Notepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string }
 
-// Paleta estilo post-it / Notas do iOS
-const CORES = ['#fff8b8', '#ffd8e4', '#cfe8ff', '#d6f5d6', '#ffe0b2', '#e9d5ff']
+// Texto puro a partir do HTML (para a prévia na lista)
+function textoDe(html: string) {
+  return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
+}
 
 export default function PersonalList() {
-  const [notas, setNotas] = useState<Nota[]>([])
+  const [notepads, setNotepads] = useState<Notepad[]>([])
   const [itens, setItens] = useState<Item[]>([])
+  const [abertoId, setAbertoId] = useState<string | null>(null)
   const [novo, setNovo] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [salvo, setSalvo] = useState<'idle' | 'salvando' | 'ok'>('idle')
@@ -20,11 +24,16 @@ export default function PersonalList() {
   useEffect(() => {
     fetch('/api/personal').then(r => r.json()).then(d => {
       if (d && !d.error) {
-        // Migra o rascunho antigo (texto único) para uma nota, se ainda não houver notas
-        const ns: Nota[] = Array.isArray(d.notas) && d.notas.length
-          ? d.notas
-          : (d.rascunho && d.rascunho.trim() ? [{ id: uuid(), texto: d.rascunho, cor: CORES[0] }] : [])
-        setNotas(ns)
+        let nps: Notepad[] = Array.isArray(d.notepads) ? d.notepads : []
+        // Migra dados antigos: notas post-it OU rascunho único viram notepads
+        if (!nps.length) {
+          if (Array.isArray(d.notas) && d.notas.length) {
+            nps = d.notas.map((n: any) => ({ id: uuid(), titulo: (String(n.texto || '').split('\n')[0] || '').slice(0, 60), conteudo: String(n.texto || ''), criadoEm: new Date().toISOString() }))
+          } else if (d.rascunho && String(d.rascunho).trim()) {
+            nps = [{ id: uuid(), titulo: 'Minhas anotações', conteudo: String(d.rascunho), criadoEm: new Date().toISOString() }]
+          }
+        }
+        setNotepads(nps)
         setItens(Array.isArray(d.itens) ? d.itens : [])
       }
       setCarregando(false); montado.current = true
@@ -37,17 +46,23 @@ export default function PersonalList() {
     setSalvo('salvando')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rascunho: '', notas, itens }) })
+      fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rascunho: '', notepads, itens }) })
         .then(() => { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500) })
         .catch(() => setSalvo('idle'))
     }, 700)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [notas, itens])
+  }, [notepads, itens])
 
   function addItem() { const t = novo.trim(); if (!t) return; setItens(a => [...a, { id: uuid(), texto: t, feito: false }]); setNovo('') }
-  function addNota() { setNotas(a => [{ id: uuid(), texto: '', cor: CORES[a.length % CORES.length] }, ...a]) }
-  const setNota = (id: string, patch: Partial<Nota>) => setNotas(a => a.map(n => n.id === id ? { ...n, ...patch } : n))
+  function novaNota() {
+    const id = uuid()
+    setNotepads(a => [{ id, titulo: '', conteudo: '', criadoEm: new Date().toISOString() }, ...a])
+    setAbertoId(id)
+  }
+  const patchNota = (id: string, patch: Partial<Notepad>) => setNotepads(a => a.map(n => n.id === id ? { ...n, ...patch, atualizadoEm: new Date().toISOString() } : n))
+  function excluirNota(id: string) { setNotepads(a => a.filter(n => n.id !== id)); if (abertoId === id) setAbertoId(null) }
 
+  const aberto = notepads.find(n => n.id === abertoId)
   const feitos = itens.filter(i => i.feito).length
 
   return (
@@ -61,32 +76,49 @@ export default function PersonalList() {
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
+      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : aberto ? (
+        /* EDITOR de um notepad */
+        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: '1px solid #f0f0f0' }}>
+            <button onClick={() => setAbertoId(null)} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', padding: 4 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota"
+              style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+            <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4 }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+            </button>
+          </div>
+          <div style={{ padding: 14 }}>
+            <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} placeholder="Escreva aqui… use a barra para negrito, cor e links." minHeight={280} />
+          </div>
+        </div>
+      ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* NOTAS (post-its) */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Notas</span>
-              <button onClick={addNota} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
+          {/* NOTEPADS */}
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid #f0f0f0' : 'none' }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Notepads</span>
+              <button onClick={novaNota} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
             </div>
-            {notas.length === 0 ? (
-              <div onClick={addNota} style={{ border: '2px dashed #e0e0e0', borderRadius: 14, padding: '28px 16px', textAlign: 'center', color: '#bbb', fontSize: 13, cursor: 'pointer' }}>
-                Nenhuma nota ainda. Clique para criar a primeira.
+            {notepads.length === 0 ? (
+              <div onClick={novaNota} style={{ padding: '34px 16px', textAlign: 'center', color: '#bbb', fontSize: 13, cursor: 'pointer' }}>
+                Nenhuma nota ainda. Clique em <b>+ Nova nota</b> para criar a primeira.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12, alignItems: 'start' }}>
-                {notas.map(n => (
-                  <div key={n.id} style={{ background: n.cor || CORES[0], borderRadius: 12, padding: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 150 }}>
-                    <textarea value={n.texto} onChange={e => setNota(n.id, { texto: e.target.value })} placeholder="Escreva sua nota…"
-                      style={{ flex: 1, minHeight: 96, border: 'none', background: 'transparent', resize: 'vertical', fontSize: 13.5, lineHeight: 1.5, fontFamily: 'inherit', color: '#3a3320', outline: 'none' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      {CORES.map(c => (
-                        <button key={c} onClick={() => setNota(n.id, { cor: c })} title="Cor" style={{ width: 15, height: 15, borderRadius: '50%', background: c, border: (n.cor || CORES[0]) === c ? '2px solid rgba(0,0,0,0.45)' : '1px solid rgba(0,0,0,0.12)', cursor: 'pointer', padding: 0 }} />
-                      ))}
-                      <button onClick={() => setNotas(a => a.filter(x => x.id !== n.id))} title="Excluir nota" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(0,0,0,0.35)', cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: 0 }}>×</button>
+              <div>
+                {notepads.map(n => {
+                  const previa = textoDe(n.conteudo)
+                  return (
+                    <div key={n.id} onClick={() => setAbertoId(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderTop: '1px solid #f6f6f6', cursor: 'pointer' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo.trim() || 'Sem título'}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previa || 'Nota vazia'}</p>
+                      </div>
+                      <button onClick={e => { e.stopPropagation(); excluirNota(n.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

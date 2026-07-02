@@ -10,9 +10,11 @@ export const runtime = 'nodejs'
 // Guardado em personal:{email} — sempre lido/escrito pela sessao, nunca por parametro.
 export type PersonalItem = { id: string; texto: string; feito: boolean }
 export type PersonalNota = { id: string; texto: string; cor?: string }
-export type PersonalData = { rascunho: string; notas?: PersonalNota[]; itens: PersonalItem[]; atualizadoEm?: string }
+// Notepad: documento com título e texto formatado (HTML), estilo ClickUp Notepad.
+export type PersonalNotepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string }
+export type PersonalData = { rascunho: string; notas?: PersonalNota[]; notepads?: PersonalNotepad[]; itens: PersonalItem[]; atualizadoEm?: string }
 
-const VAZIO: PersonalData = { rascunho: '', notas: [], itens: [] }
+const VAZIO: PersonalData = { rascunho: '', notas: [], notepads: [], itens: [] }
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -34,9 +36,13 @@ export async function PUT(req: NextRequest) {
   const notas: PersonalNota[] = Array.isArray(body.notas)
     ? body.notas.map((n: any) => ({ id: String(n.id), texto: String(n.texto || ''), cor: n.cor ? String(n.cor) : undefined }))
     : []
+  const notepads: PersonalNotepad[] = Array.isArray(body.notepads)
+    ? body.notepads.map((n: any) => ({ id: String(n.id), titulo: String(n.titulo || '').slice(0, 200), conteudo: String(n.conteudo || '').slice(0, 100000), criadoEm: n.criadoEm ? String(n.criadoEm) : undefined, atualizadoEm: n.atualizadoEm ? String(n.atualizadoEm) : undefined }))
+    : []
   const data: PersonalData = {
     rascunho: typeof body.rascunho === 'string' ? body.rascunho : '',
     notas,
+    notepads,
     itens,
     atualizadoEm: new Date().toISOString(),
   }
