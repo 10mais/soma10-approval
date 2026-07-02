@@ -67,6 +67,16 @@ export default function AssistenteIA() {
   const ehVendas = role === 'vendas'
 
   const [aberto, setAberto] = useState(false)
+  // No mobile o botao sobe acima da barra de navegacao inferior
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const apply = () => setMobile(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  const fabBottom = mobile ? 'calc(76px + env(safe-area-inset-bottom) + 12px)' : 20
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [carregando, setCarregando] = useState(false)
@@ -169,7 +179,7 @@ export default function AssistenteIA() {
           title="Assistente de IA"
           aria-label="Abrir assistente de IA"
           style={{
-            position: 'fixed', right: 20, bottom: 20, zIndex: 3500,
+            position: 'fixed', right: 20, bottom: fabBottom, zIndex: 3500,
             width: 56, height: 56, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: '#ffc00f', color: '#111',
             boxShadow: '0 8px 24px rgba(0,0,0,0.28)',

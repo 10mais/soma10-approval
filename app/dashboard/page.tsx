@@ -1849,8 +1849,27 @@ function Dashboard() {
           </button>
         )}
 
+        {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
+        {mobile && !ehCliente && (
+          <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
+            {[{ k: 'home', label: 'Início' }, { k: 'meu-dia', label: 'Meu dia' }, { k: 'mensagens', label: 'Mensagens' }].map(it => {
+              const ativo = aba === it.k && !menuMobile
+              return (
+                <button key={it.k} onClick={() => { setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? '#111' : '#9aa0a6' }}>
+                  <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONE_ABA[it.k] || ICONE_ABA.default} /></svg>
+                  <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{it.label}</span>
+                </button>
+              )
+            })}
+            <button onClick={() => setMenuMobile(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: menuMobile ? '#111' : '#9aa0a6' }}>
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+              <span style={{ fontSize: 10.5, fontWeight: menuMobile ? 700 : 500 }}>Menu</span>
+            </button>
+          </nav>
+        )}
+
         {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
-        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px 24px' : '70px 28px 28px' }}>
+        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px' }}>
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (

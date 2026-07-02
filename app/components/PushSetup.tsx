@@ -19,6 +19,16 @@ export default function PushSetup() {
   const [showAtivarPush, setShowAtivarPush] = useState(false)
   const [showIosDica, setShowIosDica] = useState(false)
   const [dispensado, setDispensado] = useState(false)
+  const [mobile, setMobile] = useState(false)
+
+  // No celular o card vira um banner acima da barra de navegacao inferior
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const apply = () => setMobile(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
 
   // Registra o service worker (necessario para PWA e push)
   useEffect(() => {
@@ -89,8 +99,13 @@ export default function PushSetup() {
   const temAlgo = canInstall || showAtivarPush || showIosDica
   if (!temAlgo) return null
 
+  // Mobile: banner acima da barra inferior (clear da safe-area). Desktop: card no canto.
+  const contStyle: React.CSSProperties = mobile
+    ? { position: 'fixed', left: 12, right: 12, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 4000, background: '#111', color: '#fff', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
+    : { position: 'fixed', right: 16, bottom: 16, zIndex: 4000, maxWidth: 300, background: '#111', color: '#fff', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
+
   return (
-    <div style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 4000, maxWidth: 300, background: '#111', color: '#fff', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }} className="soma10-no-invert">
+    <div style={contStyle} className="soma10-no-invert">
       <button onClick={dispensar} title="Dispensar" style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
       <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#ffc00f' }}>Soma10 no seu celular</p>
       {showIosDica && (
