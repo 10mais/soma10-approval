@@ -25,6 +25,7 @@ const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loa
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Agentes = dynamic(() => import('../components/Agentes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Documentos = dynamic(() => import('../components/Documentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const DashboardVendas = dynamic(() => import('../components/DashboardVendas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -156,6 +157,7 @@ const IconTrend = (p: any) => <Icon {...p}><path d="m23 6-9.5 9.5-5-5L1 18" /><p
 const ICONE_ABA: Record<string, string> = {
   agentes: 'M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   documentos: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2',
+  conversao: 'M3 3v18h18M18 9l-5 5-3-3-4 4',
   'meu-dia': 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM8 12l2.5 2.5L16 9',
   'lista-pessoal': 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12l2 2 4-4',
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
@@ -382,7 +384,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -771,7 +773,7 @@ function Dashboard() {
   // Vendas: papel isolado da operacao. So acessa CRM, Meu dia, Personal list,
   // Mensagens (direct) e a propria conta. Qualquer outra aba cai no CRM.
   const ehVendas = role === 'vendas'
-  const ABAS_VENDAS = ['crm', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
+  const ABAS_VENDAS = ['crm', 'conversao', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
   useEffect(() => {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
@@ -819,7 +821,7 @@ function Dashboard() {
   const renderPermissoes = (r: string, perm: any, onChange: (p: any) => void) => matrizNiveis(r, perm, onChange, 'usuario', 'Permissões deste usuário')
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
@@ -1768,6 +1770,7 @@ function Dashboard() {
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
               <NavBtn chave="crm" label="CRM" />
+              <NavBtn chave="conversao" label="Conversão & Retenção" />
               <NavBtn chave="meu-dia" label="Meu dia" />
               <NavBtn chave="lista-pessoal" label="Personal list" />
               <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
@@ -1781,7 +1784,7 @@ function Dashboard() {
                 { titulo: '', grupo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['documentos', 'Documentos'], ['home', 'Painel']] },
                 { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
-                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM']] },
+                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -3786,6 +3789,10 @@ function Dashboard() {
 
         {aba === 'documentos' && role !== 'cliente' && (
           <Documentos />
+        )}
+
+        {aba === 'conversao' && (role === 'admin' || role === 'gerente' || role === 'vendas') && (
+          <DashboardVendas />
         )}
 
         {/* MEU DIA (equipe) */}
