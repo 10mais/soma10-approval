@@ -144,6 +144,20 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [zoom, pan])
+
+  // Atalhos: ENTER = irmão · TAB = filho (nó selecionado, fora de campos de texto)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!selId || editId) return
+      const tag = (document.activeElement?.tagName || '').toLowerCase()
+      if (tag === 'input' || tag === 'textarea') return
+      const no = nos.find(n => n.id === selId); if (!no) return
+      if (e.key === 'Enter') { e.preventDefault(); criarIrmao(no) }
+      else if (e.key === 'Tab') { e.preventDefault(); criarFilho(no) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selId, editId, nos, conexoes])
   function zoomBotao(fator: number) {
     const r = canvasRef.current!.getBoundingClientRect()
     const cx = r.width / 2, cy = r.height / 2
@@ -158,6 +172,16 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       ? { id: nid, texto: '', x: base.x + 210, y: base.y + Math.round(Math.random() * 100 - 50), cor: base.cor }
       : { id: nid, texto: '', x: (-pan.x + 150) / zoom, y: (-pan.y + 150) / zoom, cor: CORES[0] }
     setNos(ns => [...ns, novo]); if (base) criarConexao(base.id, nid)
+    setSelId(nid); setEditId(nid)
+  }
+  // TAB = filho (nó ligado a partir do selecionado)
+  const criarFilho = (no: No) => addNo(no)
+  // ENTER = irmão (nó ligado ao MESMO pai do selecionado)
+  function criarIrmao(no: No) {
+    const conPai = conexoes.find(c => c.para === no.id)
+    const nid = uuid()
+    setNos(ns => [...ns, { id: nid, texto: '', x: no.x, y: no.y + ALT + 24, cor: no.cor }])
+    if (conPai) criarConexao(conPai.de, nid)
     setSelId(nid); setEditId(nid)
   }
   function excluirNo(nid: string) {
@@ -219,6 +243,10 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />
                 {editando
                   ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => setEditId(null)} placeholder="Ideia…"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditId(null); criarIrmao(no) }
+                        else if (e.key === 'Tab') { e.preventDefault(); setEditId(null); criarFilho(no) }
+                      }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 12.5, lineHeight: 1.35, fontFamily: 'inherit', color: '#222', background: 'transparent', minHeight: 30 }} rows={2} />
                   : <span style={{ flex: 1, fontSize: 12.5, lineHeight: 1.35, color: no.texto ? '#222' : '#bbb', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || 'Ideia…'}</span>}
               </div>
@@ -258,7 +286,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós livremente · role para zoom · arraste o fundo para mover · duplo-clique edita o texto · clique num nó para a barra de ações.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · arraste o fundo para mover · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria um irmão, <b style={{ color: '#999' }}>Tab</b> cria um filho.</p>
     </div>
   )
 }
