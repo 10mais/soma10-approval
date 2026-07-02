@@ -421,6 +421,8 @@ function Dashboard() {
 
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
+  // Hub de Configurações em abas
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes'>('geral')
   const [configMsg, setConfigMsg] = useState('')
   const [enviandoLogoAgencia, setEnviandoLogoAgencia] = useState(false)
   const [saldoIA, setSaldoIA] = useState<{ saldo: number; limite: number; alertado?: boolean }>({ saldo: 0, limite: 1 })
@@ -3866,21 +3868,36 @@ function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
             <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Configurações</h2>
 
-            {/* Configurações operacionais (admin) */}
+            {/* Hub de configurações — abas */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações']] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid #111' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
+              ))}
+              <span style={{ width: 1, height: 20, background: '#e5e5e5', margin: '0 6px' }} />
+              {([['clientes', 'Clientes'], ['usuarios', 'Colaboradores'], ['automacoes', 'Automações']] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setAba(k as any)} title={`Abrir ${l}`} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#888', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
+                  {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
+                </button>
+              ))}
+            </div>
+
+            {abaConfig === 'operacional' && (
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Operacional</h3>
               <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Prazos e padrões do dia a dia (antes fixos no sistema).</p>
               <OperacionalConfig />
             </div>
+            )}
 
-            {/* Notificações do sistema (admin) */}
+            {abaConfig === 'notificacoes' && (
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações do sistema</h3>
               <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
               <NotificacoesConfig modo="admin" />
             </div>
+            )}
 
-            {/* Aparência — modo claro/escuro */}
+            {abaConfig === 'geral' && (<>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Aparência</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Escolha como o painel é exibido para você neste navegador.</p>
@@ -4004,7 +4021,9 @@ function Dashboard() {
               )}
             </div>
 
-            {/* Integrações */}
+            </>)}
+
+            {abaConfig === 'integracoes' && (<>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Integrações</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Status das conexões usadas pelo sistema.</p>
@@ -4082,7 +4101,9 @@ function Dashboard() {
               )}
             </div>
 
-            {/* Notificações */}
+            </>)}
+
+            {abaConfig === 'notificacoes' && (
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações por e-mail</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>
@@ -4096,10 +4117,7 @@ function Dashboard() {
                 <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
               </div>
             </div>
-
-            <p style={{ margin: 0, fontSize: 12, color: '#bbb', textAlign: 'center' }}>
-              Para editar ou remover clientes e colaboradores, use as abas <strong>Clientes</strong> e <strong>Usuários</strong> — agora com botões de Editar/Excluir em cada item.
-            </p>
+            )}
           </div>
         )}
         </div>
