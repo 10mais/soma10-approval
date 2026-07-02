@@ -71,6 +71,9 @@ export default function MinhaConta() {
 
   if (!perfil) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
 
+  // Cliente ve uma conta enxuta (sem campos internos da equipe: cargo, bio, nivel de acesso).
+  const ehCliente = perfil.role === 'cliente'
+
   return (
     <div style={{ maxWidth: 760 }}>
       <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configuracoes da conta</p>
@@ -80,7 +83,7 @@ export default function MinhaConta() {
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Meu perfil</h3>
-          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Informacoes visiveis para sua equipe e clientes.</p>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>{ehCliente ? 'Seus dados de acesso ao portal.' : 'Informacoes visiveis para sua equipe e clientes.'}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16 }}>
@@ -110,16 +113,20 @@ export default function MinhaConta() {
               {progFoto !== null && <div style={{ width: 140 }}><UploadProgress valor={progFoto} rotulo="Enviando foto..." /></div>}
             </div>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Funcao / Cargo</label>
-            <input value={perfil.cargo || ''} onChange={e => setPerfil((p: any) => ({ ...p, cargo: e.target.value }))} placeholder="Ex.: Social Media, Designer, Gestor..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Biografia</label>
-            <textarea value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre voce..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-          </div>
+          {!ehCliente && (
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Funcao / Cargo</label>
+              <input value={perfil.cargo || ''} onChange={e => setPerfil((p: any) => ({ ...p, cargo: e.target.value }))} placeholder="Ex.: Social Media, Designer, Gestor..."
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+          )}
+          {!ehCliente && (
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Biografia</label>
+              <textarea value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre voce..."
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={salvarPerfil} disabled={salvando} style={{ padding: '10px 24px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', opacity: salvando ? 0.6 : 1 }}>
               {salvando ? 'Salvando...' : 'Salvar perfil'}
@@ -195,10 +202,12 @@ export default function MinhaConta() {
             <span style={{ fontSize: 12, fontWeight: 700, color: '#888', width: 100 }}>Email</span>
             <span style={{ fontSize: 13, color: '#111' }}>{perfil.email}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#888', width: 100 }}>Nivel de acesso</span>
-            <span style={{ fontSize: 12, fontWeight: 700, background: '#f0f0f0', borderRadius: 999, padding: '2px 10px', color: '#333' }}>{perfil.role}</span>
-          </div>
+          {!ehCliente && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#888', width: 100 }}>Nivel de acesso</span>
+              <span style={{ fontSize: 12, fontWeight: 700, background: '#f0f0f0', borderRadius: 999, padding: '2px 10px', color: '#333' }}>{perfil.role}</span>
+            </div>
+          )}
         </div>
       </div>
 
