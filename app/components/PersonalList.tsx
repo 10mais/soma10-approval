@@ -76,24 +76,7 @@ export default function PersonalList() {
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : aberto ? (
-        /* EDITOR de um notepad */
-        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderBottom: '1px solid #f0f0f0' }}>
-            <button onClick={() => setAbertoId(null)} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', padding: 4 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-            </button>
-            <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota"
-              style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
-            <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4 }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
-            </button>
-          </div>
-          <div style={{ padding: 14 }}>
-            <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} placeholder="Escreva aqui… use a barra para negrito, cor e links." minHeight={280} />
-          </div>
-        </div>
-      ) : (
+      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* NOTEPADS */}
           <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
@@ -143,6 +126,27 @@ export default function PersonalList() {
                   <button onClick={() => setItens(arr => arr.filter(x => x.id !== it.id))} title="Remover" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editor do notepad em MODAL */}
+      {aberto && (
+        <div onClick={() => setAbertoId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+              <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota" autoFocus
+                style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+              {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
+              {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
+              <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+              </button>
+              <button onClick={() => setAbertoId(null)} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+            </div>
+            <div style={{ padding: 16, overflowY: 'auto' }}>
+              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} placeholder="Escreva aqui… use a barra para negrito, cor e links." minHeight={320} />
             </div>
           </div>
         </div>
