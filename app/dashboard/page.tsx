@@ -9,6 +9,7 @@ import ConectarRedesModal from '../components/ConectarRedesModal'
 import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
+import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Esteira = dynamic(() => import('../components/Esteira'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -739,57 +740,59 @@ function Dashboard() {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
 
-  // Permissões por papel (refina o que Gerente/Usuário veem). Admin = tudo. Financeiro só admin.
-  const PADRAO_PAPEL: Record<string, Record<string, boolean>> = {
-    gerente: { producao: true, estrategia: true, crm: true, clientes: false },
-    usuario: { producao: true, estrategia: false, crm: false, clientes: false },
-  }
+  // Permissões por papel/usuário com 3 níveis (Ver/Editar/Excluir). Admin=tudo, Financeiro só admin.
   const minhasPermissoes = (session?.user as any)?.permissoes || {}
-  const padraoPapel = (r: string, g: string) => permPapel[r]?.[g] ?? PADRAO_PAPEL[r]?.[g] ?? false
-  // Caixinhas de permissão por usuário (só p/ gerente e usuario; admin=tudo, vendas/cliente=próprio)
-  const MODULOS_PERM: [string, string][] = [['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['clientes', 'Clientes']]
-  function renderPermissoes(r: string, perm: any, onChange: (p: any) => void) {
+  const podeNivelDash = (grupo: string, nivel: 'ver' | 'editar' | 'excluir' = 'ver') =>
+    podeNivel(role, grupo as any, nivel, minhasPermissoes, permPapel as any)
+  const podeGrupo = (grupo: string) => podeNivelDash(grupo, 'ver')
+
+  // Matriz de níveis reutilizável. contexto 'usuario' edita o override do usuário;
+  // 'papel' edita a config do papel (permPapel).
+  function matrizNiveis(r: string, perm: any, onChange: (p: any) => void, contexto: 'usuario' | 'papel', titulo: string) {
     if (r !== 'gerente' && r !== 'usuario') return null
+    const efetivo = (g: string, n: 'ver' | 'editar' | 'excluir') =>
+      contexto === 'usuario' ? podeNivel(r, g as any, n, perm, permPapel as any) : podeNivel(r, g as any, n, undefined, { [r]: perm } as any)
+    const setNivel = (g: string, n: 'ver' | 'editar' | 'excluir', valor: boolean) =>
+      onChange({ ...(perm || {}), [g]: { ...normalizaNivel(perm?.[g]), [n]: valor } })
     return (
       <div style={{ width: '100%', marginTop: 4, background: '#fafafa', borderRadius: 10, padding: 12 }}>
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões deste usuário</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {MODULOS_PERM.map(([k, label]) => {
-            const on = (perm && perm[k] !== undefined) ? !!perm[k] : padraoPapel(r, k)
-            return (
-              <button key={k} type="button" onClick={() => onChange({ ...(perm || {}), [k]: !on })}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 8, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#f0fdf4' : '#fff', color: on ? '#16a34a' : '#999', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-                <span style={{ width: 16, height: 16, borderRadius: 4, border: on ? 'none' : '1.5px solid #ccc', background: on ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, lineHeight: 1 }}>{on ? '✓' : ''}</span>
-                {label}
-              </button>
-            )
-          })}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo}</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 6, columnGap: 12, alignItems: 'center' }}>
+          <span />
+          <div style={{ display: 'flex', gap: 6 }}>{PERM_NIVEIS.map(n => <span key={n.chave} style={{ width: 52, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#aaa' }}>{n.label}</span>)}</div>
+          {PERM_GRUPOS.map(g => (
+            <div key={g.chave} style={{ display: 'contents' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: '#333' }}>{g.label}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {PERM_NIVEIS.map(n => {
+                  const on = efetivo(g.chave, n.chave)
+                  return (
+                    <button key={n.chave} type="button" onClick={() => setNivel(g.chave, n.chave, !on)}
+                      style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#16a34a' : '#fff', color: on ? '#fff' : '#bbb', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>Começa no padrão do papel; ajuste clicando. O Financeiro é exclusivo do admin.</p>
       </div>
     )
   }
-  const podeGrupo = (grupo: string) => {
-    if (role === 'admin') return true
-    if (grupo === 'financeiro') return false // exclusivo do admin
-    if (role === 'gerente' || role === 'usuario') {
-      // Override por usuário tem prioridade; senão, o padrão do papel
-      if (minhasPermissoes[grupo] !== undefined) return !!minhasPermissoes[grupo]
-      return padraoPapel(role, grupo)
-    }
-    return false
-  }
-  // Mapa aba -> grupo (para esconder e proteger o acesso direto via sessionStorage)
+  // Usado nos forms de criar/editar usuário (override do próprio usuário)
+  const renderPermissoes = (r: string, perm: any, onChange: (p: any) => void) => matrizNiveis(r, perm, onChange, 'usuario', 'Permissões deste usuário')
+
+  // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
   const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
     if (g && !podeGrupo(g)) setAba('home')
   }, [role, aba, permPapel])
-  async function togglePerm(papel: 'gerente' | 'usuario', grupo: string) {
-    const novoVal = !(permPapel[papel]?.[grupo] ?? PADRAO_PAPEL[papel]?.[grupo] ?? false)
-    setPermPapel(p => ({ ...p, [papel]: { ...(p[papel] || {}), [grupo]: novoVal } }))
-    await fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [papel]: { [grupo]: novoVal } }) }).catch(() => {})
+  // Config por papel (matriz na tela Colaboradores): salva o nível alterado
+  function setPermPapelNivel(papel: 'gerente' | 'usuario', novoPerm: any) {
+    setPermPapel(p => ({ ...p, [papel]: novoPerm }))
+    fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [papel]: novoPerm }) }).catch(() => {})
   }
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
@@ -3490,24 +3493,15 @@ function Dashboard() {
           <div>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Colaboradores</h2>
 
-            {/* Permissões por papel — refina o que Gerente e Usuário acessam */}
+            {/* Permissões por papel — padrão do papel (Ver/Editar/Excluir por módulo) */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: 0, fontSize: 15 }}>Permissões por papel</h3>
-              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>O que cada papel acessa no menu. <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b> e <b>Cliente</b> têm acesso próprio. O <b>Financeiro é exclusivo do admin</b>.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>Padrão de cada papel por módulo (Ver / Editar / Excluir). <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b>/<b>Cliente</b> têm acesso próprio. Cada usuário pode ter ajuste individual no cadastro.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(['gerente', 'usuario'] as const).map(papel => (
-                  <div key={papel} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111', width: 78 }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
-                    {([['producao', 'Produção'], ['estrategia', 'Estratégia'], ['crm', 'Vendas (CRM)'], ['clientes', 'Clientes']] as [string, string][]).map(([g, label]) => {
-                      const ligado = (permPapel[papel]?.[g] ?? PADRAO_PAPEL[papel]?.[g] ?? false)
-                      return (
-                        <button key={g} onClick={() => togglePerm(papel, g)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
-                          {label}
-                        </button>
-                      )
-                    })}
+                  <div key={papel}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    {matrizNiveis(papel, permPapel[papel] || {}, (novoPerm: any) => setPermPapelNivel(papel, novoPerm), 'papel', '')}
                   </div>
                 ))}
               </div>

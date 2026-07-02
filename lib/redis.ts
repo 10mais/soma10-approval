@@ -18,7 +18,8 @@ export type Usuario = {
   cargo?: string
   funcaoVendas?: 'sdr' | 'closer' // sub-funcao do papel 'vendas' (SDR/BDR ou Closer)
   // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
-  permissoes?: { producao?: boolean; estrategia?: boolean; crm?: boolean; clientes?: boolean }
+  // Cada módulo aceita boolean (formato antigo) ou { ver, editar, excluir } (novo, 3 níveis).
+  permissoes?: Record<'producao' | 'estrategia' | 'crm' | 'clientes', boolean | { ver?: boolean; editar?: boolean; excluir?: boolean }> | Partial<Record<string, any>>
   foto?: string
   telefone?: string
   bio?: string
