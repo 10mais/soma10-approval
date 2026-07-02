@@ -515,6 +515,19 @@ export type CrmNegocio = {
   atualizadoEm: string
 }
 
+// Mapa mental (nós + conexões). Chave `mapa:{id}`, índice `mapas`.
+export type MapaNo = { id: string; texto: string; x: number; y: number; cor?: string }
+export type MapaConexao = { id: string; de: string; para: string }
+export type MapaMental = {
+  id: string
+  titulo: string
+  nos: MapaNo[]
+  conexoes: MapaConexao[]
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 // Documento interno (tipo Google Docs da equipe). Chave `documento:{id}`, índice `documentos`.
 export type Documento = {
   id: string
