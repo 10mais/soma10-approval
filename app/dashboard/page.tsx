@@ -7,6 +7,7 @@ import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import UploadProgress from '../components/UploadProgress'
+import NotificacoesConfig from '../components/NotificacoesConfig'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Esteira = dynamic(() => import('../components/Esteira'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -3823,6 +3824,13 @@ function Dashboard() {
         {aba === 'config' && role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
             <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Configurações</h2>
+
+            {/* Notificações do sistema (admin) */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações do sistema</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
+              <NotificacoesConfig modo="admin" />
+            </div>
 
             {/* Aparência — modo claro/escuro */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>

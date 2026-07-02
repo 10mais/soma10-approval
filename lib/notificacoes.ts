@@ -9,8 +9,25 @@ function urlDaNotificacao(tipo: TipoNotificacao): string {
   return '/dashboard'
 }
 
+// Preferências: admin desliga tipos globalmente; usuário silencia os seus + canal push.
+export type NotifConfig = { desabilitados?: string[] }
+export type NotifPrefs = { mutados?: string[]; pushDesligado?: boolean }
+export async function getNotifConfig(): Promise<NotifConfig> {
+  return (await redis.get<NotifConfig>('config:notificacoes')) || {}
+}
+export async function getNotifPrefs(email: string): Promise<NotifPrefs> {
+  return (await redis.get<NotifPrefs>(`notif:prefs:${email}`)) || {}
+}
+
 // Cria uma notificação para um destinatário específico (e-mail de usuário)
 export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string, tarefaId?: string) {
+  // Admin desligou este tipo globalmente? Não gera para ninguém.
+  const cfg = await getNotifConfig().catch(() => ({} as NotifConfig))
+  if (cfg.desabilitados?.includes(tipo)) return null
+  // Usuário silenciou este tipo? Não gera para ele.
+  const prefs = await getNotifPrefs(destinatarioEmail).catch(() => ({} as NotifPrefs))
+  if (prefs.mutados?.includes(tipo)) return null
+
   const notificacao: Notificacao = {
     id: uuid(),
     destinatarioEmail,
@@ -24,8 +41,10 @@ export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao
   }
   await redis.set(`notificacao:${notificacao.id}`, notificacao)
   await redis.sadd(`notificacoes:${destinatarioEmail}`, notificacao.id)
-  // Push (best-effort): não bloqueia nem quebra a criação da notificação
-  enviarPush(destinatarioEmail, { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }).catch(() => {})
+  // Push (best-effort): só se o usuário não desligou o canal push
+  if (!prefs.pushDesligado) {
+    enviarPush(destinatarioEmail, { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }).catch(() => {})
+  }
   return notificacao
 }
 

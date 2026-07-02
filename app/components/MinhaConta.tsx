@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import UploadProgress from './UploadProgress'
+import NotificacoesConfig from './NotificacoesConfig'
 
 const FUSOS = [
   { value: 'America/Sao_Paulo', label: '(GMT-03:00) Brasilia' },
@@ -198,6 +199,17 @@ export default function MinhaConta() {
             <span style={{ fontSize: 12, fontWeight: 700, color: '#888', width: 100 }}>Nivel de acesso</span>
             <span style={{ fontSize: 12, fontWeight: 700, background: '#f0f0f0', borderRadius: 999, padding: '2px 10px', color: '#333' }}>{perfil.role}</span>
           </div>
+        </div>
+      </div>
+
+      {/* MINHAS NOTIFICACOES */}
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 24 }}>
+        <div style={{ flex: '0 0 220px' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Minhas notificações</h3>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Escolha o que você quer receber. Ligado = você recebe.</p>
+        </div>
+        <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <NotificacoesConfig modo="usuario" />
         </div>
       </div>
     </div>
