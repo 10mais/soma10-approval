@@ -10,10 +10,12 @@ export async function GET(req: NextRequest) {
 
   const agora = Date.now()
   const UM_DIA = 24 * 60 * 60 * 1000
+  const { getOperacional } = await import('@/lib/operacional')
+  const slaMs = (await getOperacional()).slaAprovacaoHoras * 60 * 60 * 1000
   let aprovacoes = 0
   let renovacoes = 0
 
-  // ---- 1) SLA de aprovacao (24h) ----
+  // ---- 1) SLA de aprovacao (configuravel) ----
   const postIds = await redis.smembers('posts')
   const posts = postIds.length > 0 ? ((await redis.mget<(Post | null)[]>(...postIds.map(id => `post:${id}`))).filter(Boolean) as Post[]) : []
   const emAprovacao = posts.filter(p => (p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo') && p.aguardandoDesde)
@@ -30,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   for (const p of emAprovacao) {
     const espera = agora - new Date(p.aguardandoDesde!).getTime()
-    if (espera < UM_DIA) continue
+    if (espera < slaMs) continue
     const chave = `aprov_atraso:${p.id}`
     if (await redis.get(chave)) continue
 

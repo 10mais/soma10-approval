@@ -247,6 +247,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [excluidas, setExcluidas] = useState<Tarefa[]>([])
   const [view, setView] = useState<'kanban' | 'lista'>('kanban')
   const [mostrarLixeira, setMostrarLixeira] = useState(false)
+  const [lixeiraDias, setLixeiraDias] = useState(30)
+  useEffect(() => { fetch('/api/operacional').then(r => r.json()).then(d => { if (d?.lixeiraDias) setLixeiraDias(Number(d.lixeiraDias)) }).catch(() => {}) }, [])
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -346,8 +348,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   }
 
   function diasRestantes(excluidoEm?: string) {
-    if (!excluidoEm) return 30
-    const diff = 30 - Math.floor((Date.now() - new Date(excluidoEm).getTime()) / (1000 * 60 * 60 * 24))
+    if (!excluidoEm) return lixeiraDias
+    const diff = lixeiraDias - Math.floor((Date.now() - new Date(excluidoEm).getTime()) / (1000 * 60 * 60 * 24))
     return Math.max(0, diff)
   }
 

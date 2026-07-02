@@ -15,6 +15,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [gerenciarContas, setGerenciarContas] = useState(false)
   const [salvandoContas, setSalvandoContas] = useState(false)
   const [periodoFluxo, setPeriodoFluxo] = useState(6) // meses no gráfico de fluxo de caixa
+  const [saudeDias, setSaudeDias] = useState(60) // meta da Saúde do Caixa (configurável)
   const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string }[]>([])
   const [lTipo, setLTipo] = useState<'entrada' | 'saida'>('saida')
   const [lDesc, setLDesc] = useState('')
@@ -42,6 +43,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [salvandoD, setSalvandoD] = useState(false)
 
   useEffect(() => {
+    fetch('/api/operacional').then(r => r.json()).then(d => { if (d?.saudeDias) setSaudeDias(Number(d.saudeDias)) }).catch(() => {})
     Promise.all([
       fetch('/api/tarefas').then(r => r.json()).catch(() => []),
       fetch('/api/despesas').then(r => r.json()).catch(() => []),
@@ -129,7 +131,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     return soma / 2
   }, [despesas, mesesUlt2])
   const despOpMensal = folha + despMediaMensal // despesa operacional mensal (folha + despesas)
-  const reserva60 = despOpMensal * 2
+  const reserva60 = despOpMensal * (saudeDias / 30) // reserva para a meta de dias
   const saudeCaixa = reserva60 > 0 ? (saldoContas / reserva60) * 100 : null
   const corSaude = saudeCaixa === null ? '#999' : saudeCaixa >= 80 ? '#16a34a' : saudeCaixa >= 50 ? '#f59e0b' : '#dc2626'
   // Contagiro (medidor de ponteiro) da Saúde do Caixa
@@ -267,14 +269,14 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
               <div style={{ flex: 1, minWidth: 180 }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Saúde do Caixa</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999' }}>
-                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : ocultar ? 'Valores ocultos (clique no olho para mostrar).' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * 60)} dias de operação sem nenhuma receita. Meta: 60 dias (100%).`}
+                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : ocultar ? 'Valores ocultos (clique no olho para mostrar).' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * saudeDias)} dias de operação sem nenhuma receita. Meta: ${saudeDias} dias (100%).`}
                 </p>
               </div>
               {/* Composição */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: '#666', minWidth: 200 }}>
                 <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Saldo em contas <strong style={{ color: '#111' }}>{brl(saldoContas)}</strong></span>
                 <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Despesa op. mensal <strong style={{ color: '#dc2626' }}>{brl(despOpMensal)}</strong></span>
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Reserva p/ 60 dias <strong style={{ color: '#111' }}>{brl(reserva60)}</strong></span>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Reserva p/ {saudeDias} dias <strong style={{ color: '#111' }}>{brl(reserva60)}</strong></span>
                 <button onClick={() => setGerenciarContas(v => !v)} style={{ alignSelf: 'flex-start', marginTop: 2, background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{gerenciarContas ? 'Fechar' : 'Gerenciar contas bancárias'}</button>
               </div>
             </div>

@@ -64,13 +64,15 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const agora = new Date().toISOString()
+  const { getOperacional } = await import('@/lib/operacional')
+  const prioridadePadrao = (await getOperacional()).prioridadePadrao
   const tarefa: Tarefa = {
     id: uuid(),
     titulo: body.titulo || 'Nova tarefa',
     descricao: body.descricao || '',
     tipo: body.tipo || 'tarefa',
     status: body.status || 'a_fazer',
-    prioridade: body.prioridade || 'media',
+    prioridade: body.prioridade || prioridadePadrao,
     responsavelEmail: body.responsavelEmail || '',
     responsavelNome: body.responsavelNome || '',
     clienteId: body.clienteId || '',
