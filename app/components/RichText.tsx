@@ -52,10 +52,10 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
     emit()
   }
 
-  // Ctrl/Cmd+clique abre o link (no modo edição o clique normal posiciona o cursor)
+  // Clique num link abre em nova aba (dentro do editor o navegador não navega sozinho)
   function onClick(e: React.MouseEvent) {
     const a = (e.target as HTMLElement).closest('a')
-    if (a && (e.metaKey || e.ctrlKey)) { e.preventDefault(); window.open(a.getAttribute('href') || '', '_blank') }
+    if (a) { e.preventDefault(); window.open(a.getAttribute('href') || '', '_blank', 'noopener,noreferrer') }
   }
 
   const Btn = ({ onClick: oc, title, children, ativo }: any) => (
@@ -95,7 +95,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
         onInput={emit}
         onPaste={onPaste}
         onClick={onClick}
-        title="Ctrl/Cmd + clique para abrir um link"
+        title="Clique num link para abrir em nova aba"
         style={{ minHeight, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, outline: 'none', color: '#222', fontFamily: 'inherit', wordBreak: 'break-word' }}
       />
     </div>
