@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Cliente, ConfigAgencia } from '@/lib/redis'
+import { redis, Cliente, ConfigAgencia, Agente } from '@/lib/redis'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { ferramentasPara, executarFerramenta } from '@/lib/assistenteTools'
 import Anthropic from '@anthropic-ai/sdk'
@@ -47,7 +47,29 @@ export async function POST(req: NextRequest) {
   let system: string
   let usarWebSearch = false
 
-  if (ehVendas) {
+  // Agente treinado selecionado (Fase 1: conversa + leitura). Se houver, sua persona assume.
+  const agenteId = typeof body?.agenteId === 'string' ? body.agenteId : ''
+  let agente: Agente | null = agenteId ? await redis.get<Agente>(`agente:${agenteId}`).catch(() => null) : null
+  if (agente && agente.ativo === false) agente = null
+
+  if (agente) {
+    let listaClientes = ''
+    try {
+      const ids = await redis.smembers('clientes')
+      const cls = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
+      listaClientes = cls.filter(c => c.tipo !== 'interno').map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`).join('\n')
+    } catch { /* opcional */ }
+    usarWebSearch = (agente.ferramentas || []).includes('web_search')
+    system = `Voce e "${agente.nome}"${agente.funcao ? `, ${agente.funcao}` : ''} da ${nomeAgencia}, uma agencia de marketing digital. Voce atua dentro do sistema Soma10 e conversa com a EQUIPE da agencia (nunca com clientes finais).
+
+Voce esta falando com ${usuario?.name || 'um membro da equipe'}${usuario?.cargo ? `, ${usuario.cargo}` : ''} (papel: ${role}).
+
+${agente.instrucoes || ''}
+
+${listaClientes ? `Clientes ativos da agencia (use como referencia quando o usuario citar um cliente pelo nome):\n${listaClientes}` : ''}
+
+Regras gerais: responda SEMPRE em portugues do Brasil; seja direto, pratico e acionavel; use Markdown quando ajudar a organizar. Voce so LE dados do sistema (nao executa acoes nem altera nada).`
+  } else if (ehVendas) {
     // Assistente de VENDAS: so fala de vendas/funil, navega o pipeline interno e
     // pesquisa sobre vendas na web. Injeta um resumo do CRM como contexto.
     usarWebSearch = true
@@ -136,8 +158,10 @@ Regras de estilo:
   const client = new Anthropic({ apiKey: KEY })
   const encoder = new TextEncoder()
 
-  // Ferramentas de leitura do banco (so para a equipe nao-vendas; vendas usa web search)
-  const ferramentasDB = ehVendas ? [] : ferramentasPara(role)
+  // Ferramentas de leitura do banco. Com agente: só as que ele tem habilitadas (respeitando o papel).
+  const ferramentasDB = agente
+    ? ferramentasPara(role).filter(t => (agente!.ferramentas || []).includes(t.name))
+    : (ehVendas ? [] : ferramentasPara(role))
   const tools: any[] = [
     ...(usarWebSearch ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }] : []),
     ...ferramentasDB,

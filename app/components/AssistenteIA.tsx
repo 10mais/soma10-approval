@@ -82,6 +82,19 @@ export default function AssistenteIA() {
   const [carregando, setCarregando] = useState(false)
   const fimRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Agentes treinados: quando um é escolhido, a persona dele assume a conversa
+  const [agentes, setAgentes] = useState<any[]>([])
+  const [agenteId, setAgenteId] = useState('')
+  useEffect(() => {
+    if (status !== 'authenticated' || role === 'cliente') return
+    fetch('/api/agentes').then(r => r.json()).then(d => setAgentes(Array.isArray(d) ? d.filter((a: any) => a.ativo !== false) : [])).catch(() => {})
+  }, [status])
+  const agenteAtivo = agentes.find(a => a.id === agenteId)
+  function trocarAgente(id: string) {
+    if (id === agenteId) return
+    setAgenteId(id)
+    setMsgs([]) // nova conversa ao trocar de agente (evita mistura de personas)
+  }
 
   // Restaura a conversa (persiste durante a sessao do navegador)
   useEffect(() => {
@@ -116,7 +129,7 @@ export default function AssistenteIA() {
       const resp = await fetch('/api/assistente/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: novas }),
+        body: JSON.stringify({ messages: novas, agenteId }),
       })
 
       if (!resp.ok || !resp.body) {
@@ -212,8 +225,8 @@ export default function AssistenteIA() {
               </svg>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800 }}>{ehVendas ? 'Assistente de Vendas' : 'Assistente de IA'}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>{ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema'}</p>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? agenteAtivo.nome : (ehVendas ? 'Assistente de Vendas' : 'Assistente de IA')}</p>
+              <p style={{ margin: 0, fontSize: 11, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? (agenteAtivo.funcao || 'Agente treinado') : (ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema')}</p>
             </div>
             {msgs.length > 0 && (
               <button onClick={limpar} title="Limpar conversa" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -225,11 +238,22 @@ export default function AssistenteIA() {
             <button onClick={() => setAberto(false)} title="Fechar" aria-label="Fechar assistente" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 2px' }}>×</button>
           </div>
 
+          {/* Seletor de agente treinado */}
+          {agentes.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#888', flexShrink: 0 }}>Falar com</span>
+              <select value={agenteId} onChange={e => trocarAgente(e.target.value)} style={{ flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+                <option value="">Assistente padrão</option>
+                {agentes.map(a => <option key={a.id} value={a.id}>{a.nome}{a.funcao ? ` — ${a.funcao}` : ''}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Mensagens */}
           <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fafafa' }}>
             {msgs.length === 0 && (
               <div style={{ color: '#888', fontSize: 13, lineHeight: 1.6 }}>
-                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#555' }}>Olá! Como posso ajudar?</p>
+                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#555' }}>{agenteAtivo ? `Olá! Sou ${agenteAtivo.nome}.${agenteAtivo.descricao ? ` ${agenteAtivo.descricao}` : ''}` : 'Olá! Como posso ajudar?'}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {[
                     ...(ehVendas ? [

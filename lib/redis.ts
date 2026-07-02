@@ -514,3 +514,18 @@ export type CrmNegocio = {
   criadoEm: string
   atualizadoEm: string
 }
+
+// Agente de IA treinado (Fase 1: persona + ferramentas de LEITURA). Chave `agente:{id}`, índice `agentes`.
+export type Agente = {
+  id: string
+  nome: string
+  funcao?: string        // ex.: Copywriter, Gestor de Projetos, SDR
+  descricao?: string     // resumo curto exibido na lista
+  instrucoes: string     // "treino" — persona + regras (vai no system prompt do agente)
+  ferramentas: string[]  // nomes das ferramentas habilitadas (consultar_tarefas, web_search, etc.)
+  cor?: string           // cor do avatar
+  ativo: boolean
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}

@@ -23,6 +23,7 @@ const Candidaturas = dynamic(() => import('../components/Candidaturas'), { ssr: 
 const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Agentes = dynamic(() => import('../components/Agentes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -152,6 +153,7 @@ const IconTrend = (p: any) => <Icon {...p}><path d="m23 6-9.5 9.5-5-5L1 18" /><p
 
 // Ícone (path único) por aba do menu — usado no modo recolhido (rail) e expandido.
 const ICONE_ABA: Record<string, string> = {
+  agentes: 'M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   'meu-dia': 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM8 12l2.5 2.5L16 9',
   'lista-pessoal': 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12l2 2 4-4',
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
@@ -378,7 +380,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva) return salva as any
@@ -1795,6 +1797,7 @@ function Dashboard() {
                   <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
                   {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
                   {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
+                  {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
                   {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                   {role === 'admin' && (<>
                     <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
@@ -1822,6 +1825,7 @@ function Dashboard() {
                     {configAberto && (
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {role === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
+                      {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
                       {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                     </nav>
                     )}
@@ -3772,6 +3776,10 @@ function Dashboard() {
         {/* AUTOMAÇÕES (equipe) */}
         {aba === 'automacoes' && role !== 'cliente' && (
           <Automacoes clientes={clientes.filter(c => (c as any).tipo !== 'interno').map(c => ({ id: c.id, nome: c.nome }))} />
+        )}
+
+        {aba === 'agentes' && role === 'admin' && (
+          <Agentes />
         )}
 
         {/* MEU DIA (equipe) */}
