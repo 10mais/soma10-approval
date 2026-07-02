@@ -242,7 +242,7 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void }) {
+export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean }) {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [excluidas, setExcluidas] = useState<Tarefa[]>([])
   const [view, setView] = useState<'kanban' | 'lista'>('kanban')
@@ -424,7 +424,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             {mostrarLixeira ? 'Voltar' : 'Lixeira'}
             {!mostrarLixeira && excluidas.length > 0 && <span style={{ background: '#b91c1c', color: '#fff', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{excluidas.length}</span>}
           </button>
-          {!mostrarLixeira && (
+          {!mostrarLixeira && podeEditar && (
             <button onClick={() => setNovaModal(true)} className="soma10-no-invert" style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
           )}
         </div>
@@ -537,10 +537,10 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                   <span style={{ color: ehAtrasado(x.prazo, x.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
                   <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade}</span>
                   <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === x.status)?.label || x.status}</span>
-                  <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
+                  {podeExcluir && <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
                     style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', color: '#ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1, padding: 0 }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#dc2626'; (e.currentTarget as HTMLButtonElement).style.background = '#fef2f2' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ccc'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}>×</button>
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ccc'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}>×</button>}
                 </div>
               )
             }
@@ -583,8 +583,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                 </div>
               </div>
               <button onClick={() => restaurarTarefa(t.id)} style={{ padding: '6px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#166534', cursor: 'pointer' }}>Restaurar</button>
-              <button onClick={() => setConfirmPopup({ mensagem: `Excluir "${t.titulo}" permanentemente? Esta acao nao pode ser desfeita.`, onConfirm: () => { excluirPermanente(t.id); setConfirmPopup(null) } })}
-                style={{ padding: '6px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Excluir</button>
+              {podeExcluir && <button onClick={() => setConfirmPopup({ mensagem: `Excluir "${t.titulo}" permanentemente? Esta acao nao pode ser desfeita.`, onConfirm: () => { excluirPermanente(t.id); setConfirmPopup(null) } })}
+                style={{ padding: '6px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Excluir</button>}
             </div>
           ))}
         </div>
@@ -599,7 +599,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
           onClose={() => { setNovaModal(false); setEditModal(null) }}
           onSalvo={() => { if (tarefaViewMode !== 'sidebar') { setNovaModal(false); setEditModal(null) }; carregar() }}
           onRecarregar={(t) => { setEditModal(t); carregar() }}
-          onExcluir={editModal ? () => {
+          onExcluir={editModal && podeExcluir ? () => {
             const id = editModal.id
             setConfirmPopup({
               mensagem: `Excluir a tarefa "${editModal.titulo}"?`,

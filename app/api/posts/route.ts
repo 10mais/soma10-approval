@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
 import { getPostsDoCliente, indexarPost, desindexarPost } from '@/lib/postsIndex'
 import { v4 as uuid } from 'uuid'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -70,6 +71,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
 
   const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
@@ -120,6 +124,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
 
   const { id, ...updates } = await req.json()
   const post = await redis.get<Post>(`post:${id}`)
@@ -150,6 +157,9 @@ export async function DELETE(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const role = (session.user as any).role
+  if (await bloqueiaPapel(role, 'producao', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
 

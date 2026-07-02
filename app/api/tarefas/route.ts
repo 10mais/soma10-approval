@@ -5,6 +5,7 @@ import { redis, Tarefa, Usuario } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
 import { dispararEvento } from '@/lib/automacoesEngine'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 function extrairMencoes(texto: string): string[] {
   const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest) {
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
   }
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const body = await req.json()
   const agora = new Date().toISOString()
   const { getOperacional } = await import('@/lib/operacional')
@@ -101,6 +105,9 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  }
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
   const { id, ...updates } = await req.json()
   const tarefa = await redis.get<Tarefa>(`tarefa:${id}`)
@@ -279,6 +286,9 @@ export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  }
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })

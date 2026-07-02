@@ -77,10 +77,12 @@ function capaDaPauta(p: Pauta): string {
   return Object.values(caps)[0] || (p.imagens || [])[0] || ''
 }
 
-export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
+export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true }: {
   clientes: Cliente[]
   clienteFixo?: string
   onAbrirComposer?: (pauta: Pauta) => void
+  podeEditar?: boolean
+  podeExcluir?: boolean
 }) {
   const [planos, setPlanos] = useState<Plano[]>([])
   const [planoSel, setPlanoSel] = useState('')
@@ -200,8 +202,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
           <option value="">Selecione um plano...</option>
           {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
         </select>
-        <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
-        {planoSel && <>
+        {podeEditar && <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {planoSel && podeEditar && <>
           <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
@@ -420,11 +422,11 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer }: {
         <PautaModal pauta={pautaModal} onClose={() => setPautaModal(null)}
           onAbrirComposer={onAbrirComposer}
           onSalvo={() => { setPautaModal(null); carregarPautas(planoSel) }}
-          onDescartar={async () => {
+          onDescartar={podeExcluir ? async () => {
             if (!(await confirmar('Descartar esta pauta? Ela será removida permanentemente.', { titulo: 'Descartar pauta', okLabel: 'Descartar', perigo: true }))) return
             await fetch(`/api/posts?id=${pautaModal.id}`, { method: 'DELETE' }).catch(() => {})
             setPautaModal(null); carregarPautas(planoSel)
-          }} />
+          } : undefined} />
       )}
     </div>
   )

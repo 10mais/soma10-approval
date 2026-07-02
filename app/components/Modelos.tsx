@@ -16,7 +16,7 @@ const TIPOS = ['tarefa', 'carrossel', 'criativo', 'video', 'reel', 'story', 'pos
 const PRIORIDADES = ['baixa', 'media', 'alta', 'urgente']
 const vazio: Template = { id: '', nome: '', descricao: '', marcos: [], tarefas: [] }
 
-export default function Modelos({ clientes }: { clientes: Cliente[] }) {
+export default function Modelos({ clientes, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; podeEditar?: boolean; podeExcluir?: boolean }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [editor, setEditor] = useState<Template | null>(null)
   const [aplicar, setAplicar] = useState<Template | null>(null)
@@ -47,7 +47,7 @@ export default function Modelos({ clientes }: { clientes: Cliente[] }) {
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Modelos de projeto</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Crie um modelo de etapas + tarefas e aplique a um cliente em um clique.</p>
         </div>
-        <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>
+        {podeEditar && <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>}
       </div>
 
       {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', fontSize: 13 }}>{msg}</div>}
@@ -59,9 +59,9 @@ export default function Modelos({ clientes }: { clientes: Cliente[] }) {
             {t.descricao && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>{t.descricao}</p>}
             <p style={{ margin: '10px 0 12px', fontSize: 12, color: '#aaa' }}>{(t.marcos || []).length} etapa(s) · {(t.tarefas || []).length} tarefa(s)</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setAplicar(t)} style={{ flex: 1, padding: '8px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aplicar a cliente</button>
-              <button onClick={() => setEditor(JSON.parse(JSON.stringify(t)))} style={{ padding: '8px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>
-              <button onClick={() => excluir(t.id)} style={{ padding: '8px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>
+              {podeEditar && <button onClick={() => setAplicar(t)} style={{ flex: 1, padding: '8px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aplicar a cliente</button>}
+              {podeEditar && <button onClick={() => setEditor(JSON.parse(JSON.stringify(t)))} style={{ padding: '8px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
+              {podeExcluir && <button onClick={() => excluir(t.id)} style={{ padding: '8px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
             </div>
           </div>
         ))}

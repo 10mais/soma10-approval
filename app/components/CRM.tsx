@@ -19,7 +19,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -97,7 +97,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
-        {vista === 'funil' && (
+        {vista === 'funil' && podeEditar && (
           <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo negócio</button>
         )}
         {vista === 'contatos' && (
@@ -107,11 +107,11 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
               Importar CSV
               <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0]); e.target.value = '' }} />
             </label>
-            <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>
-            <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>
+            {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
+            {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
           </div>
         )}
-        {vista === 'empresas' && (
+        {vista === 'empresas' && podeEditar && (
           <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
         )}
       </div>
@@ -180,10 +180,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       )}
 
       {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} contatos={contatos} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
-      {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
+      {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
     </div>
   )
 }
@@ -410,7 +410,7 @@ function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Em
   )
 }
 
-function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void }) {
+function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExcluir = false }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean }) {
   const [f, setF] = useState<any>({ nome: empresa?.nome || '', segmento: empresa?.segmento || '', site: empresa?.site || '', instagram: empresa?.instagram || '', telefone: empresa?.telefone || '', observacoes: empresa?.observacoes || '' })
   const [salvando, setSalvando] = useState(false)
   const lig = empresa ? ligadosEmpresa(empresa, contatos, negocios) : { cts: [], negs: [] }
@@ -448,7 +448,7 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo }: { empre
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
-          {empresa && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
@@ -478,7 +478,7 @@ function ContatosLista({ contatos, negocios, onAbrir }: { contatos: Contato[]; n
   )
 }
 
-function ContatoModal({ contato, onClose, onSalvo }: { contato: Contato | null; onClose: () => void; onSalvo: () => void }) {
+function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '' })
   const [salvando, setSalvando] = useState(false)
   async function salvar() {
@@ -509,7 +509,7 @@ function ContatoModal({ contato, onClose, onSalvo }: { contato: Contato | null; 
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>
-          {contato && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          {contato && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
@@ -620,7 +620,7 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
   )
 }
 
-function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, onFechar, onClienteCriado }: { negocio: Negocio; estagios: Estagio[]; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void }) {
+function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false }: { negocio: Negocio; estagios: Estagio[]; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
@@ -784,7 +784,7 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
-          <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+          {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
         </div>
       </div>
       {converter && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}

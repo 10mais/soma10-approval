@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Plano, Post } from '@/lib/redis'
 import { indexarPost } from '@/lib/postsIndex'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import Anthropic from '@anthropic-ai/sdk'
 import { v4 as uuid } from 'uuid'
 
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  }
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()

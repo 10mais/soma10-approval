@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
 import { notificarDono } from '@/lib/notificacoes'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,10 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  // Equipe (gerente/usuario) precisa de 'editar' em produção; cliente segue as regras próprias abaixo.
+  if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
 
   const { postId, acao, comentario } = await req.json()
   // acao: 'aprovar_copy' | 'ajuste_copy' | 'aprovar_criativo' | 'ajuste_criativo'

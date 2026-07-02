@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, CrmNegocio, CrmEstagio, CrmAtividade, CrmAgendamento, Usuario } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
 
@@ -61,6 +62,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const b = await req.json()
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
   // #5 — toda oportunidade precisa estar atribuida a um contato
@@ -101,6 +105,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const { id, ...updates } = await req.json()
   const negocio = await redis.get<CrmNegocio>(`negocio:${id}`)
   if (!negocio) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
@@ -181,6 +188,9 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
   await redis.del(`negocio:${id}`)

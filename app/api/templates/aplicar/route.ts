@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, TemplateProjeto, Cliente, Marco, Tarefa } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
 
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel(role, 'estrategia', 'editar', (session.user as any).permissoes)) return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
 
   const { templateId, clienteId, dataInicio } = await req.json()
   const t = await redis.get<TemplateProjeto>(`template:${templateId}`)

@@ -2832,7 +2832,7 @@ function Dashboard() {
         )}
 
         {aba === 'esteira' && (
-          <Esteira clientes={clientes} clienteFixo={verComoClienteId || undefined} onAbrirComposer={(pauta: any) => {
+          <Esteira clientes={clientes} clienteFixo={verComoClienteId || undefined} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} onAbrirComposer={(pauta: any) => {
             setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
             setEditandoPostId(pauta.id)
             setAba('novo-post')
@@ -2953,7 +2953,7 @@ function Dashboard() {
         )}
 
         {aba === 'tarefas' && (
-          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} />
+          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
         )}
 
         {aba === 'campanhas' && (
@@ -2961,7 +2961,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} podeEditar={role === 'admin' || role === 'gerente' || role === 'vendas' || role === 'usuario'} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
@@ -2986,7 +2986,7 @@ function Dashboard() {
         )}
 
         {aba === 'playbook' && (
-          <Playbook clientes={clientes as any} />
+          <Playbook clientes={clientes as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} />
         )}
 
         {aba === 'mensagens' && (
@@ -3707,7 +3707,7 @@ function Dashboard() {
 
         {/* MODELOS DE PROJETO (equipe) */}
         {aba === 'modelos' && role !== 'cliente' && (
-          <Modelos clientes={clientes as any} />
+          <Modelos clientes={clientes as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} />
         )}
 
         {/* AUTOMAÇÕES (equipe) */}

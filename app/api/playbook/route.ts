@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Marco } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
 
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  }
+  if (await bloqueiaPapel((session.user as any).role, 'estrategia', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
   const body = await req.json()
   const agora = new Date().toISOString()
@@ -51,6 +55,9 @@ export async function PUT(req: NextRequest) {
   if (!session || (session.user as any).role === 'cliente') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
   }
+  if (await bloqueiaPapel((session.user as any).role, 'estrategia', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
   const { id, ...updates } = await req.json()
   const marco = await redis.get<Marco>(`marco:${id}`)
   if (!marco) return NextResponse.json({ error: 'nao encontrado' }, { status: 404 })
@@ -77,8 +84,12 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'admin') {
+  const role = (session?.user as any)?.role
+  if (!session || role === 'cliente' || role === 'vendas') {
     return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  }
+  if (await bloqueiaPapel(role, 'estrategia', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })

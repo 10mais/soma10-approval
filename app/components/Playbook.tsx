@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || '#888' }
 function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
 
-export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[]; clienteFixo?: string }) {
+export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean }) {
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [periodo, setPeriodo] = useState('mensal')
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -120,7 +120,7 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
           </div>
-          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+          {podeEditar && <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>}
         </>}
       </div>
 
@@ -204,7 +204,7 @@ export default function Playbook({ clientes, clienteFixo }: { clientes: Cliente[
         <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo} corMarca={corMarca} corMarcaTexto={corMarcaTexto}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
-          onExcluir={editModal ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
+          onExcluir={editModal && podeExcluir ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
         />
       )}
     </div>
