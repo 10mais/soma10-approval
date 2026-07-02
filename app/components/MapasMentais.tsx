@@ -198,6 +198,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       const no = nos.find(n => n.id === selId); if (!no) return
       if (e.key === 'Enter') { e.preventDefault(); criarIrmao(no) }
       else if (e.key === 'Tab') { e.preventDefault(); criarFilho(no) }
+      else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); excluirNo(no.id) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -211,11 +212,13 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   }
 
   function addNo(base?: No) {
+    // Sem base: liga na RAIZ (mantém uma única ideia central — nunca cria nó solto)
+    const pai = base || nos.find(n => !conexoes.some(c => c.para === n.id))
     const nid = uuid()
-    const novo: No = base
-      ? { id: nid, texto: '', x: base.x + 210, y: base.y + Math.round(Math.random() * 100 - 50), cor: base.cor }
-      : { id: nid, texto: '', x: (-pan.x + 150) / zoom, y: (-pan.y + 150) / zoom, cor: CORES[0] }
-    setNos(ns => [...ns, novo]); if (base) criarConexao(base.id, nid)
+    const novo: No = pai
+      ? { id: nid, texto: '', x: pai.x + 210, y: pai.y + Math.round(Math.random() * 100 - 50), cor: pai.cor || CORES[0] }
+      : { id: nid, texto: '', x: (-pan.x + 150) / zoom, y: (-pan.y + 150) / zoom, cor: undefined }
+    setNos(ns => [...ns, novo]); if (pai) criarConexao(pai.id, nid)
     setSelId(nid); setEditId(nid)
   }
   // TAB = filho (nó ligado a partir do selecionado)
@@ -229,10 +232,18 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     criarConexao(conPai.de, nid)
     setSelId(nid); setEditId(nid)
   }
-  function excluirNo(nid: string) {
-    setNos(ns => ns.filter(n => n.id !== nid))
-    setConexoes(cs => cs.filter(c => c.de !== nid && c.para !== nid))
-    if (selId === nid) setSelId(null); if (editId === nid) setEditId(null); if (conectarDe === nid) setConectarDe(null)
+  async function excluirNo(nid: string) {
+    // Raiz é o ponto de partida — não pode ser excluída (evita ficar sem/2 centros)
+    if (!conexoes.some(c => c.para === nid)) { toast('O nó raiz não pode ser excluído — é o ponto de partida do mapa.', 'info'); return }
+    // Coleta a sub-árvore (o nó + todos os descendentes) — apagar não deixa órfãos
+    const remover = new Set<string>([nid]); const fila = [nid]
+    while (fila.length) { const cur = fila.shift()!; for (const c of conexoes) if (c.de === cur && !remover.has(c.para)) { remover.add(c.para); fila.push(c.para) } }
+    if (remover.size > 1 && !(await confirmar(`Excluir este nó e seus ${remover.size - 1} sub-nó(s)? Toda a ramificação será removida.`, { titulo: 'Excluir nó', okLabel: 'Excluir', perigo: true }))) return
+    setNos(ns => ns.filter(n => !remover.has(n.id)))
+    setConexoes(cs => cs.filter(c => !remover.has(c.de) && !remover.has(c.para)))
+    if (selId && remover.has(selId)) setSelId(null)
+    if (editId && remover.has(editId)) setEditId(null)
+    if (conectarDe && remover.has(conectarDe)) setConectarDe(null)
   }
   function cicloCor(no: No) { const i = CORES.indexOf(no.cor || CORES[0]); setNo(no.id, { cor: CORES[(i + 1) % CORES.length] }) }
   const centro = (n: No) => ({ x: n.x + LARG / 2, y: n.y + ALT / 2 })
@@ -379,7 +390,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · arraste o fundo para mover · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria um irmão, <b style={{ color: '#999' }}>Tab</b> cria um filho.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · arraste o fundo para mover · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria um irmão, <b style={{ color: '#999' }}>Tab</b> cria um filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó e sua ramificação.</p>
     </div>
   )
 }
