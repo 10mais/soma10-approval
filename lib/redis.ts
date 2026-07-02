@@ -523,6 +523,7 @@ export type MapaMental = {
   titulo: string
   nos: MapaNo[]
   conexoes: MapaConexao[]
+  layout?: 'mapa' | 'organograma' | 'lista'
   criadoPor?: string
   criadoEm: string
   atualizadoEm: string

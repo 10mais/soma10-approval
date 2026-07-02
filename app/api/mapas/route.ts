@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await equipe()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id, titulo, nos, conexoes } = await req.json()
+  const { id, titulo, nos, conexoes, layout } = await req.json()
   const mapa = await redis.get<MapaMental>(`mapa:${id}`)
   if (!mapa) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
   const nosSan: MapaNo[] = Array.isArray(nos) ? nos.slice(0, 500).map((n: any) => ({ id: String(n.id), texto: String(n.texto || '').slice(0, 500), x: Number(n.x) || 0, y: Number(n.y) || 0, cor: n.cor ? String(n.cor) : undefined })) : mapa.nos
@@ -58,6 +58,7 @@ export async function PUT(req: NextRequest) {
   const atualizado: MapaMental = {
     ...mapa,
     ...(titulo !== undefined ? { titulo: String(titulo).slice(0, 200) } : {}),
+    ...(['mapa', 'organograma', 'lista'].includes(layout) ? { layout } : {}),
     nos: nosSan,
     conexoes: conSan,
     atualizadoEm: new Date().toISOString(),

@@ -76,6 +76,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   const [salvo, setSalvo] = useState<'idle' | 'salvando' | 'ok'>('idle')
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [layout, setLayout] = useState<'mapa' | 'organograma' | 'lista'>('mapa')
   const [selId, setSelId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [conectarDe, setConectarDe] = useState<string | null>(null)
@@ -86,7 +87,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
 
   useEffect(() => {
     fetch(`/api/mapas?id=${id}`).then(r => r.json()).then(m => {
-      if (m && !m.error) { setTitulo(m.titulo || ''); setNos(m.nos || []); setConexoes(m.conexoes || []) }
+      if (m && !m.error) { setTitulo(m.titulo || ''); setNos(m.nos || []); setConexoes(m.conexoes || []); setLayout(m.layout || 'mapa') }
       setCarregando(false); montado.current = true
     }).catch(() => { setCarregando(false); montado.current = true })
   }, [id])
@@ -96,11 +97,11 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     setSalvo('salvando')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      fetch('/api/mapas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, titulo, nos, conexoes }) })
+      fetch('/api/mapas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, titulo, nos, conexoes, layout }) })
         .then(() => { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1200) }).catch(() => setSalvo('idle'))
     }, 700)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [titulo, nos, conexoes])
+  }, [titulo, nos, conexoes, layout])
 
   const setNo = (nid: string, patch: Partial<No>) => setNos(ns => ns.map(n => n.id === nid ? { ...n, ...patch } : n))
   function criarConexao(de: string, para: string) {
@@ -179,9 +180,10 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   // ENTER = irmão (nó ligado ao MESMO pai do selecionado)
   function criarIrmao(no: No) {
     const conPai = conexoes.find(c => c.para === no.id)
+    if (!conPai) { toast('O nó raiz é o ponto de partida — use Tab para criar ramos.', 'info'); return }
     const nid = uuid()
     setNos(ns => [...ns, { id: nid, texto: '', x: no.x, y: no.y + ALT + 24, cor: no.cor }])
-    if (conPai) criarConexao(conPai.de, nid)
+    criarConexao(conPai.de, nid)
     setSelId(nid); setEditId(nid)
   }
   function excluirNo(nid: string) {
@@ -191,6 +193,39 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   }
   function cicloCor(no: No) { const i = CORES.indexOf(no.cor || CORES[0]); setNo(no.id, { cor: CORES[(i + 1) % CORES.length] }) }
   const centro = (n: No) => ({ x: n.x + LARG / 2, y: n.y + ALT / 2 })
+  const temPai = (nid: string) => conexoes.some(c => c.para === nid)
+
+  // Reposiciona os nós conforme o layout escolhido (Mapa mental mantém as posições livres)
+  function aplicarLayout(tipo: 'mapa' | 'organograma' | 'lista') {
+    setLayout(tipo)
+    if (tipo === 'mapa') return
+    const filhos: Record<string, string[]> = {}
+    for (const c of conexoes) (filhos[c.de] ||= []).push(c.para)
+    const raizes = nos.filter(n => !temPai(n.id)).map(n => n.id)
+    const pos: Record<string, { x: number; y: number }> = {}
+    const visto = new Set<string>()
+    if (tipo === 'organograma') {
+      const NW = 190, NH = 110; let cursor = 0
+      const tree = (idn: string, depth: number): number => {
+        if (visto.has(idn)) return cursor; visto.add(idn)
+        const ch = (filhos[idn] || []).filter(c => !visto.has(c))
+        if (!ch.length) { const x = cursor; cursor += NW; pos[idn] = { x, y: depth * NH }; return x }
+        const xs = ch.map(c => tree(c, depth + 1))
+        const x = (xs[0] + xs[xs.length - 1]) / 2; pos[idn] = { x, y: depth * NH }; return x
+      }
+      raizes.forEach((r, i) => { if (i) cursor += NW; tree(r, 0) })
+    } else {
+      const INDENT = 46, ROW = 54; let row = 0
+      const walk = (idn: string, depth: number) => {
+        if (visto.has(idn)) return; visto.add(idn)
+        pos[idn] = { x: depth * INDENT, y: row * ROW }; row++
+        for (const c of (filhos[idn] || [])) walk(c, depth + 1)
+      }
+      raizes.forEach(r => walk(r, 0))
+    }
+    setNos(ns => ns.map(n => pos[n.id] ? { ...n, x: pos[n.id].x + 90, y: pos[n.id].y + 70 } : n))
+    setPan({ x: 0, y: 0 }); setZoom(1); setSelId(null); setEditId(null)
+  }
 
   if (carregando) return <p style={{ color: '#aaa' }}>Carregando mapa...</p>
 
@@ -208,7 +243,12 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 160, maxWidth: 380, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
         {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: '#aaa' }}>salvando…</span>}
         {salvo === 'ok' && <span style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>salvo</span>}
-        <button onClick={() => addNo()} style={{ marginLeft: 'auto', padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+          {([['mapa', 'Mapa mental'], ['organograma', 'Organograma'], ['lista', 'Lista']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Posições livres' : 'Reorganiza automaticamente'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? '#fff' : 'transparent', color: layout === k ? '#111' : '#888', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+          ))}
+        </div>
+        <button onClick={() => addNo()} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
       </div>
 
       <div ref={canvasRef}
@@ -218,11 +258,18 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <div style={{ position: 'absolute', top: 0, left: 0, transformOrigin: '0 0', transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
           {/* Conexões (curvas) */}
           <svg width={4000} height={3000} style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}>
-            {conexoes.map(c => {
+            {layout !== 'lista' && conexoes.map(c => {
               const a = nos.find(n => n.id === c.de), b = nos.find(n => n.id === c.para)
               if (!a || !b) return null
-              const p1 = centro(a), p2 = centro(b), dx = Math.abs(p2.x - p1.x) / 2 + 20
-              const path = `M ${p1.x} ${p1.y} C ${p1.x + (p2.x > p1.x ? dx : -dx)} ${p1.y}, ${p2.x + (p2.x > p1.x ? -dx : dx)} ${p2.y}, ${p2.x} ${p2.y}`
+              let path: string
+              if (layout === 'organograma') {
+                const p1 = { x: a.x + LARG / 2, y: a.y + ALT }, p2 = { x: b.x + LARG / 2, y: b.y }
+                const midY = (p1.y + p2.y) / 2
+                path = `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`
+              } else {
+                const p1 = centro(a), p2 = centro(b), dx = Math.abs(p2.x - p1.x) / 2 + 20
+                path = `M ${p1.x} ${p1.y} C ${p1.x + (p2.x > p1.x ? dx : -dx)} ${p1.y}, ${p2.x + (p2.x > p1.x ? -dx : dx)} ${p2.y}, ${p2.x} ${p2.y}`
+              }
               return (
                 <g key={c.id} style={{ pointerEvents: 'stroke', cursor: 'pointer' }} onClick={() => setConexoes(cs => cs.filter(x => x.id !== c.id))}>
                   <path d={path} stroke="transparent" strokeWidth={14} fill="none" />
@@ -236,19 +283,20 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
             const selecionado = selId === no.id
             const alvo = !!conectarDe && conectarDe !== no.id
             const editando = editId === no.id
+            const raiz = !temPai(no.id)
             return (
               <div key={no.id} onPointerDown={e => { e.stopPropagation(); if (!editando) dragRef.current = { tipo: 'no', id: no.id, sx: e.clientX, sy: e.clientY, ox: no.x, oy: no.y, moved: false } }}
                 onDoubleClick={() => { setSelId(no.id); setEditId(no.id) }}
-                style={{ position: 'absolute', left: no.x, top: no.y, width: LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: '#fff', borderRadius: 22, padding: '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 4px 14px rgba(0,0,0,0.10)' : '0 2px 8px rgba(0,0,0,0.08)', border: alvo ? '2px dashed #7c3aed' : '1px solid #ececf0', cursor: editando ? 'text' : 'grab' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />
+                style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
+                {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
                   ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => setEditId(null)} placeholder="Ideia…"
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditId(null); criarIrmao(no) }
                         else if (e.key === 'Tab') { e.preventDefault(); setEditId(null); criarFilho(no) }
                       }}
-                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 12.5, lineHeight: 1.35, fontFamily: 'inherit', color: '#222', background: 'transparent', minHeight: 30 }} rows={2} />
-                  : <span style={{ flex: 1, fontSize: 12.5, lineHeight: 1.35, color: no.texto ? '#222' : '#bbb', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || 'Ideia…'}</span>}
+                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? '#fff' : '#222', background: 'transparent', minHeight: 30 }} rows={2} />
+                  : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? '#fff' : (no.texto ? '#222' : '#bbb'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
               </div>
             )
           })}
@@ -269,10 +317,12 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
             <TBtn title={conectarDe === sel.id ? 'Clique em outro nó (ou aqui p/ cancelar)' : 'Conectar a outro nó'} cor={conectarDe === sel.id ? '#7c3aed' : '#444'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
             </TBtn>
-            <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
-            <TBtn title="Excluir nó" cor="#dc2626" onClick={() => excluirNo(sel.id)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
-            </TBtn>
+            {temPai(sel.id) && <>
+              <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
+              <TBtn title="Excluir nó" cor="#dc2626" onClick={() => excluirNo(sel.id)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+              </TBtn>
+            </>}
           </div>
         )}
 
