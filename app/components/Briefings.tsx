@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { confirmar } from '@/lib/toast'
+import AvatarCliente from './AvatarCliente'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; segmento?: string; palavrasChave?: string }
 type Briefing = {
@@ -131,7 +132,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
                 <div key={b.id} onClick={() => abrir(b)} style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #eee' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: cli?.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#111' }}>
-                      {cli?.logo ? <img src={cli.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (b.clienteNome[0]?.toUpperCase() || '?')}
+                      <AvatarCliente logo={cli?.logo} nome={b.clienteNome} />
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>{b.clienteNome}</span>
                   </div>

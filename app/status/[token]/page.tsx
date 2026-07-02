@@ -1,6 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import AvatarCliente from '@/app/components/AvatarCliente'
 
 type Status = {
   cliente: { nome: string; logo: string; corPrimaria: string }
@@ -33,9 +34,9 @@ export default function StatusPublico() {
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-          {s.cliente.logo
-            ? <img src={s.cliente.logo} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${cor}` }} />
-            : <div style={{ width: 48, height: 48, borderRadius: '50%', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff' }}>{s.cliente.nome[0]}</div>}
+          <div style={{ width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#fff', flexShrink: 0, border: `2px solid ${cor}` }}>
+            <AvatarCliente logo={s.cliente.logo} nome={s.cliente.nome} />
+          </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 20, color: '#111' }}>{s.cliente.nome}</h1>
             <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>Status do seu projeto — atualizado em tempo real</p>

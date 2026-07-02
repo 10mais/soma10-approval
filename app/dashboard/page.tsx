@@ -9,6 +9,7 @@ import ConectarRedesModal from '../components/ConectarRedesModal'
 import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
+import AvatarCliente from '../components/AvatarCliente'
 import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -256,7 +257,11 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      {cli?.logo && <img src={cli.logo} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />}
+                      {cli?.logo && (
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
+                          <AvatarCliente logo={cli.logo} nome={p.clienteNome} />
+                        </span>
+                      )}
                       <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{p.clienteNome}</span>
                       <span style={{ background: ehCopy ? '#dbeafe' : '#fef3c7', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? '#1d4ed8' : '#92400e' }}>
                         {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
@@ -1503,7 +1508,7 @@ function Dashboard() {
         }
       `}</style>
       {/* Controles flutuantes (topo-direito) — substitui a antiga barra preta */}
-      <div className="soma10-no-invert" style={{ position: 'fixed', top: 14, right: 18, zIndex: 120, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #eee' }}>
+      <div className="soma10-no-invert" style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #eee' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Alternar modo claro/escuro */}
           <button onClick={alternarTema} title={tema === 'escuro' ? 'Mudar para modo claro' : 'Mudar para modo escuro'} style={{
@@ -1598,7 +1603,7 @@ function Dashboard() {
       {/* Menu hamburguer (mobile) — abre o drawer da sidebar */}
       {mobile && !menuMobile && (
         <button onClick={() => setMenuMobile(true)} aria-label="Menu" className="soma10-no-invert"
-          style={{ position: 'fixed', top: 12, left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          style={{ position: 'fixed', top: 'calc(12px + env(safe-area-inset-top))', left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
       )}
@@ -1610,7 +1615,8 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Sidebar */}
         <aside style={mobile ? {
-          width: 264, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box', padding: '16px 14px',
+          width: 264, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box',
+          padding: 'calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))',
           position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto', zIndex: 200,
           transform: menuMobile ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease',
           boxShadow: menuMobile ? '2px 0 16px rgba(0,0,0,0.18)' : 'none',
@@ -1628,7 +1634,9 @@ function Dashboard() {
           {ehCliente && clienteEmVisualizacao && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', marginBottom: 10 }}>
-                {clienteEmVisualizacao.logo && <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />}
+                <span style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
+                  <AvatarCliente logo={clienteEmVisualizacao.logo} nome={clienteEmVisualizacao.nome} />
+                </span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#111' }}>{clienteEmVisualizacao.nome}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 11, color: '#888' }}>Painel do cliente</p>
@@ -1657,13 +1665,9 @@ function Dashboard() {
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
               <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  {clienteEmVisualizacao?.logo ? (
-                    <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #fde68a' }} />
-                  ) : (
-                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
-                      {(clienteEmVisualizacao?.nome || '?')[0]?.toUpperCase()}
-                    </span>
-                  )}
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0, border: '1px solid #fde68a' }}>
+                    <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
+                  </span>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>
                     {clienteEmVisualizacao?.nome || 'Cliente'}
                   </p>
@@ -1725,7 +1729,7 @@ function Dashboard() {
                             display: 'flex', alignItems: 'center', gap: 8,
                           }}>
                             <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
-                              {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome[0]?.toUpperCase())}
+                              <AvatarCliente logo={c.logo} nome={c.nome} />
                             </span>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
                           </button>
@@ -1877,13 +1881,9 @@ function Dashboard() {
             display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: 12, padding: '10px 16px', marginBottom: 20,
           }}>
-            {clienteEmVisualizacao.logo ? (
-              <img src={clienteEmVisualizacao.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #fde68a' }} />
-            ) : (
-              <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0 }}>
-                {clienteEmVisualizacao.nome[0]?.toUpperCase()}
-              </span>
-            )}
+            <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0, border: '1px solid #fde68a' }}>
+              <AvatarCliente logo={clienteEmVisualizacao.logo} nome={clienteEmVisualizacao.nome} />
+            </span>
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram?.replace(/^@/, '')}) — somente o conteúdo dele é exibido.
             </p>
@@ -1971,16 +1971,12 @@ function Dashboard() {
                     <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={60} radius={10} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                        {(() => {
-                          const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
-                          return cli?.logo ? (
-                            <img src={cli.logo} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                          ) : (
-                            <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
-                              {(post.clienteNome || '?')[0]?.toUpperCase()}
-                            </span>
-                          )
-                        })()}
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
+                          {(() => {
+                            const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
+                            return <AvatarCliente logo={cli?.logo} nome={post.clienteNome} />
+                          })()}
+                        </span>
                         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{post.clienteNome}</span>
                         <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || '#555', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
@@ -2181,7 +2177,7 @@ function Dashboard() {
                           <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
                             {(() => { const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome); return (
                               <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cli?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 9, color: cli?.corSecundaria || '#111' }}>
-                                {cli?.logo ? <img src={cli.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (post.clienteNome?.[0]?.toUpperCase() || '?')}
+                                <AvatarCliente logo={cli?.logo} nome={post.clienteNome} />
                               </span>
                             )})()}
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
@@ -2222,7 +2218,7 @@ function Dashboard() {
                   {(() => { const clientePreview = clientes.find(c => c.id === postPreview.clienteId || c.nome === postPreview.clienteNome); return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: clientePreview?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: clientePreview?.corSecundaria || '#111', flexShrink: 0 }}>
-                      {clientePreview?.logo ? <img src={clientePreview.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (postPreview.clienteNome?.[0]?.toUpperCase() || '?')}
+                      <AvatarCliente logo={clientePreview?.logo} nome={postPreview.clienteNome} />
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
                     <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || '#333', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
@@ -2346,7 +2342,7 @@ function Dashboard() {
             {brandModo === 'card' && (
               <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ width: 46, height: 46, borderRadius: '50%', overflow: 'hidden', background: clienteEmVisualizacao?.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: clienteEmVisualizacao?.corSecundaria || '#111', flexShrink: 0 }}>
-                  {clienteEmVisualizacao?.logo ? <img src={clienteEmVisualizacao.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (clienteEmVisualizacao?.nome?.[0]?.toUpperCase() || '?')}
+                  <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
@@ -3289,7 +3285,7 @@ function Dashboard() {
                 <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden', height: 'fit-content' }}>
                   <div onClick={() => setClienteAberto(clienteAberto === c.id ? null : c.id)} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, fontSize: 14, color: c.corSecundaria || '#111' }}>{c.nome[0]?.toUpperCase()}</span>}
+                      <AvatarCliente logo={c.logo} nome={c.nome} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3991,7 +3987,7 @@ function Dashboard() {
                   {clientes.map(c => (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#fafafa', borderRadius: 10 }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#eee', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: '#bbb', fontSize: 16 }}>
-                        {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (c.nome || '?')[0]?.toUpperCase()}
+                        <AvatarCliente logo={c.logo} nome={c.nome} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
@@ -4062,7 +4058,7 @@ function Dashboard() {
                     <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#bbb', fontSize: 13 }}>
-                          {row.c.logo ? <img src={row.c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (row.c.nome[0]?.toUpperCase())}
+                          <AvatarCliente logo={row.c.logo} nome={row.c.nome} />
                           <span style={{ position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%', background: row.rede === 'facebook' ? '#1877f2' : '#dc2743', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
                             <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff">{row.rede === 'facebook'
                               ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>

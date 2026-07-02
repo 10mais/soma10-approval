@@ -1,5 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
+import AvatarCliente from './AvatarCliente'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }
 type Post = { id: string; clienteId: string; clienteNome: string; status: string; dataAgendada?: string; criadoEm: string; atualizadoEm?: string; etapa?: string; erroPublicacao?: string; imagens: string[] }
@@ -115,7 +116,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente }: {
               return (
                 <div key={c.id} onClick={() => onVerCliente(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: c.corSecundaria || '#111', flexShrink: 0 }}>
-                    {c.logo ? <img src={c.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : c.nome[0]?.toUpperCase()}
+                    <AvatarCliente logo={c.logo} nome={c.nome} />
                   </div>
                   <span style={{ width: 110, fontSize: 12, fontWeight: 600, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.nome}</span>
                   <div style={{ flex: 1, position: 'relative', height: 18, borderRadius: 999, background: '#f0f0f0', overflow: 'hidden' }}>

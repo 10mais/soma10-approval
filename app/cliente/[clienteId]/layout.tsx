@@ -3,6 +3,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
+import AvatarCliente from '@/app/components/AvatarCliente'
 
 // `perm` liga o item a uma flag de permissao do cliente (cliente.permissoes).
 // Ausente/undefined = liberado. Itens sem `perm` (Início) ficam sempre visíveis.
@@ -161,8 +162,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           {cliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#111', flexShrink: 0 }}>
-                {cliente.logo ? <img src={cliente.logo} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
-                {(!cliente.logo) && <span>{cliente.nome?.[0]?.toUpperCase()}</span>}
+                <AvatarCliente logo={cliente.logo} nome={cliente.nome} />
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111' }}>{cliente.nome}</p>
