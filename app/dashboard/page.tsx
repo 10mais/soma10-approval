@@ -423,6 +423,17 @@ function Dashboard() {
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
   const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes'>('geral')
+  const [resyncFotos, setResyncFotos] = useState(false)
+  async function ressincronizarFotos() {
+    if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
+    setResyncFotos(true)
+    const r = await fetch('/api/clientes/resync-fotos', { method: 'POST' }).then(x => x.json()).catch(() => null)
+    setResyncFotos(false)
+    if (r?.ok) {
+      toast(`${r.atualizados} foto(s) atualizada(s)${r.falhas ? ` · ${r.falhas} falha(s)` : ''}.`, 'sucesso')
+      fetch('/api/clientes').then(x => x.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})
+    } else toast(r?.error || 'Falha ao re-sincronizar.', 'erro')
+  }
   const [configMsg, setConfigMsg] = useState('')
   const [enviandoLogoAgencia, setEnviandoLogoAgencia] = useState(false)
   const [saldoIA, setSaldoIA] = useState<{ saldo: number; limite: number; alertado?: boolean }>({ saldo: 0, limite: 1 })
@@ -3995,8 +4006,16 @@ function Dashboard() {
 
             {/* Imagem de perfil dos clientes */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Imagem de perfil dos clientes</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Imagem de perfil dos clientes</h3>
+                  <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
+                </div>
+                <button onClick={ressincronizarFotos} disabled={resyncFotos} title="Rebusca as fotos do Instagram e salva de forma permanente (corrige fotos quebradas)"
+                  style={{ flexShrink: 0, padding: '8px 14px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
+                  {resyncFotos ? 'Re-sincronizando...' : 'Re-sincronizar fotos do Instagram'}
+                </button>
+              </div>
               {clientes.length === 0 ? (
                 <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum cliente cadastrado ainda.</p>
               ) : (

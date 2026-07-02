@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
+import { copiarFotoParaBlob } from '@/lib/blobFoto'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     let fotoPerfil: string | undefined
     try {
       const me = await fetch(`https://graph.instagram.com/me?fields=username,profile_picture_url&access_token=${igToken}`).then(r => r.json())
-      if (me?.profile_picture_url) fotoPerfil = me.profile_picture_url
+      if (me?.profile_picture_url) fotoPerfil = (await copiarFotoParaBlob(me.profile_picture_url, clienteId)) || me.profile_picture_url
     } catch {}
 
     const atualizado: Cliente = {
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
       if (igId && pageToken) {
         const fotoRes = await fetch(`${BASE}/${igId}?fields=profile_picture_url&access_token=${pageToken}`)
         const fotoData = await fotoRes.json()
-        if (fotoData?.profile_picture_url) fotoPerfil = fotoData.profile_picture_url
+        if (fotoData?.profile_picture_url) fotoPerfil = (await copiarFotoParaBlob(fotoData.profile_picture_url, clienteId)) || fotoData.profile_picture_url
       }
     } catch {}
 
