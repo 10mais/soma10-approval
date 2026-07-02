@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
-type Msg = { role: 'user' | 'assistant'; content: string }
+type Proposta = { id: string; acao: string; params: any; resumo: string; agenteId?: string; agenteNome?: string; estado?: 'pendente' | 'executando' | 'feito' | 'erro' | 'cancelado'; msg?: string }
+type Msg = { role: 'user' | 'assistant'; content: string; propostas?: Proposta[] }
 
 const STORAGE_KEY = 'soma10_assistente_conversa'
 
@@ -96,6 +97,18 @@ export default function AssistenteIA() {
     setMsgs([]) // nova conversa ao trocar de agente (evita mistura de personas)
   }
 
+  // Fase 2: confirmar/descartar uma ação proposta pelo agente
+  async function confirmarAcao(mi: number, propId: string) {
+    const prop = msgs[mi]?.propostas?.find(p => p.id === propId)
+    if (!prop || prop.estado === 'executando' || prop.estado === 'feito') return
+    setMsgs(m => m.map((mm, i) => i === mi ? { ...mm, propostas: mm.propostas?.map(p => p.id === propId ? { ...p, estado: 'executando' } : p) } : mm))
+    const r = await fetch('/api/agentes/executar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: prop.acao, params: prop.params, agenteId: prop.agenteId, agenteNome: prop.agenteNome }) }).then(x => x.json()).catch(() => null)
+    setMsgs(m => m.map((mm, i) => i === mi ? { ...mm, propostas: mm.propostas?.map(p => p.id === propId ? (r?.ok ? { ...p, estado: 'feito', msg: r.resumo } : { ...p, estado: 'erro', msg: r?.error || 'Falha ao executar' }) : p) } : mm))
+  }
+  function descartarAcao(mi: number, propId: string) {
+    setMsgs(m => m.map((mm, i) => i === mi ? { ...mm, propostas: mm.propostas?.map(p => p.id === propId ? { ...p, estado: 'cancelado' } : p) } : mm))
+  }
+
   // Restaura a conversa (persiste durante a sessao do navegador)
   useEffect(() => {
     try {
@@ -150,11 +163,23 @@ export default function AssistenteIA() {
         const { done, value } = await reader.read()
         if (done) break
         acumulado += decoder.decode(value, { stream: true })
+        const corte = acumulado.indexOf('␞')
+        const texto = corte >= 0 ? acumulado.slice(0, corte) : acumulado
         setMsgs(m => {
           const c = [...m]
-          c[c.length - 1] = { role: 'assistant', content: acumulado }
+          c[c.length - 1] = { ...c[c.length - 1], role: 'assistant', content: texto }
           return c
         })
+      }
+      // Ações propostas pelo agente (após a sentinela ␞) → viram cartões de confirmação
+      const corte = acumulado.indexOf('␞')
+      if (corte >= 0) {
+        try {
+          const props = JSON.parse(acumulado.slice(corte + 1))
+          if (Array.isArray(props) && props.length) {
+            setMsgs(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], propostas: props.map((p: any) => ({ ...p, estado: 'pendente' as const })) }; return c })
+          }
+        } catch { /* sentinela incompleta — ignora */ }
       }
     } catch {
       setMsgs(m => {
@@ -276,7 +301,7 @@ export default function AssistenteIA() {
             )}
 
             {msgs.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12, gap: 8 }}>
                 <div style={{
                   maxWidth: '88%', padding: '9px 13px', borderRadius: 13, fontSize: 13, lineHeight: 1.55,
                   background: m.role === 'user' ? '#111' : '#fff',
@@ -292,6 +317,29 @@ export default function AssistenteIA() {
                         : <span style={{ display: 'inline-flex', gap: 4 }}><Dot /><Dot d={0.2} /><Dot d={0.4} /></span>)
                     : m.content}
                 </div>
+                {/* Cartões de ação proposta (Fase 2) */}
+                {m.propostas && m.propostas.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '88%' }}>
+                    {m.propostas.map(p => (
+                      <div key={p.id} style={{ border: `1.5px solid ${p.estado === 'feito' ? '#bbf7d0' : p.estado === 'erro' ? '#fecaca' : '#e5e7eb'}`, borderRadius: 12, padding: '10px 12px', background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: p.estado === 'pendente' ? 9 : 4 }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" /></svg>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#111', lineHeight: 1.4 }}>{p.resumo}</span>
+                        </div>
+                        {p.estado === 'pendente' && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => confirmarAcao(i, p.id)} style={{ padding: '7px 14px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Confirmar</button>
+                            <button onClick={() => descartarAcao(i, p.id)} style={{ padding: '7px 12px', background: '#fff', color: '#888', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Descartar</button>
+                          </div>
+                        )}
+                        {p.estado === 'executando' && <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Executando…</span>}
+                        {p.estado === 'feito' && <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>✓ {p.msg || 'Feito.'}</span>}
+                        {p.estado === 'erro' && <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{p.msg || 'Falha.'}</span>}
+                        {p.estado === 'cancelado' && <span style={{ fontSize: 12, color: '#aaa', fontWeight: 600 }}>Descartado</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             <div ref={fimRef} />

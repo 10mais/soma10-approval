@@ -5,11 +5,13 @@ import { toast, confirmar } from '@/lib/toast'
 type Agente = { id: string; nome: string; funcao?: string; descricao?: string; instrucoes: string; ferramentas: string[]; cor?: string; ativo: boolean }
 
 const FERRAMENTAS = [
-  { name: 'consultar_tarefas', label: 'Consultar tarefas', desc: 'Ler tarefas da equipe (status, prazos, responsáveis)' },
-  { name: 'consultar_clientes', label: 'Consultar clientes', desc: 'Ler carteira de clientes, contratos e renovações' },
-  { name: 'consultar_crm', label: 'Consultar CRM', desc: 'Ler o funil de vendas (negócios, valores, follow-ups)' },
-  { name: 'consultar_financeiro', label: 'Consultar financeiro', desc: 'Ler o resultado do mês — só funciona para admin' },
-  { name: 'web_search', label: 'Buscar na web', desc: 'Pesquisar informações atuais na internet' },
+  { name: 'consultar_tarefas', label: 'Consultar tarefas', desc: 'Ler tarefas da equipe (status, prazos, responsáveis)', acao: false },
+  { name: 'consultar_clientes', label: 'Consultar clientes', desc: 'Ler carteira de clientes, contratos e renovações', acao: false },
+  { name: 'consultar_crm', label: 'Consultar CRM', desc: 'Ler o funil de vendas (negócios, valores, follow-ups)', acao: false },
+  { name: 'consultar_financeiro', label: 'Consultar financeiro', desc: 'Ler o resultado do mês — só funciona para admin', acao: false },
+  { name: 'web_search', label: 'Buscar na web', desc: 'Pesquisar informações atuais na internet', acao: false },
+  { name: 'criar_tarefa', label: 'Criar tarefa', desc: 'Preparar a criação de uma tarefa — o usuário confirma antes', acao: true },
+  { name: 'criar_marco', label: 'Criar etapa no Playbook', desc: 'Preparar uma etapa no Playbook de um cliente — o usuário confirma antes', acao: true },
 ]
 const CORES = ['#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#dc2626', '#ea580c', '#111827']
 
@@ -113,9 +115,12 @@ function AgenteModal({ agente, onClose, onSalvo }: { agente: Agente | null; onCl
             <label style={label}>Ferramentas (leitura de dados)</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {FERRAMENTAS.map(ff => (
-                <label key={ff.name} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', background: '#fafafa', border: '1px solid #eee', borderRadius: 8, padding: '8px 10px' }}>
+                <label key={ff.name} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', background: ff.acao ? '#faf5ff' : '#fafafa', border: `1px solid ${ff.acao ? '#e9d5ff' : '#eee'}`, borderRadius: 8, padding: '8px 10px' }}>
                   <input type="checkbox" checked={f.ferramentas.includes(ff.name)} onChange={() => toggleFerr(ff.name)} style={{ marginTop: 2, cursor: 'pointer' }} />
-                  <span><span style={{ fontSize: 12.5, fontWeight: 700, color: '#333' }}>{ff.label}</span><span style={{ display: 'block', fontSize: 11, color: '#999' }}>{ff.desc}</span></span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#333' }}>{ff.label}{ff.acao && <span style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, color: '#7c3aed', background: '#f3e8ff', borderRadius: 999, padding: '1px 7px', verticalAlign: 'middle' }}>AÇÃO</span>}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: '#999' }}>{ff.desc}</span>
+                  </span>
                 </label>
               ))}
             </div>

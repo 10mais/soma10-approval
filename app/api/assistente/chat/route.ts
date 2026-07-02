@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, ConfigAgencia, Agente } from '@/lib/redis'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
-import { ferramentasPara, executarFerramenta } from '@/lib/assistenteTools'
+import { ferramentasPara, executarFerramenta, ferramentasAcaoSchemas, ehAcao, resumoAcao } from '@/lib/assistenteTools'
+import { v4 as uuid } from 'uuid'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
@@ -68,7 +69,7 @@ ${agente.instrucoes || ''}
 
 ${listaClientes ? `Clientes ativos da agencia (use como referencia quando o usuario citar um cliente pelo nome):\n${listaClientes}` : ''}
 
-Regras gerais: responda SEMPRE em portugues do Brasil; seja direto, pratico e acionavel; use Markdown quando ajudar a organizar. Voce so LE dados do sistema (nao executa acoes nem altera nada).`
+Regras gerais: responda SEMPRE em portugues do Brasil; seja direto, pratico e acionavel; use Markdown quando ajudar a organizar. Use suas ferramentas de leitura para dados reais. Se voce tiver ferramentas de ACAO (ex.: criar tarefa/etapa), pode PREPARA-las quando o usuario pedir — mas toda acao passa por CONFIRMACAO do usuario antes de acontecer; voce nunca executa nada sozinho. Ao preparar uma acao, confirme em texto o que foi preparado e peca para o usuario confirmar no cartao.`
   } else if (ehVendas) {
     // Assistente de VENDAS: so fala de vendas/funil, navega o pipeline interno e
     // pesquisa sobre vendas na web. Injeta um resumo do CRM como contexto.
@@ -162,15 +163,19 @@ Regras de estilo:
   const ferramentasDB = agente
     ? ferramentasPara(role).filter(t => (agente!.ferramentas || []).includes(t.name))
     : (ehVendas ? [] : ferramentasPara(role))
+  // Fase 2: ferramentas de AÇÃO (só para agentes que as tenham). Não executam — geram propostas.
+  const ferramentasAcao = agente ? ferramentasAcaoSchemas().filter(t => (agente!.ferramentas || []).includes(t.name)) : []
   const tools: any[] = [
     ...(usarWebSearch ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }] : []),
     ...ferramentasDB,
+    ...ferramentasAcao,
   ]
 
   const stream = new ReadableStream({
     async start(controller) {
       let convo: any[] = [...messages]
       let custoTotal = 0
+      const propostas: any[] = [] // ações preparadas pelo agente, aguardando confirmação do usuário
       try {
         // Loop de tool-use: o modelo pode consultar o banco e continuar respondendo
         for (let i = 0; i < 6; i++) {
@@ -192,11 +197,15 @@ Regras de estilo:
           // Executa as ferramentas do app que o modelo pediu (tool_use)
           const chamadas = (final.content || []).filter((b: any) => b.type === 'tool_use')
           if (final.stop_reason === 'tool_use' && chamadas.length) {
-            const resultados = await Promise.all(chamadas.map(async (b: any) => ({
-              type: 'tool_result',
-              tool_use_id: b.id,
-              content: await executarFerramenta(b.name, b.input, { role }),
-            })))
+            const resultados = await Promise.all(chamadas.map(async (b: any) => {
+              // Ações NÃO executam aqui: viram propostas p/ o usuário confirmar
+              if (ehAcao(b.name)) {
+                const prop = { id: uuid(), acao: b.name, params: b.input || {}, resumo: resumoAcao(b.name, b.input), agenteId: agente?.id || '', agenteNome: agente?.nome || '' }
+                propostas.push(prop)
+                return { type: 'tool_result', tool_use_id: b.id, content: 'Acao PREPARADA e mostrada ao usuario para confirmar. Ainda NAO foi executada. Confirme em texto o que foi preparado e peca para ele confirmar no cartao.' }
+              }
+              return { type: 'tool_result', tool_use_id: b.id, content: await executarFerramenta(b.name, b.input, { role }) }
+            }))
             convo = [...convo, { role: 'assistant', content: final.content }, { role: 'user', content: resultados }]
             continue
           }
@@ -207,6 +216,8 @@ Regras de estilo:
           }
           break
         }
+        // Sentinela final com as ações propostas (o cliente separa pelo caractere ␞ e some com ele do texto)
+        if (propostas.length) controller.enqueue(encoder.encode('␞' + JSON.stringify(propostas)))
         await registrarGasto(custoTotal).catch(() => {})
       } catch (err: any) {
         controller.enqueue(encoder.encode(`\n\n[Erro: ${err?.message || 'falha ao gerar resposta'}]`))

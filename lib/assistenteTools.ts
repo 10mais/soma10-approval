@@ -44,6 +44,56 @@ export function ferramentasPara(role: string): any[] {
   return base
 }
 
+// ---- Fase 2: ferramentas de AÇÃO (escrita). Nunca executam direto — geram uma
+// PROPOSTA que o usuário confirma. `grupo` = permissão exigida ao confirmar. ----
+export const FERRAMENTAS_ACAO: { name: string; label: string; grupo: string }[] = [
+  { name: 'criar_tarefa', label: 'Criar tarefa', grupo: 'producao' },
+  { name: 'criar_marco', label: 'Criar etapa no Playbook', grupo: 'estrategia' },
+]
+export const ehAcao = (name: string) => FERRAMENTAS_ACAO.some(a => a.name === name)
+
+export function ferramentasAcaoSchemas(): any[] {
+  return [
+    {
+      name: 'criar_tarefa',
+      description: 'PREPARA a criação de uma tarefa (o usuário confirma antes de criar). Use quando o usuário pedir para criar/abrir uma tarefa ou lembrete de trabalho.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string', description: 'título da tarefa (obrigatório)' },
+          descricao: { type: 'string', description: 'detalhes/descrição (opcional)' },
+          cliente: { type: 'string', description: 'nome do cliente relacionado (opcional)' },
+          prazo: { type: 'string', description: 'prazo no formato AAAA-MM-DD (opcional)' },
+          prioridade: { type: 'string', enum: ['baixa', 'media', 'alta', 'urgente'], description: 'prioridade (opcional, default media)' },
+        },
+        required: ['titulo'],
+      },
+    },
+    {
+      name: 'criar_marco',
+      description: 'PREPARA a criação de uma etapa (marco) no Playbook de um cliente (o usuário confirma antes). Use quando pedirem para planejar uma entrega/etapa no Playbook.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          cliente: { type: 'string', description: 'nome do cliente (obrigatório)' },
+          titulo: { type: 'string', description: 'título da etapa (obrigatório)' },
+          categoria: { type: 'string', enum: ['social_media', 'trafego', 'branding', 'landing_page', 'estrategia', 'reuniao', 'entrega', 'outro'], description: 'categoria (opcional)' },
+          descricao: { type: 'string', description: 'descrição (opcional)' },
+        },
+        required: ['cliente', 'titulo'],
+      },
+    },
+  ]
+}
+
+// Resumo legível de uma ação proposta (mostrado no cartão de confirmação).
+export function resumoAcao(name: string, input: any): string {
+  const i = input || {}
+  if (name === 'criar_tarefa') return `Criar tarefa: "${i.titulo || '(sem título)'}"${i.cliente ? ` — cliente ${i.cliente}` : ''}${i.prazo ? ` (prazo ${i.prazo})` : ''}`
+  if (name === 'criar_marco') return `Criar etapa no Playbook: "${i.titulo || '(sem título)'}" — cliente ${i.cliente || '(?)'}`
+  return `Ação: ${name}`
+}
+
 export async function executarFerramenta(name: string, input: any, ctx: Ctx): Promise<string> {
   try {
     if (name === 'consultar_tarefas') return await consultarTarefas(input || {})
