@@ -1168,48 +1168,89 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
   )
 }
 
-// Central de mensagens (WhatsApp) — conversa com leads direto pelo sistema
-type WaConversa = { telefone: string; nome?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
-type WaMensagem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
+// Central de mensagens — conversa com leads pelo sistema (WhatsApp e Instagram Direct)
+type MsgConversa = { id: string; telefone?: string; nome?: string; username?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
+type CanalMsg = 'whatsapp' | 'instagram'
+
+// Cada canal abstrai o endpoint, os nomes dos campos e a apresentação. A UI é a mesma.
+const CANAL_CFG: Record<CanalMsg, {
+  cor: string
+  bolha: string
+  aviso: string
+  listar: () => Promise<any>
+  historico: (id: string) => Promise<any>
+  enviar: (id: string, texto: string) => Promise<any>
+  vincular: (id: string, contatoId: string) => Promise<any>
+  norm: (c: any) => MsgConversa
+  subId: (c: MsgConversa | undefined, id: string) => string
+  matchContato: (c: MsgConversa, contatos: Contato[]) => string | undefined
+}> = {
+  whatsapp: {
+    cor: '#16a34a', bolha: '#dcf8c6',
+    aviso: 'WhatsApp ainda não conectado. As conversas aparecem aqui assim que as credenciais (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN) forem adicionadas na Vercel e o webhook configurado na Meta.',
+    listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
+    historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
+    enviar: (id, texto) => fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, texto }) }).then(x => x.json()).catch(() => null),
+    vincular: (id, contatoId) => fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, contatoId }) }).catch(() => {}),
+    norm: c => ({ ...c, id: c.telefone }),
+    subId: (_c, id) => `+${id}`,
+    matchContato: (c, contatos) => contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.id)?.nome,
+  },
+  instagram: {
+    cor: '#d6249f', bolha: '#fce7f3',
+    aviso: 'Instagram Direct ainda não conectado. As conversas aparecem aqui após a aprovação da permissão instagram_manage_messages no App Review, a conexão da conta do cliente e o webhook (INSTAGRAM_VERIFY_TOKEN) configurado na Meta.',
+    listar: () => fetch('/api/crm/mensagens-instagram').then(r => r.json()).catch(() => null),
+    historico: id => fetch(`/api/crm/mensagens-instagram?id=${id}`).then(r => r.json()).catch(() => null),
+    enviar: (id, texto) => fetch('/api/crm/mensagens-instagram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, texto }) }).then(x => x.json()).catch(() => null),
+    vincular: (id, contatoId) => fetch('/api/crm/mensagens-instagram', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, contatoId }) }).catch(() => {}),
+    norm: c => ({ ...c }),
+    subId: (c, id) => c?.username ? `@${c.username}` : id,
+    matchContato: () => undefined,
+  },
+}
 
 function MensagensInbox({ contatos }: { contatos: Contato[] }) {
-  const [conversas, setConversas] = useState<WaConversa[]>([])
+  const [canal, setCanal] = useState<CanalMsg>('whatsapp')
+  const cfg = CANAL_CFG[canal]
+  const [conversas, setConversas] = useState<MsgConversa[]>([])
   const [configurado, setConfigurado] = useState(true)
   const [sel, setSel] = useState<string>('')
-  const [mensagens, setMensagens] = useState<WaMensagem[]>([])
+  const [mensagens, setMensagens] = useState<MsgItem[]>([])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [carregando, setCarregando] = useState(true)
 
-  const nomeDe = (c: WaConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || (contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.telefone)?.nome) || `+${c.telefone}`
+  const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id)
 
   async function carregarConversas() {
-    const d = await fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null)
-    if (d) { setConversas(Array.isArray(d.conversas) ? d.conversas : []); setConfigurado(!!d.configurado) }
+    const d = await cfg.listar()
+    if (d) { setConversas(Array.isArray(d.conversas) ? d.conversas.map(cfg.norm) : []); setConfigurado(!!d.configurado) }
     setCarregando(false)
   }
-  async function abrir(tel: string) {
-    setSel(tel)
-    const d = await fetch(`/api/crm/mensagens?tel=${tel}`).then(r => r.json()).catch(() => null)
+  async function abrir(id: string) {
+    setSel(id)
+    const d = await cfg.historico(id)
     if (d) setMensagens(Array.isArray(d.mensagens) ? d.mensagens : [])
-    setConversas(cs => cs.map(c => c.telefone === tel ? { ...c, naoLidas: 0 } : c))
+    setConversas(cs => cs.map(c => c.id === id ? { ...c, naoLidas: 0 } : c))
   }
   async function enviar() {
     const t = texto.trim()
     if (!t || !sel || enviando) return
     setEnviando(true); setTexto('')
-    const r = await fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel, texto: t }) }).then(x => x.json()).catch(() => null)
+    const r = await cfg.enviar(sel, t)
     setEnviando(false)
     if (!r?.ok) toast(r?.error || 'Não foi possível enviar.', r?.registrado ? 'info' : 'erro')
     abrir(sel); carregarConversas()
   }
   async function vincular(contatoId: string) {
     if (!sel) return
-    await fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel, contatoId }) }).catch(() => {})
+    await cfg.vincular(sel, contatoId)
     carregarConversas()
   }
 
-  useEffect(() => { carregarConversas() }, [])
+  // Troca de canal (e carga inicial): reseta a seleção e recarrega
+  useEffect(() => { setSel(''); setMensagens([]); setCarregando(true); carregarConversas() }, [canal])
   // Atualiza a conversa aberta periodicamente (recebe respostas do lead)
   useEffect(() => {
     if (!sel) return
@@ -1217,13 +1258,21 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
     return () => clearInterval(id)
   }, [sel])
 
-  const conversaSel = conversas.find(c => c.telefone === sel)
+  const conversaSel = conversas.find(c => c.id === sel)
 
   return (
     <div>
+      {/* Seletor de canal */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {(['whatsapp', 'instagram'] as CanalMsg[]).map(c => (
+          <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : '#e5e5e5'}`, background: canal === c ? CANAL_CFG[c].cor : '#fff', color: canal === c ? '#fff' : '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            {c === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
+          </button>
+        ))}
+      </div>
       {!configurado && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '11px 14px', marginBottom: 14, fontSize: 12.5, color: '#92400e' }}>
-          WhatsApp ainda não conectado. As conversas aparecem aqui assim que as credenciais (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN) forem adicionadas na Vercel e o webhook configurado na Meta.
+          {cfg.aviso}
         </div>
       )}
       <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
@@ -1232,10 +1281,10 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
           {carregando ? <p style={{ padding: 16, color: '#aaa', fontSize: 13 }}>Carregando...</p>
             : conversas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nenhuma conversa ainda.</p>
             : conversas.map(c => (
-              <button key={c.telefone} onClick={() => abrir(c.telefone)} style={{ width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.telefone ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                   <span style={{ fontWeight: 700, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
-                  {!!c.naoLidas && <span style={{ background: '#16a34a', color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
+                  {!!c.naoLidas && <span style={{ background: cfg.cor, color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
                 </span>
                 <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>
               </button>
@@ -1249,7 +1298,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: '#111' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
-                <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>+{sel}</p>
+                <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
               </div>
               <select value={conversaSel?.contatoId || ''} onChange={e => vincular(e.target.value)} title="Vincular a um contato do CRM"
                 style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', maxWidth: 180 }}>
@@ -1260,7 +1309,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: '#fafafa' }}>
               {mensagens.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
                 : mensagens.map(m => (
-                  <div key={m.id} style={{ alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '78%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? '#dcf8c6' : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <div key={m.id} style={{ alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '78%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {m.texto}
                     <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
