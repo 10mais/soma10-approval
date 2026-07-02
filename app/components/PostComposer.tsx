@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid'
 import { confirmar } from '@/lib/toast'
 import DriveButton from './DriveButton'
 import AvatarCliente from './AvatarCliente'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 type Cliente = { id: string; nome: string; instagram: string; logo?: string }
 type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
@@ -54,6 +55,7 @@ export default function PostComposer({
   modoEdicao?: boolean
 }) {
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
+  const mobile = useIsMobile()
   const [marcoId, setMarcoId] = useState(valorInicial?.marcoId || '')
   const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
   useEffect(() => {
@@ -338,7 +340,7 @@ export default function PostComposer({
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: 24, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: mobile ? 16 : 24, alignItems: 'start' }}>
       {/* Coluna esquerda: formulário/editor */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Cliente — dropdown na agência; travado na visão de cliente */}

@@ -2537,7 +2537,7 @@ function Dashboard() {
             {!listeningLoading && listeningData && !listeningData.semNicho && (
               <>
                 <p style={{ margin: '0 0 16px', fontSize: 12, color: '#aaa' }}>Termos do nicho: <strong style={{ color: '#666' }}>{(listeningData.termos || []).join(', ')}</strong></p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
                   {/* YouTube */}
                   <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -4066,15 +4066,15 @@ function Dashboard() {
               {clientes.filter(c => c.metaConectado).length === 0 ? (
                 <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma conta conectada ainda. Use "Conectar redes" para vincular um perfil.</p>
               ) : (
-                <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, padding: '10px 14px', background: '#fafafa', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                <div style={{ border: '1px solid #eee', borderRadius: 12, overflowX: 'auto' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, padding: '10px 14px', background: '#fafafa', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     <span>Conta social</span><span>Status</span><span>Tipo</span><span></span>
                   </div>
                   {clientes.filter(c => c.metaConectado).flatMap(c => ([
                     ...(c.facebookPageId ? [{ c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' }] : []),
                     ...((c.instagramConectado || c.instagramUserId || c.instagramUsername) ? [{ c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' }] : []),
                   ])).map((row, i) => (
-                    <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
+                    <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#bbb', fontSize: 13 }}>
                           <AvatarCliente logo={row.c.logo} nome={row.c.nome} />

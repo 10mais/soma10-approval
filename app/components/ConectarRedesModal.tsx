@@ -56,7 +56,7 @@ export default function ConectarRedesModal({ clienteId, clienteNome, onClose }: 
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, color: '#999', cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
           {REDES.map(rede => (
             <button key={rede.key} onClick={() => conectar(rede)} disabled={!rede.ativo} type="button"
               style={{
