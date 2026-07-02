@@ -1,0 +1,111 @@
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import { confirmar, toast } from '@/lib/toast'
+import RichText from './RichText'
+
+type Doc = { id: string; titulo: string; conteudo: string; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+
+function textoDe(html: string) {
+  return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
+}
+function quando(iso?: string) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+export default function Documentos() {
+  const [docs, setDocs] = useState<Doc[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [aberto, setAberto] = useState<Doc | null>(null)
+  const [salvo, setSalvo] = useState<'idle' | 'salvando' | 'ok'>('idle')
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function carregar() {
+    setCarregando(true)
+    fetch('/api/documentos').then(r => r.json()).then(d => setDocs(Array.isArray(d) ? d : [])).finally(() => setCarregando(false))
+  }
+  useEffect(() => { carregar() }, [])
+
+  // Autosave do documento aberto (debounce)
+  function editar(patch: Partial<Doc>) {
+    setAberto(a => a ? { ...a, ...patch } : a)
+    setSalvo('salvando')
+    if (timer.current) clearTimeout(timer.current)
+    const alvo = aberto?.id
+    timer.current = setTimeout(async () => {
+      const atual = { ...(aberto as Doc), ...patch }
+      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo }) }).then(x => x.json()).catch(() => null)
+      if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
+      else setSalvo('idle')
+    }, 700)
+  }
+
+  async function novo() {
+    const r = await fetch('/api/documentos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: '', conteudo: '' }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { setDocs(ds => [r.documento, ...ds]); setAberto(r.documento) }
+    else toast('Falha ao criar documento.', 'erro')
+  }
+  async function excluir(id: string) {
+    if (!(await confirmar('Excluir este documento? Esta ação não pode ser desfeita.', { titulo: 'Excluir documento', okLabel: 'Excluir', perigo: true }))) return
+    const r = await fetch(`/api/documentos?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { setDocs(ds => ds.filter(d => d.id !== id)); if (aberto?.id === id) setAberto(null); toast('Documento excluído.', 'sucesso') }
+    else toast(r?.error || 'Falha ao excluir.', 'erro')
+  }
+  function fechar() { setAberto(null); carregar() }
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Documentos</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Documentos internos da equipe (processos, wikis, briefings). Compartilhados com o time — clientes não veem.</p>
+        </div>
+        <button onClick={novo} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo documento</button>
+      </div>
+
+      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : docs.length === 0 ? (
+        <div onClick={novo} style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 14, color: '#888' }}>Nenhum documento ainda.</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Clique para criar o primeiro.</p>
+        </div>
+      ) : (
+        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          {docs.map((d, idx) => (
+            <div key={d.id} onClick={() => setAberto(d)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderTop: idx ? '1px solid #f6f6f6' : 'none', cursor: 'pointer' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2" /></svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.titulo.trim() || 'Sem título'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{textoDe(d.conteudo).slice(0, 90) || 'Documento vazio'}</p>
+              </div>
+              <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0, textAlign: 'right' }}>{quando(d.atualizadoEm)}{d.atualizadoPorNome ? <><br />{d.atualizadoPorNome}</> : ''}</span>
+              <button onClick={e => { e.stopPropagation(); excluir(d.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Editor em modal */}
+      {aberto && (
+        <div onClick={fechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+              <input value={aberto.titulo} onChange={e => editar({ titulo: e.target.value })} placeholder="Título do documento" autoFocus
+                style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+              {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
+              {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
+              <button onClick={() => excluir(aberto.id)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
+              </button>
+              <button onClick={fechar} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+            </div>
+            <div style={{ padding: 16, overflowY: 'auto' }}>
+              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => editar({ conteudo: html })} placeholder="Escreva o documento… negrito, cor e links na barra acima." minHeight={380} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

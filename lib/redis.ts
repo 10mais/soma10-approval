@@ -515,6 +515,18 @@ export type CrmNegocio = {
   atualizadoEm: string
 }
 
+// Documento interno (tipo Google Docs da equipe). Chave `documento:{id}`, índice `documentos`.
+export type Documento = {
+  id: string
+  titulo: string
+  conteudo: string // HTML (RichText)
+  criadoPor?: string
+  criadoPorNome?: string
+  atualizadoPorNome?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 // Agente de IA treinado (Fase 1: persona + ferramentas de LEITURA). Chave `agente:{id}`, índice `agentes`.
 export type Agente = {
   id: string
