@@ -170,6 +170,17 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 **Roadmap aberto / menores:** dashboard de Ads read-only (aguarda APIs Meta/Google); logomarca oficial em Trabalhe Conosco; dívida técnica do modo escuro (filtro de inversão — ideal um tema escuro real).
 
+**Preparar para DISPONIBILIZAR AOS CLIENTES (pedido do dono — 2026-07-02):**
+- **Layout único:** remover o ajuste de layout por cliente (cor/tema por marca) — manter o layout padrão da agência igual para todos os clientes.
+- **Perfil de cliente:** ajustar e organizar o perfil/tela do cliente para começar a liberar o acesso aos clientes reais.
+- **Aprovação de postagens mais fácil:** melhorar o fluxo de aprovação no portal do cliente (aprovar/reprovar com facilidade).
+- **Versão mobile:** deixar pronta para o cliente baixar o app (PWA) e usar facilmente — relacionado ao item "versão mobile (sidebar → hambúrguer)".
+- **Sequência de integração:** primeiro Instagram (app **publicado** no Meta / App Review), depois WhatsApp.
+
+**Ajustes pontuais (pequenos — pedido do dono, 2026-07-02):**
+- **Esteira → "Relacionar a tarefa":** hoje CRIA uma tarefa nova; mudar para **pesquisar e relacionar a uma tarefa existente** (mantendo opção de criar rápido). Ver `/api/esteira/relacionar` e o botão na pauta em `Esteira.tsx`.
+- **Nova pauta (composer):** ao clicar fora, exibir o **mesmo aviso das tarefas** ("Alterações não salvas / Continuar editando / Sair sem salvar") em vez de fechar direto — reaproveitar o guard de fechamento do `TarefaModal`.
+
 ## 13. Arquivos-chave
 
 `lib/redis.ts` (tipos/chaves) · `lib/publicar.ts` (publicação Meta) · `lib/notificacoes.ts` (`notificar`, `notificarEquipe`, **`notificarAdmins`**) · `lib/automacoes.ts` · `lib/resumoSemanal.ts` · `lib/relatorioMensal.ts` · `lib/anthropicSaldo.ts` · `lib/cache.ts` · `lib/auth.ts` · `lib/modoCliente.ts`.

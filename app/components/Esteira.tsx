@@ -164,6 +164,19 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
     carregarPautas(planoSel)
   }
 
+  // Fechar "Nova pauta" com guarda de alteracoes nao salvas (mesmo aviso das tarefas).
+  function pautaTemAlteracoes() {
+    const f = formPauta
+    return !!(f.briefing.trim() || f.sugestaoImagem.trim() || f.textoImagem.trim() || f.sugestaoLegenda.trim() || f.refImagemUrl.trim() || f.formato !== 'feed')
+  }
+  async function fecharNovaPauta() {
+    if (pautaTemAlteracoes()) {
+      const ok = await confirmar('Você tem alterações não salvas nesta pauta.', { titulo: 'Alterações não salvas', okLabel: 'Sair sem salvar', cancelLabel: 'Continuar editando', perigo: true })
+      if (!ok) return
+    }
+    setNovaPautaModal(false)
+  }
+
   async function gerarPlanoIA() {
     if (!planoSel) return
     if (!(await confirmar('A IA vai gerar pautas para o mes inteiro com base no Brand Board. Isso consome creditos da IA. Continuar?', { titulo: 'Gerar pautas com IA', okLabel: 'Continuar' }))) return
@@ -338,7 +351,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 
       {/* Modal de nova pauta */}
       {novaPautaModal && (
-        <div onClick={() => setNovaPautaModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharNovaPauta} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Nova pauta</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -411,7 +424,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: formPauta.briefing.trim() ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
-              <button onClick={() => setNovaPautaModal(false)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={fecharNovaPauta} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -448,7 +461,42 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   const [relacionando, setRelacionando] = useState(false)
   const [vinculada, setVinculada] = useState(!!(pauta as any).tarefaId)
   const [relMsg, setRelMsg] = useState('')
-  async function relacionarTarefa() {
+  // Seletor de tarefa existente
+  const [relPainel, setRelPainel] = useState(false)
+  const [relBusca, setRelBusca] = useState('')
+  const [relTarefas, setRelTarefas] = useState<any[] | null>(null)
+  const [relCarregando, setRelCarregando] = useState(false)
+
+  async function abrirPainelRel() {
+    const abrir = !relPainel
+    setRelPainel(abrir); setRelMsg('')
+    if (abrir && relTarefas === null) {
+      setRelCarregando(true)
+      const lista = await fetch('/api/tarefas').then(x => x.json()).catch(() => [])
+      // Nao misturar clientes: so tarefas do mesmo cliente da pauta (quando ha cliente).
+      const filtradas = Array.isArray(lista)
+        ? (pauta.clienteId ? lista.filter((t: any) => t.clienteId === pauta.clienteId) : lista)
+        : []
+      setRelTarefas(filtradas)
+      setRelCarregando(false)
+    }
+  }
+
+  // Vincular a uma tarefa JA existente
+  async function vincularExistente(tarefaId: string) {
+    setRelacionando(true); setRelMsg('')
+    const r = await fetch('/api/esteira/relacionar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId: pauta.id, tarefaId }),
+    }).then(x => x.json()).catch(() => null)
+    setRelacionando(false)
+    if (!r || r.error) { setRelMsg(r?.error || 'Falha ao relacionar.'); return }
+    setVinculada(true); setRelPainel(false)
+    setRelMsg(`Vinculada à tarefa "${r.titulo || ''}".`)
+  }
+
+  // Criar tarefa nova a partir da pauta (comportamento antigo)
+  async function criarNovaTarefa() {
     setRelacionando(true); setRelMsg('')
     const r = await fetch('/api/esteira/relacionar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -457,7 +505,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
     setRelacionando(false)
     if (!r || r.error) { setRelMsg(r?.error || 'Falha ao relacionar.'); return }
     if (r.resultado === 'pulada') { setRelMsg('Pautas em "Pronto" não geram tarefa (já viram post no Planner).'); return }
-    setVinculada(true)
+    setVinculada(true); setRelPainel(false)
     setRelMsg(r.resultado === 'jaVinculada' ? 'Esta pauta já tinha uma tarefa vinculada.' : `Tarefa criada (tipo ${r.tipo}) e vinculada.`)
   }
 
@@ -607,7 +655,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
               Adicionar criativo
             </button>
           )}
-          <button onClick={relacionarTarefa} disabled={relacionando || vinculada} title="Cria uma tarefa para esta pauta (tipo = etapa atual)" style={{ padding: '11px 16px', background: vinculada ? '#f0fdf4' : '#fff', color: vinculada ? '#16a34a' : '#111', border: `1.5px solid ${vinculada ? '#bbf7d0' : '#111'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
+          <button onClick={abrirPainelRel} disabled={relacionando || vinculada} title="Relacionar esta pauta a uma tarefa existente (ou criar uma nova)" style={{ padding: '11px 16px', background: vinculada ? '#f0fdf4' : '#fff', color: vinculada ? '#16a34a' : '#111', border: `1.5px solid ${vinculada ? '#bbf7d0' : '#111'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
             {vinculada ? '✓ Tarefa vinculada' : relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
           </button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
@@ -617,7 +665,42 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             </button>
           )}
         </div>
-        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
+        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: (relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') || relMsg.startsWith('A tarefa')) ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
+
+        {/* Seletor de tarefa existente (item: relacionar a tarefa EXISTENTE, ou criar nova) */}
+        {relPainel && !vinculada && (
+          <div style={{ marginTop: 10, border: '1.5px solid #e5e7eb', borderRadius: 12, padding: 12, background: '#fafafa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <strong style={{ fontSize: 12.5, color: '#111' }}>Relacionar a uma tarefa existente</strong>
+              <button onClick={criarNovaTarefa} disabled={relacionando} type="button"
+                style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: relacionando ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                + Criar tarefa nova
+              </button>
+            </div>
+            <input value={relBusca} onChange={e => setRelBusca(e.target.value)} placeholder="Buscar tarefa por título..." autoFocus
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+            <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {relCarregando && <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Carregando tarefas...</p>}
+              {!relCarregando && relTarefas !== null && (() => {
+                const q = relBusca.trim().toLowerCase()
+                const lista = (relTarefas || []).filter((t: any) =>
+                  !q || (t.titulo || '').toLowerCase().includes(q) || (t.descricao || '').toLowerCase().includes(q))
+                if (lista.length === 0) return (
+                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
+                    {relBusca.trim() ? 'Nenhuma tarefa encontrada.' : (pauta.clienteId ? 'Este cliente ainda não tem tarefas. Use "Criar tarefa nova".' : 'Nenhuma tarefa. Use "Criar tarefa nova".')}
+                  </p>
+                )
+                return lista.slice(0, 40).map((t: any) => (
+                  <button key={t.id} type="button" onClick={() => vincularExistente(t.id)} disabled={relacionando}
+                    style={{ textAlign: 'left', padding: '8px 10px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, cursor: relacionando ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#111' }}>{t.titulo || '(sem título)'}</span>
+                    <span style={{ fontSize: 10.5, color: '#888' }}>{t.tipo || 'tarefa'}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
+                  </button>
+                ))
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

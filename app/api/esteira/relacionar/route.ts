@@ -62,10 +62,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
-  const { postId, planoId } = await req.json()
+  const { postId, planoId, tarefaId } = await req.json()
   const autor = session.user?.name || ''
 
-  // Individual — uma pauta
+  // Vincular a uma tarefa JA EXISTENTE (busca na Esteira). Bidirecional.
+  if (postId && tarefaId) {
+    const pauta = await redis.get<Post>(`post:${postId}`)
+    if (!pauta) return NextResponse.json({ error: 'pauta não encontrada' }, { status: 404 })
+    const tarefa = await redis.get<Tarefa>(`tarefa:${tarefaId}`)
+    if (!tarefa) return NextResponse.json({ error: 'tarefa não encontrada' }, { status: 404 })
+    // Nao misturar clientes: a tarefa precisa ser do mesmo cliente da pauta (quando ha cliente).
+    if (pauta.clienteId && tarefa.clienteId && pauta.clienteId !== tarefa.clienteId) {
+      return NextResponse.json({ error: 'A tarefa é de outro cliente.' }, { status: 400 })
+    }
+    await redis.set(`post:${postId}`, { ...pauta, tarefaId })
+    await redis.set(`tarefa:${tarefaId}`, { ...tarefa, origemPostId: postId })
+    return NextResponse.json({ ok: true, resultado: 'vinculadaExistente', tarefaId, titulo: tarefa.titulo })
+  }
+
+  // Individual — uma pauta (cria tarefa nova)
   if (postId) {
     const pauta = await redis.get<Post>(`post:${postId}`)
     if (!pauta) return NextResponse.json({ error: 'pauta não encontrada' }, { status: 404 })
