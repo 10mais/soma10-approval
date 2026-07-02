@@ -15,6 +15,10 @@ export default function MapasMentais() {
   const [mapas, setMapas] = useState<MapaMeta[]>([])
   const [carregando, setCarregando] = useState(true)
   const [abertoId, setAbertoId] = useState<string | null>(null)
+  const [novoModal, setNovoModal] = useState(false)
+  const [modoIA, setModoIA] = useState(false)
+  const [tema, setTema] = useState('')
+  const [gerando, setGerando] = useState(false)
 
   function carregar() {
     setCarregando(true)
@@ -22,10 +26,18 @@ export default function MapasMentais() {
   }
   useEffect(() => { carregar() }, [])
 
-  async function novo() {
+  async function criarDoZero() {
     const r = await fetch('/api/mapas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: '' }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { carregar(); setAbertoId(r.mapa.id) } else toast('Falha ao criar mapa.', 'erro')
+    if (r?.ok) { setNovoModal(false); carregar(); setAbertoId(r.mapa.id) } else toast('Falha ao criar mapa.', 'erro')
   }
+  async function gerarIA() {
+    if (!tema.trim() || gerando) return
+    setGerando(true)
+    const r = await fetch('/api/mapas/gerar-ia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tema: tema.trim() }) }).then(x => x.json()).catch(() => null)
+    setGerando(false)
+    if (r?.ok) { setNovoModal(false); setModoIA(false); setTema(''); carregar(); setAbertoId(r.id) } else toast(r?.error || 'Falha ao gerar com IA.', 'erro')
+  }
+  function abrirNovo() { setModoIA(false); setTema(''); setNovoModal(true) }
   async function excluir(id: string) {
     if (!(await confirmar('Excluir este mapa mental?', { titulo: 'Excluir mapa', okLabel: 'Excluir', perigo: true }))) return
     await fetch(`/api/mapas?id=${id}`, { method: 'DELETE' }).catch(() => {})
@@ -41,10 +53,10 @@ export default function MapasMentais() {
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Mapas mentais</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Organize ideias em nós e conexões — brainstorm, estratégia, planejamento.</p>
         </div>
-        <button onClick={novo} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo mapa</button>
+        <button onClick={abrirNovo} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo mapa</button>
       </div>
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : mapas.length === 0 ? (
-        <div onClick={novo} style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+        <div onClick={abrirNovo} style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
           <p style={{ margin: '0 0 4px', fontSize: 14, color: '#888' }}>Nenhum mapa ainda.</p>
           <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Clique para criar o primeiro.</p>
         </div>
@@ -62,6 +74,37 @@ export default function MapasMentais() {
               <button onClick={e => { e.stopPropagation(); excluir(m.id) }} style={{ marginTop: 8, background: 'none', border: 'none', color: '#c00', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Excluir</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {novoModal && (
+        <div onClick={() => !gerando && setNovoModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo mapa mental</h3>
+            {!modoIA ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button onClick={criarDoZero} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: '#fafafa', border: '1.5px solid #eee', borderRadius: 12, cursor: 'pointer' }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 10, background: '#f0f0f0', color: '#444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111' }}>Começar do zero</span><span style={{ display: 'block', fontSize: 12, color: '#999' }}>Um mapa em branco com o nó central</span></span>
+                </button>
+                <button onClick={() => setModoIA(true)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: 12, cursor: 'pointer' }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 10, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" /></svg></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111' }}>Gerar com IA</span><span style={{ display: 'block', fontSize: 12, color: '#999' }}>Descreva um tema e a IA monta o mapa</span></span>
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Sobre o que é o mapa?</label>
+                <textarea value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder="Ex.: Estrutura organizacional da Clínica Norah · Plano de marketing 2026 · Onboarding de novo cliente…"
+                  style={{ width: '100%', minHeight: 90, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>A IA cria os ramos e subtópicos. Você ajusta tudo depois.</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button onClick={gerarIA} disabled={!tema.trim() || gerando} style={{ flex: 1, padding: '11px 0', background: tema.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: tema.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{gerando ? 'Gerando…' : 'Gerar mapa'}</button>
+                  <button onClick={() => setModoIA(false)} disabled={gerando} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Voltar</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -273,7 +316,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
               return (
                 <g key={c.id} style={{ pointerEvents: 'stroke', cursor: 'pointer' }} onClick={() => setConexoes(cs => cs.filter(x => x.id !== c.id))}>
                   <path d={path} stroke="transparent" strokeWidth={14} fill="none" />
-                  <path d={path} stroke={a.cor || '#c4b5fd'} strokeWidth={2.5} fill="none" opacity={0.8} />
+                  <path d={path} stroke="#ffc00f" strokeWidth={2.75} fill="none" strokeLinecap="round" />
                 </g>
               )
             })}
