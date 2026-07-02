@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
+
+// Rotas publicas/standalone onde o assistente flutuante nao deve aparecer.
+const ROTAS_SEM_ASSISTENTE = ['/privacidade', '/termos', '/exclusao-de-dados', '/aprovar', '/status', '/trabalhe-conosco', '/login', '/doc']
 
 type Proposta = { id: string; acao: string; params: any; resumo: string; agenteId?: string; agenteNome?: string; estado?: 'pendente' | 'executando' | 'feito' | 'erro' | 'cancelado'; msg?: string }
 type Msg = { role: 'user' | 'assistant'; content: string; propostas?: Proposta[] }
@@ -66,6 +70,8 @@ export default function AssistenteIA() {
   const { data: session, status } = useSession()
   const role = (session?.user as any)?.role
   const ehVendas = role === 'vendas'
+  const pathname = usePathname()
+  const rotaPublica = ROTAS_SEM_ASSISTENTE.some(r => pathname === r || pathname?.startsWith(r + '/'))
 
   const [aberto, setAberto] = useState(false)
   // No mobile o botao sobe acima da barra de navegacao inferior
@@ -205,8 +211,8 @@ export default function AssistenteIA() {
     }
   }
 
-  // So aparece para a equipe autenticada (nao para o portal do cliente)
-  if (status !== 'authenticated' || role === 'cliente') return null
+  // So aparece para a equipe autenticada (nao para o portal do cliente nem em paginas publicas)
+  if (rotaPublica || status !== 'authenticated' || role === 'cliente') return null
 
   return (
     <>

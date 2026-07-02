@@ -43,6 +43,7 @@ export default function PrivacidadePage() {
           <li><strong>Dados de cadastro:</strong> nome, e-mail, telefone, cargo e foto de perfil.</li>
           <li><strong>Dados de autenticação:</strong> credenciais de acesso (senhas são armazenadas de forma criptografada).</li>
           <li><strong>Conteúdo do usuário:</strong> textos, imagens, vídeos e documentos enviados para produção e aprovação.</li>
+          <li><strong>Dados de CRM e vendas:</strong> informações de contatos, empresas e oportunidades comerciais (leads) inseridas pela equipe — como nome, e-mail, telefone, cargo, empresa e histórico de interações — para gestão do funil de vendas e do relacionamento comercial.</li>
           <li><strong>Dados de contas do Instagram e Facebook:</strong> quando você conecta uma conta profissional, acessamos, mediante sua autorização, informações e permissões da conta (identificador da página/perfil, tokens de acesso, publicação de conteúdo, mensagens diretas e métricas), estritamente para operar as funcionalidades da plataforma.</li>
         </ul>
 
@@ -51,6 +52,7 @@ export default function PrivacidadePage() {
           <li>Autenticar o acesso e manter a segurança das contas.</li>
           <li>Produzir, aprovar, agendar e publicar conteúdo nas redes sociais conectadas.</li>
           <li>Gerenciar e responder mensagens e comentários das redes sociais conectadas.</li>
+          <li>Gerenciar o funil de vendas, contatos, empresas e oportunidades comerciais (CRM).</li>
           <li>Gerar relatórios de desempenho e métricas para os clientes.</li>
           <li>Enviar notificações operacionais (por e-mail e notificações push) relacionadas ao uso da plataforma.</li>
         </ul>
@@ -76,7 +78,16 @@ export default function PrivacidadePage() {
           necessários à operação da plataforma (ex.: Meta, Upstash, Vercel) e quando exigido por lei.
         </p>
 
-        <h2 style={h2}>7. Seus direitos (LGPD)</h2>
+        <h2 style={h2}>7. Dados de terceiros no CRM e nosso papel</h2>
+        <p>
+          A plataforma inclui um módulo de CRM e vendas no qual a equipe pode inserir dados de contatos
+          comerciais e potenciais clientes (leads). Nesse contexto, a agência (ou a empresa contratante) é a
+          <strong> controladora</strong> desses dados e a Soma10 Approval atua como <strong>operadora</strong>,
+          tratando-os exclusivamente para viabilizar a gestão comercial. A equipe é responsável por inserir
+          apenas dados obtidos de forma lícita e por atender às solicitações dos respectivos titulares.
+        </p>
+
+        <h2 style={h2}>8. Seus direitos (LGPD)</h2>
         <p>
           Nos termos da Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você pode solicitar a
           confirmação, o acesso, a correção, a portabilidade e a <strong>exclusão</strong> dos seus dados,
@@ -84,13 +95,13 @@ export default function PrivacidadePage() {
           página <a href="/exclusao-de-dados" style={{ color: '#0a58ca' }}>Exclusão de dados</a>.
         </p>
 
-        <h2 style={h2}>8. Retenção</h2>
+        <h2 style={h2}>9. Retenção</h2>
         <p>
           Mantemos os dados enquanto durar a relação de uso da plataforma ou pelo período necessário ao
           cumprimento de obrigações legais. Após esse prazo, os dados são excluídos ou anonimizados.
         </p>
 
-        <h2 style={h2}>9. Contato</h2>
+        <h2 style={h2}>10. Contato</h2>
         <p>
           Para dúvidas, solicitações ou exercício de direitos, entre em contato com o encarregado de proteção
           de dados pelo e-mail <a href={`mailto:${EMAIL}`} style={{ color: '#0a58ca' }}>{EMAIL}</a>.

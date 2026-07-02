@@ -50,41 +50,59 @@ export default function TermosPage() {
           sobre o conteúdo publicado.
         </p>
 
-        <h2 style={h2}>4. Responsabilidades do usuário</h2>
+        <h2 style={h2}>4. CRM, vendas e dados de terceiros</h2>
+        <p>
+          A plataforma oferece um módulo de CRM e gestão comercial (contatos, empresas e oportunidades de
+          venda). Ao inserir dados de terceiros (como potenciais clientes), você declara tê-los obtido de
+          forma lícita e assume a condição de controlador desses dados, cabendo à plataforma a condição de
+          operadora. Você é responsável por atender às solicitações dos titulares e por respeitar a legislação
+          de proteção de dados aplicável.
+        </p>
+
+        <h2 style={h2}>5. Responsabilidades do usuário</h2>
         <ul style={ul}>
           <li>Não publicar conteúdo ilegal, ofensivo, difamatório ou que viole direitos de terceiros.</li>
           <li>Respeitar as políticas das plataformas de terceiros integradas (Meta/Instagram/Facebook).</li>
           <li>Não tentar comprometer a segurança, a integridade ou a disponibilidade da plataforma.</li>
         </ul>
 
-        <h2 style={h2}>5. Propriedade intelectual</h2>
+        <h2 style={h2}>6. Propriedade intelectual</h2>
         <p>
           O software, a marca e os elementos visuais da plataforma pertencem ao Grupo 10+. O conteúdo enviado
           por você permanece de sua propriedade; você nos concede uma licença limitada para processá-lo com a
           finalidade de operar as funcionalidades da plataforma.
         </p>
 
-        <h2 style={h2}>6. Disponibilidade e limitação de responsabilidade</h2>
+        <h2 style={h2}>7. Disponibilidade e limitação de responsabilidade</h2>
         <p>
           Empenhamo-nos em manter a plataforma disponível e segura, mas ela é fornecida "no estado em que se
           encontra". Não nos responsabilizamos por indisponibilidades de serviços de terceiros (como as APIs
           da Meta) nem por danos indiretos decorrentes do uso da plataforma.
         </p>
 
-        <h2 style={h2}>7. Encerramento</h2>
+        <h2 style={h2}>8. Encerramento</h2>
         <p>
           Podemos suspender ou encerrar o acesso em caso de violação destes Termos. Você pode solicitar o
           encerramento da sua conta e a exclusão dos seus dados a qualquer momento, conforme a página
           <a href="/exclusao-de-dados" style={{ color: '#0a58ca' }}> Exclusão de dados</a>.
         </p>
 
-        <h2 style={h2}>8. Alterações</h2>
+        <h2 style={h2}>9. Fornecimento como serviço (SaaS)</h2>
+        <p>
+          A plataforma poderá, futuramente, ser disponibilizada como serviço (SaaS) a outras empresas e
+          agências, em modelo multiempresa. Nesse cenário, cada organização contratante é responsável pelo
+          conteúdo, pelas contas conectadas e pelos dados que inserir — mantidos de forma segregada — enquanto
+          o Grupo 10+ atua como fornecedor da tecnologia. Condições comerciais específicas serão definidas em
+          contrato próprio de assinatura.
+        </p>
+
+        <h2 style={h2}>10. Alterações</h2>
         <p>
           Estes Termos podem ser atualizados periodicamente. A versão vigente estará sempre disponível nesta
           página, com a respectiva data de atualização.
         </p>
 
-        <h2 style={h2}>9. Contato</h2>
+        <h2 style={h2}>11. Contato</h2>
         <p>
           Dúvidas sobre estes Termos podem ser enviadas para
           <a href={`mailto:${EMAIL}`} style={{ color: '#0a58ca' }}> {EMAIL}</a>.
