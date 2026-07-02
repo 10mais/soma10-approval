@@ -73,18 +73,46 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const corTextoHeader = '#111'    // header branco -> texto escuro
   const logoSrc = '/logo.svg'
 
+  // Responsivo: no celular a sidebar vira um drawer (menu hamburguer)
+  const [mobile, setMobile] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const apply = () => setMobile(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  // Fecha o drawer ao navegar
+  useEffect(() => { setMenuAberto(false) }, [subpath])
+
+  const asideBase: React.CSSProperties = { width: mobile ? 264 : 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box', padding: '20px 14px' }
+  const asideStyle: React.CSSProperties = mobile
+    ? { ...asideBase, position: 'fixed', top: 56, left: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: menuAberto ? '2px 0 16px rgba(0,0,0,0.18)' : 'none' }
+    : { ...asideBase, minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56 }
+  const irPara = (href: string) => { router.push(href); if (mobile) setMenuAberto(false) }
+
   return (
     <div style={{ ['--marca' as any]: MARCA, ['--marca-texto' as any]: MARCA_TEXTO }}>
       {/* Header padrao da agencia (neutro) — igual para todos os clientes */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-          <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-          <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10 Approval</span>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: mobile ? '0 12px' : '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 4 : 12 }}>
+          {mobile && (
+            <button onClick={() => setMenuAberto(o => !o)} aria-label="Menu" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </button>
+          )}
+          <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>{mobile ? 'Soma10' : 'Soma10 Approval'}</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => router.push(`${basePath}/conta`)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <span style={{ fontSize: 13, color: corTextoHeader, opacity: 0.8 }}>{session?.user?.name}</span>
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 8 : 12 }}>
+          {!mobile && (
+            <button onClick={() => router.push(`${basePath}/conta`)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <span style={{ fontSize: 13, color: corTextoHeader, opacity: 0.8 }}>{session?.user?.name}</span>
+            </button>
+          )}
           {isTeam && (
             <button onClick={() => alternarViewAs(!viewAs)} title={viewAs ? 'Voltar a editar como equipe' : 'Ver o portal como o cliente ve (somente leitura)'}
               style={{ background: viewAs ? corTextoHeader : 'none', border: `1px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: viewAs ? MARCA : corTextoHeader }}>
@@ -118,9 +146,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
       )}
 
+      {/* Backdrop do drawer no mobile */}
+      {mobile && menuAberto && (
+        <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
+      )}
+
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        {/* Sidebar */}
-        <aside style={{ width: 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0', minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56, padding: '20px 14px', boxSizing: 'border-box' }}>
+        {/* Sidebar (drawer no mobile) */}
+        <aside style={asideStyle}>
           {/* Cliente info */}
           {cliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
@@ -142,7 +175,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
               const href = `${basePath}${item.key}`
               const ativo = subpath === item.key || (item.key === '' && subpath === '')
               return (
-                <button key={item.key} onClick={() => router.push(href)} style={{
+                <button key={item.key} onClick={() => irPara(href)} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : '#888',
                   background: ativo ? MARCA : 'transparent',
@@ -176,7 +209,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
           {/* Minha conta */}
           <div style={{ paddingTop: 16, borderTop: '1px solid #f0f0f0', marginTop: 20 }}>
-            <button onClick={() => router.push(`${basePath}/conta`)} style={{
+            <button onClick={() => irPara(`${basePath}/conta`)} style={{
               padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
               fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corTextoHeader : '#888',
               background: subpath === '/conta' ? MARCA : 'transparent', fontSize: 13, width: '100%',
@@ -187,7 +220,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </aside>
 
         {/* Conteudo */}
-        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
+        <main style={{ flex: 1, minWidth: 0, padding: mobile ? '16px 14px' : '24px 28px', width: mobile ? '100%' : undefined }}>
           {children}
         </main>
       </div>
