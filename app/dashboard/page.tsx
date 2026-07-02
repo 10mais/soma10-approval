@@ -551,6 +551,20 @@ function Dashboard() {
   const [recolhida, setRecolhida] = useState(false)
   useEffect(() => { try { setRecolhida(localStorage.getItem('sidebarRecolhida') === '1') } catch {} }, [])
   function alternarRecolhida() { setRecolhida(v => { const n = !v; try { localStorage.setItem('sidebarRecolhida', n ? '1' : '0') } catch {}; return n }) }
+  // Responsivo: no celular a sidebar vira drawer (menu hamburguer)
+  const [mobile, setMobile] = useState(false)
+  const [menuMobile, setMenuMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const apply = () => setMobile(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  // No mobile o drawer mostra o menu completo (nao o rail recolhido)
+  useEffect(() => { if (mobile && recolhida) setRecolhida(false) }, [mobile, recolhida])
+  // Fecha o drawer ao trocar de aba
+  useEffect(() => { setMenuMobile(false) }, [aba])
   // Modo escuro: mantém botões amarelos AMARELOS (texto branco). O filtro de inversão
   // deixaria-os marrons; marcamos por cor computada (#ffc00f) e a classe .btn-amarelo
   // os re-inverte de volta. Reaplica via MutationObserver (modais/listas que surgem).
@@ -1550,7 +1564,7 @@ function Dashboard() {
             )}
           </div>
 
-          {role === 'admin' && (
+          {role === 'admin' && !mobile && (
             <select onChange={e => {
               const v = e.target.value
               if (!v) return
@@ -1574,16 +1588,33 @@ function Dashboard() {
                 ? <img src={minhaFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ color: '#111', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
             </div>
-            <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>{session?.user?.name}</span>
+            {!mobile && <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>{session?.user?.name}</span>}
           </button>
-          <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>
+          {!mobile && <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
           <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #ddd', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#444' }}>Sair</button>
         </div>
       </div>
 
+      {/* Menu hamburguer (mobile) — abre o drawer da sidebar */}
+      {mobile && !menuMobile && (
+        <button onClick={() => setMenuMobile(true)} aria-label="Menu" className="soma10-no-invert"
+          style={{ position: 'fixed', top: 12, left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      )}
+      {/* Backdrop do drawer (mobile) */}
+      {mobile && menuMobile && (
+        <div onClick={() => setMenuMobile(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
+      )}
+
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Sidebar */}
-        <aside style={{
+        <aside style={mobile ? {
+          width: 264, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box', padding: '16px 14px',
+          position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto', zIndex: 200,
+          transform: menuMobile ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease',
+          boxShadow: menuMobile ? '2px 0 16px rgba(0,0,0,0.18)' : 'none',
+        } : {
           width: recolhida ? 66 : 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
           minHeight: '100vh', position: 'sticky', top: 0, padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
         }}>
@@ -1810,8 +1841,8 @@ function Dashboard() {
 
         </aside>
 
-        {/* Botão recolher/expandir — flutuante, sempre visível no canto inferior esquerdo */}
-        {!ehCliente && (
+        {/* Botão recolher/expandir — flutuante (desktop; no mobile o menu é o hamburguer) */}
+        {!ehCliente && !mobile && (
           <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-no-invert"
             style={{ position: 'fixed', left: recolhida ? 15 : 194, bottom: 16, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: '#fff', border: 'none', borderRadius: 999, padding: '9px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
@@ -1819,7 +1850,7 @@ function Dashboard() {
         )}
 
         {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
-        <div style={{ flex: 1, minWidth: 0, padding: '70px 28px 28px' }}>
+        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px 24px' : '70px 28px 28px' }}>
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (
