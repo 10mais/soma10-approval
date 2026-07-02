@@ -52,9 +52,21 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await equipe()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id, titulo, conteudo } = await req.json()
+  const { id, titulo, conteudo, gerarLink, revogarLink } = await req.json()
   const doc = await redis.get<Documento>(`documento:${id}`)
   if (!doc) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  // Gerar / revogar link público de leitura
+  if (gerarLink) {
+    const token = doc.token || uuid()
+    await redis.set(`documento:${id}`, { ...doc, token })
+    await redis.set(`doctoken:${token}`, id)
+    return NextResponse.json({ ok: true, token })
+  }
+  if (revogarLink) {
+    if (doc.token) await redis.del(`doctoken:${doc.token}`)
+    await redis.set(`documento:${id}`, { ...doc, token: undefined })
+    return NextResponse.json({ ok: true, token: null })
+  }
   const atualizado: Documento = {
     ...doc,
     ...(titulo !== undefined ? { titulo: String(titulo).slice(0, 200) } : {}),

@@ -533,6 +533,7 @@ export type Documento = {
   id: string
   titulo: string
   conteudo: string // HTML (RichText)
+  token?: string // link público de leitura (compartilhar externamente)
   criadoPor?: string
   criadoPorNome?: string
   atualizadoPorNome?: string

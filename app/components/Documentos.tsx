@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { confirmar, toast } from '@/lib/toast'
 import RichText from './RichText'
 
-type Doc = { id: string; titulo: string; conteudo: string; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+type Doc = { id: string; titulo: string; conteudo: string; token?: string; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
 
 function textoDe(html: string) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
@@ -53,6 +53,28 @@ export default function Documentos() {
   }
   function fechar() { setAberto(null); carregar() }
 
+  async function compartilhar() {
+    if (!aberto) return
+    let token = aberto.token
+    if (!token) {
+      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: aberto.id, gerarLink: true }) }).then(x => x.json()).catch(() => null)
+      if (!r?.ok) { toast('Falha ao gerar o link.', 'erro'); return }
+      token = r.token
+      setAberto(a => a ? { ...a, token } : a)
+      setDocs(ds => ds.map(d => d.id === aberto.id ? { ...d, token } : d))
+    }
+    const url = `${location.origin}/doc/${token}`
+    navigator.clipboard.writeText(url).then(() => toast('Link copiado! Qualquer pessoa com o link pode ler.', 'sucesso')).catch(() => toast(url, 'info'))
+  }
+  async function revogarLink() {
+    if (!aberto?.token) return
+    if (!(await confirmar('Revogar o link público? Quem tiver o link deixará de acessar.', { titulo: 'Revogar link', okLabel: 'Revogar', perigo: true }))) return
+    await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: aberto.id, revogarLink: true }) }).catch(() => {})
+    setAberto(a => a ? { ...a, token: undefined } : a)
+    setDocs(ds => ds.map(d => d.id === aberto.id ? { ...d, token: undefined } : d))
+    toast('Link revogado.', 'sucesso')
+  }
+
   return (
     <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -95,13 +117,24 @@ export default function Documentos() {
                 style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
               {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
               {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
+              <button onClick={compartilhar} title="Compartilhar por link" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: aberto.token ? '#eef2ff' : '#111', color: aberto.token ? '#3730a3' : '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
+                {aberto.token ? 'Copiar link' : 'Compartilhar'}
+              </button>
               <button onClick={() => excluir(aberto.id)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </button>
               <button onClick={fechar} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
             </div>
+            {aberto.token && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid #f0f0f0', fontSize: 11.5 }}>
+                <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>● Link público ativo</span>
+                <span style={{ flex: 1, minWidth: 0, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{typeof location !== 'undefined' ? `${location.origin}/doc/${aberto.token}` : ''}</span>
+                <button onClick={revogarLink} style={{ flexShrink: 0, background: 'none', border: 'none', color: '#b91c1c', fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Revogar</button>
+              </div>
+            )}
             <div style={{ padding: 16, overflowY: 'auto' }}>
-              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => editar({ conteudo: html })} placeholder="Escreva o documento… negrito, cor e links na barra acima." minHeight={380} />
+              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => editar({ conteudo: html })} placeholder="Escreva o documento… títulos, listas, cor e links na barra acima." minHeight={380} completo />
             </div>
           </div>
         </div>
