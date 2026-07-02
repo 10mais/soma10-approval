@@ -79,7 +79,9 @@ export default function PlannerPage() {
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setCliente(d) }).catch(() => {})
   }, [clienteId])
 
-  const corCliente = cliente?.corPrimaria || '#ffc00f'
+  // Layout padrao da agencia (sem cor por cliente): botoes primarios no amarelo Soma10.
+  const corCliente = 'var(--marca, #ffc00f)'
+  const corClienteTexto = 'var(--marca-texto, #111)'
 
   // Cria/agenda/publica respeitando a acao escolhida no compositor
   async function enviarPost(valor: any) {
@@ -182,7 +184,7 @@ export default function PlannerPage() {
               }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
             ))}
           </div>
-          <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Nova postagem
           </button>
         </div>
@@ -323,13 +325,13 @@ export default function PlannerPage() {
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
               )}
               {preview.status === 'falha_publicacao' && (
-                <button onClick={() => republicar(preview.id)} style={{ width: '100%', padding: '11px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
+                <button onClick={() => republicar(preview.id)} style={{ width: '100%', padding: '11px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
                   Tentar publicar novamente
                 </button>
               )}
               {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao') && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
                   <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
                 </div>
               )}
@@ -366,7 +368,7 @@ export default function PlannerPage() {
           {pubBg.status === 'falha' && (
             <>
               <p style={{ margin: '8px 0', fontSize: 11, color: '#b91c1c', lineHeight: 1.4 }}>{pubBg.error}</p>
-              <button onClick={() => publicarEmBackground(pubBg.id, pubBg.titulo, pubBg.capa)} style={{ width: '100%', padding: '8px 0', background: corCliente, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tentar de novo</button>
+              <button onClick={() => publicarEmBackground(pubBg.id, pubBg.titulo, pubBg.capa)} style={{ width: '100%', padding: '8px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tentar de novo</button>
             </>
           )}
         </div>

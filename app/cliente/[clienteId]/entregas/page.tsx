@@ -66,7 +66,7 @@ export default function EntregasPage() {
     ]).then(([m, e, c, p]) => {
       setMarcos(Array.isArray(m) ? m : [])
       setEntregas(e && !e.error ? e : { tarefas: [], posts: [], briefings: [] })
-      if (c && !c.error) { setCliente(c); if (c.corPrimaria) setCor(c.corPrimaria) }
+      if (c && !c.error) { setCliente(c) } // layout padrao: mantem o verde padrao (sem cor por cliente)
       setPostsCliente(Array.isArray(p) ? p : [])
       setCarregando(false)
     })

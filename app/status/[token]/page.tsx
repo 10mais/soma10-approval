@@ -24,7 +24,7 @@ export default function StatusPublico() {
   if (carregando) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontFamily: 'Inter, system-ui, sans-serif' }}>Carregando...</div>
   if (erro || !s) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontFamily: 'Inter, system-ui, sans-serif' }}>Link inválido ou expirado.</div>
 
-  const cor = s.cliente.corPrimaria
+  const cor = '#111' // layout padrao da agencia: acento neutro, igual para todos os clientes
   const pctMeta = s.meta > 0 ? Math.min(100, Math.round((s.publicadosMes / s.meta) * 100)) : 0
   const card: React.CSSProperties = { background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }
 

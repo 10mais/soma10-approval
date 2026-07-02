@@ -66,72 +66,17 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     }).catch(() => {})
   }, [clienteId, subpath])
 
-  // Extrai cor dominante da imagem de perfil
-  // Extrai a cor DOMINANTE (mais frequente) da imagem de perfil
-  const [corExtraida, setCorExtraida] = useState<string | null>(null)
-  useEffect(() => {
-    if (!cliente?.logo) return
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = 40; canvas.height = 40
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.drawImage(img, 0, 0, 40, 40)
-        const data = ctx.getImageData(0, 0, 40, 40).data
-        // Histograma quantizado (agrupa cores similares em buckets de 32)
-        const buckets: Record<string, { r: number; g: number; b: number; count: number }> = {}
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3]
-          if (a < 128) continue
-          const soma = r + g + b
-          if (soma > 700 || soma < 50) continue // ignora brancos e pretos
-          if (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && soma > 200) continue // ignora cinzas
-          const qr = Math.round(r / 32) * 32
-          const qg = Math.round(g / 32) * 32
-          const qb = Math.round(b / 32) * 32
-          const key = `${qr},${qg},${qb}`
-          if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 }
-          buckets[key].r += r; buckets[key].g += g; buckets[key].b += b; buckets[key].count++
-        }
-        let melhor = null as { r: number; g: number; b: number; count: number } | null
-        for (const b of Object.values(buckets)) {
-          if (!melhor || b.count > melhor.count) melhor = b
-        }
-        if (melhor && melhor.count > 10) {
-          const r = Math.round(melhor.r / melhor.count)
-          const g = Math.round(melhor.g / melhor.count)
-          const b = Math.round(melhor.b / melhor.count)
-          setCorExtraida(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`)
-        }
-      } catch {}
-    }
-    img.src = cliente.logo
-  }, [cliente?.logo])
-
-  const corPrimaria = cliente?.corPrimaria || corExtraida || '#111'
-
-  // Calcula se o fundo e claro ou escuro para escolher texto branco ou preto
-  function corEscura(hex: string): boolean {
-    const c = hex.replace('#', '')
-    const r = parseInt(c.substring(0, 2), 16) || 0
-    const g = parseInt(c.substring(2, 4), 16) || 0
-    const b = parseInt(c.substring(4, 6), 16) || 0
-    return (r * 299 + g * 587 + b * 114) / 1000 < 128
-  }
-  const fundoEscuro = corEscura(corPrimaria)
-  const corTextoHeader = fundoEscuro ? '#fff' : '#111'
-  const logoSrc = fundoEscuro ? '/logo-branco.svg' : '/logo.svg'
-
-  // Texto que contrasta com a cor da marca (para botoes primarios)
-  const corTextoMarca = corEscura(corPrimaria) ? '#fff' : '#111'
+  // Layout padrao da agencia para TODOS os clientes (sem tematizacao por cliente).
+  // Header neutro (branco/escuro) e botoes primarios no amarelo Soma10.
+  const MARCA = '#ffc00f'          // amarelo Soma10 (botoes primarios via var(--marca))
+  const MARCA_TEXTO = '#111'       // texto sobre o amarelo
+  const corTextoHeader = '#111'    // header branco -> texto escuro
+  const logoSrc = '/logo.svg'
 
   return (
-    <div style={{ ['--marca' as any]: corPrimaria, ['--marca-texto' as any]: corTextoMarca }}>
-      {/* Header personalizado com a cor do cliente */}
-      <div style={{ background: corPrimaria, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
+    <div style={{ ['--marca' as any]: MARCA, ['--marca-texto' as any]: MARCA_TEXTO }}>
+      {/* Header padrao da agencia (neutro) — igual para todos os clientes */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, zIndex: 100 }}>
         <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
           <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>Soma10 Approval</span>
@@ -142,7 +87,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           </button>
           {isTeam && (
             <button onClick={() => alternarViewAs(!viewAs)} title={viewAs ? 'Voltar a editar como equipe' : 'Ver o portal como o cliente ve (somente leitura)'}
-              style={{ background: viewAs ? corTextoHeader : 'none', border: `1px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: viewAs ? corPrimaria : corTextoHeader }}>
+              style={{ background: viewAs ? corTextoHeader : 'none', border: `1px solid ${corTextoHeader}`, borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: viewAs ? MARCA : corTextoHeader }}>
               {viewAs ? 'Editar como equipe' : 'Visualizar como cliente'}
             </button>
           )}
@@ -179,7 +124,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           {/* Cliente info */}
           {cliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: cliente.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: cliente.corSecundaria || '#111', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#111', flexShrink: 0 }}>
                 {cliente.logo ? <img src={cliente.logo} alt="" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                 {(!cliente.logo) && <span>{cliente.nome?.[0]?.toUpperCase()}</span>}
               </div>
@@ -200,7 +145,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                 <button key={item.key} onClick={() => router.push(href)} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : '#888',
-                  background: ativo ? corPrimaria : 'transparent',
+                  background: ativo ? MARCA : 'transparent',
                   fontSize: 14, transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 }}>
@@ -234,7 +179,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
             <button onClick={() => router.push(`${basePath}/conta`)} style={{
               padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
               fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corTextoHeader : '#888',
-              background: subpath === '/conta' ? corPrimaria : 'transparent', fontSize: 13, width: '100%',
+              background: subpath === '/conta' ? MARCA : 'transparent', fontSize: 13, width: '100%',
             }}>
               Minha conta
             </button>
