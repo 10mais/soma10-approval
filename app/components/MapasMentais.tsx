@@ -124,7 +124,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   const [editId, setEditId] = useState<string | null>(null)
   const [conectarDe, setConectarDe] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
-  const dragRef = useRef<null | { tipo: 'no' | 'pan'; id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean }>(null)
+  const dragRef = useRef<null | { tipo: 'no' | 'pan'; id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean; orig?: Record<string, { x: number; y: number }> }>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const montado = useRef(false)
 
@@ -158,7 +158,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       const ddx = e.clientX - d.sx, ddy = e.clientY - d.sy
       if (Math.abs(ddx) + Math.abs(ddy) > 4) d.moved = true
       if (d.tipo === 'pan') setPan({ x: d.ox + ddx, y: d.oy + ddy })
-      else setNos(ns => ns.map(n => n.id === d.id ? { ...n, x: d.ox + ddx / zoom, y: d.oy + ddy / zoom } : n))
+      else setNos(ns => ns.map(n => d.orig && d.orig[n.id] ? { ...n, x: d.orig[n.id].x + ddx / zoom, y: d.orig[n.id].y + ddy / zoom } : n))
     }
     const mu = () => {
       const d = dragRef.current
@@ -339,7 +339,16 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
             const editando = editId === no.id
             const raiz = !temPai(no.id)
             return (
-              <div key={no.id} onPointerDown={e => { e.stopPropagation(); if (!editando) dragRef.current = { tipo: 'no', id: no.id, sx: e.clientX, sy: e.clientY, ox: no.x, oy: no.y, moved: false } }}
+              <div key={no.id} onPointerDown={e => {
+                  e.stopPropagation()
+                  if (editando) return
+                  // Move o nó + toda a sua sub-árvore (nós subsequentes) juntos
+                  const sub = new Set<string>([no.id]); const fila = [no.id]
+                  while (fila.length) { const cur = fila.shift()!; for (const c of conexoes) if (c.de === cur && !sub.has(c.para)) { sub.add(c.para); fila.push(c.para) } }
+                  const orig: Record<string, { x: number; y: number }> = {}
+                  nos.forEach(n => { if (sub.has(n.id)) orig[n.id] = { x: n.x, y: n.y } })
+                  dragRef.current = { tipo: 'no', id: no.id, sx: e.clientX, sy: e.clientY, ox: no.x, oy: no.y, moved: false, orig }
+                }}
                 onDoubleClick={() => { setSelId(no.id); setEditId(no.id) }}
                 style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
