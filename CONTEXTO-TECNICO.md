@@ -146,46 +146,34 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 - Cor da marca do cliente: `var(--marca)` no portal; em alguns componentes a cor é passada direto do cliente.
 - Auto-aprovar (global CLAUDE.md): criar arquivos/pastas novos, instalar pacotes pedidos, componentes visuais. **Perguntar antes:** modificar arquivo existente, comandos de banco, `.env`/auth, refator >3 arquivos, deletar.
 
-## 12. Pendências / próximos passos (atualizado 2026-07-02)
+## 12. Pendências / próximos passos (atualizado 2026-07-02 — sessão longa)
 
-**PRÓXIMO PASSO IMEDIATO (código):**
-- **Reorganizar o Hub de Configurações em abas** — juntar Geral / Clientes / Colaboradores / Automações / Integrações / Notificações do sistema / Operacional / Permissões por papel num único hub com navegação por abas. É a última parte pendente do "sistema de configurações robusto" (permissões, notificações e operacional já entregues — ver §15). Willian já aprovou; falta só executar.
+> A sessão de 2026-07-02 (grande) fechou quase todo o backlog de código. **Tudo que entrou está detalhado em §16.** Aqui fica só o que RESTA.
+
+**Pendente — CÓDIGO:**
+- **CRM Instagram Direct (Fase 3)** — depende do App Review da Meta (ação do dono).
+- **Agentes de IA — Fase 3** (atribuir agente a uma tarefa/pauta; execução em background) + **mais ações** (gerar_legenda/mover_estagio_crm/agendar_followup — plugam no framework) + **tela de auditoria** (lista `agente:acoes`). Fases 1 e 2 já entregues (§16.7).
+- **NPS** — não há coleta hoje; precisaria de uma feature de pesquisa antes de entrar no Dashboard de Conversão/Retenção (§16.9).
+- **Empacotar nas lojas (Capacitor)** — scaffold pronto (`capacitor.config.json`, `CAPACITOR.md`); falta o dono ter as contas dev + rodar `cap add`.
+- Menores: dashboard de Ads read-only (aguarda APIs Meta/Google); logomarca oficial em Trabalhe Conosco; migrar mídia de Analytics/Social Listening do IG p/ Blob (mesmo padrão do fix de logos, §16.5).
 
 **Ação do dono (externo ao código):**
-- **WhatsApp Cloud API — provisionar:** número comercial **dedicado** (não pode estar num WhatsApp comum) + System User token permanente. Adicionar no Vercel: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`. Webhook na Meta → `https://approval.soma10.com.br/api/whatsapp/webhook` (mesmo verify token, assinar campo `messages`). Criar templates HSM aprovados (1º contato fora da janela de 24h). Scaffold backend pronto (§14.9) — liga sozinho quando as vars entrarem.
-- **Crons agora são NATIVOS da Vercel** (`vercel.json`, §15.4). O dono deve **desativar os crons duplicados no cron-job.org** para não rodar 2x (`publicar`, `alertas`, `tarefas`, `crm-followup`, `resumo-semanal`). Conferir na aba **Cron Jobs** do projeto na Vercel se todos aparecem (inclui `automacoes` a cada 15 min).
-- Conferir chaves **VAPID** no Vercel (push): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
-- **Instagram:** conta profissional + **App Review** da Meta (necessário para o Instagram Direct no CRM — Fase 3).
+- **RE-SINCRONIZAR FOTOS (fazer 1x):** Config → Geral → card "Imagem de perfil dos clientes" → botão **"Re-sincronizar fotos do Instagram"** — conserta as logos de cliente quebradas (agora salvas no Blob, §16.5).
+- **WhatsApp Cloud API** — número dedicado + System User token + webhook (`/api/whatsapp/webhook`) + templates HSM. Vars `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID`/`WHATSAPP_VERIFY_TOKEN`. Scaffold pronto (§14.9).
+- **Instagram:** conta profissional + **App Review** (para o CRM Instagram Direct).
+- **App nas lojas:** contas dev **Apple (US$99/ano) + Google (US$25)** + Xcode/Android Studio; depois `cap add` (ver `CAPACITOR.md`).
+- **Crons duplicados no cron-job.org** — desativar (nativos na Vercel, §15.4). **VAPID** conferir no Vercel.
 
-**Backlog a construir (código) — GRANDES, planejar antes:**
-- **Agentes de IA treinados (estilo "Super Agents" do ClickUp)** — agentes nomeados (ex.: Copywriter, Gestor de Projetos) que executam tarefas. Base pronta: assistente flutuante + tool-use (`lib/assistenteTools.ts`, `/api/assistente/chat`). Evoluir para agentes com função/ferramentas próprias.
-- **Documentos internos (tipo Google Docs, internos do Soma10)** — editor colaborativo; reaproveitar `RichText.tsx` como base.
-- **Mapas mentais** (editor de nós+conexões) e **versão mobile** (sidebar → hambúrguer) — antigos, ainda abertos.
-- **Vendas/Retenção:** dashboard de conversão de vendas (funil detalhado); régua de renovação, NPS, sinal de churn por inatividade, LTV (o motor de automações já destrava parte disso via configuração).
-- **CRM Instagram Direct (Fase 3)** — depende do App Review acima.
-
-**Ressalva de permissões (importante):** o **override por usuário** (`Usuario.permissoes`) trafega no **token JWT** → mudanças individuais só valem **após o usuário relogar**. Os **defaults por papel** (`config:permissoesPapel`) valem na hora. Se precisar de efeito imediato no override individual, trocar `bloqueiaPapel` para ler o usuário fresco do Redis a cada request (custo: +1 leitura por ação).
-
-**Otimização de fundo opcional:** ZSET cronológico para limitar a LEITURA do Redis da equipe (hoje a janela de 120d filtra após o mget). Índice por cliente para TAREFAS (pulado — sem consumidor).
-
-**Roadmap aberto / menores:** dashboard de Ads read-only (aguarda APIs Meta/Google); logomarca oficial em Trabalhe Conosco; dívida técnica do modo escuro (filtro de inversão — ideal um tema escuro real).
-
-**Preparar para DISPONIBILIZAR AOS CLIENTES (pedido do dono — 2026-07-02):**
-- **Layout único:** remover o ajuste de layout por cliente (cor/tema por marca) — manter o layout padrão da agência igual para todos os clientes.
-- **Perfil de cliente:** ajustar e organizar o perfil/tela do cliente para começar a liberar o acesso aos clientes reais.
-- **Aprovação de postagens mais fácil:** melhorar o fluxo de aprovação no portal do cliente (aprovar/reprovar com facilidade).
-- **Versão mobile:** deixar pronta para o cliente baixar o app (PWA) e usar facilmente — relacionado ao item "versão mobile (sidebar → hambúrguer)".
-- **Sequência de integração:** primeiro Instagram (app **publicado** no Meta / App Review), depois WhatsApp.
-
-**Ajustes pontuais (pequenos — pedido do dono, 2026-07-02):**
-- **Esteira → "Relacionar a tarefa":** hoje CRIA uma tarefa nova; mudar para **pesquisar e relacionar a uma tarefa existente** (mantendo opção de criar rápido). Ver `/api/esteira/relacionar` e o botão na pauta em `Esteira.tsx`.
-- **Nova pauta (composer):** ao clicar fora, exibir o **mesmo aviso das tarefas** ("Alterações não salvas / Continuar editando / Sair sem salvar") em vez de fechar direto — reaproveitar o guard de fechamento do `TarefaModal`.
+**Ressalva de permissões:** override por usuário vem do JWT → só vale após relogar; defaults por papel valem na hora (§15.1).
+**Otimização de fundo opcional:** ZSET cronológico p/ limitar a leitura do Redis da equipe (hoje janela 120d filtra após mget).
+**Dívida técnica:** modo escuro é filtro de inversão (ideal um tema real). Imagens 403 do IG resolvidas p/ **logos de cliente** (§16.5); mídia de Analytics/Social Listening que use URL do IG ainda pode expirar.
 
 ## 13. Arquivos-chave
 
 `lib/redis.ts` (tipos/chaves) · `lib/publicar.ts` (publicação Meta) · `lib/notificacoes.ts` (`notificar`, `notificarEquipe`, **`notificarAdmins`**) · `lib/automacoes.ts` · `lib/resumoSemanal.ts` · `lib/relatorioMensal.ts` · `lib/anthropicSaldo.ts` · `lib/cache.ts` · `lib/auth.ts` · `lib/modoCliente.ts`.
 Componentes: `GestaoTarefas.tsx` (+ `TarefaModal` exportado), `Esteira.tsx`, `PostComposer.tsx`, `Playbook.tsx`, `EntregasMarco.tsx`, `DashboardHome.tsx`, `Rentabilidade.tsx`, `Modelos.tsx`, `Automacoes.tsx`, `MeuDia.tsx`, `CargaEquipe.tsx`, `DriveButton.tsx`, `UploadProgress.tsx`, `Candidaturas.tsx`, `Briefings.tsx`, `MinhaConta.tsx`, `Calendar.tsx`, `ChatInterno.tsx`, `ConectarRedesModal.tsx`, `OptImg.tsx`.
-**Novos (esta evolução):** `CRM.tsx` (módulo de vendas), `PersonalList.tsx`, `PushSetup.tsx`. Libs novas: `lib/webpush.ts`, `lib/whatsapp.ts`, `lib/postsIndex.ts`.
+**Novos (evolução anterior):** `CRM.tsx` (módulo de vendas), `PersonalList.tsx`, `PushSetup.tsx`. Libs: `lib/webpush.ts`, `lib/whatsapp.ts`, `lib/postsIndex.ts`.
+**Novos (sessão 2026-07-02 — ver §16.13):** `Agentes.tsx`, `Documentos.tsx`, `DashboardVendas.tsx`, `MapasMentais.tsx`, `AvatarCliente.tsx`. Libs: `lib/useIsMobile.ts`, `lib/blobFoto.ts`, `lib/crmPipelines.ts`. `RichText.tsx` ganhou prop `completo`.
 
 ## 14. Evolução 2026-06-29/30 (sessão grande) — novidades
 
@@ -303,3 +291,58 @@ Abas internas: **Painel / Funil / Contatos / Empresas / Playbook**.
 - **Componentes:** `AssistenteIA.tsx`, `Automacoes.tsx`, `NotificacoesConfig.tsx`, `OperacionalConfig.tsx`, `RichText.tsx`, `RelatorioMensalEditor.tsx`, `Toaster.tsx`.
 - **Rotas:** `/api/permissoes-papel`, `/api/operacional`, `/api/notificacoes-config`, `/api/notif-prefs`, `/api/automacoes`, `/api/cron/automacoes`, `/api/assistente/chat`, `/api/equipe`, `/api/financeiro/{contas,lancamentos}`, `/api/crm/mensagens`.
 - **Chaves Redis:** `config:permissoesPapel`, `config:operacional`, `config:notificacoes`, `notif:prefs:{email}`, `config:automacoesRegras`, `automacoes:pendentes` (ZSET), `crm:mensagens`/conversas. Campos: `Usuario.permissoes` (boolean antigo OU `{ver,editar,excluir}` por módulo); `Tarefa.recorrencia`; `CrmNegocio.agendamentos[]`.
+
+## 16. Evolução 2026-07-02 (sessão longa) — portal do cliente, mobile/PWA, CRM pipelines, Agentes, Docs, Dashboard vendas, Mapas mentais
+
+> Tudo abaixo **deployado na `main`** (push por implementação, type-check antes de cada commit). Onde diverge de seções antigas, vale o que está aqui.
+
+### 16.1 Portal do cliente pronto para uso
+- **Layout único da agência** (removeu tema por cliente): `app/cliente/[clienteId]/layout.tsx` header **neutro branco/escuro**, `--marca` fixo no amarelo Soma10 (botões via `var(--marca)`); `planner`/`entregas`/`status` neutralizados. Brand Board (`marca/`) segue = conteúdo, não layout.
+- **Aprovação mais fácil:** `aprovacoes/page.tsx` ganhou **visualizador de mídia em tela cheia** (clique-para-ampliar capa/carrossel/vídeo, setas + teclado, contador).
+- **Conta do cliente enxuta:** `MinhaConta.tsx` esconde campos de equipe (Cargo/Bio/Nível) quando `role==='cliente'`.
+
+### 16.2 Mobile + PWA "cara de app"
+- **Hook `lib/useIsMobile.ts`** (matchMedia ≤768px). Portal e dashboard viram **drawer + hambúrguer** no mobile; **barra de navegação inferior** (portal: Início/Aprovar/Entregas/Menu; dashboard: Início/Meu dia/Mensagens/Menu — abas universais).
+- **Cara de app:** `app/globals.css` (sem tap-highlight/bounce/seleção em UI), `viewport-fit=cover`, **safe-area** (notch/barra inferior), **splash iOS** geradas em `public/splash` + `appleWebApp.startupImage`, fix meta `mobile-web-app-capable`, manifest `id`+`orientation`. **Banner de instalação** (`PushSetup.tsx`) sobe acima da barra no mobile; assistente idem.
+- **Telas internas polidas:** PostComposer empilha; tabela de Tarefas rola horizontal (minWidth); grids fixos → responsivos.
+
+### 16.3 Capacitor scaffold (app nas lojas — etapa 2)
+- `capacitor.config.json` (**modo hospedado**: `server.url` = produção, pois é Next SSR) + **`CAPACITOR.md`** (guia passo a passo) + `.gitignore` (/android //ios/chaves). Config em JSON de propósito (não entra no tsc/build). Falta ação do dono (contas dev + `cap add`).
+
+### 16.4 Hub de Configurações em abas
+- Aba `config` (`dashboard/page.tsx`) virou **hub com abas internas** (`abaConfig`): **Geral** (aparência/dados/créditos IA/fotos), **Operacional**, **Notificações** (sistema+SMTP), **Integrações** (status+contas sociais) + **atalhos** (ícone ↗) p/ Clientes/Colaboradores/Automações. Fecha o "sistema de configurações robusto".
+
+### 16.5 Fix definitivo das fotos do Instagram (logos de cliente)
+- Causa: `cliente.logo` recebia `profile_picture_url` do IG (URL de CDN temporária → 403 ao expirar). **`lib/blobFoto.copiarFotoParaBlob`** baixa e salva no Vercel Blob (URL permanente); `clientes/conectar` usa a cópia. **`/api/clientes/resync-fotos`** (admin) + botão em Config→Geral rebusca/re-salva os já conectados (**dono deve clicar 1x**). Fallback visual `AvatarCliente.tsx` (inicial ao falhar) aplicado em todos os pontos.
+
+### 16.6 CRM — contatos, autônomo, origem, MÚLTIPLOS PIPELINES
+- **Contatos:** visão em **Lista** (tabela) + Cards; **seleção múltipla + selecionar todos + excluir em massa** (`/api/crm/contatos` DELETE aceita `?ids=`); campo **Área de atuação**; checkbox **Profissional Autônomo** (PF sem empresa). Busca de contato por nome ao criar oportunidade.
+- **Origem** vira dropdown editável (datalist: padrões + já usadas).
+- **Pipelines (funis) múltiplos:** tipo `CrmPipeline` + `lib/crmPipelines.ts` (setup/migração idempotente — estágios antigos caem no pipeline padrão "Comercial") + **`/api/crm/pipelines`** (GET/POST cria com etapas padrão/PUT renomeia/DELETE reatribui negócios). `CrmEstagio.pipelineId` e `CrmNegocio.pipelineId`. UI: seletor de pipeline no Funil/Painel, **"Gerenciar pipelines"** (criar/renomear/excluir), **"Editar etapas"** (renomear/adicionar/reordenar/remover — Ganho/Perdido obrigatórios), **"Mover para pipeline"** no card. Estágios PUT preserva os demais pipelines.
+
+### 16.7 Agentes de IA treinados (Fases 1 e 2)
+- **Fase 1 (conversa+leitura):** tipo `Agente` (redis) + **`/api/agentes`** (GET equipe; escrita admin) + tela admin `Agentes.tsx` (persona/instruções/ferramentas/cor/ativo). No assistente flutuante (`AssistenteIA.tsx`) há **seletor "Falar com"**; `/api/assistente/chat` aceita `agenteId` → monta o system das instruções + filtra tools pelo que o agente tem (respeita papel; financeiro só admin).
+- **Fase 2 (executam ações, human-in-the-loop):** `assistenteTools.ts` ganha **FERRAMENTAS_ACAO** (`criar_tarefa`, `criar_marco`) + `ehAcao`/`resumoAcao`/`ferramentasAcaoSchemas`. No chat elas **NÃO executam** — viram **propostas** (sentinela `␞`+JSON no fim do stream). **`/api/agentes/executar`** executa só após o usuário confirmar, respeitando `bloqueiaPapel` + **auditoria** `agente:acoes` (200 últimas). Cartões Confirmar/Descartar no chat. Agente marca ações com selo "AÇÃO".
+
+### 16.8 Documentos internos (tipo Google Docs)
+- Tipo `Documento` + **`/api/documentos`** (equipe vê tudo; excluir só autor/admin) + `Documentos.tsx` (lista→editor modal, autosave). **RichText modo `completo`** (títulos H1/H2, listas, citação, alinhamento). **Link público** de leitura: `documento.token`+`doctoken:{token}`, **`/api/doc-publico`**, página **`/doc/[token]`**, botão Compartilhar + Revogar.
+
+### 16.9 Dashboard de Conversão & Retenção
+- **`/api/dashboard-vendas`** (admin/gerente/vendas) agrega CRM (win rate, ticket médio, em aberto, ganhos no mês, pipeline por vendedor) + carteira (MRR, LTV médio, **renovações ≤45d**, **risco de churn por inatividade ≥21d** sem post). `DashboardVendas.tsx`. Nav "Conversão & Retenção" (grupo Vendas + papel vendas). **NPS não incluído** (sem coleta).
+
+### 16.10 Mapas mentais
+- Tipo `MapaMental` (`nos`/`conexoes`/`layout`) + **`/api/mapas`** (+ **`/api/mapas/gerar-ia`** = Claude devolve JSON → árvore → organograma). `MapasMentais.tsx`: canvas com **zoom/pan** (scroll centrado + botões), **nós "pill"** (ponto colorido **amarelo #ffc00f por padrão** + texto), **conexões curvas/cotovelo na cor amarela da marca**; **barra flutuante** por nó (editar/cor/+filho/conectar/excluir) + **"+" discreto na borda** ao selecionar; **atalhos Enter=irmão, Tab=filho, Delete=apaga**; **exclusão em cascata** (apaga a sub-árvore — 1 única raiz); **raiz protegida/destacada** (pill escuro, sem excluir); **arrastar leva a sub-árvore junto**; **layouts Mapa mental / Organograma / Lista** (auto-organiza, persiste). Novo mapa: **do zero ou com IA** (modal).
+
+### 16.11 Personal list → NOTEPADS
+- As notinhas post-it viraram **Notepads** (documento com título + texto formatado, estilo ClickUp): lista título+prévia → **editor em modal** com `RichText`; criar/renomear/editar/excluir, autosave. `PersonalData.notepads[]` (migra notas/rascunho antigos). Microtarefas mantidas.
+
+### 16.12 Esteira / pauta (ajustes)
+- **"Relacionar a tarefa"** na Esteira: agora **busca e vincula a uma tarefa EXISTENTE** (mesmo cliente) + "Criar tarefa nova". `/api/esteira/relacionar` aceita `{ postId, tarefaId }`.
+- **Nova pauta:** guard "Alterações não salvas" ao clicar fora (via `confirmar()`).
+
+### 16.13 Novos arquivos / chaves / rotas (resumo desta fase)
+- **Libs:** `useIsMobile.ts`, `blobFoto.ts`, `crmPipelines.ts`.
+- **Componentes:** `AvatarCliente.tsx`, `Agentes.tsx`, `Documentos.tsx`, `DashboardVendas.tsx`, `MapasMentais.tsx`. `RichText.tsx` ganhou prop `completo`. `PersonalList.tsx`/`Documentos.tsx` reusam `RichText`.
+- **Rotas:** `/api/agentes` (+ `/api/agentes/executar`), `/api/documentos`, `/api/doc-publico`, `/api/dashboard-vendas`, `/api/mapas` (+ `/api/mapas/gerar-ia`), `/api/crm/pipelines`, `/api/clientes/resync-fotos`. Página pública `/doc/[token]`.
+- **Chaves Redis:** `agente:{id}`/`agentes`, `agente:acoes` (auditoria), `documento:{id}`/`documentos`/`doctoken:{token}`, `mapa:{id}`/`mapas`, `crm:pipelines`. Campos: `Agente`; `Documento.token`; `MapaMental.layout`; `CrmContato.areaAtuacao`/`profissionalAutonomo`; `CrmEstagio.pipelineId`; `CrmNegocio.pipelineId`; `PersonalData.notepads[]`.
+- **Config:** `app/globals.css` (novo), `capacitor.config.json`, `CAPACITOR.md`, `public/splash/*`.
