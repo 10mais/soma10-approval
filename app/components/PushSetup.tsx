@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
+import { ehRotaPublica } from '@/lib/rotasPublicas'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -13,6 +15,8 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function PushSetup() {
   const { status } = useSession()
+  const pathname = usePathname()
+  const rotaPublica = ehRotaPublica(pathname)
   const [canInstall, setCanInstall] = useState(false)
   const [installEvent, setInstallEvent] = useState<any>(null)
   const [pushKey, setPushKey] = useState('')
@@ -95,7 +99,7 @@ export default function PushSetup() {
     try { localStorage.setItem('pushSetupDispensado', '1') } catch {}
   }
 
-  if (status !== 'authenticated' || dispensado) return null
+  if (rotaPublica || status !== 'authenticated' || dispensado) return null
   const temAlgo = canInstall || showAtivarPush || showIosDica
   if (!temAlgo) return null
 

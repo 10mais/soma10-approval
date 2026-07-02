@@ -2,9 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
-
-// Rotas publicas/standalone onde o assistente flutuante nao deve aparecer.
-const ROTAS_SEM_ASSISTENTE = ['/privacidade', '/termos', '/exclusao-de-dados', '/aprovar', '/status', '/trabalhe-conosco', '/login', '/doc']
+import { ehRotaPublica } from '@/lib/rotasPublicas'
 
 type Proposta = { id: string; acao: string; params: any; resumo: string; agenteId?: string; agenteNome?: string; estado?: 'pendente' | 'executando' | 'feito' | 'erro' | 'cancelado'; msg?: string }
 type Msg = { role: 'user' | 'assistant'; content: string; propostas?: Proposta[] }
@@ -71,7 +69,7 @@ export default function AssistenteIA() {
   const role = (session?.user as any)?.role
   const ehVendas = role === 'vendas'
   const pathname = usePathname()
-  const rotaPublica = ROTAS_SEM_ASSISTENTE.some(r => pathname === r || pathname?.startsWith(r + '/'))
+  const rotaPublica = ehRotaPublica(pathname)
 
   const [aberto, setAberto] = useState(false)
   // No mobile o botao sobe acima da barra de navegacao inferior
