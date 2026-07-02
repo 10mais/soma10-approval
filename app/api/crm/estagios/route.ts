@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, CrmEstagio } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { garantirSetupCrm, ESTAGIOS_KEY } from '@/lib/crmPipelines'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
 
@@ -14,12 +15,12 @@ export async function GET() {
   return NextResponse.json(estagios)
 }
 
-// PUT salva as etapas de UM pipeline (admin/gerente), preservando as dos demais.
+// PUT salva as etapas de UM pipeline (mesma regra do CRM), preservando as dos demais.
 // Mantém pelo menos 1 ganho e 1 perdido no pipeline editado.
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  const role = (session?.user as any)?.role
-  if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (!session || (session.user as any).role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   const body = await req.json()
   const { pipelines, estagios: todos } = await garantirSetupCrm()
   const pipelineId = String(body.pipelineId || pipelines[0].id)

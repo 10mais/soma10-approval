@@ -37,6 +37,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; ordem: number }[]>([])
   const [pipelineSel, setPipelineSel] = useState('')
   const [pipelinesModal, setPipelinesModal] = useState(false)
+  const [etapasModal, setEtapasModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
   function exportarCSV() {
@@ -139,6 +140,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
               <button key={p.id} onClick={() => setPipelineSel(p.id)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: pipelineSel === p.id ? '#111' : 'transparent', color: pipelineSel === p.id ? '#fff' : '#666' }}>{p.nome}</button>
             ))}
           </div>
+          {podeEditar && <button onClick={() => setEtapasModal(true)} style={{ padding: '6px 12px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar etapas</button>}
           {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerenciar pipelines</button>}
         </div>
       )}
@@ -212,6 +214,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
       {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
+      {etapasModal && <EtapasModal pipelineId={pipelineSel} pipelineNome={pipelines.find(p => p.id === pipelineSel)?.nome || ''} estagios={estagiosDoPipeline(pipelineSel)} onClose={() => setEtapasModal(false)} onMudou={carregar} />}
     </div>
   )
 }
@@ -691,6 +694,64 @@ function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { 
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
           <button onClick={onClose} style={{ padding: '10px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: { pipelineId: string; pipelineNome: string; estagios: Estagio[]; onClose: () => void; onMudou: () => void }) {
+  type Item = { id: string; nome: string; ganho?: boolean; perdido?: boolean }
+  const [lista, setLista] = useState<Item[]>(() => estagios.map(e => ({ id: e.id, nome: e.nome, ganho: e.ganho, perdido: e.perdido })))
+  const [salvando, setSalvando] = useState(false)
+  const novoId = () => (typeof crypto !== 'undefined' && (crypto as any).randomUUID ? (crypto as any).randomUUID() : `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+
+  const setNome = (i: number, nome: string) => setLista(l => l.map((e, idx) => idx === i ? { ...e, nome } : e))
+  const remover = (i: number) => setLista(l => l.filter((_, idx) => idx !== i))
+  const mover = (i: number, dir: -1 | 1) => setLista(l => { const j = i + dir; if (j < 0 || j >= l.length) return l; const n = [...l]; const tmp = n[i]; n[i] = n[j]; n[j] = tmp; return n })
+  function adicionar() {
+    setLista(l => {
+      const idxTerminal = l.findIndex(e => e.ganho || e.perdido)
+      const nova: Item = { id: novoId(), nome: '' }
+      return idxTerminal < 0 ? [...l, nova] : [...l.slice(0, idxTerminal), nova, ...l.slice(idxTerminal)]
+    })
+  }
+  async function salvar() {
+    if (lista.some(e => !e.nome.trim())) { toast('Dê um nome a todas as etapas.', 'erro'); return }
+    setSalvando(true)
+    const payload = lista.map((e, idx) => ({ id: e.id, nome: e.nome.trim(), ordem: idx, ...(e.ganho ? { ganho: true } : {}), ...(e.perdido ? { perdido: true } : {}) }))
+    const r = await fetch('/api/crm/estagios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pipelineId, estagios: payload }) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { toast('Etapas salvas.', 'sucesso'); onMudou(); onClose() } else toast(r?.error || 'Falha ao salvar.', 'erro')
+  }
+
+  const arrow = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Etapas — {pipelineNome}</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Renomeie, adicione, reordene ou remova as fases deste pipeline. Ganho e Perdido são obrigatórios e não podem ser removidos.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          {lista.map((e, i) => {
+            const terminal = e.ganho || e.perdido
+            return (
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f7f7f7', borderRadius: 10, padding: '6px 10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', color: '#999' }}>
+                  <button onClick={() => mover(i, -1)} disabled={i === 0} title="Subir" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#ddd' : '#888', padding: 0, lineHeight: 0 }}>{arrow('m18 15-6-6-6 6')}</button>
+                  <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} title="Descer" style={{ background: 'none', border: 'none', cursor: i === lista.length - 1 ? 'default' : 'pointer', color: i === lista.length - 1 ? '#ddd' : '#888', padding: 0, lineHeight: 0 }}>{arrow('m6 9 6 6 6-6')}</button>
+                </div>
+                <input value={e.nome} onChange={ev => setNome(i, ev.target.value)} placeholder="Nome da etapa" style={{ ...inputStyle, flex: 1 }} />
+                {terminal
+                  ? <span style={{ fontSize: 10.5, fontWeight: 800, color: e.ganho ? '#16a34a' : '#b91c1c', background: e.ganho ? '#f0fdf4' : '#fef2f2', borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{e.ganho ? 'Ganho' : 'Perdido'}</span>
+                  : <button onClick={() => remover(i)} title="Remover etapa" style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0, padding: '0 4px' }}>×</button>}
+              </div>
+            )
+          })}
+        </div>
+        <button onClick={adicionar} style={{ padding: '9px 14px', background: '#f0f0f0', color: '#333', border: '1px dashed #ccc', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: '100%' }}>+ Adicionar etapa</button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar etapas'}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
