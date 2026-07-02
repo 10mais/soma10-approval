@@ -9,9 +9,10 @@ export const runtime = 'nodejs'
 // Nunca aparece para outros usuarios; nao entra em Tarefas nem na Esteira.
 // Guardado em personal:{email} — sempre lido/escrito pela sessao, nunca por parametro.
 export type PersonalItem = { id: string; texto: string; feito: boolean }
-export type PersonalData = { rascunho: string; itens: PersonalItem[]; atualizadoEm?: string }
+export type PersonalNota = { id: string; texto: string; cor?: string }
+export type PersonalData = { rascunho: string; notas?: PersonalNota[]; itens: PersonalItem[]; atualizadoEm?: string }
 
-const VAZIO: PersonalData = { rascunho: '', itens: [] }
+const VAZIO: PersonalData = { rascunho: '', notas: [], itens: [] }
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -30,8 +31,12 @@ export async function PUT(req: NextRequest) {
   const itens: PersonalItem[] = Array.isArray(body.itens)
     ? body.itens.map((i: any) => ({ id: String(i.id), texto: String(i.texto || ''), feito: !!i.feito }))
     : []
+  const notas: PersonalNota[] = Array.isArray(body.notas)
+    ? body.notas.map((n: any) => ({ id: String(n.id), texto: String(n.texto || ''), cor: n.cor ? String(n.cor) : undefined }))
+    : []
   const data: PersonalData = {
     rascunho: typeof body.rascunho === 'string' ? body.rascunho : '',
+    notas,
     itens,
     atualizadoEm: new Date().toISOString(),
   }
