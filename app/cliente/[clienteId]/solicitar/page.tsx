@@ -38,7 +38,7 @@ export default function SolicitarPage() {
           <label style={label}>Tema / título *</label>
           <input value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} placeholder="Ex: Promoção de inverno, dica do especialista..." style={inputStyle} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
           <div>
             <label style={label}>Formato</label>
             <select value={form.formato} onChange={e => setForm(f => ({ ...f, formato: e.target.value }))} style={{ ...inputStyle, background: '#fff' }}>
