@@ -50,7 +50,7 @@ Sets: `clientes`, `usuarios`, `posts`, `agendados` (ids de posts status=agendado
 Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropicSaldo`, `tipos:tarefa`, `tokens:ultimaRenovacao`. Locks/dedupe: `publicando:{postId}` (SET NX EX 600), `aprov_atraso:{postId}`, `renov_alerta:{clienteId}`, `tarefa_notif_*`.
 
 **Entidades principais (campos-chave):**
-- **Usuario** `usuario:{email}`: nome, email, senha(hash), role (`admin|gerente|cliente`), cargo, foto, telefone, clienteId, **custoHora**, **salarioFixo**, **salarioVariavel** (=valorPorProjeto×qtdProjetos), **valorPorProjeto**, **qtdProjetos**.
+- **Usuario** `usuario:{email}`: nome, email, senha(hash), role (`admin|gerente|usuario|vendas|cliente`), **permissoes** (override por módulo — boolean antigo OU `{ver,editar,excluir}`; ver §15.1), **funcaoVendas** (`sdr|bdr|closer`, p/ role vendas), cargo, foto, telefone, clienteId, **custoHora**, **salarioFixo**, **salarioVariavel** (=valorPorProjeto×qtdProjetos), **valorPorProjeto**, **qtdProjetos**.
 - **Cliente** `cliente:{id}`: nome, instagram, logo, corPrimaria/Secundaria, tipo (`cliente|interno`), **entregaveis[]** (social_media, trafego_meta, trafego_google, landing_page, branding, email_marketing, consultoria, crm, google_meu_negocio, **hospedagem**), **postsMensais** (meta), contrato (**contratoValor** recorrente, contratoInicio/Renovacao/Ciclo), **receitasAvulsas[]** (mes/valor/descricao = pontual/modular), Brand Board (segmento, palavrasChave, descricao, publicoAlvo, tomDeVoz, preferencias, documentos[], documentoMarca), Meta/IG (facebookPageId/Token, instagramBusinessId/Username, metaConectado, instagramToken/UserId/Conectado), **loginEmail/loginSenha**, **statusToken** (link público).
 - **Post** `post:{id}`: clienteId/Nome, imagens[], legenda, **status** (rascunho|agendado|aguardando_aprovacao|aprovado|corrigir|reprovado|**publicando**|publicado|falha_publicacao), formato (feed|reel|story), dataAgendada, codigo (6 díg), colaboradores[], capasVideo{}, redes[], **redesPublicadas[]** (anti-duplicata), **etapa** (briefing|copy|aprovacao_copy|criativo|aprovacao_criativo|pronto), planoId, briefing, sugestaoImagem/Legenda, ajusteCopy/Criativo, copyAprovadaEm, criativoAprovadoEm, **aguardandoDesde** (SLA), **etapaDesde** (cycle-time), **preAprovado**, thumbnail, midiaRemovida, marcoId.
 - **Tarefa** `tarefa:{id}`: titulo, descricao, tipo (11 embutidos + custom em `tipos:tarefa`), status (a_fazer|em_andamento|em_revisao|concluido), prioridade, responsavelEmail/Nome, clienteId/Nome, **marcoId**, prazo, anexos[] (com anotacoes), atividades[], comentarios[], **apontamentos[]** (horas), **checklist[]** (Definition of Done).
@@ -96,17 +96,25 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 ## 8. Navegação e papéis
 
-**Papéis:** `admin` (gestor — vê tudo), `gerente` (sem Gestão/Pessoas e Cultura, sem notificação desses), `cliente` (portal, só o dele).
+**Papéis (hierarquia):** `admin` > `gerente` > `usuario` > `vendas` > `cliente`.
+- `admin` — vê tudo (único que vê o **Financeiro** e atribui permissões).
+- `gerente` — operacional amplo (padrão: Produção/Estratégia/CRM ligados; Clientes/Financeiro não).
+- `usuario` — papel limitado (padrão: só Produção ver/editar; sem Estratégia/CRM/Clientes/Financeiro), tudo ajustável pelo admin.
+- `vendas` — SDR/BDR/Closer; nav restrita a **CRM, Meu dia, Personal list, Mensagens** (não vê a operação).
+- `cliente` — portal do próprio projeto.
+
+**Permissões (modelo atual — ver §15.1):** matriz **Ver / Editar / Excluir** por módulo (`producao | estrategia | crm | clientes`; `financeiro` é sempre admin-only). Configurável **por papel** (`config:permissoesPapel`) e **por usuário** (`Usuario.permissoes`, override individual). Só o admin edita. Lógica client-safe em `lib/permissoesCatalogo.ts` (`podeNivel`, `normalizaNivel`); enforcement de servidor em `lib/permissoesPapel.ts` (`bloqueiaPapel`).
 
 **Dashboard (agência) — `app/dashboard/page.tsx`, estado `aba`:**
-- Visão geral: **Meu dia**, Painel
+- Visão geral: **Meu dia**, Painel, **Personal list**
 - Produção: Tarefas, Esteira, **Carga da equipe**
 - Estratégia: Playbook, Campanhas, **Modelos**, **Automações**
+- Vendas: **CRM**
 - Comunicação: Inbox, Mensagens
-- **Gestão (admin):** **Rentabilidade**
-- **Configurações (admin):** Geral, Clientes
+- **Gestão (admin):** **Financeiro** (aba interna ainda chamada `rentabilidade`, componente `Rentabilidade.tsx`)
+- **Configurações (admin):** Geral, Clientes, **Notificações do sistema**, **Operacional**, **Permissões por papel** (hub ainda não reorganizado em abas — ver §12)
 - **Pessoas e Cultura (admin):** Colaboradores, Candidaturas, Página Trabalhe Conosco
-- "Acessar sub-account" (edição) vs "Visualizar como cliente" (read-only).
+- Cada aba mapeia a um grupo de permissão em `ABA_GRUPO`; `podeGrupo`/`podeNivelDash` filtram nav e botões. "Acessar sub-account" (edição) vs "Visualizar como cliente" (read-only).
 
 **Portal do cliente — `app/cliente/[clienteId]/layout.tsx` (`NAV_ITEMS`):**
 - "O que o cliente vê": Início, Entregas, Aprovações, Solicitar conteúdo, Esteira, Planner
@@ -138,21 +146,29 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 - Cor da marca do cliente: `var(--marca)` no portal; em alguns componentes a cor é passada direto do cliente.
 - Auto-aprovar (global CLAUDE.md): criar arquivos/pastas novos, instalar pacotes pedidos, componentes visuais. **Perguntar antes:** modificar arquivo existente, comandos de banco, `.env`/auth, refator >3 arquivos, deletar.
 
-## 12. Pendências / próximos passos (atualizado 2026-06-30)
+## 12. Pendências / próximos passos (atualizado 2026-07-02)
+
+**PRÓXIMO PASSO IMEDIATO (código):**
+- **Reorganizar o Hub de Configurações em abas** — juntar Geral / Clientes / Colaboradores / Automações / Integrações / Notificações do sistema / Operacional / Permissões por papel num único hub com navegação por abas. É a última parte pendente do "sistema de configurações robusto" (permissões, notificações e operacional já entregues — ver §15). Willian já aprovou; falta só executar.
 
 **Ação do dono (externo ao código):**
-- **WhatsApp oficial — provisionar:** número comercial dedicado + verificação Meta Business + credenciais. Adicionar no Vercel: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`. Configurar o webhook na Meta apontando para `https://approval.soma10.com.br/api/whatsapp/webhook` (mesmo verify token, assinar campo `messages`). O scaffold backend já está pronto (ver §14).
-- **Agendar cron** `/api/cron/crm-followup?secret=CRON_SECRET` no cron-job.org (1x/dia de manhã).
-- Confirmar/agendar `/api/cron/resumo-semanal`.
-- Adicionar chaves **VAPID** no Vercel se ainda faltar (push já funcionando): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+- **WhatsApp Cloud API — provisionar:** número comercial **dedicado** (não pode estar num WhatsApp comum) + System User token permanente. Adicionar no Vercel: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`. Webhook na Meta → `https://approval.soma10.com.br/api/whatsapp/webhook` (mesmo verify token, assinar campo `messages`). Criar templates HSM aprovados (1º contato fora da janela de 24h). Scaffold backend pronto (§14.9) — liga sozinho quando as vars entrarem.
+- **Crons agora são NATIVOS da Vercel** (`vercel.json`, §15.4). O dono deve **desativar os crons duplicados no cron-job.org** para não rodar 2x (`publicar`, `alertas`, `tarefas`, `crm-followup`, `resumo-semanal`). Conferir na aba **Cron Jobs** do projeto na Vercel se todos aparecem (inclui `automacoes` a cada 15 min).
+- Conferir chaves **VAPID** no Vercel (push): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+- **Instagram:** conta profissional + **App Review** da Meta (necessário para o Instagram Direct no CRM — Fase 3).
 
-**A construir (código):**
-- **WhatsApp inbox no CRM** (ver conversas `wa:conversas`, ler `wa:msgs:{tel}`, responder via `enviarWhatsApp`, vincular conversa↔contato/negócio) + **templates HSM** (fora da janela de 24h). Fazer com as credenciais para testar de verdade.
-- **CRM Fase 2 restante:** lembretes já feitos; falta refinar empresas (drill-down) se quiser.
-- **Backlog antigo (2 grandes):** **Assistente de IA** (canto inferior direito, chat com Claude — SDK já existe) e **Mapas mentais** (editor de nós+conexões). Planejar antes.
-- **Otimização de fundo opcional:** ZSET cronológico para limitar a LEITURA do Redis da equipe (hoje a janela de 120d filtra após o mget). Índice por cliente para TAREFAS (pulado — sem consumidor).
+**Backlog a construir (código) — GRANDES, planejar antes:**
+- **Agentes de IA treinados (estilo "Super Agents" do ClickUp)** — agentes nomeados (ex.: Copywriter, Gestor de Projetos) que executam tarefas. Base pronta: assistente flutuante + tool-use (`lib/assistenteTools.ts`, `/api/assistente/chat`). Evoluir para agentes com função/ferramentas próprias.
+- **Documentos internos (tipo Google Docs, internos do Soma10)** — editor colaborativo; reaproveitar `RichText.tsx` como base.
+- **Mapas mentais** (editor de nós+conexões) e **versão mobile** (sidebar → hambúrguer) — antigos, ainda abertos.
+- **Vendas/Retenção:** dashboard de conversão de vendas (funil detalhado); régua de renovação, NPS, sinal de churn por inatividade, LTV (o motor de automações já destrava parte disso via configuração).
+- **CRM Instagram Direct (Fase 3)** — depende do App Review acima.
 
-**Roadmap aberto / menores:** dashboard de Ads read-only (aguarda APIs Meta/Google); registro corrompido antigo a limpar; logomarca oficial em Trabalhe Conosco; dívida técnica do modo escuro (filtro de inversão — ideal um tema escuro real).
+**Ressalva de permissões (importante):** o **override por usuário** (`Usuario.permissoes`) trafega no **token JWT** → mudanças individuais só valem **após o usuário relogar**. Os **defaults por papel** (`config:permissoesPapel`) valem na hora. Se precisar de efeito imediato no override individual, trocar `bloqueiaPapel` para ler o usuário fresco do Redis a cada request (custo: +1 leitura por ação).
+
+**Otimização de fundo opcional:** ZSET cronológico para limitar a LEITURA do Redis da equipe (hoje a janela de 120d filtra após o mget). Índice por cliente para TAREFAS (pulado — sem consumidor).
+
+**Roadmap aberto / menores:** dashboard de Ads read-only (aguarda APIs Meta/Google); logomarca oficial em Trabalhe Conosco; dívida técnica do modo escuro (filtro de inversão — ideal um tema escuro real).
 
 ## 13. Arquivos-chave
 
@@ -220,3 +236,59 @@ Abas internas: **Painel / Funil / Contatos / Empresas / Playbook**.
 
 ### 14.11 Novas rotas API (resumo)
 `/api/personal`, `/api/push/subscribe`, `/api/push/test`, `/api/resumo-templates`, `/api/esteira/relacionar`, `/api/briefings/relacionar`, `/api/crm/{negocios,contatos,empresas,estagios,playbook,converter}`, `/api/cron/crm-followup`, `/api/whatsapp/webhook`.
+
+## 15. Evolução 2026-07 (permissões · financeiro · automações · IA · CRM · hub) — novidades
+
+> Tudo abaixo já está **deployado na `main`**. Fluxo mantido: **push direto na main a cada implementação**, type-check antes de cada commit. Esta seção é o estado ATUAL; onde diverge das seções antigas (ex.: "Rentabilidade"→"Financeiro", papéis), vale o que está aqui.
+
+### 15.1 Permissões Ver/Editar/Excluir (modelo + enforcement)
+- **Client-safe:** `lib/permissoesCatalogo.ts` — tipos `GrupoPermissao` (`producao|estrategia|crm|clientes`), `Nivel` (`ver|editar|excluir`), `NivelPerm`. `PADRAO` por papel (gerente/usuario). `podeNivel(role, grupo, nivel, permUsuario?, configPapel?)` resolve: **override do usuário > config do papel > padrão**; `admin`→sempre true; `financeiro`→sempre false (exceto admin); não-(gerente|usuario)→false. `normalizaNivel` aceita o formato **antigo** (1 booleano por módulo) e converte p/ `{ver,editar,excluir}` — **retrocompatível**.
+- **Servidor:** `lib/permissoesPapel.ts` reexporta o catálogo + `getPermissoesPapel()` (lê `config:permissoesPapel`), `papelPode(...)` e **`bloqueiaPapel(role, grupo, nivel, permUsuario)`** — retorna true SÓ quando o papel é gerente/usuario E não tem o nível; admin/vendas/cliente passam direto (mantêm as regras próprias de cada rota). Uso nas rotas: `if (await bloqueiaPapel(...)) return 403`.
+- **Enforcement de servidor aplicado em** (commit `f253225`): tarefas (POST/PUT=editar, DELETE=excluir), posts (idem), esteira `gerar-plano`/`gerar-legenda`/`aprovar` (editar), playbook (editar; DELETE alinhado à matriz `estrategia/excluir`), templates + `templates/aplicar` (editar/excluir), crm `negocios`/`empresas`/`contatos` (editar/excluir).
+- **Enforcement de cliente:** o dashboard calcula `podeNivelDash(grupo, nivel)` a partir de `session.user.permissoes` + `permPapel` e passa `podeEditar`/`podeExcluir` para `GestaoTarefas`, `Esteira`, `Playbook`, `Modelos`, `CRM` (e seus modais). Botões de criar/editar/excluir sem permissão são escondidos. Nav/abas filtradas por nível `ver` (`podeGrupo`, `ABA_GRUPO`, guard em `useEffect`).
+- **UI de configuração:** matriz de caixinhas ✓/— na tela **Colaboradores** (padrão por papel) e no **cadastro/edição de cada usuário** (override individual) — função `matrizNiveis` no `dashboard/page.tsx`. Rota `/api/permissoes-papel` (GET/PUT admin). `Usuario.permissoes` no `lib/redis.ts` aceita boolean antigo OU objeto novo. **Só o admin** configura.
+- **Ressalva:** override por usuário vem do JWT → só vale após relogar (ver §12).
+
+### 15.2 Papéis `usuario` e `vendas`
+- Hierarquia Admin > Gerente > **Usuário** > **Vendas** > Cliente (ver §8). `role`/`permissoes` propagados na sessão por `lib/auth.ts` (authorize → jwt → session). `vendas` = SDR/BDR/Closer, nav restrita (CRM/Meu dia/Personal/Mensagens); assistente e notificações filtrados para o contexto de vendas. Roster seguro de equipe em `/api/equipe`.
+
+### 15.3 Módulo Financeiro (ex-"Rentabilidade") — admin-only
+- Renomeado **Rentabilidade → Financeiro** (aba interna ainda `rentabilidade`, componente `Rentabilidade.tsx`). **Exclusivo do admin** (nenhum outro papel vê).
+- **Saúde do Caixa** virou um **contagiro/velocímetro** (gauge, não termômetro). **Olho de privacidade** mascara **só os valores** (não borra a tela toda).
+- **Fluxo de caixa** (entradas/saídas), **saldo previsto** e **lançamentos futuros**. APIs: `/api/financeiro/contas`, `/api/financeiro/lancamentos` (+ `/api/despesas`). Config operacional influencia a reserva (`saudeDias`).
+
+### 15.4 Crons NATIVOS da Vercel
+- `vercel.json` declara os crons (região `gru1`): `publicar` (`* * * * *`), `alertas` (`0 * * * *`), `tarefas` (`30 * * * *`), `crm-followup` (`0 11 * * *`), `resumo-semanal` (`0 11 * * 1`), **`automacoes` (`*/15 * * * *`)**.
+- `lib/cronAuth.ts` `cronAutorizado(req)` aceita `?secret=CRON_SECRET` **OU** `Authorization: Bearer <CRON_SECRET>` (a Vercel manda o header). **Duplicatas no cron-job.org devem ser desligadas** (ver §12).
+
+### 15.5 Motor de automações flexível (não engessado)
+- **Registries client-safe:** `lib/automacoesCatalogo.ts` — `GATILHOS` (cada um declara os campos que expõe no ctx p/ as condições), `ACOES` (cada uma declara seus params), operadores de condição. Amplo e extensível (adicionar item = sem mexer no motor).
+- **Motor (server):** `lib/automacoesEngine.ts` — `dispararEvento(gatilho, ctxRico)` filtra regras ativas por **escopo** (todos / selecionados / exceção por cliente) e **condições** (todas/qualquer), executa passo imediato e agenda os demais no **ZSET** `automacoes:pendentes` (trilha multi-passo com atraso em dias). `executarAcao` reutiliza writes existentes (criar_tarefa, criar_marco, notificar, enviar_email, aplicar_template, mover_etapa, etc.).
+- **Fila:** `/api/cron/automacoes` (protegido por `cronAutorizado`) processa os passos vencidos.
+- **Regras:** `config:automacoesRegras` (`Automacao[]`). CRUD em `/api/automacoes` (write **admin-only**). Construtor visual em `Automacoes.tsx` (gatilho → condições → escopo → sequência de passos). Wiring de `dispararEvento` em clientes/converter/negocios/decision/playbook/tarefas/posts. O toggle antigo `lib/automacoes.ts` + `config:automacoes` ainda coexiste (migração/limpeza futura).
+
+### 15.6 Hub de configurações — preferências de notificação + operacional
+- **Notificações:** `lib/notificacoesCatalogo.ts` (catálogo de tipos). Admin liga/desliga tipos globalmente (`config:notificacoes.desabilitados`) em **Config → Notificações do sistema** (`NotificacoesConfig.tsx`, `/api/notificacoes-config`). Cada usuário silencia os SEUS tipos + push (`notif:prefs:{email}`, `/api/notif-prefs`) em Minha Conta. `notificar()` em `lib/notificacoes.ts` respeita ambos.
+- **Operacional:** `lib/operacional.ts` + `/api/operacional` + `OperacionalConfig.tsx` — `config:operacional` `{ slaAprovacaoHoras=24, lixeiraDias=30, saudeDias=60, prioridadePadrao='media' }`. Ligado no cron/alertas (SLA), tarefas POST (prioridade padrão), Financeiro (reserva=despesaOpMensal×saudeDias/30) e lixeira do `GestaoTarefas`.
+- **FALTA:** reorganizar tudo isso num hub com abas (ver §12 — próximo passo).
+
+### 15.7 Assistente de IA flutuante + acesso ao banco (tool-use)
+- Ícone amarelo no canto; chat em streaming `/api/assistente/chat` (`AssistenteIA.tsx`). **Tool-use:** `lib/assistenteTools.ts` expõe `consultar_tarefas/clientes/crm/financeiro` (loop de tools no chat; **financeiro só p/ admin**). Prompt e ferramentas mudam quando `role=vendas` (foca vendas/funil, com web search).
+
+### 15.8 CRM — refinamentos + toasts globais
+- **Toasts globais:** `lib/toast.ts` + `Toaster.tsx` substituíram TODOS os `alert`/`confirm` nativos (inclusive `confirmar(...)` async com opção de perigo).
+- **CRM:** empresa↔contato vinculados; negócio exige **contato + empresa**; responsável só admin/vendas; ao agendar reunião, **briefing vai a todos os Closers**; **Central de mensagens (inbox WhatsApp Fase 1)** `/api/crm/mensagens` + aba Mensagens; **cadência/agendamentos Fase 2** (`CrmAgendamento[]` no negócio, cadência do Playbook, cron `crm-followup`, selo no card). Conversão Ganho→Cliente já documentada em §14.8.
+
+### 15.9 Editor rico, anexos, recorrência, relatório editável
+- **`RichText.tsx`** (contentEditable, `document.execCommand`) na descrição de tarefas; `ehHtml` detecta entidades (fix `&nbsp;` literal); link abre em clique simples.
+- **Anexos múltiplos** (seleciona vários arquivos de uma vez). **Tarefas recorrentes** (`Tarefa.recorrencia` diaria|semanal|quinzenal|mensal; ao concluir, gera a próxima ocorrência).
+- **Relatório mensal do cliente em PDF, editável antes de exportar:** `RelatorioMensalEditor.tsx` + `lib/relatorioMensal.ts` (jsPDF).
+
+### 15.10 Personal list → Notas
+- Substituído o "Rascunho" único por **Notas** estilo post-it / Notas do iOS (`PersonalList.tsx`): cards coloridos (paleta), grid responsivo, autosave; migração automática do rascunho antigo → 1 nota. **Microtarefas** mantidas. `personal:{email}` ganhou `notas[]` (`/api/personal` sanitiza).
+
+### 15.11 Novos arquivos / chaves / rotas (resumo desta fase)
+- **Libs:** `permissoesCatalogo.ts`, `permissoesPapel.ts`, `automacoesCatalogo.ts`, `automacoesEngine.ts`, `cronAuth.ts`, `operacional.ts`, `notificacoesCatalogo.ts`, `assistenteTools.ts`, `toast.ts`, `relatorioMensal.ts`.
+- **Componentes:** `AssistenteIA.tsx`, `Automacoes.tsx`, `NotificacoesConfig.tsx`, `OperacionalConfig.tsx`, `RichText.tsx`, `RelatorioMensalEditor.tsx`, `Toaster.tsx`.
+- **Rotas:** `/api/permissoes-papel`, `/api/operacional`, `/api/notificacoes-config`, `/api/notif-prefs`, `/api/automacoes`, `/api/cron/automacoes`, `/api/assistente/chat`, `/api/equipe`, `/api/financeiro/{contas,lancamentos}`, `/api/crm/mensagens`.
+- **Chaves Redis:** `config:permissoesPapel`, `config:operacional`, `config:notificacoes`, `notif:prefs:{email}`, `config:automacoesRegras`, `automacoes:pendentes` (ZSET), `crm:mensagens`/conversas. Campos: `Usuario.permissoes` (boolean antigo OU `{ver,editar,excluir}` por módulo); `Tarefa.recorrencia`; `CrmNegocio.agendamentos[]`.
