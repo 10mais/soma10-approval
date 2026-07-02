@@ -2,12 +2,12 @@
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 
-type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
+type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
 type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
-  id: string; titulo: string; valor?: number; estagioId: string; status: string
+  id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
@@ -33,6 +33,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
   const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
+  // Pipelines (múltiplos funis)
+  const [pipelines, setPipelines] = useState<{ id: string; nome: string; ordem: number }[]>([])
+  const [pipelineSel, setPipelineSel] = useState('')
+  const [pipelinesModal, setPipelinesModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
   function exportarCSV() {
@@ -65,11 +69,15 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       fetch('/api/crm/negocios').then(r => r.json()),
       fetch('/api/crm/contatos').then(r => r.json()),
       fetch('/api/crm/empresas').then(r => r.json()),
-    ]).then(([e, n, c, emp]) => {
+      fetch('/api/crm/pipelines').then(r => r.json()),
+    ]).then(([e, n, c, emp, pl]) => {
       setEstagios(Array.isArray(e) ? e : [])
       setNegocios(Array.isArray(n) ? n : [])
       setContatos(Array.isArray(c) ? c : [])
       setEmpresas(Array.isArray(emp) ? emp : [])
+      const pls = Array.isArray(pl) ? pl : []
+      setPipelines(pls)
+      setPipelineSel(prev => (prev && pls.some((p: any) => p.id === prev)) ? prev : (pls[0]?.id || ''))
       setCarregando(false)
     }).catch(() => setCarregando(false))
   }
@@ -84,6 +92,12 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
   const contatoDe = (id?: string) => contatos.find(c => c.id === id)
   const totalPorEstagio = (eid: string) => negocios.filter(n => n.estagioId === eid).reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  // Filtros por pipeline (negócio/etapa sem pipelineId caem no pipeline padrão = o primeiro)
+  const padraoId = pipelines[0]?.id || ''
+  const estagiosDoPipeline = (pid: string) => estagios.filter(e => (e.pipelineId || padraoId) === pid)
+  const negociosDoPipeline = (pid: string) => negocios.filter(n => (n.pipelineId || padraoId) === pid)
+  // Origens conhecidas (dropdown editável): padrões + as já usadas nos negócios
+  const origensConhecidas = Array.from(new Set(['Indicação', 'Instagram', 'Tráfego pago', 'Tráfego orgânico', 'Prospecção ativa', 'Site', 'Evento', ...negocios.map(n => (n.origem || '').trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'pt'))
 
   return (
     <div>
@@ -116,8 +130,21 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         )}
       </div>
 
+      {/* Seletor de pipeline (funil e painel) */}
+      {(vista === 'funil' || vista === 'painel') && pipelines.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline</span>
+          <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, flexWrap: 'wrap' }}>
+            {pipelines.map(p => (
+              <button key={p.id} onClick={() => setPipelineSel(p.id)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: pipelineSel === p.id ? '#111' : 'transparent', color: pipelineSel === p.id ? '#fff' : '#666' }}>{p.nome}</button>
+            ))}
+          </div>
+          {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerenciar pipelines</button>}
+        </div>
+      )}
+
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
-        <PainelVendas negocios={negocios} estagios={estagios} usuarios={usuarios} />
+        <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} />
       ) : vista === 'contatos' ? (
         <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} />
       ) : vista === 'empresas' ? (
@@ -128,7 +155,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
-          {estagios.map(est => {
+          {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id)
             const cor = est.ganho ? '#16a34a' : est.perdido ? '#b91c1c' : '#111'
             return (
@@ -179,11 +206,12 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagios} usuarios={usuarios} contatos={contatos} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
+      {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
     </div>
   )
 }
@@ -609,7 +637,67 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { cont
   )
 }
 
-function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { estagios: Estagio[]; usuarios: any[]; contatos: Contato[]; onClose: () => void; onSalvo: () => void }) {
+function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { pipelines: { id: string; nome: string; ordem: number }[]; podeExcluir?: boolean; onClose: () => void; onMudou: () => void }) {
+  const [novo, setNovo] = useState('')
+  const [editId, setEditId] = useState('')
+  const [editNome, setEditNome] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  async function criar() {
+    if (!novo.trim()) return
+    setSalvando(true)
+    const r = await fetch('/api/crm/pipelines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() }) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { setNovo(''); toast('Pipeline criado.', 'sucesso'); onMudou() } else toast(r?.error || 'Falha ao criar.', 'erro')
+  }
+  async function renomear(id: string) {
+    if (!editNome.trim()) return
+    const r = await fetch('/api/crm/pipelines', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nome: editNome.trim() }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { setEditId(''); onMudou() } else toast(r?.error || 'Falha ao renomear.', 'erro')
+  }
+  async function excluir(id: string, nome: string) {
+    if (!(await confirmar(`Excluir o pipeline "${nome}"? As oportunidades dele serão movidas para outro pipeline.`, { titulo: 'Excluir pipeline', okLabel: 'Excluir', perigo: true }))) return
+    const r = await fetch(`/api/crm/pipelines?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { toast('Pipeline excluído.', 'sucesso'); onMudou() } else toast(r?.error || 'Falha ao excluir.', 'erro')
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Pipelines</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Crie funis separados (ex.: Marketing, +Clínicas, Mentoria). Cada um tem suas etapas.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {pipelines.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f7f7f7', borderRadius: 10, padding: '8px 12px' }}>
+              {editId === p.id ? (
+                <>
+                  <input value={editNome} onChange={e => setEditNome(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') renomear(p.id) }} style={{ ...inputStyle, flex: 1 }} />
+                  <button onClick={() => renomear(p.id)} style={{ padding: '7px 12px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+                  <button onClick={() => setEditId('')} style={{ padding: '7px 10px', background: 'none', color: '#888', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: '#111' }}>{p.nome}</span>
+                  <button onClick={() => { setEditId(p.id); setEditNome(p.nome) }} style={{ padding: '6px 10px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Renomear</button>
+                  {podeExcluir && pipelines.length > 1 && <button onClick={() => excluir(p.id, p.nome)} style={{ padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Excluir</button>}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} placeholder="Nome do novo pipeline (ex.: Marketing)" style={{ ...inputStyle, flex: 1 }} />
+          <button onClick={criar} disabled={!novo.trim() || salvando} style={{ padding: '10px 16px', background: novo.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: novo.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvando ? '...' : '+ Criar'}</button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: '10px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
@@ -642,7 +730,7 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
@@ -712,7 +800,10 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
             </div>
             <div><label style={labelStyle}>Previsão</label><input type="date" value={f.previsaoFechamento} onChange={e => setF({ ...f, previsaoFechamento: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div><label style={labelStyle}>Origem</label><input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} placeholder="Indicação, Instagram, tráfego..." style={inputStyle} /></div>
+          <div><label style={labelStyle}>Origem</label>
+            <input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} list="crm-origens" placeholder="Selecione ou digite..." style={inputStyle} />
+            <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
+          </div>
 
           <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
           <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
@@ -740,8 +831,17 @@ function NovoNegocioModal({ estagios, usuarios, contatos, onClose, onSalvo }: { 
   )
 }
 
-function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false }: { negocio: Negocio; estagios: Estagio[]; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
+  const pipeAtual = neg.pipelineId || padraoId
+  const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
+  // Move o negócio para outro pipeline: entra na primeira etapa do destino
+  function moverPipeline(destinoId: string) {
+    if (destinoId === pipeAtual) return
+    const estDest = estagios.filter(e => (e.pipelineId || padraoId) === destinoId)
+    const primeira = (estDest.find(e => !e.ganho && !e.perdido) || estDest[0])?.id || ''
+    patch({ pipelineId: destinoId, estagioId: primeira })
+  }
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
   const [converter, setConverter] = useState(false)
@@ -786,8 +886,13 @@ function NegocioModal({ negocio, estagios, contato, usuarios, onClose, onMudou, 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: 999, padding: '4px 12px' }}>{fmtR$(neg.valor)}</span>
           <select value={neg.estagioId} onChange={e => patch({ estagioId: e.target.value })} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #e0e0e0', background: '#fff', cursor: 'pointer' }}>
-            {estagios.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            {estagiosPipe.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
+          {pipelines.length > 1 && (
+            <select value={pipeAtual} onChange={e => moverPipeline(e.target.value)} title="Mover para outro pipeline" style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #c7d2fe', background: '#eef2ff', color: '#3730a3', cursor: 'pointer' }}>
+              {pipelines.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          )}
           {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#16a34a', borderRadius: 999, padding: '4px 12px' }}>GANHO</span>}
           {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#b91c1c', borderRadius: 999, padding: '4px 12px' }}>PERDIDO</span>}
         </div>

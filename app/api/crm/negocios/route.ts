@@ -5,6 +5,7 @@ import { redis, CrmNegocio, CrmEstagio, CrmAtividade, CrmAgendamento, Usuario } 
 import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { garantirSetupCrm } from '@/lib/crmPipelines'
 
 export const runtime = 'nodejs'
 
@@ -69,11 +70,12 @@ export async function POST(req: NextRequest) {
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
   // #5 — toda oportunidade precisa estar atribuida a um contato
   if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
-  // #2 — empresa obrigatoria
-  if (!String(b.empresa || '').trim()) return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
+  // #2 — empresa obrigatoria (exceto profissional autonomo)
+  if (!b.profissionalAutonomo && !String(b.empresa || '').trim()) return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
 
-  const ests = await estagios()
-  const estagioId = b.estagioId || (ests.find(e => !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''
+  const { estagios: ests } = await garantirSetupCrm()
+  const estagioId = b.estagioId || (ests.find(e => (b.pipelineId ? (e.pipelineId === b.pipelineId) : true) && !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''
+  const estSel = ests.find(e => e.id === estagioId)
   const agora = new Date().toISOString()
   const autor = session.user?.name || ''
   const negocio: CrmNegocio = {
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
     titulo: String(b.titulo).trim(),
     valor: Number(b.valor) || 0,
     estagioId,
+    pipelineId: b.pipelineId || estSel?.pipelineId || '',
     status: 'aberto',
     dono: b.dono || (session.user as any)?.email || '',
     donoNome: b.donoNome || autor,
@@ -159,7 +162,7 @@ export async function PUT(req: NextRequest) {
     if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 

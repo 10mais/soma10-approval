@@ -419,7 +419,9 @@ export type Post = {
 
 // ===== CRM de vendas (SDR/Closer) =====
 // Estágio do funil (configurável). Chaves: crm:estagios (array), índices crm:negocios, crm:contatos.
-export type CrmEstagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean }
+// Pipeline (funil) — agrupa etapas. Permite vários funis (ex.: Marketing, +Clínicas, Mentoria).
+export type CrmPipeline = { id: string; nome: string; ordem: number }
+export type CrmEstagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 
 // Empresa/conta — agrupa contatos e negócios
 export type CrmEmpresa = {
@@ -484,6 +486,7 @@ export type CrmNegocio = {
   titulo: string
   valor?: number
   estagioId: string
+  pipelineId?: string // funil ao qual o negócio pertence (ausente = pipeline padrão)
   status: CrmNegocioStatus
   dono?: string // e-mail do responsável (SDR/closer)
   donoNome?: string
