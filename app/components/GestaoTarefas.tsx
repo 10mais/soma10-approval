@@ -69,8 +69,19 @@ function forcarDownload(url: string, nome: string) {
 }
 
 function TextoComMencoes({ texto }: { texto: string }) {
-  const partes = texto.split(/(@[a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g)
-  return <>{partes.map((p, i) => p.startsWith('@') ? <span key={i} style={{ color: '#2563eb', fontWeight: 600 }}>{p}</span> : <span key={i}>{p}</span>)}</>
+  const ehUrl = (s: string) => /^https?:\/\//i.test(s)
+  const renderMencoes = (t: string, base: string) => {
+    const partes = t.split(/(@[a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g)
+    return partes.map((p, i) => p.startsWith('@')
+      ? <span key={`${base}-m${i}`} style={{ color: '#2563eb', fontWeight: 600 }}>{p}</span>
+      : <span key={`${base}-t${i}`}>{p}</span>)
+  }
+  // Quebra em URLs (viram links) e trata @mencoes no restante
+  const segmentos = String(texto || '').split(/(https?:\/\/[^\s]+)/gi)
+  return <>{segmentos.map((seg, i) => ehUrl(seg)
+    ? <a key={`u${i}`} href={seg} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>{seg}</a>
+    : <span key={`s${i}`}>{renderMencoes(seg, `s${i}`)}</span>
+  )}</>
 }
 
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
@@ -925,7 +936,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? '#1d4ed8' : a.tipo === 'status' ? '#ffc00f' : '#ccc', marginTop: 5, flexShrink: 0 }} />
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: '#555' }}>{a.descricao}</p>
+              <p style={{ margin: 0, fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={a.descricao || ''} /></p>
               <p style={{ margin: '2px 0 0', fontSize: 10, color: '#aaa' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
             </div>
           </div>
