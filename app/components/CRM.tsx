@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
@@ -31,6 +31,24 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [overCol, setOverCol] = useState<string | null>(null)
   const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
   useEffect(() => { try { sessionStorage.setItem('crm_vista', vista) } catch {} }, [vista])
+
+  // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
+  // em Ganho/Perdido). Só rola quando o card está perto da borda; no meio, não rola.
+  const funilRef = useRef<HTMLDivElement>(null)
+  const scrollTimer = useRef<any>(null)
+  function autoScrollDrag(e: React.DragEvent) {
+    e.preventDefault()
+    const el = funilRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const EDGE = 90, VEL = 18
+    const dir = e.clientX > rect.right - EDGE ? 1 : e.clientX < rect.left + EDGE ? -1 : 0
+    if (scrollTimer.current) { clearInterval(scrollTimer.current); scrollTimer.current = null }
+    if (dir !== 0) scrollTimer.current = setInterval(() => { el.scrollLeft += dir * VEL }, 16)
+  }
+  function pararAutoScroll() {
+    if (scrollTimer.current) { clearInterval(scrollTimer.current); scrollTimer.current = null }
+  }
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
   const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
@@ -157,14 +175,15 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
+        <div ref={funilRef} className="crm-kanban" onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
+          style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id)
             const cor = est.ganho ? '#16a34a' : est.perdido ? '#b91c1c' : '#111'
             return (
               <div key={est.id}
                 onDragOver={e => { e.preventDefault(); setOverCol(est.id) }}
-                onDrop={() => { const n = negocios.find(x => x.id === dragId); if (n) moverEstagio(n, est.id); setDragId(null); setOverCol(null) }}
+                onDrop={() => { const n = negocios.find(x => x.id === dragId); if (n) moverEstagio(n, est.id); setDragId(null); setOverCol(null); pararAutoScroll() }}
                 style={{ flex: '0 0 270px', width: 270, background: overCol === est.id ? '#fff8e1' : '#f6f6f6', borderRadius: 12, padding: 10, minHeight: 120, border: overCol === est.id ? '1.5px dashed #ffc00f' : '1.5px solid transparent' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 10px' }}>
                   <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{est.nome}</span>
@@ -175,7 +194,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                   {cards.map(n => {
                     const ct = contatoDe(n.contatoId)
                     return (
-                      <div key={n.id} draggable onDragStart={() => setDragId(n.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
+                      <div key={n.id} draggable onDragStart={() => setDragId(n.id)} onDragEnd={() => { setDragId(null); setOverCol(null); pararAutoScroll() }}
                         onClick={() => setAberto(n)}
                         style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #eee' }}>
                         <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
