@@ -26,11 +26,13 @@ aside,
   }
 }
 
-/* Funil do CRM: rola na horizontal sem mostrar a barra (auto-scroll ao arrastar). */
-.crm-kanban {
+/* Rolagem funcional, sem barras visiveis (mais limpo) — em todo o sistema. */
+* {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge antigo */
 }
-.crm-kanban::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome/Safari/Edge */
 }
