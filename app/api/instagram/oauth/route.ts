@@ -20,8 +20,14 @@ export async function GET(req: NextRequest) {
   const clienteAlvo = req.nextUrl.searchParams.get('cliente') || ''
   const state = clienteAlvo ? `soma10:${clienteAlvo}` : 'soma10'
 
-  // Permissões da API com login do Instagram (publicação de conteúdo)
-  const scope = ['instagram_business_basic', 'instagram_business_content_publish'].join(',')
+  // Permissões da API com login do Instagram. Publicação sempre; mensagens só quando
+  // ?messaging=1 (caminho dedicado do CRM). A permissão de mensagens ainda não é
+  // aprovada, então mantê-la fora do fluxo padrão evita quebrar a conexão de clientes
+  // reais (não-testadores) antes do App Review.
+  const comMensagens = req.nextUrl.searchParams.get('messaging') === '1'
+  const scopeArr = ['instagram_business_basic', 'instagram_business_content_publish']
+  if (comMensagens) scopeArr.push('instagram_business_manage_messages', 'instagram_business_manage_comments')
+  const scope = scopeArr.join(',')
 
   const url = `https://www.instagram.com/oauth/authorize`
     + `?client_id=${APP_ID}`

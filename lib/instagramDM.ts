@@ -33,7 +33,8 @@ export async function clientePorInstagramId(contaId: string): Promise<Cliente | 
   const ids = await redis.smembers('clientes')
   for (const id of ids) {
     const c = await redis.get<Cliente>(`cliente:${id}`)
-    if (c && (c.instagramBusinessId === bid || c.facebookPageId === bid)) return c
+    // Login do Instagram salva o id em instagramUserId; caminho da Pagina usa instagramBusinessId/facebookPageId
+    if (c && (c.instagramUserId === bid || c.instagramBusinessId === bid || c.facebookPageId === bid)) return c
   }
   return null
 }

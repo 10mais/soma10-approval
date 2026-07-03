@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
     }
     await redis.set(`cliente:${clienteId}`, atualizado)
     revalidateTag('clientes')
+
+    // Inscreve a conta nos webhooks de mensagens do app (necessário para receber DMs no
+    // CRM). Best-effort: só funciona se o token tiver a permissão de mensagens.
+    try {
+      const VER = process.env.META_API_VERSION_PUBLISH || 'v21.0'
+      await fetch(`https://graph.instagram.com/${VER}/me/subscribed_apps?subscribed_fields=messages&access_token=${igToken}`, { method: 'POST' })
+    } catch { /* silencioso — a assinatura tambem pode ser feita no painel */ }
+
     return NextResponse.json({ ok: true, instagram: instagramUsername, tipo: 'instagram-login' })
   }
 

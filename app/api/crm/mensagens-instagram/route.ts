@@ -36,8 +36,11 @@ export async function GET(req: NextRequest) {
     ? ((await Promise.all(ids.map(i => redis.get<IgConversa>(`ig:conversa:${i}`)))).filter(Boolean) as IgConversa[])
     : []
   conversas.sort((a, b) => new Date(b.ultimaEm || 0).getTime() - new Date(a.ultimaEm || 0).getTime())
-  // "configurado" = já existe histórico (a permissão/conexão só se comprova recebendo/enviando)
-  return NextResponse.json({ configurado: conversas.length > 0, conversas })
+  // "configurado" = existe ao menos um cliente com Instagram conectado (login do IG)
+  const cids = await redis.smembers('clientes')
+  const clientes = cids.length ? ((await redis.mget<(Cliente | null)[]>(...cids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
+  const algumConectado = clientes.some(c => c.instagramConectado || !!c.instagramUserId || !!c.instagramBusinessId)
+  return NextResponse.json({ configurado: algumConectado, conversas })
 }
 
 export async function POST(req: NextRequest) {
