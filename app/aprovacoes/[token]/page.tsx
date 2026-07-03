@@ -59,6 +59,7 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [logoErro, setLogoErro] = useState(false)
 
   const midia = post.imagens[cur]
   const ehVideo = ehVideoUrl(midia)
@@ -78,7 +79,7 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
         <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
-          {logo ? <img src={logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
+          {logo && !logoErro ? <img src={logo} alt="" onError={() => setLogoErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>
         {post.formato && post.formato !== 'feed' && (
