@@ -979,9 +979,11 @@ function Dashboard() {
     } else if (acao === 'agendar') {
       setRascunhoMsg(`Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
     } else if (acao === 'aprovacao') {
-      const url = res?.post ? `${window.location.origin}/aprovar/${res.post.id}${res.post.codigo ? `?c=${res.post.codigo}` : ''}` : ''
+      // Link ÚNICO do cliente (mostra TODOS os materiais aguardando aprovação dele)
+      const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: valor.clienteId }) }).then(x => x.json()).catch(() => null)
+      const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
       if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
-      setRascunhoMsg(url ? `Enviado para aprovação! Link copiado — envie ao cliente: ${url}` : 'Enviado para aprovação.')
+      setRascunhoMsg(url ? `Enviado para aprovação! Link do cliente copiado — envie: ${url}` : 'Enviado para aprovação. Pegue o link em Configurações › Clientes › "Link de aprovação".')
     } else {
       setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }
