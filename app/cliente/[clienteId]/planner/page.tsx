@@ -90,11 +90,23 @@ export default function PlannerPage() {
     const body: any = { ...valor, dataAgendada: dataISO, clienteId, clienteNome: cliente?.nome }
     if (acao === 'rascunho') body.rascunhoInterno = true
     if (acao === 'agendar') body.statusInicial = 'agendado'
+    if (acao === 'aprovacao') body.statusInicial = 'aguardando_aprovacao'
 
     const res = await fetch('/api/posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(r => r.json()).catch(() => null)
+
+    if (acao === 'aprovacao' && res?.post) {
+      // Copia o link ÚNICO do cliente (todos os materiais aguardando aprovação)
+      const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
+      const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
+      if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+      toast(url ? 'Enviado para aprovação! Link do cliente copiado.' : 'Enviado para aprovação.', 'sucesso')
+      setNovoPost(false)
+      carregar()
+      return
+    }
 
     if (acao === 'publicar' && res?.post?.id) {
       // Minimiza: fecha o modal e publica em segundo plano (com barra de progresso)
