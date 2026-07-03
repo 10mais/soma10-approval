@@ -92,8 +92,10 @@ export default function AssistenteIA() {
   const [agenteId, setAgenteId] = useState('')
   useEffect(() => {
     if (status !== 'authenticated' || role === 'cliente') return
+    // Rebusca ao autenticar E ao abrir o assistente, para refletir agentes recem-criados
+    if (!aberto) return
     fetch('/api/agentes').then(r => r.json()).then(d => setAgentes(Array.isArray(d) ? d.filter((a: any) => a.ativo !== false) : [])).catch(() => {})
-  }, [status])
+  }, [status, aberto])
   const agenteAtivo = agentes.find(a => a.id === agenteId)
   function trocarAgente(id: string) {
     if (id === agenteId) return
