@@ -10,7 +10,7 @@ const btn = (bg: string, color: string, border?: string): React.CSSProperties =>
 
 export default function AprovacoesPublicas() {
   const { token } = useParams()
-  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; posts: PostA[] } | null>(null)
+  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; instagram?: string; posts: PostA[] } | null>(null)
   const [erro, setErro] = useState('')
 
   async function carregar() {
@@ -46,7 +46,7 @@ export default function AprovacoesPublicas() {
           </p>
         )}
         {dados.posts.map(p => (
-          <PostCard key={p.id} post={p} token={String(token)} onDecidido={() => removerPost(p.id)} />
+          <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} logo={dados.logo} onDecidido={() => removerPost(p.id)} />
         ))}
       </div>
       <Footer />
@@ -54,7 +54,7 @@ export default function AprovacoesPublicas() {
   )
 }
 
-function PostCard({ post, token, onDecidido }: { post: PostA; token: string; onDecidido: () => void }) {
+function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')
@@ -62,7 +62,8 @@ function PostCard({ post, token, onDecidido }: { post: PostA; token: string; onD
 
   const midia = post.imagens[cur]
   const ehVideo = ehVideoUrl(midia)
-  const formatoLabel = post.formato === 'story' ? 'Story' : post.formato === 'reel' ? 'Reel' : post.formato === 'feed' ? 'Feed' : ''
+  const aspecto = (post.formato === 'story' || post.formato === 'reel') ? '9 / 16' : '1 / 1'
+  const inicial = (handle || '?').charAt(0).toUpperCase()
 
   async function decidir(type: 'approved' | 'corrected' | 'rejected', motivo?: string) {
     setEnviando(true)
@@ -74,26 +75,53 @@ function PostCard({ post, token, onDecidido }: { post: PostA; token: string; onD
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: 14, marginBottom: 18, overflow: 'hidden' }}>
-      <div style={{ position: 'relative', background: ehVideo ? '#000' : '#fafafa' }}>
+    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+      {/* Cabeçalho estilo Instagram */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
+        <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
+          {logo ? <img src={logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
+        </span>
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>
+        {post.formato && post.formato !== 'feed' && (
+          <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#888', background: '#f5f5f5', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
+        )}
+      </div>
+
+      {/* Mídia no aspecto da rede (quadrado no feed, 9:16 em story/reel) */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: aspecto, background: '#000', overflow: 'hidden' }}>
         {ehVideo
-          ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', display: 'block', maxHeight: '62vh' }} />
-          : <img src={midia} alt="" style={{ width: '100%', display: 'block' }} />}
+          ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <img src={midia} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         {post.imagens.length > 1 && (<>
-          <button onClick={() => setCur(c => (c - 1 + post.imagens.length) % post.imagens.length)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', fontSize: 20, cursor: 'pointer' }}>‹</button>
-          <button onClick={() => setCur(c => (c + 1) % post.imagens.length)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', fontSize: 20, cursor: 'pointer' }}>›</button>
-          <span style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: 999, fontSize: 11, padding: '3px 10px' }}>{cur + 1} / {post.imagens.length}</span>
+          {cur > 0 && <button onClick={() => setCur(cur - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
+          {cur < post.imagens.length - 1 && <button onClick={() => setCur(cur + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
+          <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{cur + 1}/{post.imagens.length}</div>
+          <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+            {post.imagens.map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === cur ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)' }} />)}
+          </div>
         </>)}
       </div>
-      <div style={{ padding: '16px 18px' }}>
-        {(formatoLabel || post.dataAgendada) && (
-          <div style={{ display: 'flex', gap: 18, marginBottom: 10, flexWrap: 'wrap', fontSize: 12, color: '#888' }}>
-            {formatoLabel && <span><strong style={{ color: '#555' }}>Formato:</strong> {formatoLabel}</span>}
-            {post.dataAgendada && <span><strong style={{ color: '#555' }}>Publicação:</strong> {new Date(post.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
-          </div>
-        )}
-        {post.legenda && <p style={{ margin: '0 0 14px', fontSize: 14, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{post.legenda}</p>}
 
+      {/* Ícones do feed (decorativos) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px 2px', color: '#222' }}>
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l7.8-8.5a5.5 5.5 0 0 0 1-7.9z" /></svg>
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-11.9 7.8L3 21l1.7-6A8.5 8.5 0 1 1 21 11.5z" /></svg>
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ marginLeft: 'auto' }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+      </div>
+
+      {/* Legenda estilo feed */}
+      {post.legenda && (
+        <p style={{ margin: 0, padding: '2px 14px 12px', fontSize: 13.5, color: '#222', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <strong>{handle}</strong> {post.legenda}
+        </p>
+      )}
+
+      {/* Info + decisão */}
+      <div style={{ padding: '12px 14px 16px', borderTop: '1px solid #f2f2f2' }}>
+        {post.dataAgendada && (
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#888' }}><strong style={{ color: '#555' }}>Publicação prevista:</strong> {new Date(post.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        )}
         {modo === 'view' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             <button onClick={() => decidir('approved')} disabled={enviando} style={btn('#16a34a', '#fff')}>Aprovar</button>

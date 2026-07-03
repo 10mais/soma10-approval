@@ -45,5 +45,5 @@ export async function GET(req: NextRequest) {
       formato: (p as any).formato || '', dataAgendada: (p as any).dataAgendada || '', capasVideo: (p as any).capasVideo || {},
     }))
 
-  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo, posts })
+  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo, instagram: cliente.instagram || '', posts })
 }
