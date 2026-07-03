@@ -176,7 +176,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
         <div ref={funilRef} className="crm-kanban" onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
-          style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
+          style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id)
             const cor = est.ganho ? '#16a34a' : est.perdido ? '#b91c1c' : '#111'
