@@ -34,8 +34,8 @@ function ImagemComFallback({ src }: { src: string }) {
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
-const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', agendado: '#fef9c3', publicando: '#dbeafe', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
-const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', publicando: 'Publicando...', publicado: 'Publicado', falha_publicacao: 'Falha' }
+const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', aguardando_aprovacao: '#fef3c7', corrigir: '#ffedd5', aprovado: '#dcfce7', reprovado: '#fee2e2', agendado: '#fef9c3', publicando: '#dbeafe', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
+const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', aguardando_aprovacao: 'Aguardando aprovação', corrigir: 'Ajuste solicitado', aprovado: 'Aprovado', reprovado: 'Reprovado', agendado: 'Agendado', publicando: 'Publicando...', publicado: 'Publicado', falha_publicacao: 'Falha' }
 
 function paraDatetimeLocal(iso?: string): string {
   if (!iso) return ''
@@ -143,7 +143,9 @@ export default function PlannerPage() {
     }
     if (acao === 'agendar') updates.status = 'agendado'
     else if (acao === 'salvar') updates.status = 'rascunho'
+    else if (acao === 'aprovacao') updates.status = 'aguardando_aprovacao'
     const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
+    if (acao === 'aprovacao') { toast('Reenviado para aprovação!', 'sucesso'); setEnviando(false); setEditPost(null); carregar(); return }
     if (acao === 'publicar' && res?.post?.id) {
       // Minimiza: fecha o modal e publica em segundo plano (com barra de progresso)
       setEnviando(false)
@@ -336,12 +338,23 @@ export default function PlannerPage() {
               {preview.status === 'falha_publicacao' && preview.erroPublicacao && (
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
               )}
+              {(preview.status === 'corrigir' || preview.status === 'reprovado') && (preview.motivoReprovacao || (Array.isArray(preview.anotacoes) && preview.anotacoes.length > 0)) && (
+                <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                  <strong>{preview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
+                  {preview.motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{preview.motivoReprovacao}</div>}
+                  {Array.isArray(preview.anotacoes) && preview.anotacoes.length > 0 && (
+                    <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                      {preview.anotacoes.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}
+                    </ol>
+                  )}
+                </div>
+              )}
               {preview.status === 'falha_publicacao' && (
                 <button onClick={() => republicar(preview.id)} style={{ width: '100%', padding: '11px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
                   Tentar publicar novamente
                 </button>
               )}
-              {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao') && (
+              {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao' || preview.status === 'aguardando_aprovacao' || preview.status === 'corrigir' || preview.status === 'reprovado') && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
                   <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>

@@ -2348,6 +2348,17 @@ function Dashboard() {
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
                     )}
+                    {(postPreview.status === 'corrigir' || postPreview.status === 'reprovado') && ((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (
+                      <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                        <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
+                        {(postPreview as any).motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{(postPreview as any).motivoReprovacao}</div>}
+                        {Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0 && (
+                          <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                            {(postPreview as any).anotacoes.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}
+                          </ol>
+                        )}
+                      </div>
+                    )}
                     {postPreview.status === 'falha_publicacao' && postPreview.erroPublicacao && (
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
                     )}
