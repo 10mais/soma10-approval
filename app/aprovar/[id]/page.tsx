@@ -4,17 +4,22 @@ import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
 
 type Annotation = { x: number; y: number; text: string; id: number }
-type Brief = { id: string; cliente: string; clienteNome?: string; imagens: string[]; legenda: string; status: string }
+type Brief = { id: string; cliente: string; clienteNome?: string; imagens: string[]; legenda: string; status: string; formato?: string; dataAgendada?: string; capasVideo?: Record<string, string> }
+
+const ehVideoUrl = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u || '')
 
 export default function ApprovalPage() {
   const { id } = useParams()
+  const [codigo, setCodigo] = useState('')
+  useEffect(() => { const p = new URLSearchParams(window.location.search); setCodigo(p.get('c') || p.get('codigo') || '') }, [])
   const [brief, setBrief] = useState<Brief | null>(null)
   const [currentImg, setCurrentImg] = useState(0)
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null)
   const [pinText, setPinText] = useState('')
   const [rejectReason, setRejectReason] = useState('')
-  const [step, setStep] = useState<'view' | 'reject' | 'done'>('view')
+  const [ajusteTexto, setAjusteTexto] = useState('')
+  const [step, setStep] = useState<'view' | 'corrigir' | 'reject' | 'done'>('view')
   const [decision, setDecision] = useState<'approved' | 'corrected' | 'rejected' | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -40,10 +45,11 @@ export default function ApprovalPage() {
   async function submitDecision(type: 'approved' | 'corrected' | 'rejected') {
     setSubmitting(true)
     setDecision(type)
+    const motivo = type === 'rejected' ? rejectReason : type === 'corrected' ? ajusteTexto : ''
     await fetch('/api/decision', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, type, annotations, rejectReason, imageIndex: currentImg }),
+      body: JSON.stringify({ id, type, annotations, rejectReason: motivo, codigo, imageIndex: currentImg }),
     })
     setSubmitting(false)
     setStep('done')
@@ -57,6 +63,9 @@ export default function ApprovalPage() {
   )
 
   const clienteName = brief.clienteNome || brief.cliente
+  const midiaAtual = brief.imagens[currentImg]
+  const ehVideo = ehVideoUrl(midiaAtual)
+  const formatoLabel = brief.formato === 'story' ? 'Story' : brief.formato === 'reel' ? 'Reel' : brief.formato === 'feed' ? 'Feed' : ''
 
   if (step === 'done') return (
     <div style={{ minHeight: '100vh', background: '#fafafa', display: 'flex', flexDirection: 'column' }}>
@@ -124,14 +133,16 @@ export default function ApprovalPage() {
           </div>
         )}
 
-        {/* Imagem com anotações */}
-        <div onClick={handleImageClick} style={{
-          position: 'relative', cursor: 'crosshair', borderRadius: 12, overflow: 'hidden',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.08)', border: '1px solid #e8e8e8', background: '#fff',
+        {/* Mídia — imagem clicável (marcações) ou vídeo */}
+        <div onClick={ehVideo ? undefined : handleImageClick} style={{
+          position: 'relative', cursor: ehVideo ? 'default' : 'crosshair', borderRadius: 12, overflow: 'hidden',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.08)', border: '1px solid #e8e8e8', background: ehVideo ? '#000' : '#fff',
         }}>
-          <img src={brief.imagens[currentImg]} alt="Criativo" style={{ width: '100%', display: 'block' }} />
+          {ehVideo
+            ? <video src={midiaAtual} controls playsInline poster={brief.capasVideo?.[midiaAtual]} style={{ width: '100%', display: 'block', maxHeight: '72vh' }} />
+            : <img src={midiaAtual} alt="Criativo" style={{ width: '100%', display: 'block' }} />}
 
-          {annotations.map((ann, i) => (
+          {!ehVideo && annotations.map((ann, i) => (
             <div key={ann.id} style={{ position: 'absolute', left: `${ann.x}%`, top: `${ann.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5 }}>
               <div title={ann.text} style={{
                 background: '#ffc00f', color: '#111', borderRadius: '50%', width: 24, height: 24,
@@ -143,7 +154,7 @@ export default function ApprovalPage() {
             </div>
           ))}
 
-          {pendingPin && (
+          {!ehVideo && pendingPin && (
             <div style={{ position: 'absolute', left: `${pendingPin.x}%`, top: `${pendingPin.y}%`, transform: 'translate(-50%, -110%)', zIndex: 10 }}
               onClick={e => e.stopPropagation()}>
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', minWidth: 260, border: '1px solid #e0e0e0' }}>
@@ -198,6 +209,24 @@ export default function ApprovalPage() {
           </div>
         )}
 
+        {/* Formato e data/horário de publicação */}
+        {(formatoLabel || brief.dataAgendada) && (
+          <div style={{ marginTop: 14, background: '#fff', borderRadius: 10, padding: '14px 18px', border: '1px solid #e8e8e8', display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+            {formatoLabel && (
+              <div>
+                <p style={{ margin: '0 0 3px', fontWeight: 600, fontSize: 11, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Formato</p>
+                <p style={{ margin: 0, fontSize: 14, color: '#333', fontWeight: 600 }}>{formatoLabel}</p>
+              </div>
+            )}
+            {brief.dataAgendada && (
+              <div>
+                <p style={{ margin: '0 0 3px', fontWeight: 600, fontSize: 11, color: '#aaa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Publicação prevista</p>
+                <p style={{ margin: 0, fontSize: 14, color: '#333', fontWeight: 600 }}>{new Date(brief.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Botões de decisão */}
         {step === 'view' && (
           <div style={{ marginTop: 24 }}>
@@ -211,14 +240,11 @@ export default function ApprovalPage() {
                 Aprovar
               </button>
 
-              <button onClick={() => {
-                if (annotations.length === 0) { toast('Clique na imagem para marcar os pontos que precisam de ajuste antes de solicitar correção.', 'erro'); return; }
-                submitDecision('corrected')
-              }} disabled={submitting} style={{
+              <button onClick={() => setStep('corrigir')} disabled={submitting} style={{
                 padding: '16px 8px', background: '#ffc00f', color: '#111', border: 'none',
                 borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 13,
               }}>
-                Corrigir
+                Sugerir ajustes
               </button>
 
               <button onClick={() => setStep('reject')} disabled={submitting} style={{
@@ -232,6 +258,25 @@ export default function ApprovalPage() {
             <p style={{ textAlign: 'center', color: '#ccc', fontSize: 12, margin: '14px 0 0', letterSpacing: '0.01em' }}>
               Ao aprovar, o post será encaminhado para publicação
             </p>
+          </div>
+        )}
+
+        {/* Tela de sugerir ajustes (funciona para imagem, carrossel, vídeo e story) */}
+        {step === 'corrigir' && (
+          <div style={{ marginTop: 20, background: '#fff', borderRadius: 10, padding: 22, border: '1px solid #ffe08a' }}>
+            <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#111', fontSize: 15 }}>Sugerir ajustes</p>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888', lineHeight: 1.5 }}>
+              Descreva os ajustes desejados{annotations.length > 0 ? ` (suas ${annotations.length} marcação(ões) na imagem serão enviadas junto)` : ''}. Em imagens, você também pode clicar sobre elas para marcar pontos antes de enviar.
+            </p>
+            <textarea autoFocus value={ajusteTexto} onChange={e => setAjusteTexto(e.target.value)} placeholder="Ex: trocar a cor do título, ajustar a legenda no 2º slide..."
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', minHeight: 100, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.6 }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button onClick={() => setStep('view')} style={{ flex: 1, padding: '13px 0', background: '#f5f5f5', color: '#555', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Voltar</button>
+              <button onClick={() => {
+                if (annotations.length === 0 && !ajusteTexto.trim()) { toast('Descreva o ajuste ou marque um ponto na imagem.', 'erro'); return }
+                submitDecision('corrected')
+              }} disabled={submitting} style={{ flex: 2, padding: '13px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>Enviar ajustes</button>
+            </div>
           </div>
         )}
 

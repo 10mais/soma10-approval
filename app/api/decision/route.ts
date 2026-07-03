@@ -100,9 +100,18 @@ export async function POST(req: NextRequest) {
     })
   } catch (e) { console.error('Erro email:', e) }
 
-  // Publicar nas redes selecionadas se aprovado — registra sucesso/falha e notifica a equipe
+  // Aprovado: se tem data/hora FUTURA, PROGRAMA (o cron publica na hora); senão publica agora.
   if (type === 'approved') {
     const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
+    const dataAg = (post as any).dataAgendada
+    const agendadoFuturo = dataAg && new Date(dataAg).getTime() > Date.now()
+
+    if (agendadoFuturo) {
+      // Programado: entra na fila de agendados; o cron/publicar publica na hora marcada
+      await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', atualizadoEm: new Date().toISOString() })
+      await redis.sadd('agendados', id)
+      await notificarEquipe('post_aprovado', `Post aprovado e programado — ${clienteNome}`, `${clienteNome} aprovou. Publicação programada para ${new Date(dataAg).toLocaleString('pt-BR')}.`, id).catch(() => {})
+    } else {
     try {
       const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
       const resultado = await processarPublicacao(post as Post, cliente)
@@ -143,6 +152,7 @@ export async function POST(req: NextRequest) {
         await redis.sadd('tarefas', tarefa.id)
       }
     } catch { /* não bloqueia */ }
+    }
   }
 
   return NextResponse.json({ ok: true })
