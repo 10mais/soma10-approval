@@ -32,6 +32,7 @@ const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: 
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
+const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
 
@@ -2503,6 +2504,19 @@ function Dashboard() {
                   Voltar
                 </button>
                 {brandMsg && <span style={{ fontSize: 13, color: brandMsg.toLowerCase().includes('erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
+              </div>
+
+              {/* Playbook da marca — regras operacionais curadas por humano (agentes de IA leem) */}
+              <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Playbook da marca</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+                      Regras de operação (o que funciona, do&apos;s &amp; don&apos;ts, restrições) que os agentes de IA seguem ao produzir para este cliente.
+                    </p>
+                  </div>
+                  {verComoClienteId && <PlaybookBotao clienteId={verComoClienteId} clienteNome={(clientes.find((c: any) => c.id === verComoClienteId) as any)?.nome} />}
+                </div>
               </div>
 
               {/* Documento de marca gerado por IA */}
