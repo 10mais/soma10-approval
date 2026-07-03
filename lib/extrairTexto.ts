@@ -21,10 +21,13 @@ export async function extrairTextoDeArquivo(url: string, nome?: string): Promise
     const buf = Buffer.from(await resp.arrayBuffer())
     if (buf.byteLength > 12 * 1024 * 1024) return { ok: false, erro: 'arquivo muito grande (máx. 12MB para extração)' }
 
-    // DOCX -> texto direto, sem IA
+    // DOCX -> texto direto, sem IA. Robusto ao interop CJS (extractRawText pode
+    // estar na raiz do modulo OU em .default dependendo do bundler/runtime).
     if (e === 'docx') {
-      const mammoth = await import('mammoth')
-      const out = await mammoth.extractRawText({ buffer: buf })
+      const mod: any = await import('mammoth')
+      const extractRawText = mod.extractRawText || mod.default?.extractRawText
+      if (typeof extractRawText !== 'function') return { ok: false, erro: 'extrator de DOCX indisponível' }
+      const out = await extractRawText({ buffer: buf })
       const texto = (out?.value || '').trim()
       if (!texto) return { ok: false, erro: 'não foi possível extrair texto do DOCX' }
       return { ok: true, texto: texto.slice(0, LIMITE_TEXTO) }
