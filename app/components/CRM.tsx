@@ -1189,7 +1189,18 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
 }
 
 // Central de mensagens — conversa com leads pelo sistema (WhatsApp e Instagram Direct)
-type MsgConversa = { id: string; telefone?: string; nome?: string; username?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+type MsgConversa = { id: string; telefone?: string; nome?: string; username?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+
+// Avatar da conversa: foto do perfil (com fallback para a inicial se faltar/quebrar)
+function AvatarConv({ foto, nome, cor }: { foto?: string; nome: string; cor: string }) {
+  const [erro, setErro] = useState(false)
+  const inicial = (nome || '?').replace('@', '').charAt(0).toUpperCase()
+  return (
+    <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>
+      {foto && !erro ? <img src={foto} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
+    </span>
+  )
+}
 type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
 type CanalMsg = 'whatsapp' | 'instagram'
 
@@ -1318,12 +1329,15 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
           {carregando ? <p style={{ padding: 16, color: '#aaa', fontSize: 13 }}>Carregando...</p>
             : conversas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nenhuma conversa ainda.</p>
             : conversas.map(c => (
-              <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
-                  {!!c.naoLidas && <span style={{ background: cfg.cor, color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
+              <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
+                    {!!c.naoLidas && <span style={{ background: cfg.cor, color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
+                  </span>
+                  <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>
                 </span>
-                <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>
               </button>
             ))}
         </div>
@@ -1333,9 +1347,12 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13 }}>Selecione uma conversa</div>
           ) : (<>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: '#111' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
-                <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                {conversaSel && <AvatarConv foto={conversaSel.foto} nome={nomeDe(conversaSel)} cor={cfg.cor} />}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
+                  <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
+                </div>
               </div>
               <select value={conversaSel?.contatoId || ''} onChange={e => vincular(e.target.value)} title="Vincular a um contato do CRM"
                 style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', maxWidth: 180 }}>

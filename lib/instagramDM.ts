@@ -10,7 +10,7 @@ import type { Cliente } from './redis'
 
 export type IgMensagem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
 // contaId = a conta que RECEBEU a DM (agência ou cliente); usado para achar o token de envio.
-export type IgConversa = { id: string; contaId?: string; nome?: string; username?: string; contatoId?: string; clienteId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+export type IgConversa = { id: string; contaId?: string; nome?: string; username?: string; foto?: string; contatoId?: string; clienteId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
 
 // Conta de mensagens conectada da PRÓPRIA AGÊNCIA (não é um cliente). Ex.: o Instagram
 // da agência usado para o atendimento no CRM. Guardadas em config:contasMensagensIg.
