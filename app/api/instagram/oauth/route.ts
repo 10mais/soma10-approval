@@ -18,13 +18,14 @@ export async function GET(req: NextRequest) {
   const REDIRECT_URI = `${BASE_URL}/api/instagram/callback`
 
   const clienteAlvo = req.nextUrl.searchParams.get('cliente') || ''
-  const state = clienteAlvo ? `soma10:${clienteAlvo}` : 'soma10'
-
   // Permissões da API com login do Instagram. Publicação sempre; mensagens só quando
   // ?messaging=1 (caminho dedicado do CRM). A permissão de mensagens ainda não é
   // aprovada, então mantê-la fora do fluxo padrão evita quebrar a conexão de clientes
   // reais (não-testadores) antes do App Review.
   const comMensagens = req.nextUrl.searchParams.get('messaging') === '1'
+  // Sem cliente + mensagens = conexão da PRÓPRIA AGÊNCIA (state soma10msg)
+  const state = clienteAlvo ? `soma10:${clienteAlvo}` : (comMensagens ? 'soma10msg' : 'soma10')
+
   const scopeArr = ['instagram_business_basic', 'instagram_business_content_publish']
   if (comMensagens) scopeArr.push('instagram_business_manage_messages', 'instagram_business_manage_comments')
   const scope = scopeArr.join(',')

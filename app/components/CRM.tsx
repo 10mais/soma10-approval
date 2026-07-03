@@ -1278,7 +1278,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
             style={{ padding: '8px 16px', background: cfg.cor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             Conectar conta do Instagram (mensagens)
           </button>
-          <span style={{ fontSize: 11, color: '#888' }}>Login de admin + conta profissional (testador). Depois vincule a conta a um cliente.</span>
+          <span style={{ fontSize: 11, color: '#888' }}>Conecta a conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
         </div>
       )}
       {!configurado && (

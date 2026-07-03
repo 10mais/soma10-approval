@@ -9,7 +9,41 @@ import type { Cliente } from './redis'
 //   META_API_VERSION_PUBLISH (opcional) — versão da Graph API (default v21.0)
 
 export type IgMensagem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
-export type IgConversa = { id: string; nome?: string; username?: string; contatoId?: string; clienteId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+// contaId = a conta que RECEBEU a DM (agência ou cliente); usado para achar o token de envio.
+export type IgConversa = { id: string; contaId?: string; nome?: string; username?: string; contatoId?: string; clienteId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+
+// Conta de mensagens conectada da PRÓPRIA AGÊNCIA (não é um cliente). Ex.: o Instagram
+// da agência usado para o atendimento no CRM. Guardadas em config:contasMensagensIg.
+export type ContaMensagemIg = { userId: string; username?: string; nome?: string; token: string; em: string }
+
+export async function salvarContaMensagemIg(conta: ContaMensagemIg) {
+  const atuais = (await redis.get<ContaMensagemIg[]>('config:contasMensagensIg')) || []
+  const outras = atuais.filter(c => c.userId !== conta.userId)
+  await redis.set('config:contasMensagensIg', [...outras, conta])
+}
+export async function listarContasMensagemIg(): Promise<ContaMensagemIg[]> {
+  return (await redis.get<ContaMensagemIg[]>('config:contasMensagensIg')) || []
+}
+export async function removerContaMensagemIg(userId: string) {
+  const atuais = await listarContasMensagemIg()
+  await redis.set('config:contasMensagensIg', atuais.filter(c => c.userId !== userId))
+}
+
+// Resolve a conta (agência OU cliente) dona de um IG id -> token + info. A agência tem
+// prioridade; se não achar, cai no cliente conectado (instagramUserId/BusinessId/pageId).
+export async function resolverContaIg(igId: string): Promise<{ token: string; clienteId?: string; nome?: string } | null> {
+  const id = String(igId || '').trim()
+  if (!id) return null
+  const contas = await listarContasMensagemIg()
+  const c = contas.find(x => x.userId === id)
+  if (c?.token) return { token: c.token, nome: c.nome || c.username }
+  const cli = await clientePorInstagramId(id)
+  if (cli) {
+    const t = cli.instagramToken || cli.facebookPageToken
+    if (t) return { token: t, clienteId: cli.id, nome: cli.nome }
+  }
+  return null
+}
 
 // Salva uma mensagem na conversa (por IG user id) e atualiza metadados/índice.
 export async function salvarMensagemIg(igUserId: string, msg: IgMensagem, extra?: Partial<IgConversa>) {
@@ -39,17 +73,12 @@ export async function clientePorInstagramId(contaId: string): Promise<Cliente | 
   return null
 }
 
-export function instagramDMConfigurado(cliente?: Cliente | null): boolean {
-  return !!(cliente && (cliente.instagramToken || cliente.facebookPageToken))
-}
-
-// Envia uma DM ao usuário do Instagram usando o token do cliente dono da conta.
+// Envia uma DM ao usuário do Instagram usando o token da conta (agência ou cliente).
 // Caminho "Instagram Login": POST em graph.instagram.com/{versao}/me/messages.
-export async function enviarDMInstagram(cliente: Cliente | null, igUserId: string, texto: string, autor?: string): Promise<{ ok: boolean; erro?: string }> {
+export async function enviarDMInstagram(token: string, igUserId: string, texto: string, autor?: string): Promise<{ ok: boolean; erro?: string }> {
   const id = String(igUserId || '').trim()
   if (!id) return { ok: false, erro: 'destinatário inválido' }
-  const token = cliente?.instagramToken || cliente?.facebookPageToken
-  if (!token) return { ok: false, erro: 'Instagram não conectado para este cliente (sem token)' }
+  if (!token) return { ok: false, erro: 'Instagram não conectado (sem token)' }
   const versao = process.env.META_API_VERSION_PUBLISH || 'v21.0'
   try {
     const r = await fetch(`https://graph.instagram.com/${versao}/me/messages?access_token=${encodeURIComponent(token)}`, {

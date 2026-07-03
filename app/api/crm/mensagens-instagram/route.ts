@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import type { Cliente } from '@/lib/redis'
-import { enviarDMInstagram, salvarMensagemIg, instagramDMConfigurado, IgConversa, IgMensagem } from '@/lib/instagramDM'
+import { enviarDMInstagram, salvarMensagemIg, resolverContaIg, listarContasMensagemIg, IgConversa, IgMensagem } from '@/lib/instagramDM'
 
 export const runtime = 'nodejs'
 
@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
     ? ((await Promise.all(ids.map(i => redis.get<IgConversa>(`ig:conversa:${i}`)))).filter(Boolean) as IgConversa[])
     : []
   conversas.sort((a, b) => new Date(b.ultimaEm || 0).getTime() - new Date(a.ultimaEm || 0).getTime())
-  // "configurado" = existe ao menos um cliente com Instagram conectado (login do IG)
+  // "configurado" = há conta de mensagens da agência OU um cliente com Instagram conectado
+  const contasAgencia = await listarContasMensagemIg()
   const cids = await redis.smembers('clientes')
   const clientes = cids.length ? ((await redis.mget<(Cliente | null)[]>(...cids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
-  const algumConectado = clientes.some(c => c.instagramConectado || !!c.instagramUserId || !!c.instagramBusinessId)
+  const algumConectado = contasAgencia.length > 0 || clientes.some(c => c.instagramConectado || !!c.instagramUserId || !!c.instagramBusinessId)
   return NextResponse.json({ configurado: algumConectado, conversas })
 }
 
@@ -54,15 +55,16 @@ export async function POST(req: NextRequest) {
   }
 
   const conversa = await redis.get<IgConversa>(`ig:conversa:${igId}`)
-  const cliente = conversa?.clienteId ? await redis.get<Cliente>(`cliente:${conversa.clienteId}`) : null
+  // Token da conta que RECEBEU esta conversa (agência ou cliente)
+  const conta = conversa?.contaId ? await resolverContaIg(conversa.contaId) : null
 
-  if (!instagramDMConfigurado(cliente)) {
+  if (!conta?.token) {
     // Sem token/permissão: registra como rascunho local para não perder o histórico
     await salvarMensagemIg(igId, { id: crypto.randomUUID(), de: 'agente', texto: String(texto), em: new Date().toISOString(), autor: session.user?.name || '' })
     return NextResponse.json({ ok: false, error: 'Instagram Direct ainda não aprovado/conectado — mensagem registrada localmente, mas não enviada.', registrado: true })
   }
 
-  const r = await enviarDMInstagram(cliente, igId, String(texto), session.user?.name || '')
+  const r = await enviarDMInstagram(conta.token, igId, String(texto), session.user?.name || '')
   if (!r.ok) return NextResponse.json({ error: r.erro || 'falha ao enviar' }, { status: 502 })
   return NextResponse.json({ ok: true })
 }

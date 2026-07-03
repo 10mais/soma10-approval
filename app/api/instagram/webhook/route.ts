@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagemIg, clientePorInstagramId } from '@/lib/instagramDM'
+import { salvarMensagemIg, resolverContaIg } from '@/lib/instagramDM'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 
@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
         if (!from) continue
         const texto = msg.text || `[${Array.isArray(msg.attachments) && msg.attachments.length ? 'anexo' : 'mensagem'}]`
         const em = ev.timestamp ? new Date(Number(ev.timestamp)).toISOString() : new Date().toISOString()
-        const cliente = await clientePorInstagramId(String(contaId)).catch(() => null)
-        await salvarMensagemIg(String(from), { id: msg.mid || uuid(), de: 'cliente', texto, em }, { clienteId: cliente?.id })
-        await notificarEquipe('geral', `Instagram: ${cliente?.instagramUsername || from}`, texto.slice(0, 120)).catch(() => {})
+        const conta = await resolverContaIg(String(contaId)).catch(() => null)
+        await salvarMensagemIg(String(from), { id: msg.mid || uuid(), de: 'cliente', texto, em }, { contaId: String(contaId), clienteId: conta?.clienteId })
+        await notificarEquipe('geral', `Instagram: ${conta?.nome || from}`, texto.slice(0, 120)).catch(() => {})
       }
     }
   } catch { /* nunca falhar o webhook — a Meta reentrega em erro */ }

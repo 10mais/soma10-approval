@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { salvarContaMensagemIg } from '@/lib/instagramDM'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const state = searchParams.get('state') || ''
+  const ehMensagensAgencia = state === 'soma10msg'
   const clienteAlvo = state.startsWith('soma10:') ? state.slice('soma10:'.length) : ''
   const sufixoCliente = clienteAlvo ? `&meta_cliente=${encodeURIComponent(clienteAlvo)}` : ''
 
@@ -58,6 +60,17 @@ export async function GET(req: NextRequest) {
     const igUserId = me?.user_id || curto.user_id
     if (!igUserId) {
       return NextResponse.redirect(`${BASE_URL}/dashboard?meta_error=sem_conta_ig#clientes`)
+    }
+
+    // Conexão da PRÓPRIA AGÊNCIA (mensagens no CRM): salva a conta e inscreve os webhooks,
+    // sem passar pelo vínculo com cliente.
+    if (ehMensagensAgencia) {
+      await salvarContaMensagemIg({ userId: String(igUserId), username: me?.username, nome: me?.username, token, em: new Date().toISOString() })
+      try {
+        const VER = process.env.META_API_VERSION_PUBLISH || 'v21.0'
+        await fetch(`https://graph.instagram.com/${VER}/me/subscribed_apps?subscribed_fields=messages&access_token=${token}`, { method: 'POST' })
+      } catch { /* a assinatura tambem pode ser feita no painel */ }
+      return NextResponse.redirect(`${BASE_URL}/dashboard?ig_msg=ok#crm`)
     }
 
     // 4. Guarda no formato que o painel de vínculo já entende (reaproveita o fluxo)
