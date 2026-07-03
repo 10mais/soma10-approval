@@ -26,13 +26,22 @@ function ehTransitorioFB(e: any): boolean {
   if (!e) return false
   return [1, 2, 4, 17, 32, 341, 613].includes(e.code)
 }
-async function postFormRetry(url: string, params: Record<string, string>, tentativas = 3): Promise<any> {
+// Erros transitorios do Instagram (instabilidade momentanea) — valem nova tentativa:
+// code -1/-2 = erro interno/desconhecido; error_subcode 2207001 = erro de servidor do IG;
+// 2207085 = "Ocorreu um erro interno do servidor. Tente novamente mais tarde." Retentar resolve.
+function ehTransitorioIG(e: any): boolean {
+  if (!e) return false
+  if ([-2, -1, 1, 2].includes(e.code)) return true
+  if ([2207001, 2207085].includes(e.error_subcode)) return true
+  return /internal server error|unknown error|please try again|erro interno|tente novamente/i.test(`${e.message || ''} ${e.error_user_msg || ''}`)
+}
+async function postFormRetry(url: string, params: Record<string, string>, tentativas = 3, ehTransitorio: (e: any) => boolean = ehTransitorioFB): Promise<any> {
   let ultimo: any = null
   for (let i = 0; i < tentativas; i++) {
     const r = await postForm(url, params)
     if (!r?.error) return r
     ultimo = r
-    if (!ehTransitorioFB(r.error)) return r
+    if (!ehTransitorio(r.error)) return r
     await new Promise(res => setTimeout(res, 3000 * (i + 1)))
   }
   return ultimo
@@ -69,9 +78,9 @@ function ehErroColab(e: any): boolean {
 
 // Cria o container de mídia; se o colaborador for inválido, tenta de novo SEM a tag de colab
 async function criarMidiaIG(igId: string, token: string, params: Record<string, string>, colabParam: Record<string, string>): Promise<any> {
-  const c = await postForm(`${IG_BASE}/${igId}/media`, { ...params, ...colabParam })
+  const c = await postFormRetry(`${IG_BASE}/${igId}/media`, { ...params, ...colabParam }, 3, ehTransitorioIG)
   if (c?.error && Object.keys(colabParam).length && ehErroColab(c.error)) {
-    return await postForm(`${IG_BASE}/${igId}/media`, params)
+    return await postFormRetry(`${IG_BASE}/${igId}/media`, params, 3, ehTransitorioIG)
   }
   return c
 }
@@ -81,12 +90,13 @@ async function criarMidiaIG(igId: string, token: string, params: Record<string, 
 async function publicarMidiaIG(igId: string, token: string, creationId: string, video = false): Promise<{ ok: boolean; error?: string }> {
   // Container: video ate ~210s (70x3s); imagem ate ~120s (40x3s)
   await aguardarContainerIG(token, creationId, video ? 70 : 40)
-  const tentativasPub = video ? 8 : 12
+  const tentativasPub = video ? 10 : 12
   for (let i = 0; i < tentativasPub; i++) {
     const pub = await postForm(`${IG_BASE}/${igId}/media_publish`, { access_token: token, creation_id: creationId })
     if (!pub?.error) return { ok: true }
     const naoPronta = pub.error.code === 9007 || pub.error.error_subcode === 2207027
-    if (naoPronta) { await new Promise(r => setTimeout(r, 5000)); continue }
+    // Retenta tambem em erro transitorio do IG (ex.: -1/2207085 "erro interno, tente novamente")
+    if (naoPronta || ehTransitorioIG(pub.error)) { await new Promise(r => setTimeout(r, 5000)); continue }
     return { ok: false, error: fmtErro(pub.error) }
   }
   return { ok: false, error: video
