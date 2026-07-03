@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 
-type Agente = { id: string; nome: string; funcao?: string; descricao?: string; instrucoes: string; ferramentas: string[]; cor?: string; ativo: boolean }
+type Conhecimento = { nome: string; url: string; tipo: string; texto: string; em: string }
+type Agente = { id: string; nome: string; funcao?: string; descricao?: string; instrucoes: string; ferramentas: string[]; conhecimento?: Conhecimento[]; cor?: string; ativo: boolean }
 
 const FERRAMENTAS = [
   { name: 'consultar_tarefas', label: 'Consultar tarefas', desc: 'Ler tarefas da equipe (status, prazos, responsáveis)', acao: false },
@@ -73,10 +74,27 @@ export default function Agentes() {
 function AgenteModal({ agente, onClose, onSalvo }: { agente: Agente | null; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState<any>({
     nome: agente?.nome || '', funcao: agente?.funcao || '', descricao: agente?.descricao || '',
-    instrucoes: agente?.instrucoes || '', ferramentas: agente?.ferramentas || [], cor: agente?.cor || '#7c3aed', ativo: agente?.ativo !== false,
+    instrucoes: agente?.instrucoes || '', ferramentas: agente?.ferramentas || [], conhecimento: agente?.conhecimento || [], cor: agente?.cor || '#7c3aed', ativo: agente?.ativo !== false,
   })
   const [salvando, setSalvando] = useState(false)
+  const [subindo, setSubindo] = useState(false)
   const toggleFerr = (name: string) => setF((p: any) => ({ ...p, ferramentas: p.ferramentas.includes(name) ? p.ferramentas.filter((x: string) => x !== name) : [...p.ferramentas, name] }))
+
+  async function subirConhecimento(file: File) {
+    setSubindo(true)
+    try {
+      const { upload } = await import('@vercel/blob/client')
+      const blob = await upload(`agentes/${Date.now()}-${file.name}`, file, { access: 'public', handleUploadUrl: '/api/upload' })
+      const r = await fetch('/api/agentes/extrair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: blob.url, nome: file.name }) }).then(x => x.json()).catch(() => null)
+      if (!r?.ok) { toast(r?.error || 'Falha ao extrair o conteúdo do arquivo.', 'erro'); setSubindo(false); return }
+      setF((p: any) => ({ ...p, conhecimento: [...(p.conhecimento || []), { nome: file.name, url: blob.url, tipo: (file.name.split('.').pop() || '').toLowerCase(), texto: r.texto, em: new Date().toISOString() }] }))
+      toast('Documento adicionado ao conhecimento do agente.', 'sucesso')
+    } catch (e: any) {
+      toast('Falha no upload: ' + (e?.message || ''), 'erro')
+    }
+    setSubindo(false)
+  }
+  const removerConhecimento = (idx: number) => setF((p: any) => ({ ...p, conhecimento: (p.conhecimento || []).filter((_: any, i: number) => i !== idx) }))
 
   async function salvar() {
     if (!f.nome.trim()) { toast('Dê um nome ao agente.', 'erro'); return }
@@ -111,6 +129,23 @@ function AgenteModal({ agente, onClose, onSalvo }: { agente: Agente | null; onCl
             <textarea value={f.instrucoes} onChange={e => setF({ ...f, instrucoes: e.target.value })} placeholder={'Descreva como o agente pensa e age. Ex.:\n"Você é um copywriter sênior especialista em social media para clínicas. Escreve legendas curtas, com gancho forte na 1a linha e CTA claro. Tom leve e profissional. Sempre pergunta o objetivo do post se não estiver claro."'}
               style={{ ...input, minHeight: 130, resize: 'vertical', lineHeight: 1.5 }} />
             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Este texto é o que "treina" o agente — quanto mais específico, melhor ele responde.</p>
+          </div>
+          <div>
+            <label style={label}>Base de conhecimento</label>
+            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Suba documentos (PDF, DOCX ou imagens/prints). O texto é extraído e o agente passa a conhecer o conteúdo ao responder.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(f.conhecimento || []).map((d: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f7f7f9', border: '1px solid #eee', borderRadius: 8, padding: '7px 10px' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', flexShrink: 0 }}>{d.tipo || 'doc'}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nome}</span>
+                  <button type="button" onClick={() => removerConhecimento(i)} style={{ background: 'none', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Remover</button>
+                </div>
+              ))}
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 14px', background: '#fff', border: '1.5px dashed #d8b4fe', borderRadius: 9, fontSize: 12.5, fontWeight: 700, color: '#7c3aed', cursor: subindo ? 'wait' : 'pointer' }}>
+              {subindo ? 'Processando documento...' : '+ Adicionar documento'}
+              <input type="file" accept=".pdf,.docx,image/*" disabled={subindo} onChange={e => { const file = e.target.files?.[0]; if (file) subirConhecimento(file); e.currentTarget.value = '' }} style={{ display: 'none' }} />
+            </label>
           </div>
           <div>
             <label style={label}>Ferramentas (leitura de dados)</label>

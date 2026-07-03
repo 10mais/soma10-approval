@@ -67,6 +67,7 @@ Voce esta falando com ${usuario?.name || 'um membro da equipe'}${usuario?.cargo 
 
 ${agente.instrucoes || ''}
 
+${(agente.conhecimento || []).length ? `BASE DE CONHECIMENTO (documentos treinados neste agente — use como referencia principal ao responder; cite quando fizer sentido):\n${(agente.conhecimento || []).map(d => `--- ${d.nome} ---\n${(d.texto || '').trim()}`).join('\n\n').slice(0, 16000)}\n` : ''}
 ${listaClientes ? `Clientes ativos da agencia (use como referencia quando o usuario citar um cliente pelo nome):\n${listaClientes}` : ''}
 
 Regras gerais: responda SEMPRE em portugues do Brasil; seja direto, pratico e acionavel; use Markdown quando ajudar a organizar. Use suas ferramentas de leitura para dados reais. Se voce tiver ferramentas de ACAO (ex.: criar tarefa/etapa), pode PREPARA-las quando o usuario pedir — mas toda acao passa por CONFIRMACAO do usuario antes de acontecer; voce nunca executa nada sozinho. Ao preparar uma acao, confirme em texto o que foi preparado e peca para o usuario confirmar no cartao.`

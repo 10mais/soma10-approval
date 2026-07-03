@@ -571,9 +571,20 @@ export type Agente = {
   descricao?: string     // resumo curto exibido na lista
   instrucoes: string     // "treino" — persona + regras (vai no system prompt do agente)
   ferramentas: string[]  // nomes das ferramentas habilitadas (consultar_tarefas, web_search, etc.)
+  conhecimento?: AgenteConhecimento[] // base de conhecimento (documentos com texto extraido)
   cor?: string           // cor do avatar
   ativo: boolean
   criadoPor?: string
   criadoEm: string
   atualizadoEm: string
+}
+
+// Documento da base de conhecimento de um agente: o arquivo (Blob) + o texto ja
+// extraido (PDF/imagem via Claude, DOCX via mammoth), injetado no system prompt.
+export type AgenteConhecimento = {
+  nome: string
+  url: string
+  tipo: string   // extensao (pdf, docx, png...)
+  texto: string  // conteudo extraido
+  em: string
 }

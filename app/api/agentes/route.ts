@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     descricao: b.descricao || '',
     instrucoes: b.instrucoes || '',
     ferramentas: Array.isArray(b.ferramentas) ? b.ferramentas : [],
+    conhecimento: Array.isArray(b.conhecimento) ? b.conhecimento : [],
     cor: b.cor || '#7c3aed',
     ativo: b.ativo !== false,
     criadoPor: session.user?.name || '',
@@ -52,7 +53,7 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const agente = await redis.get<Agente>(`agente:${id}`)
   if (!agente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
-  const campos = ['nome', 'funcao', 'descricao', 'instrucoes', 'ferramentas', 'cor', 'ativo']
+  const campos = ['nome', 'funcao', 'descricao', 'instrucoes', 'ferramentas', 'conhecimento', 'cor', 'ativo']
   const atualizado: any = { ...agente, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   await redis.set(`agente:${id}`, atualizado)
