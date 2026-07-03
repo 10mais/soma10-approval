@@ -2037,6 +2037,17 @@ function Dashboard() {
                         Ver
                       </button>
                       {role !== 'cliente' && (
+                        <button onClick={() => {
+                          const url = `${window.location.origin}/aprovar/${post.id}${(post as any).codigo ? `?c=${(post as any).codigo}` : ''}`
+                          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast('Link de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(url, 'info'))
+                          else toast(url, 'info')
+                        }} title="Copiar o link público de aprovação (sem login) para enviar ao cliente" style={{
+                          padding: '8px 14px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#111', cursor: 'pointer',
+                        }}>
+                          Copiar link
+                        </button>
+                      )}
+                      {role !== 'cliente' && (
                         <button onClick={() => excluirPost(post)} title="Excluir post" style={{
                           padding: '8px 10px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
