@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
   const cids = await redis.smembers('clientes')
   const clientes = cids.length ? ((await redis.mget<(Cliente | null)[]>(...cids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
   const algumConectado = contasAgencia.length > 0 || clientes.some(c => c.instagramConectado || !!c.instagramUserId || !!c.instagramBusinessId)
-  return NextResponse.json({ configurado: algumConectado, conversas })
+  const contas = contasAgencia.map(c => ({ userId: c.userId, username: c.username || c.nome }))
+  return NextResponse.json({ configurado: algumConectado, conversas, contas })
 }
 
 export async function POST(req: NextRequest) {

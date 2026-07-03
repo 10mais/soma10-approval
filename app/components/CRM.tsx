@@ -1237,6 +1237,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
   const cfg = CANAL_CFG[canal]
   const [conversas, setConversas] = useState<MsgConversa[]>([])
   const [configurado, setConfigurado] = useState(true)
+  const [contas, setContas] = useState<any[]>([])
   const [sel, setSel] = useState<string>('')
   const [mensagens, setMensagens] = useState<MsgItem[]>([])
   const [texto, setTexto] = useState('')
@@ -1247,7 +1248,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
 
   async function carregarConversas() {
     const d = await cfg.listar()
-    if (d) { setConversas(Array.isArray(d.conversas) ? d.conversas.map(cfg.norm) : []); setConfigurado(!!d.configurado) }
+    if (d) { setConversas(Array.isArray(d.conversas) ? d.conversas.map(cfg.norm) : []); setConfigurado(!!d.configurado); setContas(Array.isArray(d.contas) ? d.contas : []) }
     setCarregando(false)
   }
   async function abrir(id: string) {
@@ -1294,11 +1295,16 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
       </div>
       {cfg.conectarUrl && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {contas.length > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>
+              ✓ Conectada: {contas.map((c: any) => `@${c.username || c.userId}`).join(', ')}
+            </span>
+          )}
           <button onClick={() => { window.location.href = cfg.conectarUrl! }}
-            style={{ padding: '8px 16px', background: cfg.cor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-            Conectar conta do Instagram (mensagens)
+            style={{ padding: '8px 16px', background: contas.length > 0 ? '#fff' : cfg.cor, color: contas.length > 0 ? cfg.cor : '#fff', border: contas.length > 0 ? `1.5px solid ${cfg.cor}` : 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            {contas.length > 0 ? 'Reconectar / adicionar conta' : 'Conectar conta do Instagram (mensagens)'}
           </button>
-          <span style={{ fontSize: 11, color: '#888' }}>Conecta a conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
+          <span style={{ fontSize: 11, color: '#888' }}>Conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
         </div>
       )}
       {!configurado && (
