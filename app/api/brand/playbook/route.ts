@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Cliente, BrandPlaybook } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
+import { extrairTextoDeArquivo } from '@/lib/extrairTexto'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
@@ -73,16 +74,25 @@ export async function POST(req: NextRequest) {
     cliente.documentoMarca ? `\nDOCUMENTO DE MARCA (referência editorial):\n${(cliente.documentoMarca || '').slice(0, 12000)}` : '',
   ].filter(Boolean).join('\n')
 
-  if (!(cliente.segmento || cliente.documentoMarca || cliente.descricao)) {
-    return NextResponse.json({ error: 'Preencha o Brand Board (segmento/descrição) ou gere o documento de marca antes de destilar o Playbook.' }, { status: 400 })
+  const temDocs = (cliente.documentos || []).length > 0
+  if (!(cliente.segmento || cliente.documentoMarca || cliente.descricao || temDocs)) {
+    return NextResponse.json({ error: 'Preencha o Brand Board (segmento/descrição), anexe documentos ou gere o documento de marca antes de destilar o Playbook.' }, { status: 400 })
   }
+
+  // Lê também os documentos anexados ao Brand Board (PDF/DOCX/imagens), extraindo o texto
+  let docsTexto = ''
+  for (const d of (cliente.documentos || []).slice(0, 5)) {
+    const ex = await extrairTextoDeArquivo(d.url, d.nome).catch(() => null)
+    if (ex?.ok && ex.texto) docsTexto += `\n\n--- ${d.nome} ---\n${ex.texto.slice(0, 6000)}`
+  }
+  docsTexto = docsTexto.slice(0, 18000)
 
   const prompt = `Você é um(a) diretor(a) de estratégia de uma agência de marketing. A partir do contexto da marca abaixo, DESTILE um PLAYBOOK OPERACIONAL — as regras práticas que a equipe (e os agentes de IA) devem seguir ao produzir conteúdo para este cliente.
 
 Não repita o documento de marca; extraia dele apenas o que vira REGRA acionável. Onde faltar informação, proponha o padrão mais provável para o nicho (mas seja conservador em restrições).
 
 CONTEXTO DA MARCA:
-${contexto}
+${contexto}${docsTexto ? `\n\nDOCUMENTOS ANEXADOS DA MARCA (extraídos — priorize regras concretas que aparecem neles):${docsTexto}` : ''}
 
 Responda APENAS com um objeto JSON válido (sem texto fora do JSON, sem markdown), com exatamente estas chaves (strings; use listas com "- " e quebras de linha quando fizer sentido; deixe "" se não houver base):
 {
