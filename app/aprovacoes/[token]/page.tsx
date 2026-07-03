@@ -62,7 +62,6 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
 
   const midia = post.imagens[cur]
   const ehVideo = ehVideoUrl(midia)
-  const aspecto = (post.formato === 'story' || post.formato === 'reel') ? '9 / 16' : '1 / 1'
   const inicial = (handle || '?').charAt(0).toUpperCase()
 
   async function decidir(type: 'approved' | 'corrected' | 'rejected', motivo?: string) {
@@ -87,11 +86,11 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
         )}
       </div>
 
-      {/* Mídia no aspecto da rede (quadrado no feed, 9:16 em story/reel) */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: aspecto, background: '#000', overflow: 'hidden' }}>
+      {/* Mídia nas medidas ORIGINAIS do post (sem recorte) */}
+      <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden', lineHeight: 0 }}>
         {ehVideo
-          ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <img src={midia} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+          ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', height: 'auto', maxHeight: '82vh', display: 'block' }} />
+          : <img src={midia} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />}
         {post.imagens.length > 1 && (<>
           {cur > 0 && <button onClick={() => setCur(cur - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
           {cur < post.imagens.length - 1 && <button onClick={() => setCur(cur + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
