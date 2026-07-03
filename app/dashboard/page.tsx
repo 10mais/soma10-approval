@@ -949,7 +949,7 @@ function Dashboard() {
     const acao = valor.acao || 'publicar'
     if (!valor.clienteId) return
     setCriandoPost(true)
-    setRascunhoMsg(acao === 'publicar' ? 'Publicando nas redes selecionadas...' : acao === 'agendar' ? 'Agendando a postagem...' : 'Salvando rascunho...')
+    setRascunhoMsg(acao === 'publicar' ? 'Publicando nas redes selecionadas...' : acao === 'agendar' ? 'Agendando a postagem...' : acao === 'aprovacao' ? 'Enviando para aprovação...' : 'Salvando rascunho...')
     // Fecha o compositor e volta ao Planner enquanto processa/carrega
     setEditandoPostId(null)
     setComposerPrefill(null)
@@ -961,6 +961,7 @@ function Dashboard() {
     const body: any = { ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome }
     if (acao === 'rascunho') body.rascunhoInterno = true
     if (acao === 'agendar') body.statusInicial = 'agendado'
+    if (acao === 'aprovacao') body.statusInicial = 'aguardando_aprovacao'
 
     const res = await fetch('/api/posts', {
       method: 'POST',
@@ -977,6 +978,10 @@ function Dashboard() {
       setRascunhoMsg(pub.ok ? 'Publicado com sucesso nas redes selecionadas!' : `Falha ao publicar: ${pub.error}`)
     } else if (acao === 'agendar') {
       setRascunhoMsg(`Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
+    } else if (acao === 'aprovacao') {
+      const url = res?.post ? `${window.location.origin}/aprovar/${res.post.id}${res.post.codigo ? `?c=${res.post.codigo}` : ''}` : ''
+      if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+      setRascunhoMsg(url ? `Enviado para aprovação! Link copiado — envie ao cliente: ${url}` : 'Enviado para aprovação.')
     } else {
       setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }

@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     ...(marcoId ? { marcoId } : {}),
     imagens,
     legenda,
-    status: statusInicial === 'agendado' ? 'agendado' : 'rascunho',
+    status: statusInicial === 'agendado' ? 'agendado' : statusInicial === 'aguardando_aprovacao' ? 'aguardando_aprovacao' : 'rascunho',
     formato: formato || 'feed',
     dataAgendada,
     codigo: gerarCodigo(),

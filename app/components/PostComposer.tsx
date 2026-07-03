@@ -21,7 +21,7 @@ export type ComposerValue = {
   colaboradores: string[]
   capasVideo: Record<string, string>
   redes: ('instagram' | 'facebook')[]
-  acao?: 'publicar' | 'agendar' | 'rascunho' | 'salvar'
+  acao?: 'publicar' | 'agendar' | 'rascunho' | 'salvar' | 'aprovacao'
 }
 
 type PerfilColab = { username: string; nome: string; foto: string; seguidores: number | null }
@@ -634,19 +634,26 @@ export default function PostComposer({
           </p>
         </div>
 
-        {/* Acoes — UM unico botao de publicacao: vira "Agendar" se ha data, senao "Publicar agora" */}
-        <div style={{ display: 'flex', gap: 10 }}>
+        {/* Acoes: Rascunho · Enviar para aprovacao · Publicar/Agendar */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podePublicar : !podeRascunho} type="button"
-            style={{ flex: 1, padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podePublicar : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podePublicar : podeRascunho) ? 1 : 0.5 }}>
+            style={{ flex: '1 1 110px', padding: '14px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podePublicar : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podePublicar : podeRascunho) ? 1 : 0.5 }}>
             {modoEdicao ? (enviando ? 'Salvando...' : 'Salvar alterações') : (salvandoRascunho ? 'Salvando...' : 'Rascunho')}
           </button>
+          <button onClick={() => submeter('aprovacao')} disabled={!podePublicar} type="button"
+            style={{ flex: '1 1 150px', padding: '14px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+            {enviando ? 'Enviando...' : 'Enviar para aprovação'}
+          </button>
           <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePublicar} type="button"
-            style={{ flex: 1.4, padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+            style={{ flex: '1.3 1 150px', padding: '14px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
             {enviando
               ? (dataAgendada ? 'Agendando...' : 'Publicando...')
               : (dataAgendada ? 'Agendar' : 'Publicar agora')}
           </button>
         </div>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#999' }}>
+          "Enviar para aprovação" gera um link para o cliente. Ao aprovar, {dataAgendada ? 'agenda para a data escolhida' : 'publica na hora'}.
+        </p>
       </div>
 
       {/* Coluna direita: preview ao vivo */}
