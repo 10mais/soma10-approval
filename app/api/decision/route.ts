@@ -5,7 +5,6 @@ import { redis, Post } from '@/lib/redis'
 import { list } from '@vercel/blob'
 import nodemailer from 'nodemailer'
 import { notificarEquipe } from '@/lib/notificacoes'
-import { processarPublicacao } from '@/lib/publicar'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -106,37 +105,17 @@ export async function POST(req: NextRequest) {
     })
   } catch (e) { console.error('Erro email:', e) }
 
-  // Aprovado: se tem data/hora FUTURA, PROGRAMA (o cron publica na hora); senão publica agora.
+  // Aprovado: entra na FILA de agendados. O cron/publicar publica na hora certa (se há data
+  // futura) ou no próximo ciclo (~1 min) quando é "publicar agora". Assim a resposta ao
+  // cliente é IMEDIATA — não espera a publicação (que pode demorar, ex.: vídeo/Reel).
   if (type === 'approved') {
     const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
     const dataAg = (post as any).dataAgendada
-    const agendadoFuturo = dataAg && new Date(dataAg).getTime() > Date.now()
+    const futuro = !!(dataAg && new Date(dataAg).getTime() > Date.now())
+    const quando = futuro ? dataAg : new Date(Date.now() - 1000).toISOString() // "agora": já vencido -> publica no próximo ciclo
 
-    if (agendadoFuturo) {
-      // Programado: entra na fila de agendados; o cron/publicar publica na hora marcada
-      await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', atualizadoEm: new Date().toISOString() })
-      await redis.sadd('agendados', id)
-      await notificarEquipe('post_aprovado', `Post aprovado e programado — ${clienteNome}`, `${clienteNome} aprovou. Publicação programada para ${new Date(dataAg).toLocaleString('pt-BR')}.`, id).catch(() => {})
-    } else {
-    try {
-      const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
-      const resultado = await processarPublicacao(post as Post, cliente)
-      if (resultado.emAndamento) {
-        // Outra publicacao deste post ja esta rodando: nao salva nem notifica em duplicidade
-      } else {
-      await redis.set(`post:${id}`, { ...atualizado, ...resultado.campos })
-      if (resultado.ok) {
-        await notificarEquipe('post_publicado', `Post publicado — ${clienteNome}`, `O post de ${clienteNome} foi publicado em ${resultado.redesOk}.`, id)
-      } else {
-        await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Motivo: ${resultado.motivo}`, id)
-      }
-      }
-    } catch (e: any) {
-      console.error('Erro publicação:', e)
-      const erro = e?.message || 'Erro desconhecido ao publicar.'
-      await redis.set(`post:${id}`, { ...atualizado, status: 'falha_publicacao', erroPublicacao: erro, atualizadoEm: new Date().toISOString() })
-      await notificarEquipe('post_falha_publicacao', `Falha ao publicar — ${clienteNome}`, `Não foi possível publicar o post de ${clienteNome}. Erro: ${erro}`, id)
-    }
+    await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', dataAgendada: quando, atualizadoEm: new Date().toISOString() })
+    await redis.sadd('agendados', id)
 
     // Automação: post aprovado -> cria tarefa de publicação para a equipe
     try {
@@ -158,7 +137,6 @@ export async function POST(req: NextRequest) {
         await redis.sadd('tarefas', tarefa.id)
       }
     } catch { /* não bloqueia */ }
-    }
   }
 
   return NextResponse.json({ ok: true })
