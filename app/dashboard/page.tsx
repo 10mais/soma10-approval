@@ -1634,7 +1634,7 @@ function Dashboard() {
         <div onClick={() => setMenuMobile(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', ...(mobile ? {} : { height: '100vh', overflow: 'hidden' }) }}>
         {/* Sidebar */}
         <aside style={mobile ? {
           width: 264, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box',
@@ -1644,7 +1644,7 @@ function Dashboard() {
           boxShadow: menuMobile ? '2px 0 16px rgba(0,0,0,0.18)' : 'none',
         } : {
           width: recolhida ? 66 : 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
-          minHeight: '100vh', position: 'sticky', top: 0, padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
+          height: '100vh', overflowY: 'auto', padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
         }}>
           {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
           <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
@@ -1898,7 +1898,7 @@ function Dashboard() {
         )}
 
         {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
-        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px' }}>
+        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (

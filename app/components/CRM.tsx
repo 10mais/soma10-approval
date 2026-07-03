@@ -29,7 +29,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>('funil')
+  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
+  useEffect(() => { try { sessionStorage.setItem('crm_vista', vista) } catch {} }, [vista])
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
   const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
@@ -1213,7 +1214,7 @@ const CANAL_CFG: Record<CanalMsg, {
 }
 
 function MensagensInbox({ contatos }: { contatos: Contato[] }) {
-  const [canal, setCanal] = useState<CanalMsg>('whatsapp')
+  const [canal, setCanal] = useState<CanalMsg>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_canal') as CanalMsg)) || 'whatsapp')
   const cfg = CANAL_CFG[canal]
   const [conversas, setConversas] = useState<MsgConversa[]>([])
   const [configurado, setConfigurado] = useState(true)
@@ -1252,7 +1253,7 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
   }
 
   // Troca de canal (e carga inicial): reseta a seleção e recarrega
-  useEffect(() => { setSel(''); setMensagens([]); setCarregando(true); carregarConversas() }, [canal])
+  useEffect(() => { try { sessionStorage.setItem('crm_canal', canal) } catch {}; setSel(''); setMensagens([]); setCarregando(true); carregarConversas() }, [canal])
   // Atualiza a conversa aberta periodicamente (recebe respostas do lead)
   useEffect(() => {
     if (!sel) return
