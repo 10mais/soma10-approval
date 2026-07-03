@@ -14,7 +14,7 @@ const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { id, type, annotations, rejectReason, codigo } = body
+  const { id, type, annotations, rejectReason, codigo, token } = body
 
   // Buscar post do Redis
   let post = await redis.get<Post>(`post:${id}`)
@@ -35,8 +35,14 @@ export async function POST(req: NextRequest) {
 
   const autorizadoPorSessao = sessionRole === 'cliente' && sessionClienteId === post.clienteId
   const autorizadoPorCodigo = post.codigo && codigo === post.codigo
+  // Link público ÚNICO do cliente: token mapeia para o clienteId
+  let autorizadoPorToken = false
+  if (token) {
+    const cid = await redis.get<string>(`aprovtoken:${token}`)
+    autorizadoPorToken = !!cid && cid === post.clienteId
+  }
 
-  if (!autorizadoPorSessao && !autorizadoPorCodigo) {
+  if (!autorizadoPorSessao && !autorizadoPorCodigo && !autorizadoPorToken) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 

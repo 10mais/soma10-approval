@@ -163,6 +163,8 @@ export type Cliente = {
   documentoMarcaGeradoEm?: string
   // Playbook operacional da marca (regras de OPERACAO por cliente), curado por humano
   playbook?: BrandPlaybook
+  // Token do link público ÚNICO de aprovação (todos os materiais aguardando do cliente)
+  aprovacaoToken?: string
 }
 
 // Playbook operacional da marca — camada de conhecimento IA-First. Diferente do Brand Board

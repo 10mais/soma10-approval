@@ -1065,6 +1065,16 @@ function Dashboard() {
     } else toast('Não foi possível gerar o link de status.', 'erro')
   }
 
+  // Link ÚNICO de aprovação do cliente (todos os materiais aguardando aprovação)
+  async function linkAprovacao(clienteId: string) {
+    const r = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
+    if (r?.token) {
+      const link = `${window.location.origin}/aprovacoes/${r.token}`
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(() => toast('Link único de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(link, 'info'))
+      else toast(link, 'info')
+    } else toast('Não foi possível gerar o link de aprovação.', 'erro')
+  }
+
   // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
   async function reaproveitar(post: any, formato: string) {
     const body = { clienteId: post.clienteId, clienteNome: post.clienteNome, imagens: post.imagens || [], legenda: post.legenda || '', formato, capasVideo: post.capasVideo || {}, redes: post.redes || ['instagram', 'facebook'], rascunhoInterno: true, ...(post.marcoId ? { marcoId: post.marcoId } : {}) }
@@ -3379,6 +3389,13 @@ function Dashboard() {
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0ea5e9', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
                           Status público
+                        </button>
+                      )}
+                      {c.tipo !== 'interno' && (
+                        <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login) — mostra todos os materiais aguardando aprovação deste cliente"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#16a34a', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                          Link de aprovação
                         </button>
                       )}
                       {role === 'admin' && (
