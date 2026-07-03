@@ -161,6 +161,27 @@ export type Cliente = {
   // Documento de marca aprofundado, gerado por IA a partir do Brand Board
   documentoMarca?: string
   documentoMarcaGeradoEm?: string
+  // Playbook operacional da marca (regras de OPERACAO por cliente), curado por humano
+  playbook?: BrandPlaybook
+}
+
+// Playbook operacional da marca — camada de conhecimento IA-First. Diferente do Brand Board
+// (identidade) e do documentoMarca (referencia editorial gerada por IA): aqui ficam as REGRAS
+// DE OPERACAO por cliente (o que funciona, restricoes, do's & don'ts, padrao de copy).
+// Curado por HUMANO, com apoio de IA (destilacao de documentos enviados). `aprovado` marca
+// que a curadoria humana foi concluida (supervisao humana no loop).
+export type BrandPlaybook = {
+  posicionamento?: string        // promessa central / como a marca se posiciona
+  padraoCopy?: string            // estrutura e padrao de copy que funciona
+  criativosQueFuncionam?: string // formatos/criativos que performam
+  fazer?: string                 // do's — sempre fazer
+  naoFazer?: string              // don'ts — nunca fazer
+  restricoes?: string            // restricoes (legais, de marca, compliance)
+  observacoes?: string           // outras notas
+  aprovado?: boolean             // curadoria humana concluida
+  origemUltimaEdicao?: 'manual' | 'ia' // de onde veio a ultima versao
+  atualizadoEm?: string
+  atualizadoPor?: string
 }
 
 // Permissoes do portal do cliente. Cada flag controla um acesso/acao.

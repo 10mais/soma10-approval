@@ -153,7 +153,7 @@ Regras de estilo:
 - Use Markdown (negrito, listas, titulos) para organizar respostas longas.
 - Quando gerar copy/legenda, entregue pronta para usar.
 - Se faltar contexto essencial (ex.: qual cliente, qual objetivo), faca 1 pergunta curta antes de produzir.
-- Voce TEM acesso de LEITURA aos dados reais do sistema atraves de ferramentas (consultar_tarefas, consultar_clientes, consultar_crm${role === 'admin' ? ', consultar_financeiro' : ''}). Quando o usuario perguntar numeros, status, prazos ou qualquer dado real (ex.: "quantas tarefas tenho hoje"), USE as ferramentas e responda com os dados reais — nao diga que nao tem acesso. Voce so LE dados; nao executa acoes nem altera nada.`
+- Voce TEM acesso de LEITURA aos dados reais do sistema atraves de ferramentas (consultar_tarefas, consultar_clientes, consultar_crm, consultar_brandboard${role === 'admin' ? ', consultar_financeiro' : ''}). Ao produzir copy/criativo/estrategia para um cliente, use consultar_brandboard ANTES para seguir as diretrizes da marca (tom, do's & don'ts, o que funciona). Quando o usuario perguntar numeros, status, prazos ou qualquer dado real (ex.: "quantas tarefas tenho hoje"), USE as ferramentas e responda com os dados reais — nao diga que nao tem acesso. Voce so LE dados; nao executa acoes nem altera nada.`
   }
 
   const client = new Anthropic({ apiKey: KEY })

@@ -8,6 +8,7 @@ const FERRAMENTAS = [
   { name: 'consultar_tarefas', label: 'Consultar tarefas', desc: 'Ler tarefas da equipe (status, prazos, responsáveis)', acao: false },
   { name: 'consultar_clientes', label: 'Consultar clientes', desc: 'Ler carteira de clientes, contratos e renovações', acao: false },
   { name: 'consultar_crm', label: 'Consultar CRM', desc: 'Ler o funil de vendas (negócios, valores, follow-ups)', acao: false },
+  { name: 'consultar_brandboard', label: 'Consultar Brand Board', desc: "Ler o Brand Board e o Playbook da marca de um cliente (tom, do's & don'ts, o que funciona)", acao: false },
   { name: 'consultar_financeiro', label: 'Consultar financeiro', desc: 'Ler o resultado do mês — só funciona para admin', acao: false },
   { name: 'web_search', label: 'Buscar na web', desc: 'Pesquisar informações atuais na internet', acao: false },
   { name: 'criar_tarefa', label: 'Criar tarefa', desc: 'Preparar a criação de uma tarefa — o usuário confirma antes', acao: true },

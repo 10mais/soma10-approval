@@ -33,6 +33,11 @@ export function ferramentasPara(role: string): any[] {
       description: 'Consulta o funil de vendas (CRM): negocios por etapa, valores, donos e follow-ups. Use para perguntas sobre pipeline, oportunidades, vendas em aberto/ganhas/perdidas.',
       input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['aberto', 'ganho', 'perdido', 'todos'], description: 'filtra por status (default aberto)' } } },
     },
+    {
+      name: 'consultar_brandboard',
+      description: "Busca o Brand Board e o Playbook da marca de um cliente: posicionamento, tom de voz, publico-alvo, palavras-chave, o que funciona (criativos/copy), do's & don'ts, restricoes e o documento de marca. Use SEMPRE que for criar copy, criativo, pauta ou estrategia para um cliente especifico — para seguir as diretrizes da marca antes de produzir.",
+      input_schema: { type: 'object', properties: { cliente: { type: 'string', description: 'nome do cliente (obrigatorio)' } }, required: ['cliente'] },
+    },
   ]
   const financeiro = {
     name: 'consultar_financeiro',
@@ -99,6 +104,7 @@ export async function executarFerramenta(name: string, input: any, ctx: Ctx): Pr
     if (name === 'consultar_tarefas') return await consultarTarefas(input || {})
     if (name === 'consultar_clientes') return await consultarClientes(input || {})
     if (name === 'consultar_crm') return await consultarCrm(input || {})
+    if (name === 'consultar_brandboard') return await consultarBrandboard(input || {})
     if (name === 'consultar_financeiro') {
       if (ctx.role !== 'admin') return JSON.stringify({ erro: 'Sem permissao: dados financeiros sao restritos a administradores.' })
       return await consultarFinanceiro(input || {})
@@ -159,6 +165,43 @@ async function consultarCrm(input: any): Promise<string> {
     .map(n => ({ titulo: n.titulo, empresa: n.empresa || null, valor: Number(n.valor) || 0, etapa: nomeEstagio(n.estagioId), status: n.status, dono: n.donoNome || null, proximoFollowUp: n.proximoFollowUp || null }))
   const totalValor = negocios.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   return JSON.stringify({ status, total: negocios.length, valorTotal: fmtR$(totalValor), funil: Object.entries(funil).map(([etapa, v]) => ({ etapa, qtd: v.qtd, valor: fmtR$(v.valor) })), negocios: lista })
+}
+
+async function consultarBrandboard(input: any): Promise<string> {
+  const alvo = (input.cliente || '').toLowerCase().trim()
+  if (!alvo) return JSON.stringify({ erro: 'informe o nome do cliente' })
+  const ids = await redis.smembers('clientes')
+  const clientes = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
+  const norm = (s: string) => (s || '').toLowerCase()
+  const c = clientes.find(x => norm(x.nome) === alvo) || clientes.find(x => norm(x.nome).includes(alvo)) || clientes.find(x => alvo.includes(norm(x.nome)))
+  if (!c) return JSON.stringify({ erro: `cliente nao encontrado: ${input.cliente}`, clientesDisponiveis: clientes.filter(x => x.tipo !== 'interno').map(x => x.nome).slice(0, 40) })
+
+  const pb = c.playbook || {}
+  const doc = (c.documentoMarca || '')
+  return JSON.stringify({
+    cliente: c.nome,
+    instagram: c.instagram ? `@${(c.instagram || '').replace(/^@/, '')}` : null,
+    identidade: {
+      segmento: c.segmento || null,
+      palavrasChave: c.palavrasChave || null,
+      descricao: c.descricao || null,
+      publicoAlvo: c.publicoAlvo || null,
+      tomDeVoz: c.tomDeVoz || null,
+      preferencias: c.preferencias || null,
+    },
+    playbook: {
+      posicionamento: pb.posicionamento || null,
+      padraoCopy: pb.padraoCopy || null,
+      criativosQueFuncionam: pb.criativosQueFuncionam || null,
+      fazer: pb.fazer || null,
+      naoFazer: pb.naoFazer || null,
+      restricoes: pb.restricoes || null,
+      observacoes: pb.observacoes || null,
+      aprovado: pb.aprovado === true,
+    },
+    documentoMarca: doc ? doc.slice(0, 4000) : null,
+    documentoMarcaTruncado: doc.length > 4000,
+  })
 }
 
 async function consultarFinanceiro(input: any): Promise<string> {
