@@ -1272,18 +1272,18 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
           </button>
         ))}
       </div>
+      {cfg.conectarUrl && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => { window.location.href = cfg.conectarUrl! }}
+            style={{ padding: '8px 16px', background: cfg.cor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            Conectar conta do Instagram (mensagens)
+          </button>
+          <span style={{ fontSize: 11, color: '#888' }}>Login de admin + conta profissional (testador). Depois vincule a conta a um cliente.</span>
+        </div>
+      )}
       {!configurado && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '11px 14px', marginBottom: 14, fontSize: 12.5, color: '#92400e' }}>
           {cfg.aviso}
-          {cfg.conectarUrl && (
-            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <button onClick={() => { window.location.href = cfg.conectarUrl! }}
-                style={{ padding: '8px 16px', background: cfg.cor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-                Conectar conta do Instagram
-              </button>
-              <span style={{ fontSize: 11, color: '#a16207' }}>Login de admin + conta profissional (testador). Depois vincule a conta a um cliente.</span>
-            </div>
-          )}
         </div>
       )}
       <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
