@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    // Diagnostico: confirma nos logs da Vercel que a Meta esta chamando o webhook
+    console.log('[ig-webhook] POST recebido:', JSON.stringify(body).slice(0, 800))
     for (const entry of (body.entry || [])) {
       const contaId = entry.id // id da conta profissional (lado que recebeu)
       for (const ev of (entry.messaging || [])) {
