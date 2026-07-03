@@ -1,10 +1,10 @@
 import { redis } from './redis'
 import type { Cliente } from './redis'
 
-// Instagram Direct (Messaging API) via Graph API da Meta.
-// Diferença importante em relação ao WhatsApp: o envio usa o token DO CLIENTE dono
-// da conta (cliente.facebookPageToken / instagramToken), não um token único no env.
-// Sem token/permissão aprovada (instagram_manage_messages), o envio é no-op seguro.
+// Instagram Direct (Messaging API) — caminho "API do Instagram com login do Instagram"
+// (graph.instagram.com). O envio usa o token DO CLIENTE dono da conta
+// (cliente.instagramToken), não um token único no env como o WhatsApp.
+// Sem token/permissão aprovada (instagram_business_manage_messages), o envio é no-op seguro.
 //   INSTAGRAM_VERIFY_TOKEN — string que você escolhe; mesma no painel da Meta (webhook)
 //   META_API_VERSION_PUBLISH (opcional) — versão da Graph API (default v21.0)
 
@@ -39,18 +39,19 @@ export async function clientePorInstagramId(contaId: string): Promise<Cliente | 
 }
 
 export function instagramDMConfigurado(cliente?: Cliente | null): boolean {
-  return !!(cliente && (cliente.facebookPageToken || cliente.instagramToken))
+  return !!(cliente && (cliente.instagramToken || cliente.facebookPageToken))
 }
 
 // Envia uma DM ao usuário do Instagram usando o token do cliente dono da conta.
+// Caminho "Instagram Login": POST em graph.instagram.com/{versao}/me/messages.
 export async function enviarDMInstagram(cliente: Cliente | null, igUserId: string, texto: string, autor?: string): Promise<{ ok: boolean; erro?: string }> {
   const id = String(igUserId || '').trim()
   if (!id) return { ok: false, erro: 'destinatário inválido' }
-  const token = cliente?.facebookPageToken || cliente?.instagramToken
+  const token = cliente?.instagramToken || cliente?.facebookPageToken
   if (!token) return { ok: false, erro: 'Instagram não conectado para este cliente (sem token)' }
   const versao = process.env.META_API_VERSION_PUBLISH || 'v21.0'
   try {
-    const r = await fetch(`https://graph.facebook.com/${versao}/me/messages?access_token=${encodeURIComponent(token)}`, {
+    const r = await fetch(`https://graph.instagram.com/${versao}/me/messages?access_token=${encodeURIComponent(token)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipient: { id }, message: { text: texto } }),
