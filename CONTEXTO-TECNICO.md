@@ -146,9 +146,10 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 - Cor da marca do cliente: `var(--marca)` no portal; em alguns componentes a cor é passada direto do cliente.
 - Auto-aprovar (global CLAUDE.md): criar arquivos/pastas novos, instalar pacotes pedidos, componentes visuais. **Perguntar antes:** modificar arquivo existente, comandos de banco, `.env`/auth, refator >3 arquivos, deletar.
 
-## 12. Pendências / próximos passos (atualizado 2026-07-02 — sessão longa)
+## 12. Pendências / próximos passos (atualizado 2026-07-04)
 
-> A sessão de 2026-07-02 (grande) fechou quase todo o backlog de código. **Tudo que entrou está detalhado em §16.** Aqui fica só o que RESTA.
+> ⚠️ **LEIA §17 e §18 PRIMEIRO** — são o estado mais recente. A sessão de 2026-07-04 entregou: App Review Meta **submetido**, Instagram Direct no CRM, sistema de conhecimento IA-First (Brand Playbook), e a aprovação de criativos por **link único** (fluxo pelo Planner). **PRÓXIMO PROJETO ATIVO: o "Studio" IA-First (§18), a iniciar pela Fase 0.**
+> A lista abaixo (de 2026-07-02) é histórica; itens já resolvidos: CRM Instagram Direct (feito, §17.2), Agentes Fase 3/conhecimento (feito, §17.3). Aqui fica o que RESTA do backlog antigo.
 
 **Pendente — CÓDIGO:**
 - **CRM Instagram Direct (Fase 3)** — depende do App Review da Meta (ação do dono).
@@ -346,3 +347,62 @@ Abas internas: **Painel / Funil / Contatos / Empresas / Playbook**.
 - **Rotas:** `/api/agentes` (+ `/api/agentes/executar`), `/api/documentos`, `/api/doc-publico`, `/api/dashboard-vendas`, `/api/mapas` (+ `/api/mapas/gerar-ia`), `/api/crm/pipelines`, `/api/clientes/resync-fotos`. Página pública `/doc/[token]`.
 - **Chaves Redis:** `agente:{id}`/`agentes`, `agente:acoes` (auditoria), `documento:{id}`/`documentos`/`doctoken:{token}`, `mapa:{id}`/`mapas`, `crm:pipelines`. Campos: `Agente`; `Documento.token`; `MapaMental.layout`; `CrmContato.areaAtuacao`/`profissionalAutonomo`; `CrmEstagio.pipelineId`; `CrmNegocio.pipelineId`; `PersonalData.notepads[]`.
 - **Config:** `app/globals.css` (novo), `capacitor.config.json`, `CAPACITOR.md`, `public/splash/*`.
+
+## 17. Evolução 2026-07-04 — App Review Meta, Instagram Direct, Conhecimento IA-First, Aprovação de Criativos
+
+> Tudo **deployado na `main`** (push por implementação, type-check antes de cada commit). Onde diverge de seções antigas, vale o que está aqui. Último commit da sessão: `ceb382a`.
+
+### 17.1 App Review Meta — SUBMETIDO (análise em andamento)
+- App **PUBLICADO** (Live). **Business Verification concluída** (GRUPO 10+ LTDA). Caminho: "API do Instagram com login do Instagram". App do Instagram `soma10-IG` (ID `811562411808826`); app principal ID `1687925802347345`.
+- **8 permissões submetidas:** `instagram_business_basic`, `instagram_business_manage_messages`, `instagram_business_content_publish`, `instagram_business_manage_insights`, `pages_manage_posts`, `pages_show_list`, `pages_read_engagement`, `public_profile`. (Anúncios e WhatsApp ficaram FORA — pedir só o que já está construído.)
+- **Páginas legais** criadas e no ar (server components): `/privacidade`, `/termos`, `/exclusao-de-dados` (em approval.soma10.com.br; domínio raiz soma10.com.br NÃO resolve). Dropdown "Exclusão de dados" = URL de instruções.
+- **Vídeo/credenciais de teste:** vídeo no YouTube não listado `https://youtu.be/rhTd_wpI_oY`. Login revisor: `revisor.meta@grupo10mais.com.br` / `Meta2026%`. O uploader de screencast por-permissão só funciona em **janela anônima** (bug da Meta); o de "documentação de apoio" aceita arquivos grandes.
+- **Tratamento de dados:** operadores = Vercel Inc. + Upstash Inc. (categoria "Soluções e serviços de TI/nuvem", países Brasil+EUA). Controlador = Grupo 10+ LTDA (Brasil). Sem solicitações de segurança nacional.
+- **NÃO MEXER enquanto em análise:** manter app publicado, vídeo no YouTube, login de teste ativo, contas conectadas no ar. Detalhes vivos em [[app-review-meta]].
+
+### 17.2 Instagram Direct no CRM (multicanal)
+- **Central de mensagens do CRM virou multicanal** (`CRM.tsx > MensagensInbox`): abas **WhatsApp | Instagram** reusando o mesmo componente via `CANAL_CFG` por canal. Persistência de aba/canal em sessionStorage.
+- **Conta de mensagens da AGÊNCIA** (separada de clientes): `ContaMensagemIg` em `config:contasMensagensIg`. Botão "Conectar conta do Instagram (mensagens)" na aba → OAuth `/api/instagram/oauth?messaging=1` (state `soma10msg`) → callback salva a conta + inscreve webhooks (`me/subscribed_apps?subscribed_fields=messages`) e volta ao CRM. Selo "✓ Conectada: @conta".
+- **Envio** via `graph.instagram.com/{versao}/me/messages` com o token da conta (agência OU cliente). `resolverContaIg(id)` acha a conta dona. Webhook grava `contaId` na conversa; envio resolve o token por `contaId`. Perfil do remetente (nome/@username/foto) enriquecido no webhook (uma vez), com avatar no CRM.
+- Chaves `ig:conversas`/`ig:conversa:{id}`/`ig:msgs:{id}` (+ `contaId`/`foto`). Env `INSTAGRAM_VERIFY_TOKEN` (na Vercel). Webhook loga o payload p/ diagnóstico. WhatsApp continua igual (scaffold, sem número).
+
+### 17.3 Sistema de conhecimento IA-First (Brand Playbook)
+- **Brand Playbook por cliente** (`Cliente.playbook`: posicionamento, padraoCopy, criativosQueFuncionam, fazer/naoFazer, restricoes, observacoes, aprovado, origemUltimaEdicao). Editor `BrandPlaybook.tsx` (botão "Playbook da marca" na seção Brand Board) com **"Destilar com IA"** → rascunho → **humano aprova**. `/api/brand/playbook` (GET/PUT/POST destilar, que lê também `cliente.documentos[]`).
+- **Ferramenta de leitura `consultar_brandboard`** (`assistenteTools.ts`) — busca sob demanda Brand Board + Playbook + documento de marca de um cliente; exposta no seletor de ferramentas do agente e no assistente geral.
+- **Base de conhecimento no agente** (`Agente.conhecimento[]`): upload de PDF/DOCX/imagens no modal de `Agentes.tsx`; extração compartilhada em `lib/extrairTexto.ts` (DOCX via `mammoth` — instalado; PDF/imagens via Claude multimodal base64). Texto injetado no system prompt do agente. `/api/agentes/extrair`.
+- Detalhes vivos em [[conhecimento-ia-first]].
+
+### 17.4 Aprovação de criativos — LINK ÚNICO por cliente (fluxo pelo Planner, NÃO pela Esteira)
+- **Fluxo oficial:** Planner → "Nova postagem" → **3ª ação "Enviar para aprovação"** (ao lado de Rascunho e Publicar/Agendar). Salva o post como `aguardando_aprovacao` e copia o **link ÚNICO do cliente**. (Vale no Planner da agência E no do portal `app/cliente/[clienteId]/planner`.)
+- **Link único por cliente** `/aprovacoes/[token]` (público, sem login): `cliente.aprovacaoToken` + mapa reverso `aprovtoken:{token}→clienteId`. Lista TODOS os posts `aguardando_aprovacao` do cliente, cada um em **preview estilo Instagram** (avatar+@perfil, mídia nas **medidas originais** — carrossel/vídeo, ícones do feed, legenda). Ações por item: **Aprovar / Pedir ajuste / Rejeitar** (motivo obrigatório). `/api/aprovacao-link` (POST equipe gera token; GET público lista). Botão "Link de aprovação" por cliente em Config→Clientes.
+- **Decisão** (`/api/decision`) autoriza por sessão-cliente, código de 6 díg OU **token do cliente**. Ao **aprovar**: enfileira em `agendados` (data futura = na hora certa; "agora" = próximo ciclo do cron) — **não publica síncrono** (evita travar o botão em vídeo). Motivo de ajuste/reprovação (`motivoReprovacao`/`anotacoes`) é **gravado e EXIBIDO** no post (preview do dashboard e do portal). Editar/excluir habilitados também para `corrigir`/`reprovado`/`aguardando_aprovacao`.
+- Página pública por-post `/aprovar/[id]?c=CODIGO` continua (código na URL); a de vários é a `/aprovacoes/[token]`.
+
+### 17.5 Correções e UX desta sessão
+- **Publicação:** erro transitório do Instagram (`-1`/`2207085` "erro interno, tente novamente") agora **retenta** (era falha fatal); vale criação de container e `media_publish`.
+- **Tarefas:** links (http/https) viram **clicáveis** em comentários e no histórico (`TextoComMencoes` em `GestaoTarefas.tsx`).
+- **UX global:** **barras de rolagem escondidas** no sistema todo (`globals.css`, mantém a rolagem). **Rolagem dividida** sidebar × conteúdo (desktop). **Funil do CRM:** sem barra + **auto-scroll ao arrastar card** perto da borda + colunas ocupam a **altura toda** (drop em qualquer altura).
+- **Assistente:** oculto em rotas públicas ([[lib/rotasPublicas]]); rebusca agentes ao abrir. **PushSetup** idem oculto em rotas públicas.
+
+### 17.6 Novos arquivos / chaves / rotas (resumo desta fase)
+- **Libs:** `instagramDM.ts`, `extrairTexto.ts`, `rotasPublicas.ts`.
+- **Componentes:** `BrandPlaybook.tsx`. `CRM.tsx` (multicanal + AvatarConv), `Agentes.tsx` (upload conhecimento), `GestaoTarefas.tsx` (links), `PostComposer.tsx` (3º botão).
+- **Rotas:** `/api/instagram/webhook`, `/api/crm/mensagens-instagram`, `/api/aprovacao-link`, `/api/brand/playbook`, `/api/agentes/extrair`. Páginas públicas `/privacidade`, `/termos`, `/exclusao-de-dados`, `/aprovacoes/[token]`.
+- **Chaves Redis:** `ig:conversas`/`ig:conversa:{id}`/`ig:msgs:{id}`, `config:contasMensagensIg`, `aprovtoken:{token}`. Campos: `Cliente.playbook`/`aprovacaoToken`; `Agente.conhecimento[]`; `Post.motivoReprovacao`/`anotacoes` (exibidos). Env: `INSTAGRAM_VERIFY_TOKEN`. Dep nova: `mammoth`.
+
+## 18. PRÓXIMO PROJETO — "Studio" IA-First (redesenho de Social/Briefings/Copy/Esteira) — APROVADO, a iniciar
+
+> Plano completo e aprovado. Diagnóstico: a IA **já gera o mês inteiro** (`/api/esteira/gerar-plano`), mas a **Esteira kanban de 6 colunas** obriga o humano a empurrar cards — rebaixando estrategista a operário. Síntese: **"a IA opera a fábrica; o humano rege a orquestra"**.
+
+**O modelo "Studio":** uma superfície por cliente = **tabela viva do mês** (linhas editáveis inline: pauta/briefing · copy · direção de criativo · formato · data · estado) + **co-piloto** conversacional. Sem colunas: estados fluem sozinhos (rascunho da IA → equipe aprova → cliente aprova via link único → publica). Reaproveita quase tudo (Post, Plano, Brand Playbook, agentes, Planner, aprovação, gerar-plano/gerar-legenda).
+
+**Fases (começar por 0→1, em paralelo à Esteira, medindo "taxa de edição" desde o dia 1):**
+- **Fase 0 (a INICIAR):** motor `gerar-plano` passa a ler o **Brand Playbook** (não só o Brand Board) + medir taxa de edição. *Prova a matéria-prima em 1 sessão.* — **NÃO iniciada** (edição foi interrompida; retomar aqui).
+- **Fase 1:** `StudioMes.tsx` (tabela viva, edição inline, fluxo automático pro cliente), aba nova em **paralelo** à Esteira.
+- **Fase 2:** co-piloto (nudges: `regenerar_item`/`variacoes_copy`/`ajustar_tom`/`mover_data`) + geração incremental por item + dono/"travado em quê".
+- **Fase 3:** flywheel (edições + decisão do cliente + performance → destila no Playbook com aprovação; aprende de **performance real**, não só "aprovou" — evita doom-loop).
+- **Fase 4:** "Surpreenda-me", campanhas, sazonalidade, guardrails de custo; aposenta a Esteira antiga só após prova.
+
+**Pré-mortem (riscos monitorados):** rascunho medíocre (Fase 0 mede antes de escalar); doom-loop de Goodhart (aprende de performance + aprovação humana); homogeneização/"AI slop" (Playbook por cliente + taxa de edição); perda de coordenação ao matar o kanban (dono/"travado em quê"); gargalo real ser o cliente; custo de tokens; JSON monolítico frágil; dívida de 2 paradigmas (paralelo, não troca a frio).
+
+Plano detalhado salvo em `.claude/plans/traduza-e-me-diga-gentle-mochi.md`.
