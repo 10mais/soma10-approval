@@ -57,6 +57,22 @@ export async function POST(req: NextRequest) {
     cliente.documentoMarca ? `\nDNA da marca (referência editorial):\n${cliente.documentoMarca.slice(0, 3000)}` : '',
   ].filter(Boolean).join('\n')
 
+  // Studio Fase 0 — Brand Playbook operacional (regras de OPERACAO curadas por humano).
+  // Tem prioridade sobre o Brand Board por ser destilado do que de fato funciona para a marca.
+  const pb = cliente.playbook
+  const playbookCampos = pb ? [
+    pb.posicionamento ? `Posicionamento: ${pb.posicionamento}` : '',
+    pb.padraoCopy ? `Padrão de copy que funciona: ${pb.padraoCopy}` : '',
+    pb.criativosQueFuncionam ? `Criativos que funcionam: ${pb.criativosQueFuncionam}` : '',
+    pb.fazer ? `SEMPRE fazer: ${pb.fazer}` : '',
+    pb.naoFazer ? `NUNCA fazer: ${pb.naoFazer}` : '',
+    pb.restricoes ? `Restrições (legais/marca/compliance): ${pb.restricoes}` : '',
+    pb.observacoes ? `Observações: ${pb.observacoes}` : '',
+  ].filter(Boolean) : []
+  const playbookTxt = playbookCampos.length
+    ? `\n\nPLAYBOOK OPERACIONAL DA MARCA (${pb!.aprovado ? 'APROVADO pela equipe' : 'RASCUNHO ainda não curado — trate como forte sinal, mas priorize o bom senso'}) — estas regras têm PRIORIDADE sobre o Brand Board acima:\n${playbookCampos.join('\n')}`
+    : ''
+
   // Busca tendencias do Google Trends para enriquecer as pautas
   let trendsTxt = ''
   try {
@@ -86,6 +102,7 @@ export async function POST(req: NextRequest) {
 
 BRAND BOARD DO CLIENTE:
 ${brand}
+${playbookTxt}
 ${trendsTxt}
 
 REGRAS:
@@ -170,6 +187,15 @@ Responda APENAS com um JSON valido (sem markdown, sem explicacao, sem backticks)
         sugestaoImagem: (p.sugestaoImagem || '').trim(),
         textoImagem: (p.textoImagem || '').trim(),
         sugestaoLegenda: (p.legenda || '').trim(),
+        // Studio Fase 0 — captura a matéria-prima da IA para medir a taxa de edição
+        iaGerado: {
+          briefing: (p.briefing || '').trim(),
+          sugestaoImagem: (p.sugestaoImagem || '').trim(),
+          textoImagem: (p.textoImagem || '').trim(),
+          legenda: (p.legenda || '').trim(),
+          formato,
+          geradoEm: criadoEm,
+        },
       }
       await redis.set(`post:${post.id}`, post)
       await redis.sadd('posts', post.id)

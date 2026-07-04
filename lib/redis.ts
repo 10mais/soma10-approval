@@ -438,6 +438,16 @@ export type Post = {
   etapaDesde?: string // ISO — quando a pauta entrou na etapa atual (cycle-time/aging)
   preAprovado?: boolean // conteúdo recorrente pré-aprovado pelo cliente (dispensa aprovação)
   tarefaId?: string // tarefa criada a partir desta pauta da Esteira (vinculo)
+  // Studio Fase 0 — matéria-prima da IA e medição da taxa de edição
+  iaGerado?: {
+    briefing?: string
+    sugestaoImagem?: string
+    textoImagem?: string
+    legenda?: string
+    formato?: 'feed' | 'reel' | 'story'
+    geradoEm: string
+  } // snapshot do que a IA gerou (para comparar com a edição humana)
+  editadoAposIA?: boolean // humano alterou briefing/copy/criativo depois da geração
 }
 
 // ===== CRM de vendas (SDR/Closer) =====

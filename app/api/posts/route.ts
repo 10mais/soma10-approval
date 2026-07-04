@@ -140,6 +140,20 @@ export async function PUT(req: NextRequest) {
     if (ETAPAS_APROVACAO.includes(updates.etapa)) atualizado.aguardandoDesde = new Date().toISOString()
     else atualizado.aguardandoDesde = undefined
   }
+  // Studio Fase 0 — taxa de edição: humano alterou a matéria-prima da IA?
+  if (post.iaGerado && !atualizado.editadoAposIA) {
+    const g = post.iaGerado
+    const norm = (v: any) => (v || '').toString().trim()
+    if (
+      norm(atualizado.briefing) !== norm(g.briefing) ||
+      norm(atualizado.legenda) !== norm(g.legenda) ||
+      norm(atualizado.sugestaoImagem) !== norm(g.sugestaoImagem) ||
+      norm(atualizado.textoImagem) !== norm(g.textoImagem) ||
+      norm(atualizado.formato) !== norm(g.formato)
+    ) {
+      atualizado.editadoAposIA = true
+    }
+  }
   await redis.set(`post:${id}`, atualizado)
   // Mantém o índice de agendados em dia
   if (atualizado.status === 'agendado') await redis.sadd('agendados', id)
