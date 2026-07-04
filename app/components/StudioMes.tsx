@@ -53,7 +53,16 @@ function toLocalInput(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-// Célula com edição inline — salva no blur só quando muda (isola re-render).
+// Prévia truncada (2 linhas) mostrada com a linha recolhida.
+function Previa({ texto, largura }: { texto?: string; largura: number }) {
+  return (
+    <div style={{ width: largura, fontSize: 12.5, color: texto ? '#333' : '#ccc', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+      {texto || '—'}
+    </div>
+  )
+}
+
+// Célula com edição inline (linha expandida) — auto-cresce, sem alça de resize.
 function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
   valor?: string; onSalvar: (v: string) => Promise<void>; placeholder?: string; editavel: boolean; largura: number
 }) {
@@ -61,9 +70,12 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
   const [estado, setEstado] = useState<'idle' | 'salvando' | 'ok'>('idle')
   const original = useRef(valor || '')
   const focado = useRef(false)
+  const ref = useRef<HTMLTextAreaElement>(null)
+  function crescer() { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` } }
   useEffect(() => { if (!focado.current) { setV(valor || ''); original.current = valor || '' } }, [valor])
+  useEffect(() => { crescer() }, [v])
 
-  if (!editavel) return <div style={{ fontSize: 12.5, color: '#333', whiteSpace: 'pre-wrap', width: largura }}>{v || <span style={{ color: '#ccc' }}>—</span>}</div>
+  if (!editavel) return <div style={{ width: largura, fontSize: 12.5, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{v || <span style={{ color: '#ccc' }}>—</span>}</div>
 
   async function blur() {
     focado.current = false
@@ -74,14 +86,11 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
     setEstado('ok'); setTimeout(() => setEstado('idle'), 1200)
   }
   return (
-    <div style={{ position: 'relative', width: largura }}>
-      <textarea value={v} placeholder={placeholder}
+    <div style={{ position: 'relative', width: largura }} onClick={e => e.stopPropagation()}>
+      <textarea ref={ref} value={v} placeholder={placeholder}
         onFocus={() => { focado.current = true }}
         onChange={e => setV(e.target.value)} onBlur={blur}
-        rows={1}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid transparent', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', minHeight: 34, background: 'transparent', color: '#222', lineHeight: 1.4 }}
-        onMouseEnter={e => { (e.target as HTMLElement).style.border = '1px solid #e5e7eb' }}
-        onMouseLeave={e => { if (document.activeElement !== e.target) (e.target as HTMLElement).style.border = '1px solid transparent' }} />
+        style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 32, background: '#fff', color: '#222', lineHeight: 1.45 }} />
       {estado !== 'idle' && (
         <span style={{ position: 'absolute', top: 4, right: 6, fontSize: 9, fontWeight: 700, color: estado === 'ok' ? '#16a34a' : '#999' }}>
           {estado === 'ok' ? '✓ salvo' : 'salvando…'}
@@ -107,6 +116,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [gerandoIA, setGerandoIA] = useState(false)
   const [iaMsg, setIaMsg] = useState('')
   const [criandoLinha, setCriandoLinha] = useState(false)
+  const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
+  function toggleLinha(id: string) {
+    setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
 
   function carregarPlanos() {
     const url = clienteFixo ? `/api/planos?clienteId=${clienteFixo}` : '/api/planos'
@@ -351,29 +364,38 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
                 const podeEnviar = ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
                 const semMidia = (p.imagens || []).length === 0
+                const aberto = abertos.has(p.id)
+                const padCel = aberto ? '8px 8px' : '12px 8px'
                 return (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #f2f2f2', verticalAlign: 'top' }}>
-                    {/* Estado */}
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, color: est.cor, background: est.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{est.label}</span>
-                      {p.editadoAposIA && <span title="Ajustada pela equipe após a geração da IA" style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: '#7c3aed' }}>editada</span>}
+                  <tr key={p.id} onClick={() => toggleLinha(p.id)}
+                    style={{ borderBottom: '1px solid #f2f2f2', verticalAlign: 'top', cursor: 'pointer', background: aberto ? '#fcfcfd' : '#fff' }}>
+                    {/* Estado (clique na linha recolhe/expande) */}
+                    <td style={{ padding: '12px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}><path d="M9 18l6-6-6-6" /></svg>
+                        <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, color: est.cor, background: est.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{est.label}</span>
+                      </div>
+                      {p.editadoAposIA && <span title="Ajustada pela equipe após a geração da IA" style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: '#7c3aed', paddingLeft: 18 }}>editada</span>}
                       {ajuste && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px', width: larguras.estado - 12 }}>Cliente: {String(ajuste).slice(0, 80)}</p>}
                     </td>
                     {/* Pauta / briefing */}
-                    <td style={{ padding: '6px 8px' }}>
-                      <CelulaEditavel valor={p.briefing} editavel={podeEditar} largura={larguras.pauta - 8} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} />
+                    <td style={{ padding: padCel }}>
+                      {aberto ? <CelulaEditavel valor={p.briefing} editavel={podeEditar} largura={larguras.pauta - 16} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} />
+                        : <Previa texto={p.briefing} largura={larguras.pauta - 16} />}
                     </td>
                     {/* Copy */}
-                    <td style={{ padding: '6px 8px' }}>
-                      <CelulaEditavel valor={p.legenda} editavel={podeEditar} largura={larguras.copy - 8} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} />
+                    <td style={{ padding: padCel }}>
+                      {aberto ? <CelulaEditavel valor={p.legenda} editavel={podeEditar} largura={larguras.copy - 16} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} />
+                        : <Previa texto={p.legenda} largura={larguras.copy - 16} />}
                     </td>
                     {/* Direção de criativo */}
-                    <td style={{ padding: '6px 8px' }}>
-                      <CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} largura={larguras.criativo - 8} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} />
+                    <td style={{ padding: padCel }}>
+                      {aberto ? <CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} largura={larguras.criativo - 16} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} />
+                        : <Previa texto={p.sugestaoImagem} largura={larguras.criativo - 16} />}
                       {(p.imagens || []).length > 0 && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: '#16a34a' }}>✓ {p.imagens!.length} mídia(s)</span>}
                     </td>
                     {/* Formato */}
-                    <td style={{ padding: '10px 12px' }}>
+                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
                       {podeEditar ? (
                         <select value={p.formato || 'feed'} onChange={e => salvarCampo(p.id, 'formato', e.target.value)}
                           style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: (FORMATOS.find(f => f.key === (p.formato || 'feed'))?.cor) || '#333', fontWeight: 700 }}>
@@ -382,14 +404,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       ) : <span style={{ fontSize: 12, fontWeight: 700 }}>{FORMATOS.find(f => f.key === (p.formato || 'feed'))?.label}</span>}
                     </td>
                     {/* Data */}
-                    <td style={{ padding: '10px 12px' }}>
+                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
                       {podeEditar ? (
                         <input type="datetime-local" value={toLocalInput(p.dataAgendada)} onChange={e => salvarData(p.id, e.target.value)}
                           style={{ padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 11.5, fontFamily: 'inherit', color: '#333', width: larguras.data - 20 }} />
                       ) : <span style={{ fontSize: 11.5, color: '#666' }}>{p.dataAgendada ? new Date(p.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</span>}
                     </td>
                     {/* Ações */}
-                    <td style={{ padding: '10px 12px' }}>
+                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: larguras.acoes - 24 }}>
                         {podeEditar && semMidia && onAbrirComposer && (
                           <button onClick={() => onAbrirComposer(p)} style={{ padding: '6px 8px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Adicionar criativo</button>
