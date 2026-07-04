@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 
@@ -55,18 +55,9 @@ function toLocalInput(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-// Prévia truncada (2 linhas) mostrada com a linha recolhida.
-function Previa({ texto, largura }: { texto?: string; largura: number }) {
-  return (
-    <div style={{ width: largura, fontSize: 12.5, color: texto ? '#333' : '#ccc', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-      {texto || '—'}
-    </div>
-  )
-}
-
-// Célula com edição inline (linha expandida) — auto-cresce, sem alça de resize.
-function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
-  valor?: string; onSalvar: (v: string) => Promise<void>; placeholder?: string; editavel: boolean; largura: number
+// Campo com edição inline (painel expandido) — largura total, auto-cresce, sem alça.
+function CelulaEditavel({ valor, onSalvar, placeholder, editavel }: {
+  valor?: string; onSalvar: (v: string) => Promise<void>; placeholder?: string; editavel: boolean
 }) {
   const [v, setV] = useState(valor || '')
   const [estado, setEstado] = useState<'idle' | 'salvando' | 'ok'>('idle')
@@ -77,7 +68,7 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
   useEffect(() => { if (!focado.current) { setV(valor || ''); original.current = valor || '' } }, [valor])
   useEffect(() => { crescer() }, [v])
 
-  if (!editavel) return <div style={{ width: largura, fontSize: 12.5, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{v || <span style={{ color: '#ccc' }}>—</span>}</div>
+  if (!editavel) return <div style={{ width: '100%', fontSize: 12.5, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{v || <span style={{ color: '#ccc' }}>—</span>}</div>
 
   async function blur() {
     focado.current = false
@@ -88,18 +79,23 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel, largura }: {
     setEstado('ok'); setTimeout(() => setEstado('idle'), 1200)
   }
   return (
-    <div style={{ position: 'relative', width: largura }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: 'relative', width: '100%' }} onClick={e => e.stopPropagation()}>
       <textarea ref={ref} value={v} placeholder={placeholder}
         onFocus={() => { focado.current = true }}
         onChange={e => setV(e.target.value)} onBlur={blur}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 32, background: '#fff', color: '#222', lineHeight: 1.45 }} />
+        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 34, background: '#fff', color: '#222', lineHeight: 1.45 }} />
       {estado !== 'idle' && (
-        <span style={{ position: 'absolute', top: 4, right: 6, fontSize: 9, fontWeight: 700, color: estado === 'ok' ? '#16a34a' : '#999' }}>
+        <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 9, fontWeight: 700, color: estado === 'ok' ? '#16a34a' : '#999' }}>
           {estado === 'ok' ? '✓ salvo' : 'salvando…'}
         </span>
       )}
     </div>
   )
+}
+
+// Rótulo curto acima de cada campo do painel expandido.
+function CampoLabel({ children }: { children: ReactNode }) {
+  return <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{children}</span>
 }
 
 export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true }: {
@@ -290,11 +286,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const editadas = geradas.filter(p => p.editadoAposIA)
   const taxa = geradas.length ? Math.round((editadas.length / geradas.length) * 100) : null
 
-  const larguras = { estado: 118, pauta: 240, copy: 300, criativo: 220, formato: 108, data: 168, acoes: 150 }
-  const cabecalho: [string, number][] = [
-    ['Estado', larguras.estado], ['Pauta / briefing', larguras.pauta], ['Copy (legenda)', larguras.copy],
-    ['Direção de criativo', larguras.criativo], ['Formato', larguras.formato], ['Data', larguras.data], ['Ações', larguras.acoes],
-  ]
+  // Grid fluido — cabe em qualquer largura, sem scroll lateral. Pauta usa 1fr.
+  const COLS = '128px minmax(0, 1fr) 116px 152px 150px'
+  const cabecalho = ['Estado', 'Pauta', 'Formato', 'Data', 'Ações']
 
   return (
     <div>
@@ -304,7 +298,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
             Studio
             <span style={{ fontSize: 10, fontWeight: 800, color: '#7c3aed', background: '#7c3aed12', border: '1px solid #7c3aed30', borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase' }}>Beta</span>
           </h2>
-          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>A IA opera a fábrica; você rege a orquestra. Edite qualquer célula direto na tabela.</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>A IA opera a fábrica; você rege a orquestra. Clique numa linha para abrir e editar tudo.</p>
         </div>
         <select value={planoSel} onChange={e => setPlanoSel(e.target.value)}
           style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}>
@@ -370,7 +364,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         </div>
       )}
 
-      {/* Tabela viva */}
+      {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
       {!planoSel ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
           <p style={{ margin: 0 }}>Selecione ou crie um plano para abrir o Studio do mês.</p>
@@ -383,108 +377,108 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           {podeEditar && <p style={{ margin: 0, fontSize: 13 }}>Clique em <strong>Gerar plano com IA</strong> para a IA propor o mês, ou <strong>+ Nova linha</strong> para começar do zero.</p>}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1150 }}>
-            <thead>
-              <tr style={{ background: '#fafafa', borderBottom: '1.5px solid #eee' }}>
-                {cabecalho.map(([t, w]) => (
-                  <th key={t} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: '0.03em', width: w, minWidth: w }}>{t}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pautas.map(p => {
-                const est = estadoStudio(p)
-                const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
-                const podeEnviar = ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
-                const semMidia = (p.imagens || []).length === 0
-                const aberto = abertos.has(p.id)
-                const padCel = aberto ? '8px 8px' : '12px 8px'
-                return (
-                  <tr key={p.id} onClick={() => toggleLinha(p.id)}
-                    style={{ borderBottom: '1px solid #f2f2f2', verticalAlign: 'top', cursor: 'pointer', background: aberto ? '#fcfcfd' : '#fff' }}>
-                    {/* Estado (clique na linha recolhe/expande) */}
-                    <td style={{ padding: '12px 12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}><path d="M9 18l6-6-6-6" /></svg>
-                        <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, color: est.cor, background: est.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{est.label}</span>
-                      </div>
-                      {p.editadoAposIA && <span title="Ajustada pela equipe após a geração da IA" style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: '#7c3aed', paddingLeft: 18 }}>editada</span>}
-                      {ajuste && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px', width: larguras.estado - 12 }}>Cliente: {String(ajuste).slice(0, 80)}</p>}
-                    </td>
-                    {/* Pauta / briefing */}
-                    <td style={{ padding: padCel }}>
-                      {aberto ? <CelulaEditavel valor={p.briefing} editavel={podeEditar} largura={larguras.pauta - 16} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} />
-                        : <Previa texto={p.briefing} largura={larguras.pauta - 16} />}
-                    </td>
-                    {/* Copy */}
-                    <td style={{ padding: padCel }}>
-                      {aberto ? <CelulaEditavel valor={p.legenda} editavel={podeEditar} largura={larguras.copy - 16} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} />
-                        : <Previa texto={p.legenda} largura={larguras.copy - 16} />}
-                    </td>
-                    {/* Direção de criativo */}
-                    <td style={{ padding: padCel }}>
-                      {aberto ? <CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} largura={larguras.criativo - 16} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} />
-                        : <Previa texto={p.sugestaoImagem} largura={larguras.criativo - 16} />}
-                      {(() => {
-                        const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
-                        return capa ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                            <img src={capa} alt="" style={{ width: 40, height: 50, borderRadius: 6, objectFit: 'cover', border: '1px solid #eee' }} />
-                            {p.criativoGerado && <span title="Gerado pelo Studio" style={{ fontSize: 9, fontWeight: 800, color: '#7c3aed' }}>IA</span>}
-                          </div>
-                        ) : (p.imagens || []).length > 0 ? <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: '#16a34a' }}>✓ {p.imagens!.length} mídia(s)</span> : null
-                      })()}
-                    </td>
-                    {/* Formato */}
-                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', overflow: 'hidden' }}>
+          {/* Cabeçalho */}
+          <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '9px 14px', background: '#fafafa', borderBottom: '1.5px solid #eee' }}>
+            {cabecalho.map((t, i) => <span key={t} style={{ fontSize: 10.5, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: i === 4 ? 'right' : 'left' }}>{t}</span>)}
+          </div>
+          {/* Linhas — a lista rola por dentro; a página não */}
+          <div style={{ maxHeight: 'calc(100vh - 330px)', overflowY: 'auto' }}>
+            {pautas.map(p => {
+              const est = estadoStudio(p)
+              const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
+              const podeEnviar = ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
+              const semMidia = (p.imagens || []).length === 0
+              const aberto = abertos.has(p.id)
+              const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
+              const podeGerar = podeEditar && ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
+              return (
+                <div key={p.id} style={{ borderBottom: '1px solid #f2f2f2', background: aberto ? '#fcfcfd' : '#fff' }}>
+                  {/* Linha recolhida */}
+                  <div onClick={() => toggleLinha(p.id)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '10px 14px', alignItems: 'center', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}><path d="M9 18l6-6-6-6" /></svg>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: est.cor, background: est.bg, borderRadius: 999, padding: '3px 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{est.label}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      {capa && <img src={capa} alt="" style={{ width: 30, height: 38, borderRadius: 5, objectFit: 'cover', border: '1px solid #eee', flexShrink: 0 }} />}
+                      <span style={{ fontSize: 12.5, color: p.briefing ? '#222' : '#bbb', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.briefing || 'Sem título — clique para editar'}</span>
+                      {p.editadoAposIA && <span title="Ajustada pela equipe após a IA" style={{ fontSize: 8.5, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>editada</span>}
+                    </div>
+                    <div onClick={e => e.stopPropagation()}>
                       {podeEditar ? (
                         <select value={p.formato || 'feed'} onChange={e => salvarCampo(p.id, 'formato', e.target.value)}
-                          style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: (FORMATOS.find(f => f.key === (p.formato || 'feed'))?.cor) || '#333', fontWeight: 700 }}>
+                          style={{ width: '100%', padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: (FORMATOS.find(f => f.key === (p.formato || 'feed'))?.cor) || '#333', fontWeight: 700 }}>
                           {FORMATOS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
                         </select>
                       ) : <span style={{ fontSize: 12, fontWeight: 700 }}>{FORMATOS.find(f => f.key === (p.formato || 'feed'))?.label}</span>}
-                    </td>
-                    {/* Data */}
-                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
+                    </div>
+                    <div onClick={e => e.stopPropagation()}>
                       {podeEditar ? (
                         <input type="datetime-local" value={toLocalInput(p.dataAgendada)} onChange={e => salvarData(p.id, e.target.value)}
-                          style={{ padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 11.5, fontFamily: 'inherit', color: '#333', width: larguras.data - 20 }} />
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 11, fontFamily: 'inherit', color: '#333' }} />
                       ) : <span style={{ fontSize: 11.5, color: '#666' }}>{p.dataAgendada ? new Date(p.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</span>}
-                    </td>
-                    {/* Ações */}
-                    <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: larguras.acoes - 24 }}>
-                        {podeEditar && ['rascunho', 'corrigir', 'reprovado'].includes(p.status) && (
-                          <button onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id}
-                            title="A IA dirige a arte e gera a imagem com a identidade da marca"
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 8px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                            {gerandoCriativo === p.id ? 'Gerando...' : ((p.imagens || []).length > 0 ? 'Regerar criativo' : 'Gerar criativo')}
-                          </button>
-                        )}
-                        {podeEditar && semMidia && onAbrirComposer && (
-                          <button onClick={() => onAbrirComposer(p)} style={{ padding: '6px 8px', background: '#fff', color: '#555', border: '1px solid #e5e7eb', borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>Subir manual</button>
-                        )}
-                        {podeEditar && podeEnviar && (
-                          <button onClick={() => enviarAoCliente(p)} style={{ padding: '6px 8px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>Enviar ao cliente</button>
-                        )}
-                        {p.status === 'aguardando_aprovacao' && (
-                          <button onClick={() => copiarLink(p.clienteId)} style={{ padding: '6px 8px', background: '#fff', color: '#111', border: '1px solid #ddd', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Copiar link</button>
-                        )}
-                        {podeEditar && onAbrirComposer && !semMidia && (
-                          <button onClick={() => onAbrirComposer(p)} style={{ padding: '6px 8px', background: '#fff', color: '#555', border: '1px solid #e5e7eb', borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>Abrir no editor</button>
-                        )}
-                        {podeExcluir && (
-                          <button onClick={() => excluir(p)} style={{ padding: '5px 8px', background: 'transparent', color: '#b91c1c', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 10.5, cursor: 'pointer', textAlign: 'left' }}>Excluir</button>
-                        )}
+                    </div>
+                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {podeGerar && (
+                        <button onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 10.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                          {gerandoCriativo === p.id ? '...' : (capa ? 'Regerar' : 'Criativo')}
+                        </button>
+                      )}
+                      {podeEnviar && !semMidia && podeEditar && (
+                        <button onClick={() => enviarAoCliente(p)} style={{ padding: '6px 8px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
+                      )}
+                      {p.status === 'aguardando_aprovacao' && (
+                        <button onClick={() => copiarLink(p.clienteId)} style={{ padding: '6px 8px', background: '#fff', color: '#111', border: '1px solid #ddd', borderRadius: 8, fontWeight: 700, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Link</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Painel expandido — largura total */}
+                  {aberto && (
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '2px 14px 16px 40px' }}>
+                      <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
+                        <div><CampoLabel>Copy (legenda)</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
+                        <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      <div style={{ flex: '0 0 190px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div>
+                          <CampoLabel>Criativo</CampoLabel>
+                          {capa ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <img src={capa} alt="" style={{ width: 150, height: 188, borderRadius: 10, objectFit: 'cover', border: '1px solid #eee' }} />
+                              {p.criativoGerado && <span style={{ fontSize: 10, fontWeight: 800, color: '#7c3aed' }}>Gerado pela IA</span>}
+                            </div>
+                          ) : <div style={{ width: 150, height: 188, borderRadius: 10, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8 }}>Sem criativo ainda</div>}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 150 }}>
+                          {podeGerar && (
+                            <button onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 8px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                              {gerandoCriativo === p.id ? 'Gerando...' : (capa ? 'Regerar criativo' : 'Gerar criativo com IA')}
+                            </button>
+                          )}
+                          {podeEditar && onAbrirComposer && (
+                            <button onClick={() => onAbrirComposer(p)} style={{ padding: '7px 8px', background: '#fff', color: '#555', border: '1px solid #e5e7eb', borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
+                          )}
+                          {podeEditar && podeEnviar && (
+                            <button onClick={() => enviarAoCliente(p)} style={{ padding: '7px 8px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>Enviar ao cliente</button>
+                          )}
+                          {podeExcluir && (
+                            <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#b91c1c', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>
+                          )}
+                        </div>
+                        {ajuste && <p style={{ margin: 0, fontSize: 11, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px', width: 150, boxSizing: 'border-box' }}><strong>Cliente pediu:</strong> {String(ajuste)}</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
