@@ -45,10 +45,16 @@ export async function POST(req: NextRequest) {
     pb?.naoFazer ? `Nunca fazer: ${pb.naoFazer}` : '',
   ].filter(Boolean).join('\n')
 
+  // Referências visuais da marca — enviadas como imagens para a IA casar o estilo.
+  const refs = (cliente.referenciasVisuais || []).filter(Boolean).slice(0, 3)
+  const refNote = refs.length
+    ? `\n\nVocê também RECEBE ${refs.length} imagem(ns) de referência da marca (posts/artes que funcionam). Observe paleta, composição, tom e estilo e mantenha coerência com elas na sua direção.`
+    : ''
+
   const prompt = `Você é diretor de arte de uma agência. Vou te dar uma pauta e o DNA da marca. Devolva o CONTEÚDO de UM criativo de feed (imagem única) — texto curto e impactante, pronto para a arte.
 
 DNA DA MARCA:
-${dna}
+${dna}${refNote}
 
 PAUTA:
 Briefing: ${post.briefing || post.legenda || ''}
@@ -70,10 +76,12 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   let dados: any
   try {
     const client = new Anthropic({ apiKey: KEY })
+    const conteudo: any[] = refs.map(url => ({ type: 'image', source: { type: 'url', url } }))
+    conteudo.push({ type: 'text', text: prompt })
     const msg = await client.messages.create({
       model: 'claude-opus-4-8', max_tokens: 1200,
       thinking: { type: 'adaptive' }, output_config: { effort: 'low' } as any,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: refs.length ? conteudo : prompt }],
     } as any)
     await registrarGasto(custoEstimado(msg.usage)).catch(() => {})
     const texto = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')

@@ -34,6 +34,7 @@ const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: ()
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
 const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
+const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuais'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
 
@@ -2559,6 +2560,13 @@ function Dashboard() {
                   {verComoClienteId && <PlaybookBotao clienteId={verComoClienteId} clienteNome={(clientes.find((c: any) => c.id === verComoClienteId) as any)?.nome} />}
                 </div>
               </div>
+
+              {/* Referências visuais — alimentam a direção de arte da IA no Studio */}
+              {verComoClienteId && (
+                <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
+                  <ReferenciasVisuais clienteId={verComoClienteId} />
+                </div>
+              )}
 
               {/* Documento de marca gerado por IA */}
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
