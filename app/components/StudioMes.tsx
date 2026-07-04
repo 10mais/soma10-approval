@@ -286,10 +286,6 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const editadas = geradas.filter(p => p.editadoAposIA)
   const taxa = geradas.length ? Math.round((editadas.length / geradas.length) * 100) : null
 
-  // Grid fluido — cabe em qualquer largura, sem scroll lateral. Pauta usa 1fr.
-  const COLS = '128px minmax(0, 1fr) 116px 152px 150px'
-  const cabecalho = ['Estado', 'Pauta', 'Formato', 'Data', 'Ações']
-
   return (
     <div className="st-root">
       <style>{`
@@ -404,12 +400,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         </div>
       ) : (
         <div className="st-card" style={{ overflow: 'hidden' }}>
-          {/* Cabeçalho */}
-          <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '11px 16px', background: '#fbfbfc', borderBottom: '1px solid #f0f0f0' }}>
-            {cabecalho.map((t, i) => <span key={t} style={{ fontSize: 10, fontWeight: 800, color: '#a8a8a8', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 4 ? 'right' : 'left' }}>{t}</span>)}
-          </div>
-          {/* Linhas — a lista rola por dentro; a página não */}
-          <div style={{ maxHeight: 'calc(100vh - 330px)', overflowY: 'auto' }}>
+          <div style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
             {pautas.map((p, idx) => {
               const est = estadoStudio(p)
               const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
@@ -418,59 +409,82 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               const aberto = abertos.has(p.id)
               const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
               const podeGerar = podeEditar && ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
+              const fmt = FORMATOS.find(f => f.key === (p.formato || 'feed')) || FORMATOS[0]
+              const dataFmt = p.dataAgendada ? `${new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'sem data'
               return (
                 <div key={p.id} className="st-row" style={{ borderBottom: '1px solid #f4f4f5', background: aberto ? '#fbfbfd' : undefined, animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
-                  {/* Linha recolhida */}
-                  <div onClick={() => toggleLinha(p.id)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '11px 16px', alignItems: 'center', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                      <svg className="st-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c4c4c4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none' }}><path d="M9 18l6-6-6-6" /></svg>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: est.cor, background: est.bg, borderRadius: 999, padding: '3px 9px 3px 8px', whiteSpace: 'nowrap' }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: est.cor, flexShrink: 0 }} />{est.label}
-                      </span>
+                  {/* Item recolhido — lista limpa, sem controles nativos */}
+                  <div onClick={() => toggleLinha(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', cursor: 'pointer' }}>
+                    <svg className="st-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbcbce" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none' }}><path d="M9 18l6-6-6-6" /></svg>
+                    {capa ? (
+                      <img src={capa} alt="" style={{ width: 46, height: 58, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: '0 5px 14px -7px rgba(0,0,0,.45)' }} />
+                    ) : (
+                      <div style={{ width: 46, height: 58, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,#f4f4f5,#ececed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfcfd3' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M3 15l5-4 4 3 4-4 5 4" /><circle cx="9" cy="8.5" r="1.4" /></svg>
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: p.briefing ? '#1a1a1a' : '#bbb', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.briefing || 'Sem título — clique para editar'}</span>
+                        {p.editadoAposIA && <span title="Ajustada pela equipe após a IA" style={{ fontSize: 9, fontWeight: 700, color: '#7c3aed', flexShrink: 0 }}>editada</span>}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 5 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: est.cor, whiteSpace: 'nowrap' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: est.cor }} />{est.label}
+                        </span>
+                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: '#9a9a9a', whiteSpace: 'nowrap' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: 2, background: fmt.cor }} />{fmt.label}
+                        </span>
+                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
+                        <span style={{ fontSize: 11.5, color: '#9a9a9a', whiteSpace: 'nowrap' }}>{dataFmt}</span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      {capa && <img src={capa} alt="" style={{ width: 30, height: 38, borderRadius: 5, objectFit: 'cover', border: '1px solid #eee', flexShrink: 0 }} />}
-                      <span style={{ fontSize: 12.5, color: p.briefing ? '#222' : '#bbb', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.briefing || 'Sem título — clique para editar'}</span>
-                      {p.editadoAposIA && <span title="Ajustada pela equipe após a IA" style={{ fontSize: 8.5, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>editada</span>}
-                    </div>
-                    <div onClick={e => e.stopPropagation()}>
-                      {podeEditar ? (
-                        <select value={p.formato || 'feed'} onChange={e => salvarCampo(p.id, 'formato', e.target.value)}
-                          style={{ width: '100%', padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: (FORMATOS.find(f => f.key === (p.formato || 'feed'))?.cor) || '#333', fontWeight: 700 }}>
-                          {FORMATOS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-                        </select>
-                      ) : <span style={{ fontSize: 12, fontWeight: 700 }}>{FORMATOS.find(f => f.key === (p.formato || 'feed'))?.label}</span>}
-                    </div>
-                    <div onClick={e => e.stopPropagation()}>
-                      {podeEditar ? (
-                        <input type="datetime-local" value={toLocalInput(p.dataAgendada)} onChange={e => salvarData(p.id, e.target.value)}
-                          style={{ width: '100%', boxSizing: 'border-box', padding: '5px 6px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 11, fontFamily: 'inherit', color: '#333' }} />
-                      ) : <span style={{ fontSize: 11.5, color: '#666' }}>{p.dataAgendada ? new Date(p.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</span>}
-                    </div>
-                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
                       {podeGerar && (
                         <button className="st-btn" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', background: 'linear-gradient(135deg, #2a2a2a, #111)', color: '#ffc00f', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 10.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                          {gerandoCriativo === p.id ? '...' : (capa ? 'Regerar' : 'Criativo')}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 13px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                          {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
                       )}
                       {podeEnviar && !semMidia && podeEditar && (
-                        <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '7px 12px', background: 'linear-gradient(135deg, #ffce3a, #ffb700)', color: '#1a1400', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
+                        <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: 'var(--marca, #ffc00f)', color: '#1a1400', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
-                        <button className="st-btn" onClick={() => copiarLink(p.clienteId)} style={{ padding: '7px 11px', background: '#fff', color: '#111', border: '1px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Link</button>
+                        <button className="st-btn" onClick={() => copiarLink(p.clienteId)} style={{ padding: '8px 13px', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar link</button>
                       )}
                     </div>
                   </div>
 
-                  {/* Painel expandido — largura total */}
+                  {/* Painel expandido — edição completa (formato/data viram controles bonitos) */}
                   {aberto && (
-                    <div className="st-detail" style={{ display: 'flex', gap: 22, flexWrap: 'wrap', padding: '4px 18px 20px 40px' }}>
-                      <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div className="st-detail" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', padding: '2px 20px 22px 45px' }}>
+                      <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
                         <div><CampoLabel>Copy (legenda)</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
                         <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
+                        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+                          <div>
+                            <CampoLabel>Formato</CampoLabel>
+                            <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3 }}>
+                              {FORMATOS.map(f => {
+                                const on = (p.formato || 'feed') === f.key
+                                return (
+                                  <button key={f.key} className="st-btn" disabled={!podeEditar} onClick={() => salvarCampo(p.id, 'formato', f.key)}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{f.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <CampoLabel>Data e hora</CampoLabel>
+                            <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
+                              style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
+                          </div>
+                        </div>
                       </div>
                       <div style={{ flex: '0 0 190px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div>
