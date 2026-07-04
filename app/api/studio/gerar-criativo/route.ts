@@ -6,7 +6,6 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { montarCriativo, carregarFontes, contraste, DadosCriativo, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 import { ImageResponse } from '@vercel/og'
-import { put } from '@vercel/blob'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
@@ -102,20 +101,13 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
     const baseUrl = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || new URL(req.url).origin).replace(/\/$/, '')
     const fonts = await carregarFontes(baseUrl)
     const imagem = new ImageResponse(montarCriativo(d), { width: LARGURA, height: ALTURA, fonts })
-    const buffer = Buffer.from(await imagem.arrayBuffer())
-    const { url } = await put(`criativos/${postId}-${Date.now()}.png`, buffer, { access: 'public', contentType: 'image/png' })
-
-    const atualizado: Post = {
-      ...post,
-      imagens: [url, ...(post.imagens || [])],
-      formato: post.formato || 'feed',
-      criativoGerado: true,
-      atualizadoEm: new Date().toISOString(),
-    }
-    await redis.set(`post:${postId}`, atualizado)
-    return NextResponse.json({ ok: true, url, template: d.template })
+    const base64 = Buffer.from(await imagem.arrayBuffer()).toString('base64')
+    // O store do Blob é privado (put público é barrado). Devolvemos a imagem e o
+    // cliente sobe pelo fluxo upload() — mesmo caminho da mídia manual, que gera
+    // URL pública que o Instagram consegue buscar.
+    return NextResponse.json({ ok: true, imagemBase64: base64, template: d.template })
   } catch (err: any) {
-    console.error('[gerar-criativo] render/upload erro:', err?.message)
+    console.error('[gerar-criativo] render erro:', err?.message)
     return NextResponse.json({ error: `Falha ao gerar a imagem: ${err?.message || 'desconhecido'}` }, { status: 500 })
   }
 }

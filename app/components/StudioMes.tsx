@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
@@ -235,17 +236,35 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     carregarPautas(planoSel)
   }
 
-  // Gera o criativo (imagem) via template de marca — IA dirige a arte, servidor rasteriza.
+  // Gera o criativo (imagem) via template de marca — IA dirige a arte, servidor
+  // rasteriza e devolve os bytes; o cliente sobe pelo fluxo upload() (URL pública).
   async function gerarCriativo(p: Pauta) {
     setGerandoCriativo(p.id)
-    const r = await fetch('/api/studio/gerar-criativo', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId: p.id }),
-    }).then(x => x.json()).catch(() => null)
-    setGerandoCriativo(null)
-    if (!r || r.error) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
-    toast(`Criativo gerado (${r.template})!`, 'sucesso')
-    carregarPautas(planoSel)
+    try {
+      const r = await fetch('/api/studio/gerar-criativo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id }),
+      }).then(x => x.json()).catch(() => null)
+      if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
+      // base64 -> File
+      const bin = atob(r.imagemBase64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const file = new File([bytes], `criativo-${p.id}.png`, { type: 'image/png' })
+      const blob = await upload(`criativos/${p.id}-${Date.now()}.png`, file, {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
+      })
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, formato: p.formato || 'feed' }),
+      })
+      toast(`Criativo gerado (${r.template})!`, 'sucesso')
+      carregarPautas(planoSel)
+    } catch (e: any) {
+      toast(`Falha ao gerar o criativo: ${e?.message || 'erro'}`, 'erro')
+    } finally {
+      setGerandoCriativo(null)
+    }
   }
 
   async function copiarLink(clienteId: string) {
