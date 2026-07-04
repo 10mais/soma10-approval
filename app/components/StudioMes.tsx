@@ -19,6 +19,7 @@ type Pauta = {
   criadoEm?: string; atualizadoEm?: string
   iaGerado?: { briefing?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; formato?: string; geradoEm: string }
   editadoAposIA?: boolean
+  criativoGerado?: boolean
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -117,6 +118,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [iaMsg, setIaMsg] = useState('')
   const [criandoLinha, setCriandoLinha] = useState(false)
   const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
+  const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
   function toggleLinha(id: string) {
     setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -230,6 +232,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
     if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
     toast(url ? `Enviado ao cliente! Link copiado — envie: ${url}` : 'Enviado ao cliente. Pegue o link em Configurações › Clientes.', 'sucesso')
+    carregarPautas(planoSel)
+  }
+
+  // Gera o criativo (imagem) via template de marca — IA dirige a arte, servidor rasteriza.
+  async function gerarCriativo(p: Pauta) {
+    setGerandoCriativo(p.id)
+    const r = await fetch('/api/studio/gerar-criativo', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId: p.id }),
+    }).then(x => x.json()).catch(() => null)
+    setGerandoCriativo(null)
+    if (!r || r.error) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
+    toast(`Criativo gerado (${r.template})!`, 'sucesso')
     carregarPautas(planoSel)
   }
 
@@ -392,7 +407,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <td style={{ padding: padCel }}>
                       {aberto ? <CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} largura={larguras.criativo - 16} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} />
                         : <Previa texto={p.sugestaoImagem} largura={larguras.criativo - 16} />}
-                      {(p.imagens || []).length > 0 && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: '#16a34a' }}>✓ {p.imagens!.length} mídia(s)</span>}
+                      {(() => {
+                        const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
+                        return capa ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                            <img src={capa} alt="" style={{ width: 40, height: 50, borderRadius: 6, objectFit: 'cover', border: '1px solid #eee' }} />
+                            {p.criativoGerado && <span title="Gerado pelo Studio" style={{ fontSize: 9, fontWeight: 800, color: '#7c3aed' }}>IA</span>}
+                          </div>
+                        ) : (p.imagens || []).length > 0 ? <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: '#16a34a' }}>✓ {p.imagens!.length} mídia(s)</span> : null
+                      })()}
                     </td>
                     {/* Formato */}
                     <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
@@ -413,8 +436,16 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     {/* Ações */}
                     <td onClick={e => e.stopPropagation()} style={{ padding: '12px 12px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: larguras.acoes - 24 }}>
+                        {podeEditar && ['rascunho', 'corrigir', 'reprovado'].includes(p.status) && (
+                          <button onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id}
+                            title="A IA dirige a arte e gera a imagem com a identidade da marca"
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 8px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                            {gerandoCriativo === p.id ? 'Gerando...' : ((p.imagens || []).length > 0 ? 'Regerar criativo' : 'Gerar criativo')}
+                          </button>
+                        )}
                         {podeEditar && semMidia && onAbrirComposer && (
-                          <button onClick={() => onAbrirComposer(p)} style={{ padding: '6px 8px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Adicionar criativo</button>
+                          <button onClick={() => onAbrirComposer(p)} style={{ padding: '6px 8px', background: '#fff', color: '#555', border: '1px solid #e5e7eb', borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>Subir manual</button>
                         )}
                         {podeEditar && podeEnviar && (
                           <button onClick={() => enviarAoCliente(p)} style={{ padding: '6px 8px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 11, cursor: 'pointer' }}>Enviar ao cliente</button>

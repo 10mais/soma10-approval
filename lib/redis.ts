@@ -165,6 +165,8 @@ export type Cliente = {
   playbook?: BrandPlaybook
   // Token do link público ÚNICO de aprovação (todos os materiais aguardando do cliente)
   aprovacaoToken?: string
+  // Referências visuais da marca (URLs no Blob) — alimentam os templates e a geração por IA (Studio)
+  referenciasVisuais?: string[]
 }
 
 // Playbook operacional da marca — camada de conhecimento IA-First. Diferente do Brand Board
@@ -448,6 +450,7 @@ export type Post = {
     geradoEm: string
   } // snapshot do que a IA gerou (para comparar com a edição humana)
   editadoAposIA?: boolean // humano alterou briefing/copy/criativo depois da geração
+  criativoGerado?: boolean // a imagem foi gerada pelo motor de criativos do Studio (template/IA)
 }
 
 // ===== CRM de vendas (SDR/Closer) =====
