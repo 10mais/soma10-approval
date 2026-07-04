@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { isViewAsClient } from '@/lib/modoCliente'
 import { confirmar } from '@/lib/toast'
+import ReferenciasVisuais from '../../../components/ReferenciasVisuais'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -171,6 +172,13 @@ export default function MarcaPage() {
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{cliente.documentoMarca}</pre>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Ativos da marca — logo, fotos, elementos, ícones, prints (alimentam a IA do Studio) */}
+      {ehEquipe && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+          <ReferenciasVisuais clienteId={clienteId as string} />
         </div>
       )}
     </div>
