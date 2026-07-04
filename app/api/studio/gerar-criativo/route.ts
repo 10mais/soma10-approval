@@ -45,10 +45,15 @@ export async function POST(req: NextRequest) {
     pb?.naoFazer ? `Nunca fazer: ${pb.naoFazer}` : '',
   ].filter(Boolean).join('\n')
 
-  // Referências visuais da marca — enviadas como imagens para a IA casar o estilo.
-  const refs = (cliente.referenciasVisuais || []).filter(Boolean).slice(0, 3)
+  // Ativos da marca — enviados como imagens para a IA ler logo/fonte/cor/estilo.
+  const ativos = Array.isArray(cliente.assetsMarca) ? cliente.assetsMarca : []
+  const ordem = ['logo', 'print', 'foto', 'elemento', 'icone', 'outro']
+  const escolhidos = [...ativos].sort((a, b) => ordem.indexOf(a.categoria) - ordem.indexOf(b.categoria)).slice(0, 4)
+  let refs = escolhidos.map(a => a.url).filter(Boolean)
+  if (refs.length === 0) refs = (cliente.referenciasVisuais || []).filter(Boolean).slice(0, 3)
+  const temLogo = escolhidos.some(a => a.categoria === 'logo')
   const refNote = refs.length
-    ? `\n\nVocê também RECEBE ${refs.length} imagem(ns) de referência da marca (posts/artes que funcionam). Observe paleta, composição, tom e estilo e mantenha coerência com elas na sua direção.`
+    ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS da marca${temLogo ? ' (inclui a logomarca)' : ''}. Observe logomarca, tipografia, paleta de cores, composição e estilo, e mantenha total coerência com eles na sua direção de arte.`
     : ''
 
   const prompt = `Você é diretor de arte de uma agência. Vou te dar uma pauta e o DNA da marca. Devolva o CONTEÚDO de UM criativo de feed (imagem única) — texto curto e impactante, pronto para a arte.

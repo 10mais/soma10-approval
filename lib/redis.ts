@@ -165,8 +165,10 @@ export type Cliente = {
   playbook?: BrandPlaybook
   // Token do link público ÚNICO de aprovação (todos os materiais aguardando do cliente)
   aprovacaoToken?: string
-  // Referências visuais da marca (URLs no Blob) — alimentam os templates e a geração por IA (Studio)
+  // Referências visuais da marca (URLs no Blob) — legado (string[]); use assetsMarca.
   referenciasVisuais?: string[]
+  // Ativos da marca por categoria (logo, fotos, elementos, ícones, prints) — Studio
+  assetsMarca?: AssetMarca[]
 }
 
 // Playbook operacional da marca — camada de conhecimento IA-First. Diferente do Brand Board
@@ -186,6 +188,17 @@ export type BrandPlaybook = {
   origemUltimaEdicao?: 'manual' | 'ia' // de onde veio a ultima versao
   atualizadoEm?: string
   atualizadoPor?: string
+}
+
+// Ativo visual da marca (logo, foto, elemento, ícone, print). Alimenta a direção
+// de arte da IA no Studio — ela "olha" essas imagens p/ reconhecer fonte/logo/cores.
+export type CategoriaAsset = 'logo' | 'foto' | 'elemento' | 'icone' | 'print' | 'outro'
+export type AssetMarca = {
+  id: string
+  url: string
+  categoria: CategoriaAsset
+  nome?: string
+  criadoEm?: string
 }
 
 // Permissoes do portal do cliente. Cada flag controla um acesso/acao.
