@@ -290,12 +290,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     <div className="st-root">
       <style>{`
         .st-root{--ease:cubic-bezier(.2,.8,.2,1)}
-        .st-btn{transition:transform .14s var(--ease),box-shadow .16s,filter .16s,opacity .16s;will-change:transform}
-        .st-btn:hover{transform:translateY(-1.5px)}
+        .st-btn{transition:transform .16s var(--ease),box-shadow .18s,filter .18s,background .18s,opacity .16s;will-change:transform}
+        .st-btn:hover{transform:translateY(-1px)}
         .st-btn:active{transform:translateY(0)}
-        .st-cta{box-shadow:0 8px 20px -10px rgba(0,0,0,.5)}
-        .st-cta:hover{filter:brightness(1.04);box-shadow:0 12px 26px -10px rgba(0,0,0,.55)}
-        .st-card{background:#fff;border:1px solid rgba(17,17,17,.06);border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.03),0 22px 48px -30px rgba(0,0,0,.28)}
+        .st-cta{box-shadow:0 1px 3px rgba(0,0,0,.1)}
+        .st-cta:hover{filter:brightness(1.03);box-shadow:0 4px 12px -4px rgba(0,0,0,.2)}
+        .st-card{background:#fff;border:1px solid rgba(17,17,17,.05);border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.025),0 18px 44px -32px rgba(0,0,0,.22)}
         .st-metric{transition:transform .18s var(--ease),box-shadow .18s}
         .st-metric:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(0,0,0,.28)}
         .st-row{animation:stFade .4s var(--ease) both;transition:background .16s ease}
@@ -322,12 +322,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           <option value="">Selecione um plano...</option>
           {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
         </select>
-        {podeEditar && <button className="st-btn" onClick={() => setNovoPlano(true)} style={{ padding: '10px 17px', background: '#fff', color: '#111', border: '1.5px solid #e6e6e6', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {podeEditar && <button className="st-btn" onClick={() => setNovoPlano(true)} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
-          <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 17px', background: 'linear-gradient(135deg, #ffce3a, #ffb700)', color: '#1a1400', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
-          <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 17px', background: 'linear-gradient(135deg, #2a2a2a, #111)', color: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+          <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
+          <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-            {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
+            {gerandoIA ? 'Gerando…' : 'Gerar plano com IA'}
           </button>
         </>}
       </div>
@@ -443,16 +443,16 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
                       {podeGerar && (
                         <button className="st-btn" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 13px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 13px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                           {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
                       )}
                       {podeEnviar && !semMidia && podeEditar && (
-                        <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: 'var(--marca, #ffc00f)', color: '#1a1400', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
+                        <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
-                        <button className="st-btn" onClick={() => copiarLink(p.clienteId)} style={{ padding: '8px 13px', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar link</button>
+                        <button className="st-btn" onClick={() => copiarLink(p.clienteId)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar link</button>
                       )}
                     </div>
                   </div>
@@ -498,19 +498,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, width: 160 }}>
                           {podeGerar && (
-                            <button className="st-btn st-cta" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', background: 'linear-gradient(135deg, #2a2a2a, #111)', color: '#ffc00f', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
+                            <button className="st-btn st-cta" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 8px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                              {gerandoCriativo === p.id ? 'Gerando...' : (capa ? 'Regerar criativo' : 'Gerar criativo com IA')}
+                              {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar criativo' : 'Gerar criativo com IA')}
                             </button>
                           )}
                           {podeEditar && podeEnviar && (
-                            <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '9px 8px', background: 'linear-gradient(135deg, #ffce3a, #ffb700)', color: '#1a1400', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 11.5, cursor: 'pointer' }}>Enviar ao cliente</button>
+                            <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 8px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                           )}
                           {podeEditar && onAbrirComposer && (
-                            <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '8px 8px', background: '#fff', color: '#555', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
+                            <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '9px 8px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
                           )}
                           {podeExcluir && (
-                            <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#b91c1c', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>
+                            <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>
                           )}
                         </div>
                         {ajuste && <p style={{ margin: 0, fontSize: 11, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '8px 10px', width: 160, boxSizing: 'border-box' }}><strong>Cliente pediu:</strong> {String(ajuste)}</p>}

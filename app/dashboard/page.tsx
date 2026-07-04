@@ -2425,6 +2425,13 @@ function Dashboard() {
               </div>
             )}
 
+            {/* Ativos da marca — SEMPRE visível (não fica escondido no modo editar) */}
+            {verComoClienteId && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+                <ReferenciasVisuais clienteId={verComoClienteId} />
+              </div>
+            )}
+
             {/* VISUALIZAÇÃO (somente leitura) */}
             {brandModo === 'ver' && (
               <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -2561,12 +2568,6 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* Referências visuais — alimentam a direção de arte da IA no Studio */}
-              {verComoClienteId && (
-                <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
-                  <ReferenciasVisuais clienteId={verComoClienteId} />
-                </div>
-              )}
 
               {/* Documento de marca gerado por IA */}
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
