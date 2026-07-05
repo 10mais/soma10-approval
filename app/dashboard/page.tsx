@@ -1809,34 +1809,42 @@ function Dashboard() {
           {!verComoClienteId && !ehVendas && (
             <>
               {([
-                { titulo: '', grupo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais'], ['home', 'Painel']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['carga', 'Carga da equipe']] },
-                { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
-                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
+                { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
-              <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Comunicação — acima de Estratégia */}
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
                 <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
               </nav>
+              {([
+                { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
+                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo)).map((grupo) => (
+                <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
+                </nav>
+              ))}
               {(role === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
                   {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
-                  {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
-                  {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
-                  {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                   {role === 'admin' && (<>
+                    <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
                     <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
                     <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
                     <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
                   </>)}
+                  {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
+                  {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
+                  {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
                 </>
               ) : (
                 <>
@@ -1847,7 +1855,20 @@ function Dashboard() {
                       <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                     </nav>
                   </>)}
+                  {role === 'admin' && (<>
+                    {/* Pessoas e Cultura (inclui Carga da equipe) */}
+                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
+                      <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                      <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
+                      <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
+                    </nav>
+                  </>)}
                   {(role === 'admin' || podeGrupo('clientes')) && (<>
+                    {/* Configurações — por último */}
+                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                     <button onClick={() => setConfigAberto(v => !v)} style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
                       background: 'none', border: 'none', cursor: 'pointer',
@@ -1862,16 +1883,6 @@ function Dashboard() {
                       {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                     </nav>
                     )}
-                  </>)}
-                  {role === 'admin' && (<>
-                    {/* Pessoas e Cultura */}
-                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
-                    <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
-                      <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
-                      <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
-                    </nav>
                   </>)}
                 </>
               ))}
