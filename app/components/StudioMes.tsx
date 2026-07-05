@@ -135,6 +135,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [criandoLinha, setCriandoLinha] = useState(false)
   const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
   const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
+  const [gerandoFoto, setGerandoFoto] = useState<string | null>(null) // Ideogram (foto realista)
+  const [ideogramOn, setIdeogramOn] = useState(false)
   const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
   // Modal "Gerar arte" — escolher imagem de referência
   const [gerarModal, setGerarModal] = useState<Pauta | null>(null)
@@ -315,11 +317,45 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   async function abrirGerarModal(p: Pauta) {
     setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
     setRefHeadline((p.textoImagem || p.briefing || '').trim())
+    // Descobre se a foto realista (Ideogram) está ligada — mostra/oculta o botão.
+    fetch('/api/studio/gerar-foto-ia').then(r => r.json()).then(d => setIdeogramOn(!!d?.configurado)).catch(() => setIdeogramOn(false))
     try {
       const c = await fetch(`/api/clientes?id=${p.clienteId}`).then(x => x.json())
       const assets = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
       setModalAssets(assets.filter((a: any) => a?.url).map((a: any) => ({ url: a.url, categoria: a.categoria || 'outro' })))
     } catch { /* segue sem ativos */ } finally { setModalCarregando(false) }
+  }
+
+  // Gera uma FOTO realista (Ideogram) a partir da pauta + marca; vira imagem do post
+  // e fica editável no editor visual (foto de fundo). Fluxo de upload igual ao criativo.
+  async function gerarFotoIA(p: Pauta) {
+    setGerarModal(null)
+    setGerandoFoto(p.id)
+    try {
+      const r = await fetch('/api/studio/gerar-foto-ia', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id }),
+      }).then(x => x.json()).catch(() => null)
+      if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar a foto.', 'erro'); return }
+      const bin = atob(r.imagemBase64); const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const file = new File([bytes], `foto-${p.id}.png`, { type: 'image/png' })
+      const blob = await upload(`criativos/${p.id}-foto-${Date.now()}.png`, file, {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
+      })
+      // A foto vira imagem do post E fundo de uma receita "livre" (editável no visual).
+      const criativoData = { template: 'livre', corFundo: '#141414', corAccent: '#ffc00f', fundoUrl: blob.url, camadas: [] }
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, criativoData, formato: p.formato || 'feed' }),
+      })
+      toast('Foto realista gerada! Ajuste textos no editor visual se quiser.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch (e: any) {
+      toast(`Falha ao gerar a foto: ${e?.message || 'erro'}`, 'erro')
+    } finally {
+      setGerandoFoto(null)
+    }
   }
 
   // Adiciona uma nova imagem de referência no modal (sobe no Blob + salva nos ativos).
@@ -637,13 +673,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       </div>
                     </div>
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-                      {podeGerar && (
-                        <button className="st-btn" onClick={() => abrirGerarModal(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'transparent', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                      {podeGerar && (() => { const ocupado = gerandoCriativo === p.id || gerandoFoto === p.id; return (
+                        <button className="st-btn" onClick={() => abrirGerarModal(p)} disabled={ocupado} title="A IA dirige a arte e gera a imagem da marca"
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'transparent', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: ocupado ? 'wait' : 'pointer', opacity: ocupado ? 0.7 : 1, whiteSpace: 'nowrap' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                          {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
+                          {gerandoFoto === p.id ? 'Gerando foto…' : gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
-                      )}
+                      ) })()}
                       {podeEnviar && !semMidia && podeEditar && podeEnviarCliente && (
                         <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
@@ -928,6 +964,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 </button>
                 <button onClick={() => setGerarModal(null)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               </div>
+              {ideogramOn && (
+                <button className="st-btn" onClick={() => gerarFotoIA(p)} disabled={modalEnviando}
+                  style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
+                  Foto realista (IA) — Ideogram
+                </button>
+              )}
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb', textAlign: 'center' }}>{ideogramOn ? 'Arte de marca (template) ou foto realista gerada por IA.' : 'Foto realista por IA disponível ao configurar o Ideogram.'}</p>
             </div>
           </div>
         )
