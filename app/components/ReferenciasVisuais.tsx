@@ -24,6 +24,7 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
   const [carregando, setCarregando] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [prog, setProg] = useState<number | null>(null)
+  const [envLabel, setEnvLabel] = useState('')
   const [arrasta, setArrasta] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -50,26 +51,29 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
   }
 
   async function enviarArquivos(files: FileList) {
+    const imgs = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (imgs.length === 0) return
+    const lote = imgs.slice(0, 20) // até 20 por vez
+    if (imgs.length > 20) toast('Máximo de 20 por vez — enviando os primeiros 20.', 'info')
     setEnviando(true)
     const novos = [...assets]
     try {
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i]
-        if (!f.type.startsWith('image/')) continue
-        setProg(0)
+      for (let i = 0; i < lote.length; i++) {
+        const f = lote[i]
+        setEnvLabel(`Enviando ${i + 1} de ${lote.length}…`); setProg(0)
         const ext = f.name.split('.').pop() || 'jpg'
         const blob = await upload(`ativos/${clienteId}/${uuid()}.${ext}`, f, {
           access: 'public', handleUploadUrl: '/api/upload', contentType: f.type, clientPayload: f.type,
           onUploadProgress: ({ percentage }) => setProg(percentage),
         })
         novos.push({ id: uuid(), url: blob.url, categoria: alvo, nome: f.name, criadoEm: new Date().toISOString() })
+        await salvar(novos) // salva incremental — se um falhar, o que já subiu fica
       }
-      await salvar(novos)
-      toast('Ativos adicionados!', 'sucesso')
+      toast(`${lote.length} ativo(s) adicionado(s)!`, 'sucesso')
     } catch (e: any) {
       toast(`Falha no upload: ${e?.message || 'erro'}`, 'erro')
     } finally {
-      setEnviando(false); setProg(null)
+      setEnviando(false); setProg(null); setEnvLabel('')
     }
   }
 
@@ -133,7 +137,7 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: '#333' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-            {enviando ? 'Enviando...' : 'Arraste imagens ou clique para enviar'}
+            {enviando ? (envLabel || 'Enviando…') : 'Arraste imagens ou clique para enviar (até 20 por vez)'}
           </span>
           <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
             em

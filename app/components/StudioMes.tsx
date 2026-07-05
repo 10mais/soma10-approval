@@ -229,10 +229,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       const ok = await confirmar('Esta pauta ainda não tem criativo (imagem/vídeo). O cliente verá só a legenda. Enviar assim mesmo?', { titulo: 'Sem criativo', okLabel: 'Enviar mesmo assim' })
       if (!ok) return
     }
-    setPautas(ps => ps.map(x => x.id === p.id ? { ...x, status: 'aguardando_aprovacao' } : x))
+    // etapa 'aprovacao_criativo' faz o post aparecer na tela Aprovações do portal
+    // do cliente (que filtra por etapa); status 'aguardando_aprovacao' mantém o
+    // link público funcionando. O PUT seta aguardandoDesde ao entrar na etapa.
+    setPautas(ps => ps.map(x => x.id === p.id ? { ...x, status: 'aguardando_aprovacao', etapa: 'aprovacao_criativo' } : x))
     await fetch('/api/posts', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: p.id, status: 'aguardando_aprovacao' }),
+      body: JSON.stringify({ id: p.id, status: 'aguardando_aprovacao', etapa: 'aprovacao_criativo' }),
     }).catch(() => {})
     const tk = await fetch('/api/aprovacao-link', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
