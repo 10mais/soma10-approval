@@ -452,7 +452,7 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Chaves Redis:** `cliente:{id}:posts` (índice), `config:permissoesGranular`, `nps`/`nps:{id}`/`cliente:{id}:nps`, `npstoken:{token}`, `push_janela:{email}`. Campos: `Post.iaGerado`/`editadoAposIA`/`criativoGerado`/`criativoData`; `Cliente.assetsMarca`/`referenciasVisuais`/`aprovacaoToken`/`npsToken`; `Usuario.permissoesGranular`. Deps novas: **`@vercel/og`**.
 
 ### 19.11 PRÓXIMOS PASSOS (Fase 2 — abrir sessão nova por aqui)
-1. **Permissões Fase 2:** override por usuário (JWT em `lib/auth.ts` + UI no cadastro) + `bloqueiaAcao` nas rotas de publicar/aprovar/excluir.
+1. ~~**Permissões Fase 2**~~ — **FEITO (sessão 2026-07-05, commit a seguir).** Override por USUÁRIO viaja no JWT (`lib/auth.ts`: authorize→jwt→session propaga `permissoesGranular`); UI `renderGranular` no cadastro/edição de colaborador (matriz ✓/— de Ações + Telas, começa no padrão do papel); persistência em `/api/usuarios` POST/PUT. `bloqueiaAcao(role, acao, permUser)` com o override nas rotas: **publicar** (`app/api/publicar`), **aprovar** (`app/api/esteira/aprovar`, no-op pro cliente), **excluir** (posts DELETE + tarefas DELETE); `gerar-plano`/`gerar-criativo` passaram a repassar o override no `gerar_ia`. **Ressalva:** override por usuário só vale após relogar (vem do JWT). `decision` intocada (só cliente/código/token).
 2. **Studio Track 2:** foto realista por IA via **Ideogram** (key/conta do dono).
 3. **Editor de arte Nível 2:** editor visual (arrastar/posicionar elementos, camadas).
 4. **Painel (home):** conteúdo — andamento do Playbook + ações da semana + atalhos pras abas (só o menu foi movido pro topo; o conteúdo do `DashboardHome` falta).

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
 import { notificarDono } from '@/lib/notificacoes'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
   // Equipe (gerente/usuario) precisa de 'editar' em produção; cliente segue as regras próprias abaixo.
   if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
+  // Ação granular "aprovar": só afeta gerente/usuario; cliente/admin passam direto.
+  if (await bloqueiaAcao((session.user as any).role, 'aprovar', (session.user as any).permissoesGranular)) {
+    return NextResponse.json({ error: 'sem permissão para aprovar' }, { status: 403 })
   }
 
   const { postId, acao, comentario } = await req.json()

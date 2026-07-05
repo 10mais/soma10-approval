@@ -3,7 +3,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { ABAS_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
+import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -839,6 +839,51 @@ function Dashboard() {
   // Usado nos forms de criar/editar usuário (override do próprio usuário)
   const renderPermissoes = (r: string, perm: any, onChange: (p: any) => void) => matrizNiveis(r, perm, onChange, 'usuario', 'Permissões deste usuário')
 
+  // Override DETALHADO por usuário (por aba + por ação). Começa no padrão do papel
+  // (config:permissoesGranular) e o admin refina só o que quiser deste usuário.
+  function renderGranular(r: string, perm: any, onChange: (p: any) => void) {
+    if (r !== 'gerente' && r !== 'usuario') return null
+    const g: any = perm || {}
+    const setAba = (aba: string, valor: boolean) => onChange({ ...g, abas: { ...(g.abas || {}), [aba]: valor } })
+    const setAcao = (acao: string, valor: boolean) => onChange({ ...g, acoes: { ...(g.acoes || {}), [acao]: valor } })
+    const Cel = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
+      <button type="button" onClick={onClick}
+        style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#16a34a' : '#fff', color: on ? '#fff' : '#bbb', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
+    )
+    const cats = Array.from(new Set(ABAS_PERM.map(a => a.categoria)))
+    return (
+      <div style={{ width: '100%', marginTop: 8, background: '#fafafa', borderRadius: 10, padding: 12 }}>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões detalhadas (telas e ações)</label>
+        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ações</p>
+        {ACOES_PERM.map(a => {
+          const on = podeAcaoGranular(r, a.key, perm, permGranular)
+          return (
+            <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '5px 0' }}>
+              <span style={{ flex: 1, fontSize: 12.5, color: on ? '#333' : '#bbb' }}>{a.label}</span>
+              <Cel on={on} onClick={() => setAcao(a.key, !on)} />
+            </div>
+          )
+        })}
+        <p style={{ margin: '10px 0 6px', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Telas</p>
+        {cats.map(cat => (
+          <div key={cat} style={{ marginBottom: 6 }}>
+            <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#bbb' }}>{cat}</p>
+            {ABAS_PERM.filter(a => a.categoria === cat).map(a => {
+              const on = podeAbaGranular(r, a.key, perm, permGranular)
+              return (
+                <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
+                  <span style={{ flex: 1, fontSize: 12.5, color: on ? '#333' : '#bbb' }}>{a.label}</span>
+                  <Cel on={on} onClick={() => setAba(a.key, !on)} />
+                </div>
+              )
+            })}
+          </div>
+        ))}
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>Começa no padrão do papel; ajuste só o que for específico deste usuário.</p>
+      </div>
+    )
+  }
+
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
   const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
@@ -1475,7 +1520,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', permissoes: (u as any).permissoes, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', permissoes: (u as any).permissoes, permissoesGranular: (u as any).permissoesGranular, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1483,7 +1528,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', permissoes: (edicaoUsuario as any).permissoes ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -3754,6 +3799,7 @@ function Dashboard() {
                     }}>Adicionar</button>
                   </div>
                   {renderPermissoes(novoUsuario.role, (novoUsuario as any).permissoes, (p: any) => setNovoUsuario(u => ({ ...u, permissoes: p } as any)))}
+                  {renderGranular(novoUsuario.role, (novoUsuario as any).permissoesGranular, (p: any) => setNovoUsuario(u => ({ ...u, permissoesGranular: p } as any)))}
                   {erroUsuario && (
                     <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
                   )}
@@ -3853,6 +3899,7 @@ function Dashboard() {
                         </div>
                       </div>
                       {renderPermissoes(edicaoUsuario.role, (edicaoUsuario as any).permissoes, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoes: p } as any)))}
+                      {renderGranular(edicaoUsuario.role, (edicaoUsuario as any).permissoesGranular, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoesGranular: p } as any)))}
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                         <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
                         <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>

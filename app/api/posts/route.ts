@@ -5,6 +5,7 @@ import { redis, Post } from '@/lib/redis'
 import { getPostsDoCliente, indexarPost, desindexarPost } from '@/lib/postsIndex'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -173,6 +174,9 @@ export async function DELETE(req: NextRequest) {
   const role = (session.user as any).role
   if (await bloqueiaPapel(role, 'producao', 'excluir', (session.user as any).permissoes)) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+  }
+  if (await bloqueiaAcao(role, 'excluir', (session.user as any).permissoesGranular)) {
+    return NextResponse.json({ error: 'sem permissão para excluir' }, { status: 403 })
   }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })

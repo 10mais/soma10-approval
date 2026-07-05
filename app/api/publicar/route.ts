@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Post } from '@/lib/redis'
 import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
+import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaAcao(role, 'publicar', (session.user as any).permissoesGranular)) {
+    return NextResponse.json({ error: 'sem permissão para publicar' }, { status: 403 })
+  }
 
   const { id } = await req.json()
   const post = await redis.get<Post>(`post:${id}`)

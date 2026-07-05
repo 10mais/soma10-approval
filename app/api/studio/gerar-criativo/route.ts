@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (await bloqueiaPapel(role, 'producao', 'editar', (session!.user as any).permissoes)) {
     return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
   }
-  if (await bloqueiaAcao(role, 'gerar_ia')) return NextResponse.json({ error: 'sem permissão para gerar com IA' }, { status: 403 })
+  if (await bloqueiaAcao(role, 'gerar_ia', (session!.user as any).permissoesGranular)) return NextResponse.json({ error: 'sem permissão para gerar com IA' }, { status: 403 })
 
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()
   if (!KEY) return NextResponse.json({ error: 'IA não configurada (ANTHROPIC_API_KEY).' }, { status: 500 })
