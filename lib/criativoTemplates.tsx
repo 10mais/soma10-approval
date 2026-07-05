@@ -9,7 +9,7 @@ export const LARGURA = 1080
 export const ALTURA = 1350
 
 export type DadosCriativo = {
-  template: 'capa' | 'dica' | 'citacao' | 'dado'
+  template: 'capa' | 'dica' | 'citacao' | 'dado' | 'foto'
   headline?: string
   subheadline?: string
   bullets?: string[]
@@ -19,6 +19,7 @@ export type DadosCriativo = {
   corAccent: string
   logo?: string
   handle?: string
+  fundo?: string // URL de uma FOTO da marca usada como fundo (template "foto")
 }
 
 // Luminância relativa -> escolhe texto claro/escuro sobre a cor de fundo.
@@ -66,6 +67,30 @@ function Rodape({ d }: { d: DadosCriativo }) {
 
 // Monta o elemento do criativo conforme o template escolhido pela IA.
 export function montarCriativo(d: DadosCriativo): ReactElement {
+  // Template FOTO — usa uma foto da marca como fundo, com texto por cima e scrim.
+  if (d.template === 'foto' && d.fundo) {
+    return (
+      <div style={{ width: LARGURA, height: ALTURA, display: 'flex', position: 'relative', fontFamily: 'Poppins' }}>
+        <img src={d.fundo} width={LARGURA} height={ALTURA} style={{ position: 'absolute', top: 0, left: 0, width: LARGURA, height: ALTURA, objectFit: 'cover' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, width: LARGURA, height: ALTURA, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 88, background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.18) 48%, rgba(0,0,0,0.32) 100%)', color: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {d.logo ? <img src={d.logo} width={104} height={104} style={{ objectFit: 'contain' }} /> : <div style={{ display: 'flex', height: 8 }} />}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 80, fontWeight: 700, lineHeight: 1.06 }}>{d.headline || ''}</span>
+            {d.subheadline ? <span style={{ fontSize: 38, fontWeight: 400, opacity: 0.92, marginTop: 26 }}>{d.subheadline}</span> : null}
+            {(d.rodape || d.handle) ? (
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: 34 }}>
+                <div style={{ display: 'flex', width: 40, height: 6, borderRadius: 3, background: d.corAccent, marginRight: 18 }} />
+                <span style={{ fontSize: 30, fontWeight: 600 }}>{d.rodape || d.handle}</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const base: any = {
     width: LARGURA, height: ALTURA, display: 'flex', flexDirection: 'column',
     justifyContent: 'space-between', padding: 88, background: d.corFundo, color: d.corTexto,

@@ -106,7 +106,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   podeExcluir?: boolean
 }) {
   const [planos, setPlanos] = useState<Plano[]>([])
-  const [planoSel, setPlanoSel] = useState('')
+  // Seleção persistida (ao atualizar a página, permanece no mesmo lugar).
+  const chaveSel = clienteFixo ? `studio:sel:${clienteFixo}` : 'studio:sel'
+  const [clienteSel, setClienteSel] = useState<string>(() => {
+    if (clienteFixo) return clienteFixo
+    return typeof window !== 'undefined' ? (sessionStorage.getItem(`${chaveSel}:cli`) || '') : ''
+  })
+  const [planoSel, setPlanoSel] = useState<string>(() => (typeof window !== 'undefined' ? (sessionStorage.getItem(`${chaveSel}:plano`) || '') : ''))
   const [pautas, setPautas] = useState<Pauta[]>([])
   const [carregando, setCarregando] = useState(false)
   const [novoPlano, setNovoPlano] = useState(false)
@@ -116,6 +122,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [criandoLinha, setCriandoLinha] = useState(false)
   const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
   const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
+  const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
   function toggleLinha(id: string) {
     setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -125,10 +132,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     fetch(url).then(r => r.json()).then(d => {
       const lista = Array.isArray(d) ? d : []
       setPlanos(lista)
-      if (!planoSel && lista.length > 0) setPlanoSel(lista[0].id)
+      // NÃO seleciona ninguém por padrão na visão da agência (pergunta o cliente).
+      // No portal (cliente fixo), abre no plano mais recente se não houver seleção salva.
+      if (clienteFixo && !planoSel && lista.length > 0) setPlanoSel(lista[0].id)
     }).catch(() => {})
   }
   useEffect(() => { carregarPlanos() }, [clienteFixo])
+  // Persiste a seleção (cliente + plano) para sobreviver ao refresh.
+  useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem(`${chaveSel}:cli`, clienteSel) }, [clienteSel, chaveSel])
+  useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem(`${chaveSel}:plano`, planoSel) }, [planoSel, chaveSel])
 
   function carregarPautas(planoId: string) {
     if (!planoId) { setPautas([]); return }
@@ -286,6 +298,16 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const editadas = geradas.filter(p => p.editadoAposIA)
   const taxa = geradas.length ? Math.round((editadas.length / geradas.length) * 100) : null
 
+  // Seleção: cliente primeiro (agência), depois o mês/plano daquele cliente.
+  const clientesDosPlanos = Array.from(new Map(planos.map(p => [p.clienteId, p.clienteNome])).entries())
+    .map(([id, nome]) => ({ id, nome })).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'))
+  const planosDoCliente = clienteSel ? planos.filter(p => p.clienteId === clienteSel) : []
+  function escolherCliente(cid: string) {
+    setClienteSel(cid)
+    const ps = planos.filter(p => p.clienteId === cid)
+    setPlanoSel(ps[0]?.id || '') // planos vêm do mais recente ao mais antigo
+  }
+
   return (
     <div className="st-root">
       <style>{`
@@ -317,12 +339,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#999' }}>A IA opera a fábrica; você rege a orquestra. Clique numa linha para abrir e editar tudo.</p>
         </div>
-        <select className="st-input" value={planoSel} onChange={e => setPlanoSel(e.target.value)}
-          style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 220, background: '#fff', cursor: 'pointer' }}>
-          <option value="">Selecione um plano...</option>
-          {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
-        </select>
-        {podeEditar && <button className="st-btn" onClick={() => setNovoPlano(true)} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {!clienteFixo && (
+          <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
+            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 200, background: '#fff', cursor: 'pointer' }}>
+            <option value="">Escolher cliente…</option>
+            {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
+        {clienteSel && (
+          <select className="st-input" value={planoSel} onChange={e => setPlanoSel(e.target.value)}
+            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 160, background: '#fff', cursor: 'pointer' }}>
+            <option value="">Mês…</option>
+            {planosDoCliente.map(p => <option key={p.id} value={p.id}>{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
+          </select>
+        )}
+        {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
           <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
@@ -388,8 +419,27 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
       {!planoSel ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
-          <p style={{ margin: 0 }}>Selecione ou crie um plano para abrir o Studio do mês.</p>
+        <div className="st-card" style={{ textAlign: 'center', padding: '56px 24px' }}>
+          {(!clienteSel && !clienteFixo) ? (
+            <>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#fff4cf,#ffe79a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#a9781a"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.02em' }}>Com qual cliente vamos trabalhar hoje?</h3>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Escolha um cliente para abrir o Studio do mês.</p>
+              <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
+                style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, minWidth: 280, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <option value="">Escolher cliente…</option>
+                {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+              {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum plano ainda — clique em “+ Novo plano” para começar.</p>}
+            </>
+          ) : (
+            <>
+              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#111' }}>Escolha o mês</h3>
+              <p style={{ margin: 0, fontSize: 13, color: '#999' }}>Selecione um mês acima, ou clique em “+ Novo plano” para começar.</p>
+            </>
+          )}
         </div>
       ) : carregando ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>Carregando pautas...</div>
@@ -417,7 +467,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   <div onClick={() => toggleLinha(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', cursor: 'pointer' }}>
                     <svg className="st-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbcbce" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none' }}><path d="M9 18l6-6-6-6" /></svg>
                     {capa ? (
-                      <img src={capa} alt="" style={{ width: 46, height: 58, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: '0 5px 14px -7px rgba(0,0,0,.45)' }} />
+                      <img src={capa} alt="" onClick={e => { e.stopPropagation(); setPreview(p) }} title="Ver prévia" style={{ width: 46, height: 58, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: '0 5px 14px -7px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
                     ) : (
                       <div style={{ width: 46, height: 58, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,#f4f4f5,#ececed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfcfd3' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M3 15l5-4 4 3 4-4 5 4" /><circle cx="9" cy="8.5" r="1.4" /></svg>
@@ -443,8 +493,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
                       {podeGerar && (
                         <button className="st-btn" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 13px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'transparent', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                           {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
                       )}
@@ -491,18 +541,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <CampoLabel>Criativo</CampoLabel>
                           {capa ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                              <img className="st-preview" src={capa} alt="" style={{ width: 160, height: 200, borderRadius: 16, objectFit: 'cover', border: '1px solid rgba(17,17,17,.06)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.45)' }} />
-                              {p.criativoGerado && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c3aed' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed' }} />Gerado pela IA</span>}
+                              <img className="st-preview" src={capa} alt="" onClick={() => setPreview(p)} title="Ampliar (prévia de post)" style={{ width: 160, height: 200, borderRadius: 16, objectFit: 'cover', border: '1px solid rgba(17,17,17,.06)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
+                              {p.criativoGerado && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c3aed' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed' }} />Gerado pela IA · toque para ampliar</span>}
                             </div>
                           ) : <div style={{ width: 160, height: 200, borderRadius: 16, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8, background: '#fbfbfc' }}>Sem criativo ainda</div>}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, width: 160 }}>
-                          {podeGerar && (
-                            <button className="st-btn st-cta" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 8px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1 }}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                              {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar criativo' : 'Gerar criativo com IA')}
-                            </button>
-                          )}
                           {podeEditar && podeEnviar && (
                             <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 8px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                           )}
@@ -523,6 +567,31 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         </div>
       )}
+
+      {/* Lightbox — prévia de post (como no Planner): imagem ampliada + legenda */}
+      {preview && (() => {
+        const img = (preview.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (preview.imagens || [])[0]
+        const inicial = (preview.clienteNome || '?').trim().charAt(0).toUpperCase()
+        return (
+          <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'stFade .18s ease' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--marca, #ffc00f)', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{inicial}</div>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>{preview.clienteNome}</span>
+                <button onClick={() => setPreview(null)} aria-label="Fechar" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+              {img && <img src={img} alt="" style={{ width: '100%', display: 'block', maxHeight: '64vh', objectFit: 'contain', background: '#000' }} />}
+              {preview.legenda && (
+                <div style={{ padding: '12px 14px', overflowY: 'auto' }}>
+                  <p style={{ margin: 0, fontSize: 13, color: '#222', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}><strong>{preview.clienteNome}</strong> {preview.legenda}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

@@ -52,8 +52,12 @@ export async function POST(req: NextRequest) {
   let refs = escolhidos.map(a => a.url).filter(Boolean)
   if (refs.length === 0) refs = (cliente.referenciasVisuais || []).filter(Boolean).slice(0, 3)
   const temLogo = escolhidos.some(a => a.categoria === 'logo')
+  // Ativos usados DENTRO da arte: logo (com fallback) e uma foto de fundo.
+  const logoAsset = ativos.find(a => a.categoria === 'logo')?.url
+  const fotoFundo = ativos.find(a => ['foto', 'print', 'elemento'].includes(a.categoria))?.url
+  const logoFinal = (cliente.logo || logoAsset || '').trim()
   const refNote = refs.length
-    ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS da marca${temLogo ? ' (inclui a logomarca)' : ''}. Observe logomarca, tipografia, paleta de cores, composição e estilo, e mantenha total coerência com eles na sua direção de arte.`
+    ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS da marca${temLogo ? ' (inclui a logomarca)' : ''}. Observe logomarca, tipografia, paleta de cores, composição e estilo, e mantenha total coerência com eles na sua direção de arte.${fotoFundo ? ' HÁ FOTO(S) da marca disponíveis — prefira o template "foto" quando a pauta combinar com uma imagem real.' : ''}`
     : ''
 
   const prompt = `Você é diretor de arte de uma agência. Vou te dar uma pauta e o DNA da marca. Devolva o CONTEÚDO de UM criativo de feed (imagem única) — texto curto e impactante, pronto para a arte.
@@ -71,12 +75,13 @@ Escolha o TEMPLATE que melhor comunica a mensagem:
 - "dica": rótulo curto + título + 2 a 4 bullets objetivos
 - "citacao": uma frase de efeito + autoria/assinatura
 - "dado": um número/estatística de destaque + explicação curta
+- "foto": uma FOTO da marca como fundo com um título curto por cima${fotoFundo ? ' (há foto disponível — use quando combinar)' : ' (indisponível: não há foto da marca)'}
 ${template ? `\nUSE OBRIGATORIAMENTE o template "${template}".` : ''}
 
 Regras: texto para ARTE (não legenda) — curtíssimo. Headline com no máx. ~9 palavras. Bullets com no máx. ~8 palavras cada. Nada de hashtag. Respeite o tom e as restrições da marca.
 
 Responda APENAS com JSON válido (sem markdown, sem backticks):
-{"template":"capa|dica|citacao|dado","headline":"...","subheadline":"... ou vazio","bullets":["...","..."],"rodape":"assinatura curta ou vazio"}`
+{"template":"capa|dica|citacao|dado|foto","headline":"...","subheadline":"... ou vazio","bullets":["...","..."],"rodape":"assinatura curta ou vazio"}`
 
   let dados: any
   try {
@@ -99,15 +104,18 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
 
   const corFundo = (cliente.corPrimaria || '#141414').trim()
   const corAccent = (cliente.corSecundaria || '#ffc00f').trim()
+  const escolhido = ['capa', 'dica', 'citacao', 'dado', 'foto'].includes(dados.template) ? dados.template : 'capa'
+  const usarFoto = escolhido === 'foto' && !!fotoFundo
   const d: DadosCriativo = {
-    template: ['capa', 'dica', 'citacao', 'dado'].includes(dados.template) ? dados.template : 'capa',
+    template: usarFoto ? 'foto' : (escolhido === 'foto' ? 'capa' : escolhido),
     headline: (dados.headline || '').toString().slice(0, 140),
     subheadline: (dados.subheadline || '').toString().slice(0, 160),
     bullets: Array.isArray(dados.bullets) ? dados.bullets.slice(0, 4).map((b: any) => String(b).slice(0, 120)) : [],
     rodape: (dados.rodape || '').toString().slice(0, 60),
     corFundo, corTexto: contraste(corFundo), corAccent,
-    logo: cliente.logo,
+    logo: logoFinal || undefined,
     handle: cliente.instagram ? `@${cliente.instagram.replace(/^@/, '')}` : '',
+    fundo: usarFoto ? fotoFundo : undefined,
   }
 
   try {
