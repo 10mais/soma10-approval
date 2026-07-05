@@ -11,6 +11,21 @@ import Anthropic from '@anthropic-ai/sdk'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
+// Baixa uma imagem (Blob) no SERVIDOR e devolve base64/dataUri. Assim o og e a IA
+// usam a imagem mesmo que o fetch remoto do og não alcance o Blob (store privado).
+async function baixarImg(url?: string): Promise<{ base64: string; mime: string; dataUri: string } | null> {
+  if (!url) return null
+  try {
+    const r = await fetch(url)
+    if (!r.ok) return null
+    const buf = Buffer.from(await r.arrayBuffer())
+    let mime = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim()
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) mime = 'image/jpeg'
+    const base64 = buf.toString('base64')
+    return { base64, mime, dataUri: `data:${mime};base64,${base64}` }
+  } catch { return null }
+}
+
 // POST { postId, template? } — a IA dirige a arte, o template branded vira PNG (Blob)
 // e entra em post.imagens[]. Track 1 do Studio (design system, sem custo externo).
 export async function POST(req: NextRequest) {
@@ -86,12 +101,13 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   let dados: any
   try {
     const client = new Anthropic({ apiKey: KEY })
-    const conteudo: any[] = refs.map(url => ({ type: 'image', source: { type: 'url', url } }))
+    const imgs = (await Promise.all(refs.slice(0, 3).map(baixarImg))).filter(Boolean) as { base64: string; mime: string }[]
+    const conteudo: any[] = imgs.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.mime, data: im.base64 } }))
     conteudo.push({ type: 'text', text: prompt })
     const msg = await client.messages.create({
       model: 'claude-opus-4-8', max_tokens: 1200,
       thinking: { type: 'adaptive' }, output_config: { effort: 'low' } as any,
-      messages: [{ role: 'user', content: refs.length ? conteudo : prompt }],
+      messages: [{ role: 'user', content: imgs.length ? conteudo : prompt }],
     } as any)
     await registrarGasto(custoEstimado(msg.usage)).catch(() => {})
     const texto = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
@@ -105,7 +121,17 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   const corFundo = (cliente.corPrimaria || '#141414').trim()
   const corAccent = (cliente.corSecundaria || '#ffc00f').trim()
   const escolhido = ['capa', 'dica', 'citacao', 'dado', 'foto'].includes(dados.template) ? dados.template : 'capa'
-  const usarFoto = escolhido === 'foto' && !!fotoFundo
+  // Usa a foto da marca sempre que houver e o template comportar imagem de fundo
+  // (foto ou capa) — não deixa só na escolha da IA.
+  const querFoto = !!fotoFundo && (escolhido === 'foto' || escolhido === 'capa')
+  // Baixa logo e fundo no servidor (base64) para o og renderizar de fato.
+  const logoData = await baixarImg(logoFinal)
+  const fundoData = querFoto ? await baixarImg(fotoFundo) : null
+  const usarFoto = !!fundoData
+  console.log('[gerar-criativo]', JSON.stringify({
+    cliente: cliente.nome, ativos: ativos.length, cats: ativos.map(a => a.categoria),
+    templateIA: dados.template, escolhido, querFoto, usarFoto, logoOk: !!logoData, fotoFundoUrl: !!fotoFundo,
+  }))
   const d: DadosCriativo = {
     template: usarFoto ? 'foto' : (escolhido === 'foto' ? 'capa' : escolhido),
     headline: (dados.headline || '').toString().slice(0, 140),
@@ -113,9 +139,9 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
     bullets: Array.isArray(dados.bullets) ? dados.bullets.slice(0, 4).map((b: any) => String(b).slice(0, 120)) : [],
     rodape: (dados.rodape || '').toString().slice(0, 60),
     corFundo, corTexto: contraste(corFundo), corAccent,
-    logo: logoFinal || undefined,
+    logo: logoData?.dataUri,
     handle: cliente.instagram ? `@${cliente.instagram.replace(/^@/, '')}` : '',
-    fundo: usarFoto ? fotoFundo : undefined,
+    fundo: usarFoto ? fundoData!.dataUri : undefined,
   }
 
   try {
