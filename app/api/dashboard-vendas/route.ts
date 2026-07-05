@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Cliente, CrmNegocio, Post } from '@/lib/redis'
+import { redis, Cliente, CrmNegocio, Post, NpsResposta } from '@/lib/redis'
 
 export const runtime = 'nodejs'
 
@@ -82,5 +82,36 @@ export async function GET() {
 
   const retencao = { clientesAtivos: ativos.length, mrr, ltvMedio, renovacoes, churn }
 
-  return NextResponse.json({ conversao, retencao })
+  // ---- NPS ----
+  const npsIds = await redis.smembers('nps')
+  const respostas = npsIds.length ? (await redis.mget<(NpsResposta | null)[]>(...npsIds.map(i => `nps:${i}`))).filter(Boolean) as NpsResposta[] : []
+  const promotores = respostas.filter(r => r.score >= 9).length
+  const detratores = respostas.filter(r => r.score <= 6).length
+  const npsScore = respostas.length ? Math.round(((promotores - detratores) / respostas.length) * 100) : null
+  const npsPorCliente: Record<string, number> = {}
+  for (const r of [...respostas].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))) npsPorCliente[r.clienteId] = r.score
+  const nps = {
+    score: npsScore, total: respostas.length, promotores, detratores,
+    ultimos: [...respostas].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || '')).slice(0, 8)
+      .map(r => ({ clienteId: r.clienteId, nome: clientes.find(c => c.id === r.clienteId)?.nome || '', score: r.score, comentario: r.comentario || '', criadoEm: r.criadoEm })),
+  }
+
+  // ---- SAÚDE por cliente ----
+  const peso: Record<string, number> = { risco: 0, atencao: 1, saudavel: 2 }
+  const saude = ativos.map(c => {
+    const t = ultimaAtividade[c.id]
+    const diasInativo = t ? Math.floor((Date.now() - t) / 86400000) : (dias(c.contratoInicio) ?? 999)
+    const faltamRenov = ateData(c.contratoRenovacao)
+    const npsU = c.id in npsPorCliente ? npsPorCliente[c.id] : null
+    const motivos: string[] = []
+    let status: 'saudavel' | 'atencao' | 'risco' = 'saudavel'
+    if (diasInativo >= 30) { status = 'risco'; motivos.push(`${diasInativo}d sem conteúdo`) }
+    else if (diasInativo >= 21) { status = 'atencao'; motivos.push(`${diasInativo}d sem conteúdo`) }
+    if (npsU !== null && npsU <= 6) { status = 'risco'; motivos.push(`NPS baixo (${npsU})`) }
+    else if (npsU !== null && npsU <= 8 && status !== 'risco') { status = 'atencao'; motivos.push(`NPS ${npsU}`) }
+    if (faltamRenov !== null && faltamRenov >= 0 && faltamRenov <= 30 && status === 'saudavel') { status = 'atencao'; motivos.push(`renova em ${faltamRenov}d`) }
+    return { id: c.id, nome: c.nome, status, diasInativo, faltamRenov, nps: npsU, motivos }
+  }).sort((a, b) => peso[a.status] - peso[b.status])
+
+  return NextResponse.json({ conversao, retencao, saude, nps })
 }

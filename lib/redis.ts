@@ -171,6 +171,18 @@ export type Cliente = {
   referenciasVisuais?: string[]
   // Ativos da marca por categoria (logo, fotos, elementos, ícones, prints) — Studio
   assetsMarca?: AssetMarca[]
+  // Token do link público de NPS (pesquisa de satisfação)
+  npsToken?: string
+}
+
+// Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.
+export type NpsResposta = {
+  id: string
+  clienteId: string
+  score: number // 0-10
+  comentario?: string
+  periodo?: 'mensal' | 'trimestral'
+  criadoEm: string
 }
 
 // Playbook operacional da marca — camada de conhecimento IA-First. Diferente do Brand Board

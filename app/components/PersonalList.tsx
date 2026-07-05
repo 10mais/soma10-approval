@@ -146,7 +146,7 @@ export default function PersonalList() {
               <button onClick={() => setAbertoId(null)} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: 16, overflowY: 'auto' }}>
-              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} placeholder="Escreva aqui… use a barra para negrito, cor e links." minHeight={320} />
+              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} completo placeholder="Escreva aqui… use a barra para tópicos, listas numeradas, títulos, cor e links." minHeight={320} />
             </div>
           </div>
         </div>
