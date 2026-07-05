@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { NOTIF_TIPOS } from '@/lib/notificacoesCatalogo'
+import { NOTIF_TIPOS, NOTIF_OBRIGATORIOS } from '@/lib/notificacoesCatalogo'
 
 // modo 'admin' = liga/desliga tipos p/ TODO o sistema (config:notificacoes.desabilitados)
 // modo 'usuario' = cada um silencia os SEUS tipos + canal push (notif:prefs:{email})
@@ -13,8 +13,10 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
   useEffect(() => {
     fetch(url).then(r => r.json()).then(d => {
       if (d && !d.error) {
-        if (modo === 'admin') setOff(d.desabilitados || [])
-        else { setOff(d.mutados || []); setPushOff(!!d.pushDesligado) }
+        // Obrigatórios nunca ficam desligados (sempre recebe).
+        const semObrig = (l: string[]) => (l || []).filter(t => !NOTIF_OBRIGATORIOS.includes(t))
+        if (modo === 'admin') setOff(semObrig(d.desabilitados))
+        else { setOff(semObrig(d.mutados)); setPushOff(!!d.pushDesligado) }
       }
       setCarregado(true)
     }).catch(() => setCarregado(true))
@@ -25,14 +27,16 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
     await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {})
   }
   function toggleTipo(tipo: string) {
+    if (NOTIF_OBRIGATORIOS.includes(tipo)) return // obrigatória: não desliga
     const novo = off.includes(tipo) ? off.filter(t => t !== tipo) : [...off, tipo]
     setOff(novo); salvar(novo, pushOff)
   }
   function togglePush() { const n = !pushOff; setPushOff(n); salvar(off, n) }
 
   const categorias = Array.from(new Set(NOTIF_TIPOS.map(t => t.categoria)))
-  const Switch = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
-    <button onClick={onClick} aria-label={on ? 'Ligado' : 'Desligado'} style={{ flexShrink: 0, width: 40, height: 23, borderRadius: 999, border: 'none', cursor: 'pointer', background: on ? '#16a34a' : '#e0e0e0', position: 'relative', transition: 'background .2s' }}>
+  const Switch = ({ on, onClick, disabled }: { on: boolean; onClick?: () => void; disabled?: boolean }) => (
+    <button onClick={disabled ? undefined : onClick} aria-label={on ? 'Ligado' : 'Desligado'} disabled={disabled}
+      style={{ flexShrink: 0, width: 40, height: 23, borderRadius: 999, border: 'none', cursor: disabled ? 'default' : 'pointer', background: on ? '#16a34a' : '#e0e0e0', opacity: disabled ? 0.65 : 1, position: 'relative', transition: 'background .2s' }}>
       <span style={{ position: 'absolute', top: 3, left: on ? 20 : 3, width: 17, height: 17, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', transition: 'left .2s' }} />
     </button>
   )
@@ -44,7 +48,7 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: '#111' }}>Notificações push (celular/navegador)</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Você continua vendo tudo no Inbox; isto liga/desliga só o push.</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Você continua vendo tudo no Inbox; isto liga/desliga só o push. Se várias chegarem juntas, você é avisado <strong>uma vez só</strong>.</p>
           </div>
           <Switch on={!pushOff} onClick={togglePush} />
         </div>
@@ -54,11 +58,15 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
           <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {NOTIF_TIPOS.filter(t => t.categoria === cat).map(t => {
-              const on = !off.includes(t.tipo)
+              const obrig = NOTIF_OBRIGATORIOS.includes(t.tipo)
+              const on = obrig || !off.includes(t.tipo)
               return (
                 <div key={t.tipo} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
-                  <span style={{ flex: 1, fontSize: 13, color: on ? '#111' : '#aaa' }}>{t.label}</span>
-                  <Switch on={on} onClick={() => toggleTipo(t.tipo)} />
+                  <span style={{ flex: 1, fontSize: 13, color: on ? '#111' : '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {t.label}
+                    {obrig && <span title="Sempre ativa — não pode ser desligada" style={{ fontSize: 9.5, fontWeight: 800, color: '#6b7280', background: '#f1f1f3', borderRadius: 999, padding: '2px 7px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>obrigatória</span>}
+                  </span>
+                  <Switch on={on} disabled={obrig} onClick={() => toggleTipo(t.tipo)} />
                 </div>
               )
             })}

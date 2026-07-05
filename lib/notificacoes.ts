@@ -1,6 +1,11 @@
 import { redis, Notificacao, TipoNotificacao, Usuario } from './redis'
 import { v4 as uuid } from 'uuid'
 import { enviarPush } from './webpush'
+import { NOTIF_OBRIGATORIOS } from './notificacoesCatalogo'
+
+// Janela (segundos) do "avisar uma vez só": ao chegar várias juntas, só a
+// primeira dispara push; as demais entram no Inbox sem novo ping (anti-spam).
+const JANELA_PUSH = 60
 
 // Para onde o clique na notificação push deve levar, por tipo.
 function urlDaNotificacao(tipo: TipoNotificacao): string {
@@ -21,12 +26,14 @@ export async function getNotifPrefs(email: string): Promise<NotifPrefs> {
 
 // Cria uma notificação para um destinatário específico (e-mail de usuário)
 export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao, titulo: string, mensagem: string, postId?: string, tarefaId?: string) {
-  // Admin desligou este tipo globalmente? Não gera para ninguém.
+  // Obrigatória (atribuída a você / mensagem privada): fura mute e desligamento.
+  const obrigatoria = NOTIF_OBRIGATORIOS.includes(tipo)
+  // Admin desligou este tipo globalmente? Não gera para ninguém (exceto obrigatórias).
   const cfg = await getNotifConfig().catch(() => ({} as NotifConfig))
-  if (cfg.desabilitados?.includes(tipo)) return null
-  // Usuário silenciou este tipo? Não gera para ele.
+  if (!obrigatoria && cfg.desabilitados?.includes(tipo)) return null
+  // Usuário silenciou este tipo? Não gera para ele (exceto obrigatórias).
   const prefs = await getNotifPrefs(destinatarioEmail).catch(() => ({} as NotifPrefs))
-  if (prefs.mutados?.includes(tipo)) return null
+  if (!obrigatoria && prefs.mutados?.includes(tipo)) return null
 
   const notificacao: Notificacao = {
     id: uuid(),
@@ -41,9 +48,18 @@ export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao
   }
   await redis.set(`notificacao:${notificacao.id}`, notificacao)
   await redis.sadd(`notificacoes:${destinatarioEmail}`, notificacao.id)
-  // Push (best-effort): só se o usuário não desligou o canal push
-  if (!prefs.pushDesligado) {
-    enviarPush(destinatarioEmail, { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }).catch(() => {})
+
+  // Push (best-effort) com "avisar uma vez só":
+  // - obrigatória: sempre pinga e (re)abre a janela, segurando os próximos avisos;
+  // - demais: só pinga se o push estiver ligado E for a primeira da janela.
+  const push = { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }
+  const janelaKey = `push_janela:${destinatarioEmail}`
+  if (obrigatoria) {
+    await redis.set(janelaKey, '1', { ex: JANELA_PUSH }).catch(() => {})
+    enviarPush(destinatarioEmail, push).catch(() => {})
+  } else if (!prefs.pushDesligado) {
+    const primeira = await redis.set(janelaKey, '1', { nx: true, ex: JANELA_PUSH }).catch(() => null)
+    if (primeira) enviarPush(destinatarioEmail, push).catch(() => {})
   }
   return notificacao
 }
