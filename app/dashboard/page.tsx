@@ -397,7 +397,12 @@ function Dashboard() {
     }
     return 'home'
   })
-  const setAba = (a: typeof aba) => { setAbaRaw(a); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_aba', a) }
+  // Guarda a aba de onde o editor (novo-post) foi aberto, p/ o "Voltar" retornar lá.
+  const abaAntesComposer = useRef<typeof aba>('planner')
+  const setAba = (a: typeof aba) => {
+    if (a === 'novo-post' && aba !== 'novo-post') abaAntesComposer.current = aba
+    setAbaRaw(a); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_aba', a)
+  }
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
@@ -957,7 +962,7 @@ function Dashboard() {
     setEditandoPostId(null)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
-    setAba('planner')
+    setAba(abaAntesComposer.current) // volta pra onde o editor foi aberto (Studio/Esteira/Planner)
     const cliente = clientes.find(c => c.id === valor.clienteId)
     // Converte a data local (datetime-local) para ISO absoluto, evitando erro de fuso no servidor
     const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
@@ -1112,7 +1117,7 @@ function Dashboard() {
     setEditandoPostId(null)
     setComposerPrefill(null)
     setComposerKey(k => k + 1)
-    setAba('planner')
+    setAba(abaAntesComposer.current) // volta pra onde o editor foi aberto
     if (r?.post) setPosts(ps => ps.map(p => p && p.id === r.post.id ? r.post : p))
   }
 
@@ -2919,7 +2924,7 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba(verComoClienteId ? 'planner' : 'home') }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba(abaAntesComposer.current || (verComoClienteId ? 'planner' : 'home')) }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={14} /> Voltar
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
