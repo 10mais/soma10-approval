@@ -8,8 +8,16 @@ import type { ReactElement } from 'react'
 export const LARGURA = 1080
 export const ALTURA = 1350
 
+// Camada do editor visual (Nível 2 / template "livre"): elemento posicionado
+// livremente no canvas 1080x1350. `_data` é o dataUri resolvido no servidor
+// (não persiste na receita — a receita guarda só `url`).
+export type Camada =
+  | { id: string; tipo: 'texto'; x: number; y: number; w: number; texto: string; fontSize: number; cor: string; peso: number; align: 'left' | 'center' | 'right'; lineHeight?: number }
+  | { id: string; tipo: 'imagem'; x: number; y: number; w: number; h: number; url?: string; _data?: string; radius: number; fit: 'cover' | 'contain' }
+  | { id: string; tipo: 'forma'; x: number; y: number; w: number; h: number; cor: string; radius: number }
+
 export type DadosCriativo = {
-  template: 'capa' | 'dica' | 'citacao' | 'dado' | 'foto'
+  template: 'capa' | 'dica' | 'citacao' | 'dado' | 'foto' | 'livre'
   headline?: string
   subheadline?: string
   bullets?: string[]
@@ -19,7 +27,26 @@ export type DadosCriativo = {
   corAccent: string
   logo?: string
   handle?: string
-  fundo?: string // URL de uma FOTO da marca usada como fundo (template "foto")
+  fundo?: string // URL de uma FOTO da marca usada como fundo (template "foto"/"livre")
+  camadas?: Camada[] // template "livre" (editor visual)
+}
+
+// Renderiza uma camada absoluta do template "livre". Satori exige display:flex
+// em containers com filhos; imagens precisam de width/height numéricos.
+function renderCamada(c: Camada): ReactElement {
+  if (c.tipo === 'texto') {
+    return (
+      <div key={c.id} style={{ position: 'absolute', left: c.x, top: c.y, width: c.w, display: 'flex' }}>
+        <span style={{ width: '100%', fontSize: c.fontSize, color: c.cor, fontWeight: c.peso, textAlign: c.align, lineHeight: c.lineHeight || 1.15, whiteSpace: 'pre-wrap' }}>{c.texto}</span>
+      </div>
+    )
+  }
+  if (c.tipo === 'imagem') {
+    const src = c._data || c.url
+    if (!src) return <div key={c.id} style={{ display: 'flex' }} />
+    return <img key={c.id} src={src} width={c.w} height={c.h} style={{ position: 'absolute', left: c.x, top: c.y, width: c.w, height: c.h, objectFit: c.fit, borderRadius: c.radius }} />
+  }
+  return <div key={c.id} style={{ position: 'absolute', left: c.x, top: c.y, width: c.w, height: c.h, background: c.cor, borderRadius: c.radius, display: 'flex' }} />
 }
 
 // Luminância relativa -> escolhe texto claro/escuro sobre a cor de fundo.
@@ -67,6 +94,16 @@ function Rodape({ d }: { d: DadosCriativo }) {
 
 // Monta o elemento do criativo conforme o template escolhido pela IA.
 export function montarCriativo(d: DadosCriativo): ReactElement {
+  // Template LIVRE — editor visual: fundo (cor ou foto) + camadas posicionadas.
+  if (d.template === 'livre') {
+    return (
+      <div style={{ width: LARGURA, height: ALTURA, display: 'flex', position: 'relative', overflow: 'hidden', background: d.corFundo, fontFamily: 'Poppins' }}>
+        {d.fundo ? <img src={d.fundo} width={LARGURA} height={ALTURA} style={{ position: 'absolute', top: 0, left: 0, width: LARGURA, height: ALTURA, objectFit: 'cover' }} /> : null}
+        {(d.camadas || []).map(c => renderCamada(c))}
+      </div>
+    )
+  }
+
   // Template FOTO — usa uma foto da marca como fundo, com texto por cima e scrim.
   if (d.template === 'foto' && d.fundo) {
     return (

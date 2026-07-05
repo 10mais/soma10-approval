@@ -29,6 +29,22 @@ async function baixarImg(url?: string): Promise<{ base64: string; mime: string; 
 
 // Re-renderiza o criativo a partir da "receita" (spec com URLs) — usado pelo editor.
 async function renderSpec(spec: any, fonts: any): Promise<string> {
+  // Editor visual (Nível 2): template "livre" com camadas posicionadas.
+  if (spec?.template === 'livre') {
+    const fundoData = spec?.fundoUrl ? await baixarImg(spec.fundoUrl) : null
+    const camadasIn = Array.isArray(spec?.camadas) ? spec.camadas : []
+    const camadas = await Promise.all(camadasIn.map(async (c: any) => {
+      if (c?.tipo === 'imagem' && c.url) { const im = await baixarImg(c.url); return { ...c, _data: im?.dataUri } }
+      return c
+    }))
+    const corFundoL = (spec?.corFundo || '#141414')
+    const dl: DadosCriativo = {
+      template: 'livre', corFundo: corFundoL, corTexto: contraste(corFundoL), corAccent: (spec?.corAccent || '#ffc00f'),
+      fundo: fundoData?.dataUri, camadas,
+    }
+    const imgL = new ImageResponse(montarCriativo(dl), { width: LARGURA, height: ALTURA, fonts })
+    return Buffer.from(await imgL.arrayBuffer()).toString('base64')
+  }
   const logoData = spec?.logoUrl ? await baixarImg(spec.logoUrl) : null
   const usarFoto = spec?.template === 'foto' && !!spec?.fundoUrl
   const fundoData = usarFoto ? await baixarImg(spec.fundoUrl) : null

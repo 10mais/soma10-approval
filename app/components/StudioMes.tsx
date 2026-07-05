@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
+import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -24,7 +25,11 @@ type Pauta = {
   criativoData?: any // receita do criativo (para reabrir no editor)
 }
 
-type CriativoSpec = { template: string; headline?: string; subheadline?: string; bullets?: string[]; rodape?: string; corFundo?: string; corAccent?: string; fundoUrl?: string; logoUrl?: string; handle?: string }
+type Camada =
+  | { id: string; tipo: 'texto'; x: number; y: number; w: number; texto: string; fontSize: number; cor: string; peso: number; align: 'left' | 'center' | 'right'; lineHeight?: number }
+  | { id: string; tipo: 'imagem'; x: number; y: number; w: number; h: number; url?: string; radius: number; fit: 'cover' | 'contain' }
+  | { id: string; tipo: 'forma'; x: number; y: number; w: number; h: number; cor: string; radius: number }
+type CriativoSpec = { template: string; headline?: string; subheadline?: string; bullets?: string[]; rodape?: string; corFundo?: string; corAccent?: string; fundoUrl?: string; logoUrl?: string; handle?: string; camadas?: Camada[] }
 const TEMPLATES_ART: { key: string; label: string }[] = [
   { key: 'capa', label: 'Capa' }, { key: 'foto', label: 'Foto' }, { key: 'dica', label: 'Dica' }, { key: 'citacao', label: 'Citação' }, { key: 'dado', label: 'Dado' },
 ]
@@ -146,6 +151,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [editorImg, setEditorImg] = useState('')
   const [editorPrompt, setEditorPrompt] = useState('')
   const [editorAplicando, setEditorAplicando] = useState(false)
+  // Editor de arte Nível 2 (visual): camadas arrastáveis no canvas 1080x1350.
+  const [editorModo, setEditorModo] = useState<'simples' | 'visual'>('simples')
+  const [selCamada, setSelCamada] = useState<string | null>(null)
+  const dragRef = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
   function toggleLinha(id: string) {
     setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -339,6 +348,45 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     if (!p.criativoData) { toast('Gere a arte primeiro para poder editar.', 'info'); return }
     const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (p.imagens || [])[0] || ''
     setEditorPost(p); setEditorSpec({ ...p.criativoData }); setEditorImg(capa); setEditorPrompt('')
+    setEditorModo(p.criativoData?.template === 'livre' ? 'visual' : 'simples'); setSelCamada(null)
+    // Carrega os ativos da marca (para adicionar como camadas de imagem no visual).
+    setModalAssets([])
+    fetch(`/api/clientes?id=${p.clienteId}`).then(r => r.json()).then((c: any) => {
+      const assets = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
+      setModalAssets(assets.filter((a: any) => a?.url).map((a: any) => ({ url: a.url, categoria: a.categoria || 'outro' })))
+    }).catch(() => {})
+  }
+
+  // ===== Editor visual (Nível 2) — helpers de camada =====
+  const camadas = (editorSpec?.camadas || []) as Camada[]
+  function setCamadas(next: Camada[]) { setEditorSpec(sp => sp ? { ...sp, camadas: next } : sp) }
+  function updCamada(id: string, patch: any) { setCamadas(camadas.map(c => c.id === id ? { ...c, ...patch } as Camada : c)) }
+  function delCamada(id: string) { setCamadas(camadas.filter(c => c.id !== id)); if (selCamada === id) setSelCamada(null) }
+  function moveCamada(id: string, dir: -1 | 1) {
+    const i = camadas.findIndex(c => c.id === id); if (i < 0) return
+    const j = i + dir; if (j < 0 || j >= camadas.length) return
+    const n = [...camadas];[n[i], n[j]] = [n[j], n[i]]; setCamadas(n)
+  }
+  function addCamada(c: Camada) { setCamadas([...camadas, c]); setSelCamada(c.id) }
+  // Deriva camadas iniciais a partir da receita de template (dá um ponto de partida).
+  function seedCamadas(s: CriativoSpec): Camada[] {
+    const cor = s.fundoUrl ? '#ffffff' : contraste(s.corFundo || '#141414')
+    const out: Camada[] = []
+    if (s.logoUrl) out.push({ id: rid(), tipo: 'imagem', url: s.logoUrl, x: 88, y: 88, w: 150, h: 150, radius: 16, fit: 'contain' })
+    if (s.headline) out.push({ id: rid(), tipo: 'texto', texto: s.headline, x: 88, y: 560, w: 904, fontSize: 82, cor, peso: 700, align: 'left', lineHeight: 1.08 })
+    if (s.subheadline) out.push({ id: rid(), tipo: 'texto', texto: s.subheadline, x: 88, y: 812, w: 904, fontSize: 40, cor, peso: 400, align: 'left', lineHeight: 1.3 })
+    if (s.rodape) out.push({ id: rid(), tipo: 'texto', texto: s.rodape, x: 88, y: 1190, w: 904, fontSize: 30, cor, peso: 600, align: 'left' })
+    if (!out.length) out.push({ id: rid(), tipo: 'texto', texto: 'Texto', x: 120, y: 600, w: 840, fontSize: 82, cor, peso: 700, align: 'left', lineHeight: 1.08 })
+    return out
+  }
+  // Alterna para o modo visual, semeando camadas na primeira vez.
+  function entrarVisual() {
+    setEditorSpec(sp => {
+      if (!sp) return sp
+      if (sp.template === 'livre' && Array.isArray(sp.camadas) && sp.camadas.length) return sp
+      return { ...sp, template: 'livre', camadas: seedCamadas(sp) }
+    })
+    setEditorModo('visual'); setSelCamada(null)
   }
 
   // Aplica edição: re-renderiza (manual) ou refina (IA), sobe no Blob e salva no post.
@@ -675,11 +723,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const ghost: any = { padding: '5px 10px', background: '#f5f5f5', border: 'none', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
         return (
           <div onClick={() => !editorAplicando && setEditorPost(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Editar arte</h3>
+                <div style={{ display: 'inline-flex', gap: 3, background: '#f4f4f5', borderRadius: 999, padding: 3, marginLeft: 'auto' }}>
+                  {(['simples', 'visual'] as const).map(m => { const on = editorModo === m; return (
+                    <button key={m} onClick={() => m === 'visual' ? entrarVisual() : setEditorModo('simples')} style={{ padding: '5px 15px', borderRadius: 999, border: 'none', background: on ? '#1f1f22' : 'transparent', color: on ? '#fff' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer' }}>{m === 'simples' ? 'Simples' : 'Visual'}</button>
+                  ) })}
+                </div>
                 <button onClick={() => setEditorPost(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
               </div>
+              {editorModo === 'simples' && (
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 220px' }}>
                   {editorImg ? <img src={editorImg} alt="" style={{ width: 220, height: 275, objectFit: 'cover', borderRadius: 14, border: '1px solid #eee', boxShadow: '0 14px 34px -18px rgba(0,0,0,.4)' }} /> : <div style={{ width: 220, height: 275, borderRadius: 14, background: '#f4f4f5' }} />}
@@ -724,6 +778,108 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   </div>
                 </div>
               </div>
+              )}
+              {editorModo === 'visual' && (() => {
+                const CW = 300, scale = CW / LARGURA, CH = ALTURA * scale
+                const sel = camadas.find(c => c.id === selCamada) || null
+                const onMove = (e: any) => { const d = dragRef.current; if (!d) return; updCamada(d.id, { x: Math.round(d.ox + (e.clientX - d.sx) / scale), y: Math.round(d.oy + (e.clientY - d.sy) / scale) }) }
+                const startDrag = (c: Camada, e: any) => { e.stopPropagation(); setSelCamada(c.id); dragRef.current = { id: c.id, sx: e.clientX, sy: e.clientY, ox: c.x, oy: c.y } }
+                const num: any = { width: 62, padding: '5px 7px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit' }
+                const mini: any = { padding: '4px 8px', background: '#f5f5f5', border: 'none', borderRadius: 7, color: '#666', cursor: 'pointer', fontSize: 11.5, fontWeight: 600 }
+                return (
+                  <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <div onPointerDown={e => { if (e.currentTarget === e.target) setSelCamada(null) }} onPointerMove={onMove} onPointerUp={() => { dragRef.current = null }} onPointerLeave={() => { dragRef.current = null }}
+                        style={{ position: 'relative', width: CW, height: CH, borderRadius: 12, overflow: 'hidden', background: s.corFundo || '#141414', border: '1px solid #e6e6e6', boxShadow: '0 14px 34px -18px rgba(0,0,0,.4)', touchAction: 'none', userSelect: 'none' }}>
+                        {s.fundoUrl && <img src={s.fundoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />}
+                        {camadas.map(c => {
+                          const on = c.id === selCamada
+                          const common: any = { position: 'absolute', left: c.x * scale, top: c.y * scale, cursor: 'move', outline: on ? '2px solid #7c3aed' : '1px dashed rgba(255,255,255,.22)', outlineOffset: 1 }
+                          if (c.tipo === 'texto') return <div key={c.id} onPointerDown={e => startDrag(c, e)} style={{ ...common, width: c.w * scale }}><span style={{ display: 'block', width: '100%', fontSize: c.fontSize * scale, color: c.cor, fontWeight: c.peso, textAlign: c.align, lineHeight: c.lineHeight || 1.15, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.texto}</span></div>
+                          if (c.tipo === 'imagem') return <img key={c.id} onPointerDown={e => startDrag(c, e)} src={c.url} alt="" style={{ ...common, width: c.w * scale, height: c.h * scale, objectFit: c.fit, borderRadius: c.radius * scale }} />
+                          return <div key={c.id} onPointerDown={e => startDrag(c, e)} style={{ ...common, width: c.w * scale, height: c.h * scale, background: c.cor, borderRadius: c.radius * scale }} />
+                        })}
+                      </div>
+                      <p style={{ margin: '8px 0 0', fontSize: 11, color: '#aaa' }}>Arraste os elementos. Toque para selecionar.</p>
+                      {editorAplicando && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>Aplicando…</p>}
+                    </div>
+                    <div style={{ flex: '1 1 300px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button style={mini} onClick={() => addCamada({ id: rid(), tipo: 'texto', texto: 'Novo texto', x: 120, y: 300, w: 760, fontSize: 56, cor: s.fundoUrl ? '#ffffff' : contraste(s.corFundo || '#141414'), peso: 700, align: 'left', lineHeight: 1.15 })}>+ Texto</button>
+                        <button style={mini} onClick={() => addCamada({ id: rid(), tipo: 'forma', x: 120, y: 300, w: 400, h: 120, cor: s.corAccent || '#ffc00f', radius: 16 })}>+ Forma</button>
+                      </div>
+                      {modalAssets.length > 0 && (
+                        <div>
+                          <CampoLabel>Adicionar imagem da marca</CampoLabel>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {modalAssets.slice(0, 10).map(a => (
+                              <button key={a.url} onClick={() => addCamada({ id: rid(), tipo: 'imagem', url: a.url, x: 120, y: 120, w: 320, h: 320, radius: 0, fit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover' })} style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', border: '1px solid #e6e6e6', padding: 0, cursor: 'pointer', background: '#fff' }}>
+                                <img src={a.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+                        <div><CampoLabel>Cor de fundo</CampoLabel><input type="color" value={s.corFundo || '#141414'} onChange={e => set({ corFundo: e.target.value })} style={{ width: 44, height: 32, borderRadius: 8, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} /></div>
+                        {s.fundoUrl && <button style={mini} onClick={() => set({ fundoUrl: '' })}>Remover foto de fundo</button>}
+                      </div>
+                      <div>
+                        <CampoLabel>Camadas</CampoLabel>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {[...camadas].reverse().map(c => {
+                            const on = c.id === selCamada
+                            const nome = c.tipo === 'texto' ? (c.texto || 'Texto').slice(0, 20) : c.tipo === 'imagem' ? 'Imagem' : 'Forma'
+                            return (
+                              <div key={c.id} onClick={() => setSelCamada(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 8, background: on ? '#f3ecff' : '#fafafa', border: on ? '1px solid #d9c9f7' : '1px solid #f0f0f0', cursor: 'pointer' }}>
+                                <span style={{ flex: 1, fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome}</span>
+                                <button onClick={e => { e.stopPropagation(); moveCamada(c.id, 1) }} style={mini} title="Trazer para frente">↑</button>
+                                <button onClick={e => { e.stopPropagation(); moveCamada(c.id, -1) }} style={mini} title="Enviar para trás">↓</button>
+                                <button onClick={e => { e.stopPropagation(); delCamada(c.id) }} style={{ ...mini, color: '#c0392b' }} title="Excluir">×</button>
+                              </div>
+                            )
+                          })}
+                          {!camadas.length && <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>Sem camadas. Adicione texto, forma ou imagem.</p>}
+                        </div>
+                      </div>
+                      {sel && (
+                        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <CampoLabel>Selecionado</CampoLabel>
+                          {sel.tipo === 'texto' && <>
+                            <textarea value={sel.texto} onChange={e => updCamada(sel.id, { texto: e.target.value })} rows={2} className="st-input" style={inp} />
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <label style={{ fontSize: 11, color: '#888' }}>Tam. <input type="number" value={sel.fontSize} onChange={e => updCamada(sel.id, { fontSize: Number(e.target.value) || 12 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 40 })} style={num} /></label>
+                              <select value={sel.peso} onChange={e => updCamada(sel.id, { peso: Number(e.target.value) })} style={{ ...num, width: 96 }}><option value={400}>Regular</option><option value={600}>Semibold</option><option value={700}>Bold</option></select>
+                              <input type="color" value={sel.cor} onChange={e => updCamada(sel.id, { cor: e.target.value })} style={{ width: 40, height: 30, borderRadius: 7, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} />
+                            </div>
+                            <div style={{ display: 'inline-flex', gap: 3, background: '#f4f4f5', borderRadius: 8, padding: 3, alignSelf: 'flex-start' }}>
+                              {(['left', 'center', 'right'] as const).map(al => { const ona = sel.align === al; return <button key={al} onClick={() => updCamada(sel.id, { align: al })} style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: ona ? '#fff' : 'transparent', color: ona ? '#111' : '#999', fontSize: 11, fontWeight: ona ? 700 : 500, cursor: 'pointer', boxShadow: ona ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>{al === 'left' ? 'Esq.' : al === 'center' ? 'Centro' : 'Dir.'}</button> })}
+                            </div>
+                          </>}
+                          {sel.tipo === 'imagem' && (
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: '#888' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: '#888' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
+                              <select value={sel.fit} onChange={e => updCamada(sel.id, { fit: e.target.value })} style={{ ...num, width: 104 }}><option value="cover">Preencher</option><option value="contain">Conter</option></select>
+                            </div>
+                          )}
+                          {sel.tipo === 'forma' && (
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: '#888' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: '#888' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
+                              <input type="color" value={sel.cor} onChange={e => updCamada(sel.id, { cor: e.target.value })} style={{ width: 40, height: 30, borderRadius: 7, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <button className="st-btn st-cta" onClick={() => aplicarEditor(false)} disabled={editorAplicando} style={{ padding: '11px 0', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13, cursor: editorAplicando ? 'wait' : 'pointer', opacity: editorAplicando ? 0.6 : 1 }}>Renderizar arte</button>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )
