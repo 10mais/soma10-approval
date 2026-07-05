@@ -405,4 +405,55 @@ Abas internas: **Painel / Funil / Contatos / Empresas / Playbook**.
 
 **Pré-mortem (riscos monitorados):** rascunho medíocre (Fase 0 mede antes de escalar); doom-loop de Goodhart (aprende de performance + aprovação humana); homogeneização/"AI slop" (Playbook por cliente + taxa de edição); perda de coordenação ao matar o kanban (dono/"travado em quê"); gargalo real ser o cliente; custo de tokens; JSON monolítico frágil; dívida de 2 paradigmas (paralelo, não troca a frio).
 
-Plano detalhado salvo em `.claude/plans/traduza-e-me-diga-gentle-mochi.md`.
+Plano detalhado salvo em `.claude/plans/traduza-e-me-diga-gentle-mochi.md` (arquivo já removido; o essencial está aqui e na §19).
+
+## 19. Evolução 2026-07-05 (sessão grande) — Studio construído, motor de criativos, reorg, permissões, NPS
+
+> Tudo **deployado na `main`** (push por implementação, type-check antes de cada commit; build confirmado READY via Vercel MCP). Onde diverge de seções antigas, vale o que está aqui. **Fluxo de deploy voltou ao "caminho B"** (push direto na main — o dono cogitou validar local e desistiu na mesma sessão).
+
+### 19.1 Studio IA-First — Fases 0 e 1 FEITAS (substitui a Esteira)
+- **Fase 0:** `esteira/gerar-plano` lê o **Brand Playbook** (`cliente.playbook`) além do Brand Board (prioridade sobre o board; avisa a IA quando `aprovado=false`). Captura de dados: `Post.iaGerado` (snapshot da geração) + `Post.editadoAposIA` (posts PUT compara briefing/legenda/sugestaoImagem/textoImagem/formato vs snapshot).
+- **Fase 1:** **`StudioMes.tsx`** (aba **Studio** no grupo Produção, `ABA_GRUPO='producao'`). LISTA VIVA do mês: 1 item por pauta (não tabela — grid fluido, sem scroll lateral), linha recolhida (miniatura+título+estado/formato/data) que **expande no clique** em painel largura-total editável (briefing/copy/direção + formato segmentado + data + preview). Edição inline salva no blur (dispara `editadoAposIA`). **Barra de métrica: taxa de edição.** Estados fluem por linha (rascunho→criativo→enviar→aprovado). Reusa Post/Plano/`/api/planos`/gerar-plano/aprovacao-link.
+- **Seleção:** abre perguntando **"Com qual cliente vamos trabalhar hoje?"** (seletor cliente→mês, NÃO auto-seleciona o 1º); persiste em sessionStorage (refresh mantém).
+
+### 19.2 Motor de criativos — a IA gera a IMAGEM do post (Track 1: template de marca)
+- **`lib/criativoTemplates.tsx`** — 5 templates @vercel/og (`capa/dica/citacao/dado/foto`) em **1080×1350**; cores+logo do cliente; contraste automático; **fontes Poppins** em `public/fonts/*.ttf`. Template `foto` usa uma foto da marca de FUNDO + scrim + título.
+- **`/api/studio/gerar-criativo`** (`maxDuration 60`): Claude é diretor de arte (escolhe template+textos, recebe até 3 ATIVOS como imagem base64), server **rasteriza via `ImageResponse`** e devolve **base64** (o **Blob store é PRIVADO** → `put` público é barrado; o cliente sobe pelo fluxo `upload()` que gera URL pública que o IG busca). **`baixarImg`** baixa imagens (logo/fundo/refs) no servidor e passa em **base64/dataUri** (og/IA não alcançam o Blob privado por URL). Log `[gerar-criativo]` p/ diagnóstico.
+- **Modal "Gerar arte"** (botão "Criar arte" na linha): escolher **imagem de referência** dos ativos, **adicionar nova** (sobe no Blob + salva nos ativos) ou **sem imagem**; + campo **headline fixa** (seguida à risca). Foto explícita força o uso em qualquer template.
+- **Editor de arte Nível 1** (botão "Editar arte" no preview): `Post.criativoData` guarda a receita (template/headline/subtexto/bullets/rodape/cores/fundoUrl/logoUrl). Modos `render` (re-renderiza sem IA) e `refinar` (IA ajusta textos por instrução). Modal: preview + campos editáveis + "Aplicar mudanças" + "Refinar com IA". **Nível 2 (editor visual arrastando elementos) = PENDENTE.** **Track 2 (foto realista por IA via Ideogram) = PENDENTE** (escolha do dono; precisa key/conta).
+
+### 19.3 Ativos da marca (por categoria) — `ReferenciasVisuais.tsx`
+- Gerenciador de ativos na aba **Marca** (dashboard `verComoClienteId` **E** portal `/cliente/[id]/marca`, visível p/ equipe): categorias **logo/foto/elemento/icone/print/outro**, dropzone (até 20 por vez, incremental), filtro por chip, trocar categoria, remover. Salva em **`Cliente.assetsMarca[]`** (tipos `AssetMarca`/`CategoriaAsset`; migra `referenciasVisuais` legado → 'outro'). `/api/clientes` PUT persiste `assetsMarca`. Alimenta o gerador (logo+prints primeiro, multimodal).
+
+### 19.4 Aprovação do Studio + Esteira REMOVIDA
+- **Enviar ao cliente** (Studio) seta `status:'aguardando_aprovacao'` + **`etapa:'aprovacao_criativo'`** — assim aparece na tela **Aprovações do PORTAL** (que filtra por etapa) E mantém o link público. Cliente aprova via `/api/esteira/aprovar` (exige data/hora) OU `/api/decision`. **Envios feitos antes desse ajuste ficam sem a etapa (não retroagem).**
+- **Esteira removida da navegação** (dashboard + portal + matriz de permissões do cliente). Arquivos `Esteira.tsx` e `/cliente/[id]/esteira` **mantidos mas inacessíveis** (não deletados). `sessionStorage 'esteira'→'studio'`. `/api/esteira/aprovar` continua (usada nas Aprovações — nome histórico).
+
+### 19.5 Reorganização do menu (nova ordem)
+Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, **Agentes de IA**, Documentos, Mapas mentais) → **Comunicação** (Inbox, Mensagens — subiu p/ acima de Estratégia) → Estratégia → Vendas → Gestão (Financeiro) → **Pessoas e Cultura** (Carga da equipe, Colaboradores, Candidaturas, Trabalhe Conosco) → **Configurações (por último)**. "Voltar" do editor/sub-account **não joga mais pro início** (guarda a aba de origem num ref `abaAntesComposer`; sub-account não força `setAba('home')`). **Documentos e Mapas agora herdam permissão de Produção** (antes abertos a todos).
+
+### 19.6 Notificações obrigatórias + "avisar uma vez só"
+- Tipos **obrigatórios** (não podem ser desligados): `tarefa_atribuida` e `mensagem_privada` (`NOTIF_OBRIGATORIOS` no catálogo; furam mute e desligamento global). `notificar()` com **janela de 60s por usuário** (`push_janela:{email}`): várias juntas → só a 1ª pinga (as demais entram no Inbox sem novo ping); obrigatórias sempre pingam. UI em Minha Conta (NotificacoesConfig) mostra obrigatórias travadas.
+
+### 19.7 Permissões DETALHADAS (Fase 1) — por aba + por ação
+- **`lib/permissoesGranular.ts`** (client-safe): `ABAS_PERM` (telas) + `ACOES_PERM` (`gerar_ia/enviar_cliente/publicar/aprovar/excluir`); `podeAbaGranular`/`podeAcaoGranular` (default liberado; só gerente/usuario afetados; admin sempre). Storage: `config:permissoesGranular` por papel + `Usuario.permissoesGranular`. `/api/permissoes-granular` (GET equipe, PUT admin). **`lib/permissoesGranularServer.ts` `bloqueiaAcao`**. UI em **Configurações → Permissões** (matriz por papel: telas + ações). Enforcement cliente: NavBtn esconde abas bloqueadas; Studio esconde gerar-IA/enviar. Enforcement servidor: gerar-criativo/gerar-plano checam `gerar_ia`. **FASE 2 PENDENTE:** override por USUÁRIO (propagar `permissoesGranular` no JWT em `lib/auth.ts` + UI no cadastro) + enforcement de servidor nas demais ações (publicar/aprovar/excluir).
+
+### 19.8 Conversão & Retenção: saúde dos clientes + NPS
+- `/api/dashboard-vendas` agrega **saúde por cliente** (status Saudável/Atenção/Risco por inatividade + renovação + NPS) e **NPS** (score geral = %promotores−%detratores; últimas respostas). `DashboardVendas.tsx` mostra as duas seções + **criar link de NPS** (mensal/trimestral) por cliente.
+- **NPS:** tipo `NpsResposta` (chaves `nps`, `nps:{id}`, `cliente:{id}:nps`) + `Cliente.npsToken` + `npstoken:{token}`. **`/api/nps`** (POST equipe gera link; GET público dados; POST público resposta 0-10+comentário+período). Página pública **`/nps/[token]`** (`dynamic='force-dynamic'` por causa do `useSearchParams`).
+
+### 19.9 Outras correções desta sessão
+- **Notepads** (Personal list): `RichText` em modo **`completo`** → tópicos (bullets), lista numerada, títulos, citação, alinhamento.
+
+### 19.10 Novos arquivos / chaves / rotas (resumo)
+- **Libs:** `criativoTemplates.tsx`, `permissoesGranular.ts`, `permissoesGranularServer.ts`.
+- **Componentes:** `StudioMes.tsx`, `ReferenciasVisuais.tsx`, `PermissoesGranular.tsx`, `DashboardVendas.tsx` (saúde+NPS).
+- **Rotas:** `/api/studio/gerar-criativo`, `/api/permissoes-granular`, `/api/nps`. Páginas públicas `/aprovacoes/[token]` (já existia), **`/nps/[token]`**.
+- **Chaves Redis:** `cliente:{id}:posts` (índice), `config:permissoesGranular`, `nps`/`nps:{id}`/`cliente:{id}:nps`, `npstoken:{token}`, `push_janela:{email}`. Campos: `Post.iaGerado`/`editadoAposIA`/`criativoGerado`/`criativoData`; `Cliente.assetsMarca`/`referenciasVisuais`/`aprovacaoToken`/`npsToken`; `Usuario.permissoesGranular`. Deps novas: **`@vercel/og`**.
+
+### 19.11 PRÓXIMOS PASSOS (Fase 2 — abrir sessão nova por aqui)
+1. **Permissões Fase 2:** override por usuário (JWT em `lib/auth.ts` + UI no cadastro) + `bloqueiaAcao` nas rotas de publicar/aprovar/excluir.
+2. **Studio Track 2:** foto realista por IA via **Ideogram** (key/conta do dono).
+3. **Editor de arte Nível 2:** editor visual (arrastar/posicionar elementos, camadas).
+4. **Painel (home):** conteúdo — andamento do Playbook + ações da semana + atalhos pras abas (só o menu foi movido pro topo; o conteúdo do `DashboardHome` falta).
+5. **Validar em prod:** gerar criativo com marca (ler log `[gerar-criativo]`), NPS ponta-a-ponta, permissões por papel.
