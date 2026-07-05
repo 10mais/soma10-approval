@@ -404,12 +404,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     finally { setModalEnviando(false); setModalProg(null) }
   }
 
-  // Abre o editor de arte a partir da receita salva.
+  // Abre o editor de arte a partir da receita salva. Criativos com FOTO de fundo
+  // (template 'foto'/'livre' ou fundoUrl) abrem no editor VISUAL — a foto vira
+  // fundo e o texto vira camadas editáveis, sem risco de "sumir" ao re-renderizar.
   function abrirEditor(p: Pauta) {
     if (!p.criativoData) { toast('Gere a arte primeiro para poder editar.', 'info'); return }
     const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (p.imagens || [])[0] || ''
-    setEditorPost(p); setEditorSpec({ ...p.criativoData }); setEditorImg(capa); setEditorPrompt('')
-    setEditorModo(p.criativoData?.template === 'livre' ? 'visual' : 'simples'); setSelCamada(null)
+    const cd = p.criativoData || {}
+    const ehFoto = cd.template === 'livre' || cd.template === 'foto' || !!cd.fundoUrl
+    // Converte foto→livre (mantém a foto de fundo, semeia o texto como camadas).
+    const spec = (ehFoto && cd.template !== 'livre') ? { ...cd, template: 'livre', camadas: seedCamadas(cd) } : { ...cd }
+    setEditorPost(p); setEditorSpec(spec); setEditorImg(capa); setEditorPrompt('')
+    setEditorModo(ehFoto ? 'visual' : 'simples'); setSelCamada(null)
     // Carrega os ativos da marca (para adicionar como camadas de imagem no visual).
     setModalAssets([])
     fetch(`/api/clientes?id=${p.clienteId}`).then(r => r.json()).then((c: any) => {
@@ -431,13 +437,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   function addCamada(c: Camada) { setCamadas([...camadas, c]); setSelCamada(c.id) }
   // Deriva camadas iniciais a partir da receita de template (dá um ponto de partida).
   function seedCamadas(s: CriativoSpec): Camada[] {
-    const cor = s.fundoUrl ? '#ffffff' : contraste(s.corFundo || '#141414')
+    const temFoto = !!s.fundoUrl
+    const cor = temFoto ? '#ffffff' : contraste(s.corFundo || '#141414')
     const out: Camada[] = []
-    if (s.logoUrl) out.push({ id: rid(), tipo: 'imagem', url: s.logoUrl, x: 88, y: 88, w: 150, h: 150, radius: 16, fit: 'contain' })
-    if (s.headline) out.push({ id: rid(), tipo: 'texto', texto: s.headline, x: 88, y: 560, w: 904, fontSize: 82, cor, peso: 700, align: 'left', lineHeight: 1.08 })
-    if (s.subheadline) out.push({ id: rid(), tipo: 'texto', texto: s.subheadline, x: 88, y: 812, w: 904, fontSize: 40, cor, peso: 400, align: 'left', lineHeight: 1.3 })
-    if (s.rodape) out.push({ id: rid(), tipo: 'texto', texto: s.rodape, x: 88, y: 1190, w: 904, fontSize: 30, cor, peso: 600, align: 'left' })
-    if (!out.length) out.push({ id: rid(), tipo: 'texto', texto: 'Texto', x: 120, y: 600, w: 840, fontSize: 82, cor, peso: 700, align: 'left', lineHeight: 1.08 })
+    // Scrim escuro na base p/ o texto branco ficar legível sobre a foto.
+    if (temFoto) out.push({ id: rid(), tipo: 'forma', x: 0, y: 610, w: LARGURA, h: ALTURA - 610, cor: 'rgba(0,0,0,0.5)', radius: 0 })
+    if (s.logoUrl) out.push({ id: rid(), tipo: 'imagem', url: s.logoUrl, x: 80, y: 80, w: 150, h: 150, radius: 16, fit: 'contain' })
+    if (s.headline) out.push({ id: rid(), tipo: 'texto', texto: s.headline, x: 88, y: temFoto ? 900 : 560, w: 904, fontSize: 78, cor, peso: 700, align: 'left', lineHeight: 1.08 })
+    if (s.subheadline) out.push({ id: rid(), tipo: 'texto', texto: s.subheadline, x: 88, y: temFoto ? 1130 : 812, w: 904, fontSize: 38, cor, peso: 400, align: 'left', lineHeight: 1.3 })
+    const assinatura = (s.rodape || s.handle || '').toString()
+    if (assinatura) out.push({ id: rid(), tipo: 'texto', texto: assinatura, x: 88, y: temFoto ? 1275 : 1190, w: 904, fontSize: 30, cor, peso: 600, align: 'left' })
+    if (out.filter(c => c.tipo === 'texto').length === 0) out.push({ id: rid(), tipo: 'texto', texto: 'Texto', x: 120, y: 600, w: 840, fontSize: 78, cor, peso: 700, align: 'left', lineHeight: 1.08 })
     return out
   }
   // Alterna para o modo visual, semeando camadas na primeira vez.

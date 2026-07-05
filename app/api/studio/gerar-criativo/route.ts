@@ -218,8 +218,12 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   // Usa a foto da marca sempre que houver e o template comportar imagem de fundo
   // (foto ou capa) — não deixa só na escolha da IA.
   const querFoto = !!fotoFundo && (!!fotoEscolhida || escolhido === 'foto' || escolhido === 'capa')
-  // Baixa logo e fundo no servidor (base64) para o og renderizar de fato.
-  const logoData = await baixarImg(logoFinal)
+  // Baixa logo (com FALLBACK: cliente.logo pode estar expirado/403 → tenta o
+  // ativo 'logo' da marca) e fundo no servidor (base64) para o og renderizar.
+  const logoCandidatos = [(cliente.logo || '').trim(), (logoAsset || '').trim()].filter(Boolean)
+  let logoData: Awaited<ReturnType<typeof baixarImg>> = null
+  let logoUsada = ''
+  for (const u of logoCandidatos) { const d0 = await baixarImg(u); if (d0) { logoData = d0; logoUsada = u; break } }
   const fundoData = querFoto ? await baixarImg(fotoFundo) : null
   const usarFoto = !!fundoData
   console.log('[gerar-criativo]', JSON.stringify({
@@ -244,7 +248,7 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
     // Receita do criativo (URLs, não data URIs) para reabrir no editor.
     const criativoData = {
       template: d.template, headline: d.headline, subheadline: d.subheadline, bullets: d.bullets, rodape: d.rodape,
-      corFundo, corAccent, fundoUrl: usarFoto ? fotoFundo : '', logoUrl: logoFinal || '', handle: d.handle,
+      corFundo, corAccent, fundoUrl: usarFoto ? fotoFundo : '', logoUrl: logoUsada || logoFinal || '', handle: d.handle,
     }
     // O store do Blob é privado (put público é barrado). Devolvemos a imagem e o
     // cliente sobe pelo fluxo upload() — mesmo caminho da mídia manual.
