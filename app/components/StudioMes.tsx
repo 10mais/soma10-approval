@@ -123,6 +123,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
   const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
   const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
+  // Modal "Gerar arte" — escolher imagem de referência
+  const [gerarModal, setGerarModal] = useState<Pauta | null>(null)
+  const [modalAssets, setModalAssets] = useState<{ url: string; categoria: string }[]>([])
+  const [modalCarregando, setModalCarregando] = useState(false)
+  const [refSel, setRefSel] = useState<string>('sem') // 'sem' | url da imagem
+  const [modalEnviando, setModalEnviando] = useState(false)
+  const [modalProg, setModalProg] = useState<number | null>(null)
+  const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   function toggleLinha(id: string) {
     setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -249,12 +257,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
   // Gera o criativo (imagem) via template de marca — IA dirige a arte, servidor
   // rasteriza e devolve os bytes; o cliente sobe pelo fluxo upload() (URL pública).
-  async function gerarCriativo(p: Pauta) {
+  async function gerarCriativo(p: Pauta, opts?: { fundoUrl?: string; semFoto?: boolean }) {
+    setGerarModal(null)
     setGerandoCriativo(p.id)
     try {
       const r = await fetch('/api/studio/gerar-criativo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: p.id }),
+        body: JSON.stringify({ postId: p.id, fundoUrl: opts?.fundoUrl, semFoto: opts?.semFoto }),
       }).then(x => x.json()).catch(() => null)
       if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
       // base64 -> File
@@ -276,6 +285,37 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     } finally {
       setGerandoCriativo(null)
     }
+  }
+
+  // Abre o modal de geração — carrega os ativos do cliente p/ escolher a referência.
+  async function abrirGerarModal(p: Pauta) {
+    setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
+    try {
+      const c = await fetch(`/api/clientes?id=${p.clienteId}`).then(x => x.json())
+      const assets = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
+      setModalAssets(assets.filter((a: any) => a?.url).map((a: any) => ({ url: a.url, categoria: a.categoria || 'outro' })))
+    } catch { /* segue sem ativos */ } finally { setModalCarregando(false) }
+  }
+
+  // Adiciona uma nova imagem de referência no modal (sobe no Blob + salva nos ativos).
+  async function subirNovaRef(p: Pauta, file: File) {
+    setModalEnviando(true); setModalProg(0)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const blob = await upload(`ativos/${p.clienteId}/${rid()}.${ext}`, file, {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: file.type, clientPayload: file.type,
+        onUploadProgress: ({ percentage }) => setModalProg(percentage),
+      })
+      setModalAssets(a => [{ url: blob.url, categoria: 'foto' }, ...a]); setRefSel(blob.url)
+      // persiste no cliente para reuso futuro
+      const c = await fetch(`/api/clientes?id=${p.clienteId}`).then(x => x.json()).catch(() => null)
+      const atuais = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
+      await fetch('/api/clientes', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.clienteId, assetsMarca: [{ id: rid(), url: blob.url, categoria: 'foto', nome: file.name, criadoEm: new Date().toISOString() }, ...atuais] }),
+      }).catch(() => {})
+    } catch (e: any) { toast(`Falha no upload: ${e?.message || 'erro'}`, 'erro') }
+    finally { setModalEnviando(false); setModalProg(null) }
   }
 
   async function copiarLink(clienteId: string) {
@@ -495,7 +535,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     </div>
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
                       {podeGerar && (
-                        <button className="st-btn" onClick={() => gerarCriativo(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
+                        <button className="st-btn" onClick={() => abrirGerarModal(p)} disabled={gerandoCriativo === p.id} title="A IA dirige a arte e gera a imagem da marca"
                           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'transparent', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: gerandoCriativo === p.id ? 'wait' : 'pointer', opacity: gerandoCriativo === p.id ? 0.7 : 1, whiteSpace: 'nowrap' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                           {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
@@ -570,6 +610,45 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         </div>
       )}
+
+      {/* Modal "Gerar arte" — escolher imagem de referência */}
+      {gerarModal && (() => {
+        const p = gerarModal
+        return (
+          <div onClick={() => setGerarModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Escolha uma imagem de referência. A IA usa a imagem + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 10 }}>
+                <button onClick={() => setRefSel('sem')} style={{ aspectRatio: '1/1', borderRadius: 12, border: refSel === 'sem' ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: '#fafafa', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 4l16 16M20 4L4 20" /></svg>
+                  Sem imagem
+                </button>
+                <label style={{ aspectRatio: '1/1', borderRadius: 12, border: '1.5px dashed #d8d8d8', background: '#fbfbfc', cursor: modalEnviando ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600, textAlign: 'center', padding: 6 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                  {modalEnviando ? (modalProg != null ? `${modalProg}%` : 'Enviando…') : 'Nova imagem'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} disabled={modalEnviando} onChange={e => { if (e.target.files?.[0]) subirNovaRef(p, e.target.files[0]); e.target.value = '' }} />
+                </label>
+                {modalAssets.map(a => (
+                  <button key={a.url} onClick={() => setRefSel(a.url)} style={{ aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: refSel === a.url ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', padding: 0, cursor: 'pointer', background: '#eee' }}>
+                    <img src={a.url} alt="" style={{ width: '100%', height: '100%', objectFit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover', background: '#fff' }} />
+                  </button>
+                ))}
+              </div>
+              {modalCarregando && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>Carregando ativos…</p>}
+              {!modalCarregando && modalAssets.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#bbb' }}>Nenhum ativo da marca ainda. Use “Nova imagem” ou gere sem imagem.</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+                <button className="st-btn st-cta" onClick={() => gerarCriativo(p, refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel })} disabled={modalEnviando}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                  Gerar arte
+                </button>
+                <button onClick={() => setGerarModal(null)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Lightbox — prévia de post (como no Planner): imagem ampliada + legenda */}
       {preview && (() => {

@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()
   if (!KEY) return NextResponse.json({ error: 'IA não configurada (ANTHROPIC_API_KEY).' }, { status: 500 })
 
-  const { postId, template } = await req.json()
+  const { postId, template, fundoUrl, semFoto } = await req.json()
   if (!postId) return NextResponse.json({ error: 'postId é obrigatório' }, { status: 400 })
+  const fotoEscolhida = typeof fundoUrl === 'string' && fundoUrl.trim() ? fundoUrl.trim() : ''
 
   const post = await redis.get<Post>(`post:${postId}`)
   if (!post) return NextResponse.json({ error: 'post não encontrado' }, { status: 404 })
@@ -66,10 +67,14 @@ export async function POST(req: NextRequest) {
   const escolhidos = [...ativos].sort((a, b) => ordem.indexOf(a.categoria) - ordem.indexOf(b.categoria)).slice(0, 4)
   let refs = escolhidos.map(a => a.url).filter(Boolean)
   if (refs.length === 0) refs = (cliente.referenciasVisuais || []).filter(Boolean).slice(0, 3)
+  // Se o usuário escolheu uma imagem de referência no modal, ela entra na frente.
+  if (fotoEscolhida && !refs.includes(fotoEscolhida)) refs.unshift(fotoEscolhida)
   const temLogo = escolhidos.some(a => a.categoria === 'logo')
-  // Ativos usados DENTRO da arte: logo (com fallback) e uma foto de fundo.
+  // Ativos usados DENTRO da arte: logo (com fallback) e a foto de fundo.
   const logoAsset = ativos.find(a => a.categoria === 'logo')?.url
-  const fotoFundo = ativos.find(a => ['foto', 'print', 'elemento'].includes(a.categoria))?.url
+  const fotoFundo = fotoEscolhida
+    ? fotoEscolhida
+    : (semFoto ? '' : ativos.find(a => ['foto', 'print', 'elemento'].includes(a.categoria))?.url)
   const logoFinal = (cliente.logo || logoAsset || '').trim()
   const refNote = refs.length
     ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS da marca${temLogo ? ' (inclui a logomarca)' : ''}. Observe logomarca, tipografia, paleta de cores, composição e estilo, e mantenha total coerência com eles na sua direção de arte.${fotoFundo ? ' HÁ FOTO(S) da marca disponíveis — prefira o template "foto" quando a pauta combinar com uma imagem real.' : ''}`
@@ -123,7 +128,7 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   const escolhido = ['capa', 'dica', 'citacao', 'dado', 'foto'].includes(dados.template) ? dados.template : 'capa'
   // Usa a foto da marca sempre que houver e o template comportar imagem de fundo
   // (foto ou capa) — não deixa só na escolha da IA.
-  const querFoto = !!fotoFundo && (escolhido === 'foto' || escolhido === 'capa')
+  const querFoto = !!fotoFundo && (!!fotoEscolhida || escolhido === 'foto' || escolhido === 'capa')
   // Baixa logo e fundo no servidor (base64) para o og renderizar de fato.
   const logoData = await baixarImg(logoFinal)
   const fundoData = querFoto ? await baixarImg(fotoFundo) : null
