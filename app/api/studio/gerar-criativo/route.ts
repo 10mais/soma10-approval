@@ -39,9 +39,10 @@ export async function POST(req: NextRequest) {
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()
   if (!KEY) return NextResponse.json({ error: 'IA não configurada (ANTHROPIC_API_KEY).' }, { status: 500 })
 
-  const { postId, template, fundoUrl, semFoto } = await req.json()
+  const { postId, template, fundoUrl, semFoto, headline: headlineIn } = await req.json()
   if (!postId) return NextResponse.json({ error: 'postId é obrigatório' }, { status: 400 })
   const fotoEscolhida = typeof fundoUrl === 'string' && fundoUrl.trim() ? fundoUrl.trim() : ''
+  const headlineFixa = typeof headlineIn === 'string' && headlineIn.trim() ? headlineIn.trim() : ''
 
   const post = await redis.get<Post>(`post:${postId}`)
   if (!post) return NextResponse.json({ error: 'post não encontrado' }, { status: 404 })
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     : (semFoto ? '' : ativos.find(a => ['foto', 'print', 'elemento'].includes(a.categoria))?.url)
   const logoFinal = (cliente.logo || logoAsset || '').trim()
   const refNote = refs.length
-    ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS da marca${temLogo ? ' (inclui a logomarca)' : ''}. Observe logomarca, tipografia, paleta de cores, composição e estilo, e mantenha total coerência com eles na sua direção de arte.${fotoFundo ? ' HÁ FOTO(S) da marca disponíveis — prefira o template "foto" quando a pauta combinar com uma imagem real.' : ''}`
+    ? `\n\nVocê RECEBE ${refs.length} imagem(ns) de ATIVOS/REFERÊNCIA da marca${temLogo ? ' (inclui a logomarca)' : ''}. É OBRIGATÓRIO SEGUIR ESSAS REFERÊNCIAS: replique a paleta de cores, a tipografia, o estilo visual, a composição e o tom delas. A arte final deve parecer da MESMA marca das referências.${fotoFundo ? ' Use a foto da marca como fundo (template "foto") sempre que combinar.' : ''}`
     : ''
 
   const prompt = `Você é diretor de arte de uma agência. Vou te dar uma pauta e o DNA da marca. Devolva o CONTEÚDO de UM criativo de feed (imagem única) — texto curto e impactante, pronto para a arte.
@@ -98,7 +99,8 @@ Escolha o TEMPLATE que melhor comunica a mensagem:
 - "foto": uma FOTO da marca como fundo com um título curto por cima${fotoFundo ? ' (há foto disponível — use quando combinar)' : ' (indisponível: não há foto da marca)'}
 ${template ? `\nUSE OBRIGATORIAMENTE o template "${template}".` : ''}
 
-Regras: texto para ARTE (não legenda) — curtíssimo. Headline com no máx. ~9 palavras. Bullets com no máx. ~8 palavras cada. Nada de hashtag. Respeite o tom e as restrições da marca.
+${headlineFixa ? `\nHEADLINE OBRIGATÓRIA E FIXA: "${headlineFixa}". Use EXATAMENTE essa frase como headline, sem reescrever, resumir ou traduzir. Gere só o resto (subheadline/bullets/rodapé/template).\n` : ''}
+Regras: texto para ARTE (não legenda) — curtíssimo. ${headlineFixa ? '' : 'Headline com no máx. ~9 palavras. '}Bullets com no máx. ~8 palavras cada. Nada de hashtag. Respeite o tom e as restrições da marca.
 
 Responda APENAS com JSON válido (sem markdown, sem backticks):
 {"template":"capa|dica|citacao|dado|foto","headline":"...","subheadline":"... ou vazio","bullets":["...","..."],"rodape":"assinatura curta ou vazio"}`
@@ -139,7 +141,7 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   }))
   const d: DadosCriativo = {
     template: usarFoto ? 'foto' : (escolhido === 'foto' ? 'capa' : escolhido),
-    headline: (dados.headline || '').toString().slice(0, 140),
+    headline: (headlineFixa || (dados.headline || '').toString()).slice(0, 140),
     subheadline: (dados.subheadline || '').toString().slice(0, 160),
     bullets: Array.isArray(dados.bullets) ? dados.bullets.slice(0, 4).map((b: any) => String(b).slice(0, 120)) : [],
     rodape: (dados.rodape || '').toString().slice(0, 60),

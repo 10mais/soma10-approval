@@ -1810,7 +1810,7 @@ function Dashboard() {
             <>
               {([
                 { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -1843,7 +1843,6 @@ function Dashboard() {
                     <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
                   </>)}
                   {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
-                  {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
                   {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
                 </>
               ) : (
@@ -1879,7 +1878,6 @@ function Dashboard() {
                     {configAberto && (
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {role === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
-                      {role === 'admin' && <NavBtn chave="agentes" label="Agentes de IA" fontSize={13} />}
                       {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                     </nav>
                     )}

@@ -128,6 +128,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [modalAssets, setModalAssets] = useState<{ url: string; categoria: string }[]>([])
   const [modalCarregando, setModalCarregando] = useState(false)
   const [refSel, setRefSel] = useState<string>('sem') // 'sem' | url da imagem
+  const [refHeadline, setRefHeadline] = useState('') // headline fixa (seguida à risca)
   const [modalEnviando, setModalEnviando] = useState(false)
   const [modalProg, setModalProg] = useState<number | null>(null)
   const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -257,13 +258,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
   // Gera o criativo (imagem) via template de marca — IA dirige a arte, servidor
   // rasteriza e devolve os bytes; o cliente sobe pelo fluxo upload() (URL pública).
-  async function gerarCriativo(p: Pauta, opts?: { fundoUrl?: string; semFoto?: boolean }) {
+  async function gerarCriativo(p: Pauta, opts?: { fundoUrl?: string; semFoto?: boolean; headline?: string }) {
     setGerarModal(null)
     setGerandoCriativo(p.id)
     try {
       const r = await fetch('/api/studio/gerar-criativo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: p.id, fundoUrl: opts?.fundoUrl, semFoto: opts?.semFoto }),
+        body: JSON.stringify({ postId: p.id, fundoUrl: opts?.fundoUrl, semFoto: opts?.semFoto, headline: opts?.headline }),
       }).then(x => x.json()).catch(() => null)
       if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
       // base64 -> File
@@ -290,6 +291,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // Abre o modal de geração — carrega os ativos do cliente p/ escolher a referência.
   async function abrirGerarModal(p: Pauta) {
     setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
+    setRefHeadline((p.textoImagem || p.briefing || '').trim())
     try {
       const c = await fetch(`/api/clientes?id=${p.clienteId}`).then(x => x.json())
       const assets = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
@@ -618,7 +620,16 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           <div onClick={() => setGerarModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Escolha uma imagem de referência. A IA usa a imagem + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
+              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>A IA usa a imagem de referência + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Texto principal (headline)</label>
+                <textarea value={refHeadline} onChange={e => setRefHeadline(e.target.value)} placeholder="Frase forte que aparece na arte..." rows={2}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }} />
+                <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>A IA usa <strong>exatamente</strong> essa frase como título da arte (seguida à risca).</p>
+              </div>
+
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Imagem de referência</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 10 }}>
                 <button onClick={() => setRefSel('sem')} style={{ aspectRatio: '1/1', borderRadius: 12, border: refSel === 'sem' ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: '#fafafa', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600 }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 4l16 16M20 4L4 20" /></svg>
@@ -638,7 +649,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               {modalCarregando && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>Carregando ativos…</p>}
               {!modalCarregando && modalAssets.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#bbb' }}>Nenhum ativo da marca ainda. Use “Nova imagem” ou gere sem imagem.</p>}
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-                <button className="st-btn st-cta" onClick={() => gerarCriativo(p, refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel })} disabled={modalEnviando}
+                <button className="st-btn st-cta" onClick={() => gerarCriativo(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                   Gerar arte
