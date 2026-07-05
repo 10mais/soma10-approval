@@ -78,8 +78,8 @@ Respond with the prompt ONLY, no quotes, no explanation.`
   }
   if (!promptFinal) return NextResponse.json({ error: 'Não foi possível montar um prompt.' }, { status: 502 })
 
-  // Gera no Ideogram (feed 4:5).
-  const res = await gerarFotoIdeogram(promptFinal, { aspectRatio: 'ASPECT_4_5' })
+  // Gera no Ideogram (portrait ASPECT_3_4 — o mais próximo do feed 4:5 aceito).
+  const res = await gerarFotoIdeogram(promptFinal, { aspectRatio: 'ASPECT_3_4' })
   if ('erro' in res) {
     console.error('[gerar-foto-ia]', res.erro)
     return NextResponse.json({ error: res.erro }, { status: 502 })

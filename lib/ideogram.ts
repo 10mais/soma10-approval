@@ -26,9 +26,10 @@ export async function gerarFotoIdeogram(
       model: opts?.model || 'V_2',
       magic_prompt_option: opts?.magic || 'AUTO',
     }
-    // Feed 4:5 = 1024x1280. Usa resolução exata quando possível; senão aspect ratio.
+    // O Ideogram (V_2) NÃO aceita ASPECT_4_5. O portrait válido mais próximo do
+    // feed (4:5) é ASPECT_3_4 — o editor visual normaliza pra 1080x1350 depois.
     if (opts?.resolution) image_request.resolution = opts.resolution
-    else image_request.aspect_ratio = opts?.aspectRatio || 'ASPECT_4_5'
+    else image_request.aspect_ratio = opts?.aspectRatio || 'ASPECT_3_4'
 
     const r = await fetch('https://api.ideogram.ai/generate', {
       method: 'POST',
