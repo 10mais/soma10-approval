@@ -21,7 +21,13 @@ type Pauta = {
   iaGerado?: { briefing?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; formato?: string; geradoEm: string }
   editadoAposIA?: boolean
   criativoGerado?: boolean
+  criativoData?: any // receita do criativo (para reabrir no editor)
 }
+
+type CriativoSpec = { template: string; headline?: string; subheadline?: string; bullets?: string[]; rodape?: string; corFundo?: string; corAccent?: string; fundoUrl?: string; logoUrl?: string; handle?: string }
+const TEMPLATES_ART: { key: string; label: string }[] = [
+  { key: 'capa', label: 'Capa' }, { key: 'foto', label: 'Foto' }, { key: 'dica', label: 'Dica' }, { key: 'citacao', label: 'Citação' }, { key: 'dado', label: 'Dado' },
+]
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const FORMATOS = [
@@ -132,6 +138,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [modalEnviando, setModalEnviando] = useState(false)
   const [modalProg, setModalProg] = useState<number | null>(null)
   const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  // Editor de arte (Nível 1)
+  const [editorPost, setEditorPost] = useState<Pauta | null>(null)
+  const [editorSpec, setEditorSpec] = useState<CriativoSpec | null>(null)
+  const [editorImg, setEditorImg] = useState('')
+  const [editorPrompt, setEditorPrompt] = useState('')
+  const [editorAplicando, setEditorAplicando] = useState(false)
   function toggleLinha(id: string) {
     setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -277,7 +289,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       })
       await fetch('/api/posts', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, formato: p.formato || 'feed' }),
+        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, criativoData: r.criativoData, formato: p.formato || 'feed' }),
       })
       toast(`Criativo gerado (${r.template})!`, 'sucesso')
       carregarPautas(planoSel)
@@ -318,6 +330,45 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       }).catch(() => {})
     } catch (e: any) { toast(`Falha no upload: ${e?.message || 'erro'}`, 'erro') }
     finally { setModalEnviando(false); setModalProg(null) }
+  }
+
+  // Abre o editor de arte a partir da receita salva.
+  function abrirEditor(p: Pauta) {
+    if (!p.criativoData) { toast('Gere a arte primeiro para poder editar.', 'info'); return }
+    const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (p.imagens || [])[0] || ''
+    setEditorPost(p); setEditorSpec({ ...p.criativoData }); setEditorImg(capa); setEditorPrompt('')
+  }
+
+  // Aplica edição: re-renderiza (manual) ou refina (IA), sobe no Blob e salva no post.
+  async function aplicarEditor(refinar: boolean) {
+    if (!editorPost || !editorSpec) return
+    setEditorAplicando(true)
+    try {
+      const body = refinar
+        ? { postId: editorPost.id, modo: 'refinar', dados: editorSpec, instrucao: editorPrompt }
+        : { postId: editorPost.id, modo: 'render', dados: editorSpec }
+      const r = await fetch('/api/studio/gerar-criativo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      }).then(x => x.json()).catch(() => null)
+      if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao aplicar.', 'erro'); return }
+      const bin = atob(r.imagemBase64); const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const file = new File([bytes], `criativo-${editorPost.id}.png`, { type: 'image/png' })
+      const blob = await upload(`criativos/${editorPost.id}-${Date.now()}.png`, file, {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
+      })
+      const novasImagens = [blob.url, ...((editorPost.imagens || []).slice(1))]
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editorPost.id, imagens: novasImagens, criativoData: r.criativoData, criativoGerado: true }),
+      }).catch(() => {})
+      setEditorSpec(r.criativoData); setEditorImg(blob.url)
+      setEditorPost(ep => ep ? { ...ep, imagens: novasImagens, criativoData: r.criativoData } : ep)
+      if (refinar) setEditorPrompt('')
+      carregarPautas(planoSel)
+      toast('Arte atualizada!', 'sucesso')
+    } catch (e: any) { toast(`Erro: ${e?.message || 'falha'}`, 'erro') }
+    finally { setEditorAplicando(false) }
   }
 
   async function copiarLink(clienteId: string) {
@@ -588,6 +639,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                               <img className="st-preview" src={capa} alt="" onClick={() => setPreview(p)} title="Ampliar (prévia de post)" style={{ width: 160, height: 200, borderRadius: 16, objectFit: 'cover', border: '1px solid rgba(17,17,17,.06)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
                               {p.criativoGerado && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c3aed' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed' }} />Gerado pela IA · toque para ampliar</span>}
+                              {podeEditar && p.criativoData && <button className="st-btn" onClick={() => abrirEditor(p)} style={{ width: 160, padding: '8px 0', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Editar arte</button>}
                             </div>
                           ) : <div style={{ width: 160, height: 200, borderRadius: 16, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8, background: '#fbfbfc' }}>Sem criativo ainda</div>}
                         </div>
@@ -612,6 +664,68 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         </div>
       )}
+
+      {/* Editor de arte (Nível 1) — editar textos/cores/template + refinar por prompt */}
+      {editorPost && editorSpec && (() => {
+        const s = editorSpec
+        const set = (patch: Partial<CriativoSpec>) => setEditorSpec(sp => sp ? { ...sp, ...patch } : sp)
+        const inp: any = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }
+        const ghost: any = { padding: '5px 10px', background: '#f5f5f5', border: 'none', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
+        return (
+          <div onClick={() => !editorAplicando && setEditorPost(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Editar arte</h3>
+                <button onClick={() => setEditorPost(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+              </div>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                <div style={{ flex: '0 0 220px' }}>
+                  {editorImg ? <img src={editorImg} alt="" style={{ width: 220, height: 275, objectFit: 'cover', borderRadius: 14, border: '1px solid #eee', boxShadow: '0 14px 34px -18px rgba(0,0,0,.4)' }} /> : <div style={{ width: 220, height: 275, borderRadius: 14, background: '#f4f4f5' }} />}
+                  {editorAplicando && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>Aplicando…</p>}
+                </div>
+                <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <CampoLabel>Template</CampoLabel>
+                    <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3, flexWrap: 'wrap' }}>
+                      {TEMPLATES_ART.map(t => { const on = s.template === t.key; return (
+                        <button key={t.key} onClick={() => set({ template: t.key })} style={{ padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? '#111' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>{t.label}</button>
+                      ) })}
+                    </div>
+                  </div>
+                  <div><CampoLabel>Headline</CampoLabel><textarea value={s.headline || ''} onChange={e => set({ headline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
+                  <div><CampoLabel>Subtexto</CampoLabel><textarea value={s.subheadline || ''} onChange={e => set({ subheadline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
+                  {s.template === 'dica' && (
+                    <div>
+                      <CampoLabel>Bullets</CampoLabel>
+                      {(s.bullets || []).map((b, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                          <input value={b} onChange={e => { const bl = [...(s.bullets || [])]; bl[i] = e.target.value; set({ bullets: bl }) }} className="st-input" style={{ ...inp, flex: 1 }} />
+                          <button onClick={() => set({ bullets: (s.bullets || []).filter((_, j) => j !== i) })} style={ghost}>×</button>
+                        </div>
+                      ))}
+                      {(s.bullets || []).length < 4 && <button onClick={() => set({ bullets: [...(s.bullets || []), ''] })} style={ghost}>+ bullet</button>}
+                    </div>
+                  )}
+                  <div><CampoLabel>Rodapé / assinatura</CampoLabel><input value={s.rodape || ''} onChange={e => set({ rodape: e.target.value })} className="st-input" style={inp} /></div>
+                  <div style={{ display: 'flex', gap: 18 }}>
+                    <div><CampoLabel>Cor de fundo</CampoLabel><input type="color" value={s.corFundo || '#141414'} onChange={e => set({ corFundo: e.target.value })} style={{ width: 48, height: 34, borderRadius: 8, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} /></div>
+                    <div><CampoLabel>Cor de destaque</CampoLabel><input type="color" value={s.corAccent || '#ffc00f'} onChange={e => set({ corAccent: e.target.value })} style={{ width: 48, height: 34, borderRadius: 8, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} /></div>
+                  </div>
+                  <button className="st-btn st-cta" onClick={() => aplicarEditor(false)} disabled={editorAplicando} style={{ padding: '11px 0', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13, cursor: editorAplicando ? 'wait' : 'pointer', opacity: editorAplicando ? 0.6 : 1 }}>Aplicar mudanças</button>
+                  <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                    <CampoLabel>Refinar com IA</CampoLabel>
+                    <textarea value={editorPrompt} onChange={e => setEditorPrompt(e.target.value)} placeholder="Ex.: deixa mais minimalista, encurta a headline, tom mais sério…" rows={2} className="st-input" style={inp} />
+                    <button className="st-btn" onClick={() => aplicarEditor(true)} disabled={editorAplicando || !editorPrompt.trim()} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: editorPrompt.trim() && !editorAplicando ? 'pointer' : 'not-allowed', opacity: editorPrompt.trim() && !editorAplicando ? 1 : 0.5 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                      Refinar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal "Gerar arte" — escolher imagem de referência */}
       {gerarModal && (() => {

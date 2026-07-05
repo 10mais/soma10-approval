@@ -464,6 +464,19 @@ export type Post = {
   } // snapshot do que a IA gerou (para comparar com a edição humana)
   editadoAposIA?: boolean // humano alterou briefing/copy/criativo depois da geração
   criativoGerado?: boolean // a imagem foi gerada pelo motor de criativos do Studio (template/IA)
+  // "Receita" do criativo gerado — permite reabrir no editor e re-renderizar/refinar
+  criativoData?: {
+    template: string
+    headline?: string
+    subheadline?: string
+    bullets?: string[]
+    rodape?: string
+    corFundo?: string
+    corAccent?: string
+    fundoUrl?: string
+    logoUrl?: string
+    handle?: string
+  }
 }
 
 // ===== CRM de vendas (SDR/Closer) =====

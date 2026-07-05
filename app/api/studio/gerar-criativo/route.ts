@@ -26,8 +26,27 @@ async function baixarImg(url?: string): Promise<{ base64: string; mime: string; 
   } catch { return null }
 }
 
-// POST { postId, template? } — a IA dirige a arte, o template branded vira PNG (Blob)
-// e entra em post.imagens[]. Track 1 do Studio (design system, sem custo externo).
+// Re-renderiza o criativo a partir da "receita" (spec com URLs) — usado pelo editor.
+async function renderSpec(spec: any, fonts: any): Promise<string> {
+  const logoData = spec?.logoUrl ? await baixarImg(spec.logoUrl) : null
+  const usarFoto = spec?.template === 'foto' && !!spec?.fundoUrl
+  const fundoData = usarFoto ? await baixarImg(spec.fundoUrl) : null
+  const corFundo = (spec?.corFundo || '#141414')
+  const d: DadosCriativo = {
+    template: (usarFoto && fundoData) ? 'foto' : (['capa', 'dica', 'citacao', 'dado'].includes(spec?.template) ? spec.template : 'capa'),
+    headline: (spec?.headline || '').toString().slice(0, 140),
+    subheadline: (spec?.subheadline || '').toString().slice(0, 160),
+    bullets: Array.isArray(spec?.bullets) ? spec.bullets.slice(0, 4).map((b: any) => String(b).slice(0, 120)) : [],
+    rodape: (spec?.rodape || '').toString().slice(0, 60),
+    corFundo, corTexto: contraste(corFundo), corAccent: (spec?.corAccent || '#ffc00f'),
+    logo: logoData?.dataUri, handle: spec?.handle || '',
+    fundo: (usarFoto && fundoData) ? fundoData.dataUri : undefined,
+  }
+  const imagem = new ImageResponse(montarCriativo(d), { width: LARGURA, height: ALTURA, fonts })
+  return Buffer.from(await imagem.arrayBuffer()).toString('base64')
+}
+
+// POST { postId, ... } — gera (IA), re-renderiza (modo:'render') ou refina (modo:'refinar').
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
@@ -39,7 +58,7 @@ export async function POST(req: NextRequest) {
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()
   if (!KEY) return NextResponse.json({ error: 'IA não configurada (ANTHROPIC_API_KEY).' }, { status: 500 })
 
-  const { postId, template, fundoUrl, semFoto, headline: headlineIn } = await req.json()
+  const { postId, template, fundoUrl, semFoto, headline: headlineIn, modo, dados: dadosIn, instrucao } = await req.json()
   if (!postId) return NextResponse.json({ error: 'postId é obrigatório' }, { status: 400 })
   const fotoEscolhida = typeof fundoUrl === 'string' && fundoUrl.trim() ? fundoUrl.trim() : ''
   const headlineFixa = typeof headlineIn === 'string' && headlineIn.trim() ? headlineIn.trim() : ''
@@ -48,6 +67,56 @@ export async function POST(req: NextRequest) {
   if (!post) return NextResponse.json({ error: 'post não encontrado' }, { status: 404 })
   const cliente = await redis.get<Cliente>(`cliente:${post.clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
+
+  const baseUrl = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || new URL(req.url).origin).replace(/\/$/, '')
+  const fonts = await carregarFontes(baseUrl)
+
+  // MODO RENDER — re-renderiza a partir dos campos editados manualmente (sem IA).
+  if (modo === 'render' && dadosIn) {
+    try {
+      const base64 = await renderSpec(dadosIn, fonts)
+      return NextResponse.json({ ok: true, imagemBase64: base64, criativoData: dadosIn, template: dadosIn.template })
+    } catch (err: any) {
+      return NextResponse.json({ error: `Falha ao renderizar: ${err?.message || 'erro'}` }, { status: 500 })
+    }
+  }
+
+  // MODO REFINAR — a IA ajusta os textos a partir de uma instrução do usuário.
+  if (modo === 'refinar' && dadosIn) {
+    if (!KEY) return NextResponse.json({ error: 'IA não configurada.' }, { status: 500 })
+    try {
+      const client = new Anthropic({ apiKey: KEY })
+      const promptRef = `Você é diretor de arte. Aqui está o conteúdo ATUAL de um criativo (JSON) e uma INSTRUÇÃO do usuário. Devolva o MESMO JSON com os campos de TEXTO ajustados conforme a instrução — curtíssimo, sem hashtag, sem inventar campos. Pode trocar "template" entre capa|dica|citacao|dado|foto se fizer sentido. NÃO mexa em cores.
+
+ATUAL:
+${JSON.stringify({ template: dadosIn.template, headline: dadosIn.headline, subheadline: dadosIn.subheadline, bullets: dadosIn.bullets, rodape: dadosIn.rodape })}
+
+INSTRUÇÃO: ${String(instrucao || '').slice(0, 500)}
+
+Responda APENAS com JSON: {"template":"...","headline":"...","subheadline":"...","bullets":["..."],"rodape":"..."}`
+      const msg = await client.messages.create({
+        model: 'claude-opus-4-8', max_tokens: 1000,
+        thinking: { type: 'adaptive' }, output_config: { effort: 'low' } as any,
+        messages: [{ role: 'user', content: promptRef }],
+      } as any)
+      await registrarGasto(custoEstimado(msg.usage)).catch(() => {})
+      const texto = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
+      const m = texto.match(/\{[\s\S]*\}/)
+      const upd = m ? JSON.parse(m[0]) : {}
+      const spec2 = {
+        ...dadosIn,
+        template: ['capa', 'dica', 'citacao', 'dado', 'foto'].includes(upd.template) ? upd.template : dadosIn.template,
+        headline: upd.headline ?? dadosIn.headline,
+        subheadline: upd.subheadline ?? dadosIn.subheadline,
+        bullets: Array.isArray(upd.bullets) ? upd.bullets : dadosIn.bullets,
+        rodape: upd.rodape ?? dadosIn.rodape,
+      }
+      const base64 = await renderSpec(spec2, fonts)
+      return NextResponse.json({ ok: true, imagemBase64: base64, criativoData: spec2, template: spec2.template })
+    } catch (err: any) {
+      return NextResponse.json({ error: `Falha ao refinar: ${err?.message || 'erro'}` }, { status: 500 })
+    }
+  }
 
   // DNA da marca para a direção de arte
   const pb = cliente.playbook
@@ -152,14 +221,16 @@ Responda APENAS com JSON válido (sem markdown, sem backticks):
   }
 
   try {
-    const baseUrl = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || new URL(req.url).origin).replace(/\/$/, '')
-    const fonts = await carregarFontes(baseUrl)
     const imagem = new ImageResponse(montarCriativo(d), { width: LARGURA, height: ALTURA, fonts })
     const base64 = Buffer.from(await imagem.arrayBuffer()).toString('base64')
+    // Receita do criativo (URLs, não data URIs) para reabrir no editor.
+    const criativoData = {
+      template: d.template, headline: d.headline, subheadline: d.subheadline, bullets: d.bullets, rodape: d.rodape,
+      corFundo, corAccent, fundoUrl: usarFoto ? fotoFundo : '', logoUrl: logoFinal || '', handle: d.handle,
+    }
     // O store do Blob é privado (put público é barrado). Devolvemos a imagem e o
-    // cliente sobe pelo fluxo upload() — mesmo caminho da mídia manual, que gera
-    // URL pública que o Instagram consegue buscar.
-    return NextResponse.json({ ok: true, imagemBase64: base64, template: d.template })
+    // cliente sobe pelo fluxo upload() — mesmo caminho da mídia manual.
+    return NextResponse.json({ ok: true, imagemBase64: base64, template: d.template, criativoData })
   } catch (err: any) {
     console.error('[gerar-criativo] render erro:', err?.message)
     return NextResponse.json({ error: `Falha ao gerar a imagem: ${err?.message || 'desconhecido'}` }, { status: 500 })
