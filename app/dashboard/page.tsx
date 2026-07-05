@@ -3022,7 +3022,7 @@ function Dashboard() {
 
         {/* PAINEL HOME */}
         {aba === 'home' && (
-          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} />
+          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
         )}
 
         {/* CLIENTES */}
