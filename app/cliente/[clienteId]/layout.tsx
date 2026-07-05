@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { key: '/entregas', label: 'Entregas', todos: true, perm: 'entregas' as const },
   { key: '/aprovacoes', label: 'Aprovações', todos: true, perm: 'aprovacoes' as const },
   { key: '/solicitar', label: 'Solicitar conteúdo', todos: true, perm: 'solicitar' as const },
-  { key: '/esteira', label: 'Esteira', todos: true, perm: 'esteira' as const },
   { key: '/planner', label: 'Planner', todos: true, perm: 'planner' as const },
   { key: '/playbook', label: 'Playbook', equipe: true },
   { key: '/marca', label: 'Marca', equipe: true },

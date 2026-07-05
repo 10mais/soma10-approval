@@ -13,7 +13,6 @@ import AvatarCliente from '../components/AvatarCliente'
 import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
-const Esteira = dynamic(() => import('../components/Esteira'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -393,6 +392,7 @@ function Dashboard() {
   const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
+      if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
       if (salva) return salva as any
     }
     return 'home'
@@ -1690,13 +1690,13 @@ function Dashboard() {
                 </div>
               </div>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {(['aprovacoes', 'esteira', 'playbook'] as const).map(a => (
+                {(['aprovacoes', 'playbook'] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
                     background: aba === a ? '#ffc00f' : 'transparent', fontSize: 14,
                   }}>
-                    {a === 'aprovacoes' ? 'Aprovações' : a === 'esteira' ? 'Esteira' : 'Playbook'}
+                    {a === 'aprovacoes' ? 'Aprovações' : 'Playbook'}
                   </button>
                 ))}
               </nav>
@@ -1810,7 +1810,7 @@ function Dashboard() {
             <>
               {([
                 { titulo: '', grupo: '', itens: [['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais'], ['home', 'Painel']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['esteira', 'Esteira'], ['carga', 'Carga da equipe']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['carga', 'Carga da equipe']] },
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
                 { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
@@ -1886,7 +1886,7 @@ function Dashboard() {
                 <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
               </>}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {([['planner', 'Planner'], ['esteira', 'Esteira'], ['aprovacoes', 'Aprovações'], ['marca', 'Marca (Brand Board)'], ['listening', 'Social Listening'], ['analytics', 'Analytics']] as [string, string][]).map(([a, label]) => (
+                {([['planner', 'Planner'], ['aprovacoes', 'Aprovações'], ['marca', 'Marca (Brand Board)'], ['listening', 'Social Listening'], ['analytics', 'Analytics']] as [string, string][]).map(([a, label]) => (
                   <NavBtn key={a} chave={a} label={label} onClick={() => setAba(a as any)} />
                 ))}
               </nav>
@@ -2978,14 +2978,6 @@ function Dashboard() {
           }} />
         )}
 
-        {aba === 'esteira' && (
-          <Esteira clientes={clientes} clienteFixo={verComoClienteId || undefined} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} onAbrirComposer={(pauta: any) => {
-            setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
-            setEditandoPostId(pauta.id)
-            setAba('novo-post')
-          }} />
-        )}
-
         {aba === 'aprovacoes' && (
           <AprovacoesCli posts={verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
         )}
@@ -3595,7 +3587,7 @@ function Dashboard() {
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Permissões do portal</label>
                         <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo'], ['esteira', 'Esteira'], ['planner', 'Planner']] as [string, string][]).map(([chave, rotulo]) => {
+                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo'], ['planner', 'Planner']] as [string, string][]).map(([chave, rotulo]) => {
                             const ligado = (edicaoCliente as any).permissoes?.[chave] !== false
                             return (
                               <button key={chave} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, permissoes: { ...((p as any).permissoes || {}), [chave]: ((p as any).permissoes?.[chave] !== false) ? false : true } } as any))}
