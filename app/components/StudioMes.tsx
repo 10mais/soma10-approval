@@ -104,12 +104,14 @@ function CampoLabel({ children }: { children: ReactNode }) {
   return <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{children}</span>
 }
 
-export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true }: {
+export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true, podeGerarIA = true, podeEnviarCliente = true }: {
   clientes: Cliente[]
   clienteFixo?: string
   onAbrirComposer?: (pauta: Pauta) => void
   podeEditar?: boolean
   podeExcluir?: boolean
+  podeGerarIA?: boolean
+  podeEnviarCliente?: boolean
 }) {
   const [planos, setPlanos] = useState<Plano[]>([])
   // Seleção persistida (ao atualizar a página, permanece no mesmo lugar).
@@ -452,10 +454,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
-          <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+          {podeGerarIA && <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
             {gerandoIA ? 'Gerando…' : 'Gerar plano com IA'}
-          </button>
+          </button>}
         </>}
       </div>
 
@@ -554,7 +556,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               const semMidia = (p.imagens || []).length === 0
               const aberto = abertos.has(p.id)
               const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
-              const podeGerar = podeEditar && ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
+              const podeGerar = podeEditar && podeGerarIA && ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
               const fmt = FORMATOS.find(f => f.key === (p.formato || 'feed')) || FORMATOS[0]
               const dataFmt = p.dataAgendada ? `${new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'sem data'
               return (
@@ -594,7 +596,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           {gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
                       )}
-                      {podeEnviar && !semMidia && podeEditar && (
+                      {podeEnviar && !semMidia && podeEditar && podeEnviarCliente && (
                         <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
@@ -644,7 +646,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           ) : <div style={{ width: 160, height: 200, borderRadius: 16, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8, background: '#fbfbfc' }}>Sem criativo ainda</div>}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, width: 160 }}>
-                          {podeEditar && podeEnviar && (
+                          {podeEditar && podeEnviar && podeEnviarCliente && (
                             <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 8px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                           )}
                           {podeEditar && onAbrirComposer && (

@@ -3,6 +3,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { ABAS_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -34,6 +35,7 @@ const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: fa
 const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
 const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
 const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuais'), { ssr: false })
+const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
 
@@ -439,7 +441,7 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
-  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes'>('geral')
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes'>('geral')
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
     if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
@@ -554,6 +556,7 @@ function Dashboard() {
   const [erroUsuario, setErroUsuario] = useState('')
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [permPapel, setPermPapel] = useState<Record<string, Record<string, boolean>>>({})
+  const [permGranular, setPermGranular] = useState<any>({})
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
   const [perfilAberto, setPerfilAberto] = useState(false)
@@ -667,6 +670,7 @@ function Dashboard() {
     // Permissões por papel: admin (edita), gerente e usuario (gateiam o menu)
     if (role === 'admin' || role === 'gerente' || role === 'usuario') {
       fetches.push(fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {}))
+      fetches.push(fetch('/api/permissoes-granular').then(r => r.json()).then(d => { if (d && !d.error) setPermGranular(d) }).catch(() => {}))
     }
     if (role === 'admin') {
       fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
@@ -794,6 +798,10 @@ function Dashboard() {
   const podeNivelDash = (grupo: string, nivel: 'ver' | 'editar' | 'excluir' = 'ver') =>
     podeNivel(role, grupo as any, nivel, minhasPermissoes, permPapel as any)
   const podeGrupo = (grupo: string) => podeNivelDash(grupo, 'ver')
+  // Permissões DETALHADAS (por aba + por ação) — camada adicional ao módulo.
+  const minhaGranular = (session?.user as any)?.permissoesGranular
+  const podeAbaDash = (aba: string) => podeAbaGranular(role, aba, minhaGranular, permGranular)
+  const podeAcaoDash = (acao: any) => podeAcaoGranular(role, acao, minhaGranular, permGranular)
 
   // Matriz de níveis reutilizável. contexto 'usuario' edita o override do usuário;
   // 'papel' edita a config do papel (permPapel).
@@ -1501,6 +1509,8 @@ function Dashboard() {
 
   // Item de menu com ícone — mostra só o ícone quando a sidebar está recolhida
   function NavBtn({ chave, label, onClick, badge, fontSize = 14 }: { chave: string; label: string; onClick?: () => void; badge?: number; fontSize?: number }) {
+    // Permissão detalhada por aba (esconde a tela para quem não pode vê-la).
+    if (ABAS_PERM.some(a => a.key === chave) && !podeAbaDash(chave)) return null
     const ativo = aba === chave
     // Ao clicar com a sidebar recolhida, expande automaticamente
     const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
@@ -2980,7 +2990,7 @@ function Dashboard() {
         )}
 
         {aba === 'studio' && (
-          <StudioMes clientes={clientes} clienteFixo={verComoClienteId || undefined} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} onAbrirComposer={(pauta: any) => {
+          <StudioMes clientes={clientes} clienteFixo={verComoClienteId || undefined} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} podeGerarIA={podeAcaoDash('gerar_ia')} podeEnviarCliente={podeAcaoDash('enviar_cliente')} onAbrirComposer={(pauta: any) => {
             setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
             setEditandoPostId(pauta.id)
             setAba('novo-post')
@@ -3993,7 +4003,7 @@ function Dashboard() {
 
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #eee' }}>
-              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações']] as const).map(([k, l]) => (
+              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid #111' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: '#e5e5e5', margin: '0 6px' }} />
@@ -4017,6 +4027,13 @@ function Dashboard() {
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações do sistema</h3>
               <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
               <NotificacoesConfig modo="admin" />
+            </div>
+            )}
+
+            {abaConfig === 'permissoes' && (
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Permissões detalhadas</h3>
+              <PermissoesGranular />
             </div>
             )}
 

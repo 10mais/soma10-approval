@@ -5,6 +5,7 @@ import { redis, Cliente, Plano, Post } from '@/lib/redis'
 import { indexarPost } from '@/lib/postsIndex'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import Anthropic from '@anthropic-ai/sdk'
 import { v4 as uuid } from 'uuid'
 
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
   if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
+  if (await bloqueiaAcao((session.user as any).role, 'gerar_ia')) return NextResponse.json({ error: 'sem permissão para gerar com IA' }, { status: 403 })
 
   const KEY = process.env.ANTHROPIC_API_KEY?.trim()
   if (!KEY) {

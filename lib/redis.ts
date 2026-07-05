@@ -20,6 +20,8 @@ export type Usuario = {
   // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
   // Cada módulo aceita boolean (formato antigo) ou { ver, editar, excluir } (novo, 3 níveis).
   permissoes?: Record<'producao' | 'estrategia' | 'crm' | 'clientes', boolean | { ver?: boolean; editar?: boolean; excluir?: boolean }> | Partial<Record<string, any>>
+  // Permissões DETALHADAS (por aba + por ação) — override individual (ver lib/permissoesGranular)
+  permissoesGranular?: { abas?: Record<string, boolean>; acoes?: Record<string, boolean> }
   foto?: string
   telefone?: string
   bio?: string
