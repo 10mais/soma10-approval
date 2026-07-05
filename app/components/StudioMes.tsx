@@ -326,30 +326,55 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     } catch { /* segue sem ativos */ } finally { setModalCarregando(false) }
   }
 
-  // Gera uma FOTO realista (Ideogram) a partir da pauta + marca; vira imagem do post
-  // e fica editável no editor visual (foto de fundo). Fluxo de upload igual ao criativo.
+  // Converte base64 -> File (para subir no Blob pelo fluxo upload()).
+  function base64ParaFile(b64: string, nome: string): File {
+    const bin = atob(b64); const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new File([bytes], nome, { type: 'image/png' })
+  }
+
+  // FOTO REALISTA (Ideogram) -> CRIATIVO do briefing. Encadeia os dois motores:
+  // 1) Ideogram gera a foto (fundo); 2) o gerador de arte escreve a mensagem do
+  // briefing + logo/marca POR CIMA (template "foto"). Assim sai um criativo pronto,
+  // não uma foto crua. Se a etapa 2 falhar, salva a foto pura (editável no visual).
   async function gerarFotoIA(p: Pauta) {
     setGerarModal(null)
     setGerandoFoto(p.id)
     try {
+      // 1) Foto base no Ideogram
       const r = await fetch('/api/studio/gerar-foto-ia', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ postId: p.id }),
       }).then(x => x.json()).catch(() => null)
       if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar a foto.', 'erro'); return }
-      const bin = atob(r.imagemBase64); const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      const file = new File([bytes], `foto-${p.id}.png`, { type: 'image/png' })
-      const blob = await upload(`criativos/${p.id}-foto-${Date.now()}.png`, file, {
+      const fotoBlob = await upload(`criativos/${p.id}-fotobase-${Date.now()}.png`, base64ParaFile(r.imagemBase64, `fotobase-${p.id}.png`), {
         access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
       })
-      // A foto vira imagem do post E fundo de uma receita "livre" (editável no visual).
-      const criativoData = { template: 'livre', corFundo: '#141414', corAccent: '#ffc00f', fundoUrl: blob.url, camadas: [] }
-      await fetch('/api/posts', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, criativoData, formato: p.formato || 'feed' }),
-      })
-      toast('Foto realista gerada! Ajuste textos no editor visual se quiser.', 'sucesso')
+
+      // 2) Criativo do briefing usando a foto como FUNDO (template "foto" + headline)
+      const rc = await fetch('/api/studio/gerar-criativo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id, template: 'foto', fundoUrl: fotoBlob.url, headline: (p.textoImagem || p.briefing || '').trim() || undefined }),
+      }).then(x => x.json()).catch(() => null)
+
+      if (rc && !rc.error && rc.imagemBase64) {
+        const artBlob = await upload(`criativos/${p.id}-${Date.now()}.png`, base64ParaFile(rc.imagemBase64, `criativo-${p.id}.png`), {
+          access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
+        })
+        await fetch('/api/posts', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id, imagens: [artBlob.url, ...(p.imagens || [])], criativoGerado: true, criativoData: rc.criativoData, formato: p.formato || 'feed' }),
+        })
+        toast('Criativo gerado com foto por IA!', 'sucesso')
+      } else {
+        // Fallback: salva a foto crua como fundo editável (sem overlay).
+        const criativoData = { template: 'livre', corFundo: '#141414', corAccent: '#ffc00f', fundoUrl: fotoBlob.url, camadas: [] }
+        await fetch('/api/posts', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: p.id, imagens: [fotoBlob.url, ...(p.imagens || [])], criativoGerado: true, criativoData, formato: p.formato || 'feed' }),
+        })
+        toast(`Foto gerada (sem overlay: ${rc?.error || 'a arte falhou'}). Ajuste no editor visual.`, 'info')
+      }
       carregarPautas(planoSel)
     } catch (e: any) {
       toast(`Falha ao gerar a foto: ${e?.message || 'erro'}`, 'erro')
