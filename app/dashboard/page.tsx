@@ -1615,7 +1615,7 @@ function Dashboard() {
             <select onChange={e => {
               const v = e.target.value
               if (!v) return
-              if (v === '_reset') { setVerComoClienteId(''); setAba('home'); e.target.value = ''; return }
+              if (v === '_reset') { setVerComoClienteId(''); e.target.value = ''; return }
               // Visualizar como (somente leitura): ativa o modo cliente e abre o portal
               if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
               const u = usuarios.find((x: any) => x.email === v)
@@ -1714,7 +1714,7 @@ function Dashboard() {
                     {clienteEmVisualizacao?.nome || 'Cliente'}
                   </p>
                 </div>
-                <button onClick={() => { setVerComoClienteId(''); setAba('home') }} style={{
+                <button onClick={() => { setVerComoClienteId('') }} style={{
                   background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
                   cursor: 'pointer', textDecoration: 'underline', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
                 }}>
@@ -1932,7 +1932,7 @@ function Dashboard() {
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram?.replace(/^@/, '')}) — somente o conteúdo dele é exibido.
             </p>
-            <button onClick={() => { setVerComoClienteId(''); setAba('home') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={() => { setVerComoClienteId('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={13} /> Voltar ao Painel
             </button>
           </div>
