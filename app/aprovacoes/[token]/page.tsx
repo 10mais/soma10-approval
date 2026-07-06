@@ -151,7 +151,7 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: '#f5f5f5', color: '#666' }}>Cancelar</button>
-                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: pinText.trim() ? '#ffc00f' : '#f0e6b8', color: '#111', cursor: pinText.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
+                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: '#111', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>Marcar</button>
               </div>
             </div>
           </div>
