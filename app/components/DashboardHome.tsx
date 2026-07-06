@@ -222,7 +222,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
               return (
                 <div key={c.id} onClick={() => onVerCliente(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: c.corSecundaria || '#111', flexShrink: 0 }}>
-                    <AvatarCliente logo={c.logo} nome={c.nome} />
+                    <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                   </div>
                   <span style={{ width: 110, fontSize: 12, fontWeight: 600, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.nome}</span>
                   <div style={{ flex: 1, position: 'relative', height: 18, borderRadius: 999, background: '#f0f0f0', overflow: 'hidden' }}>

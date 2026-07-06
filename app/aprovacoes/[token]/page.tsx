@@ -56,9 +56,6 @@ export default function AprovacoesPublicas() {
 
 function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; logoAlt?: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
-  // Candidatos de logo em ordem: perfil do cliente → ativo 'logo' da marca → inicial.
-  const logoCandidatos = [logo, logoAlt].filter(Boolean) as string[]
-  const [logoIdx, setLogoIdx] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject' | 'legenda'>('view')
   const [texto, setTexto] = useState('')
   const [legendaTxt, setLegendaTxt] = useState('')
@@ -101,8 +98,8 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
         <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
-          {logoCandidatos[logoIdx] && !logoErro
-            ? <img src={logoCandidatos[logoIdx]} alt="" onError={() => { if (logoIdx + 1 < logoCandidatos.length) setLogoIdx(logoIdx + 1); else setLogoErro(true) }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {!logoErro
+            ? <img src={`/api/foto-cliente?token=${encodeURIComponent(token)}`} alt="" onError={() => setLogoErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : inicial}
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>

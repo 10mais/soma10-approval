@@ -1831,7 +1831,7 @@ function Dashboard() {
                             display: 'flex', alignItems: 'center', gap: 8,
                           }}>
                             <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
-                              <AvatarCliente logo={c.logo} nome={c.nome} />
+                              <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                             </span>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
                           </button>
@@ -3442,7 +3442,7 @@ function Dashboard() {
                 <div key={c.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden', height: 'fit-content' }}>
                   <div onClick={() => setClienteAberto(clienteAberto === c.id ? null : c.id)} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <AvatarCliente logo={c.logo} nome={c.nome} />
+                      <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -4218,7 +4218,7 @@ function Dashboard() {
                   {clientes.map(c => (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#fafafa', borderRadius: 10 }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#eee', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: '#bbb', fontSize: 16 }}>
-                        <AvatarCliente logo={c.logo} nome={c.nome} />
+                        <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>

@@ -161,7 +161,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           {cliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#111', flexShrink: 0 }}>
-                <AvatarCliente logo={cliente.logo} nome={cliente.nome} />
+                <AvatarCliente logo={cliente.logo} nome={cliente.nome} clienteId={clienteId} />
               </div>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111' }}>{cliente.nome}</p>

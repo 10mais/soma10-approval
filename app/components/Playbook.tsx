@@ -167,7 +167,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             <div key={c.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#fafafa' }}>
                 <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, flexShrink: 0 }}>
-                  <AvatarCliente logo={c.logo} nome={c.nome} />
+                  <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{c.nome}</span>
                 <span style={{ fontSize: 10, color: '#aaa' }}>{marcosCliente.length} marco(s)</span>
