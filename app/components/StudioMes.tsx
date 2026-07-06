@@ -682,6 +682,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
             {pautas.map((p, idx) => {
               const est = estadoStudio(p)
               const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
+              const anot = Array.isArray(p.anotacoes) ? p.anotacoes : []
               const podeEnviar = ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
               const semMidia = (p.imagens || []).length === 0
               const aberto = abertos.has(p.id)
@@ -787,7 +788,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>
                           )}
                         </div>
-                        {ajuste && <p style={{ margin: 0, fontSize: 11, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '8px 10px', width: 160, boxSizing: 'border-box' }}><strong>Cliente pediu:</strong> {String(ajuste)}</p>}
+                        {(ajuste || anot.length > 0) && (
+                          <div style={{ margin: 0, fontSize: 11, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '8px 10px', width: 160, boxSizing: 'border-box', lineHeight: 1.45 }}>
+                            <strong>Cliente pediu:</strong>
+                            {ajuste && <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{String(ajuste)}</div>}
+                            {anot.length > 0 && <ol style={{ margin: '4px 0 0', paddingLeft: 15 }}>{anot.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}</ol>}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

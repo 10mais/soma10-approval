@@ -2420,7 +2420,7 @@ function Dashboard() {
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
                     )}
-                    {(postPreview.status === 'corrigir' || postPreview.status === 'reprovado') && ((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (
+                    {((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (
                       <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
                         <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
                         {(postPreview as any).motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{(postPreview as any).motivoReprovacao}</div>}
