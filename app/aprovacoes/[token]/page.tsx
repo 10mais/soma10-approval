@@ -10,7 +10,7 @@ const btn = (bg: string, color: string, border?: string): React.CSSProperties =>
 
 export default function AprovacoesPublicas() {
   const { token } = useParams()
-  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; instagram?: string; posts: PostA[] } | null>(null)
+  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[] } | null>(null)
   const [erro, setErro] = useState('')
 
   async function carregar() {
@@ -46,7 +46,7 @@ export default function AprovacoesPublicas() {
           </p>
         )}
         {dados.posts.map(p => (
-          <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} logo={dados.logo} onDecidido={() => removerPost(p.id)} />
+          <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} logo={dados.logo} logoAlt={dados.logoAlt} onDecidido={() => removerPost(p.id)} />
         ))}
       </div>
       <Footer />
@@ -54,8 +54,11 @@ export default function AprovacoesPublicas() {
   )
 }
 
-function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; onDecidido: () => void }) {
+function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; logoAlt?: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
+  // Candidatos de logo em ordem: perfil do cliente → ativo 'logo' da marca → inicial.
+  const logoCandidatos = [logo, logoAlt].filter(Boolean) as string[]
+  const [logoIdx, setLogoIdx] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject' | 'legenda'>('view')
   const [texto, setTexto] = useState('')
   const [legendaTxt, setLegendaTxt] = useState('')
@@ -98,7 +101,9 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
         <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
-          {logo && !logoErro ? <img src={logo} alt="" onError={() => setLogoErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
+          {logoCandidatos[logoIdx] && !logoErro
+            ? <img src={logoCandidatos[logoIdx]} alt="" onError={() => { if (logoIdx + 1 < logoCandidatos.length) setLogoIdx(logoIdx + 1); else setLogoErro(true) }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : inicial}
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>
         {post.formato && post.formato !== 'feed' && (

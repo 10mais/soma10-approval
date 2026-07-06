@@ -45,5 +45,8 @@ export async function GET(req: NextRequest) {
       formato: (p as any).formato || '', dataAgendada: (p as any).dataAgendada || '', capasVideo: (p as any).capasVideo || {},
     }))
 
-  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo, instagram: cliente.instagram || '', posts })
+  // Logo do perfil: cliente.logo pode estar expirado (URL do IG → 403). Manda
+  // também o ativo 'logo' da marca (Blob permanente) como fallback pro mockup.
+  const assetLogo = (Array.isArray(cliente.assetsMarca) ? cliente.assetsMarca : []).find(a => a?.categoria === 'logo')?.url || ''
+  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo || '', logoAlt: assetLogo, instagram: cliente.instagram || '', posts })
 }
