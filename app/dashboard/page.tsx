@@ -490,6 +490,7 @@ function Dashboard() {
   const [criandoPost, setCriandoPost] = useState(false)
   const [salvandoRascunho, setSalvandoRascunho] = useState(false)
   const [rascunhoMsg, setRascunhoMsg] = useState('')
+  const [linkAprovModal, setLinkAprovModal] = useState<{ url: string; cliente: string } | null>(null) // compartilhar link ao enviar p/ aprovação
   const [editandoPostId, setEditandoPostId] = useState<string | null>(null)
   const [visualizacaoPosts, setVisualizacaoPosts] = useState<'lista' | 'calendario' | 'fluxo'>('lista')
   const [tarefaAbrirId, setTarefaAbrirId] = useState<string | null>(null)
@@ -1043,8 +1044,11 @@ function Dashboard() {
       // Link ÚNICO do cliente (mostra TODOS os materiais aguardando aprovação dele)
       const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: valor.clienteId }) }).then(x => x.json()).catch(() => null)
       const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
-      if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
-      setRascunhoMsg(url ? `Enviado para aprovação! Link do cliente copiado — envie: ${url}` : 'Enviado para aprovação. Pegue o link em Configurações › Clientes › "Link de aprovação".')
+      if (url) {
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+        setLinkAprovModal({ url, cliente: cliente?.nome || 'cliente' })
+      }
+      setRascunhoMsg(url ? 'Enviado para aprovação! Link pronto para compartilhar.' : 'Enviado para aprovação. Pegue o link em Configurações › Clientes › "Link de aprovação".')
     } else {
       setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
     }
@@ -3142,6 +3146,35 @@ function Dashboard() {
         )}
 
         {/* Tarefa aberta a partir de uma notificação (sobreposto, sem trocar de aba) */}
+        {/* Modal de compartilhamento do link de aprovação (após "Enviar para aprovação") */}
+        {linkAprovModal && (
+          <div onClick={() => setLinkAprovModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                </span>
+                <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Link de aprovação — {linkAprovModal.cliente}</h3>
+              </div>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <input readOnly value={linkAprovModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, color: '#333', background: '#fafafa', fontFamily: 'inherit' }} />
+                <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkAprovModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
+                  style={{ padding: '10px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkAprovModal.url)}`, '_blank')}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.4c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.6 0a6.6 6.6 0 0 1-2-1.2 7.4 7.4 0 0 1-1.3-1.7c-.2-.3 0-.4.1-.5l.4-.5.3-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3 1 2.6 1.1 2.7s1.9 3 4.6 4.1c2.3 1 2.3.6 2.7.6.4 0 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1z" /></svg>
+                  WhatsApp
+                </button>
+                <button onClick={() => window.open(linkAprovModal.url, '_blank')} style={{ padding: '11px 18px', background: '#fff', color: '#555', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+                <button onClick={() => setLinkAprovModal(null)} style={{ padding: '11px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {tarefaNotif && (
           <TarefaModalNotif
             key={tarefaNotif.id}

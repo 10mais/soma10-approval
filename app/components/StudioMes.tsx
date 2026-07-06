@@ -137,6 +137,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
   const [gerandoFoto, setGerandoFoto] = useState<string | null>(null) // Ideogram (foto realista)
   const [ideogramOn, setIdeogramOn] = useState(false)
+  const [linkModal, setLinkModal] = useState<{ url: string; cliente: string } | null>(null) // compartilhar link de aprovação
   const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
   // Modal "Gerar arte" — escolher imagem de referência
   const [gerarModal, setGerarModal] = useState<Pauta | null>(null)
@@ -276,8 +277,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       body: JSON.stringify({ clienteId: p.clienteId }),
     }).then(x => x.json()).catch(() => null)
     const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
-    if (url && navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
-    toast(url ? `Enviado ao cliente! Link copiado — envie: ${url}` : 'Enviado ao cliente. Pegue o link em Configurações › Clientes.', 'sucesso')
+    if (url) {
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+      setLinkModal({ url, cliente: p.clienteNome || 'cliente' })
+      toast('Enviado! Link pronto para compartilhar.', 'sucesso')
+    } else {
+      toast('Enviado ao cliente. Pegue o link em Configurações › Clientes.', 'sucesso')
+    }
     carregarPautas(planoSel)
   }
 
@@ -503,15 +509,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     finally { setEditorAplicando(false) }
   }
 
-  async function copiarLink(clienteId: string) {
+  async function copiarLink(clienteId: string, clienteNome?: string) {
     const r = await fetch('/api/aprovacao-link', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clienteId }),
     }).then(x => x.json()).catch(() => null)
     if (r?.token) {
       const link = `${window.location.origin}/aprovacoes/${r.token}`
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(() => toast('Link do cliente copiado!', 'sucesso')).catch(() => toast(link, 'info'))
-      else toast(link, 'info')
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).catch(() => {})
+      setLinkModal({ url: link, cliente: clienteNome || 'cliente' })
+    } else {
+      toast('Não foi possível gerar o link. Tente em Configurações › Clientes.', 'erro')
     }
   }
 
@@ -731,7 +739,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
-                        <button className="st-btn" onClick={() => copiarLink(p.clienteId)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar link</button>
+                        <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
                       )}
                     </div>
                   </div>
@@ -1030,6 +1038,35 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         )
       })()}
+
+      {/* Modal de compartilhamento do link de aprovação */}
+      {linkModal && (
+        <div onClick={() => setLinkModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22, animation: 'stFade .18s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              </span>
+              <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Link de aprovação — {linkModal.cliente}</h3>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input readOnly value={linkModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, color: '#333', background: '#fafafa', fontFamily: 'inherit' }} />
+              <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
+                style={{ padding: '10px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkModal.url)}`, '_blank')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2-1s-.5-.2-.7.1-.8 1-1 1.2-.4.2-.7.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.6.3-.5v-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.8.4A3.4 3.4 0 0 0 4.5 9c0 2 1.5 4 1.7 4.2s2.9 4.4 7 6c2.4 1 3.4 1 4.6.9.7 0 1.8-.8 2.1-1.5.3-.8.3-1.4.2-1.5l-.6-.3z" /><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" /></svg>
+                WhatsApp
+              </button>
+              <button onClick={() => window.open(linkModal.url, '_blank')} style={{ padding: '11px 18px', background: '#fff', color: '#555', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+              <button onClick={() => setLinkModal(null)} style={{ padding: '11px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox — prévia de post (como no Planner): imagem ampliada + legenda */}
       {preview && (() => {
