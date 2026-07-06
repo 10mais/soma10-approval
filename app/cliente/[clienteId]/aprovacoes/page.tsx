@@ -43,6 +43,7 @@ export default function AprovacoesPagina() {
   const [comentario, setComentario] = useState<Record<string, string>>({})
   const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const [editLegenda, setEditLegenda] = useState<{ id: string; texto: string } | null>(null)
   const [aprovandoTodos, setAprovandoTodos] = useState(false)
   // Permissao de aprovar (default true). So restringe o proprio cliente; equipe nao.
   const [permAprovar, setPermAprovar] = useState(true)
@@ -93,11 +94,11 @@ export default function AprovacoesPagina() {
     if (semData.length) toast(`Estes criativos precisam de data/horário definidos antes de aprovar (peça à equipe): ${semData.join(', ')}`, 'erro')
   }
 
-  async function agir(postId: string, acao: string, comentarioOverride?: string) {
+  async function agir(postId: string, acao: string, comentarioOverride?: string, novaLegenda?: string) {
     setEnviando(postId)
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
+      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || ''), novaLegenda }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
     if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
     if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
@@ -176,14 +177,31 @@ export default function AprovacoesPagina() {
                       </div>
                     )}
                     {permAprovar ? (
+                      <>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
                           style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar</button>
+                        <button onClick={() => setEditLegenda({ id: p.id, texto: p.legenda || '' })} disabled={enviando === p.id}
+                          style={{ padding: '8px 16px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Corrigir legenda</button>
                         <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
-                          style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Pedir ajuste</button>
+                          style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>{ehCopy ? 'Pedir ajuste' : 'Ajustar layout'}</button>
                         <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
                           style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Rejeitar</button>
                       </div>
+                      {editLegenda?.id === p.id && (
+                        <div style={{ marginTop: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 12 }}>
+                          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#166534' }}>Corrigir a legenda</p>
+                          <textarea value={editLegenda.texto} onChange={e => setEditLegenda({ id: p.id, texto: e.target.value })} rows={5} autoFocus
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #86efac', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }} />
+                          <p style={{ margin: '6px 0 8px', fontSize: 11, color: '#16a34a' }}>Ao salvar, a legenda é substituída e o post {ehCopy ? 'segue para o criativo' : 'segue a programação (é aprovado e agendado)'}.</p>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setEditLegenda(null)} style={{ padding: '8px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                            <button disabled={enviando === p.id} onClick={async () => { const t = editLegenda.texto; setEditLegenda(null); await agir(p.id, 'corrigir_legenda', undefined, t) }}
+                              style={{ padding: '8px 18px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar e aprovar</button>
+                          </div>
+                        </div>
+                      )}
+                      </>
                     ) : (
                       <p style={{ margin: 0, textAlign: 'right', fontSize: 12, color: '#aaa', fontStyle: 'italic' }}>Somente visualização — a aprovação é feita pela equipe.</p>
                     )}

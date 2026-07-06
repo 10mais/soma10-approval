@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
-import { notificarDono } from '@/lib/notificacoes'
+import { notificarDono, notificar } from '@/lib/notificacoes'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 
@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissão para aprovar' }, { status: 403 })
   }
 
-  const { postId, acao, comentario } = await req.json()
-  // acao: 'aprovar_copy' | 'ajuste_copy' | 'aprovar_criativo' | 'ajuste_criativo'
+  const { postId, acao, comentario, novaLegenda } = await req.json()
+  // acao: 'aprovar_copy' | 'ajuste_copy' | 'aprovar_criativo' | 'ajuste_criativo' | 'corrigir_legenda'
   if (!postId || !acao) return NextResponse.json({ error: 'postId e acao são obrigatórios' }, { status: 400 })
 
   const post = await redis.get<Post>(`post:${postId}`)
@@ -86,13 +86,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }
 
+  // Cliente corrigiu APENAS a legenda: substitui o texto e SEGUE a programação
+  // (aprova o estágio atual — na copy avança, no criativo agenda pela data).
+  if (acao === 'corrigir_legenda') {
+    if (typeof novaLegenda === 'string') post.legenda = novaLegenda
+    if (post.etapa === 'aprovacao_copy') {
+      post.etapa = 'criativo'; post.copyAprovadaEm = agora; post.ajusteCopy = undefined
+      post.etapaDesde = agora; post.aguardandoDesde = undefined
+      await redis.set(`post:${postId}`, post)
+      await notificarDono(post.criadoPor, 'geral', `Legenda ajustada e copy aprovada — ${nome}`, `${quem} ajustou a legenda e aprovou a copy. Etapa avançou para Criativo.`, postId)
+      return NextResponse.json({ ok: true, etapa: post.etapa })
+    }
+    // Criativo: precisa de data para agendar (segue a programação).
+    if (!post.dataAgendada) {
+      return NextResponse.json({ error: 'Defina a data e horário da postagem antes de aprovar.', semData: true }, { status: 400 })
+    }
+    post.etapa = 'pronto'; post.criativoAprovadoEm = agora; post.ajusteCriativo = undefined
+    post.status = 'agendado'; post.rascunhoInterno = false
+    await redis.sadd('agendados', postId)
+    post.etapaDesde = agora; post.aguardandoDesde = undefined
+    await redis.set(`post:${postId}`, post)
+    await notificarDono(post.criadoPor, 'geral', `Legenda ajustada e aprovado — ${nome}`, `${quem} ajustou a legenda e aprovou. Agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`, postId)
+    return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
+  }
+
   if (acao === 'ajuste_criativo') {
     post.etapa = 'criativo'
     post.ajusteCriativo = comentario || 'Ajuste solicitado'
+    // Ajuste de LAYOUT cancela a programação: sai dos agendados e volta pra correção.
+    await redis.srem('agendados', postId)
+    post.status = 'corrigir'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
-    await notificarDono(post.criadoPor, 'geral', `Ajuste de criativo — ${nome}`, `${quem} pediu ajuste no criativo: "${comentario || 'sem comentário'}".`, postId)
-    return NextResponse.json({ ok: true, etapa: post.etapa })
+    // Notifica o responsável pela pauta: criador + squad do cliente.
+    const msg = `${quem} pediu ajuste no layout: "${comentario || 'sem comentário'}". A programação foi cancelada.`
+    await notificarDono(post.criadoPor, 'geral', `Ajuste de layout — ${nome}`, msg, postId)
+    const cli = post.clienteId ? await redis.get<Cliente>(`cliente:${post.clienteId}`) : null
+    for (const email of (cli?.squad || [])) {
+      if (email && email !== post.criadoPor) await notificar(email, 'geral', `Ajuste de layout — ${nome}`, msg, postId)
+    }
+    return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }
 
   return NextResponse.json({ error: 'ação inválida' }, { status: 400 })

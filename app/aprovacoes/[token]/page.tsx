@@ -56,8 +56,9 @@ export default function AprovacoesPublicas() {
 
 function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
-  const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
+  const [modo, setModo] = useState<'view' | 'ajuste' | 'reject' | 'legenda'>('view')
   const [texto, setTexto] = useState('')
+  const [legendaTxt, setLegendaTxt] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [logoErro, setLogoErro] = useState(false)
 
@@ -65,12 +66,13 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
   const ehVideo = ehVideoUrl(midia)
   const inicial = (handle || '?').charAt(0).toUpperCase()
 
-  async function decidir(type: 'approved' | 'corrected' | 'rejected', motivo?: string) {
+  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', motivo?: string, novaLegenda?: string) {
     setEnviando(true)
-    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: motivo || '', token }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: motivo || '', token, novaLegenda }) }).then(x => x.json()).catch(() => null)
     setEnviando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
-    toast(type === 'approved' ? 'Aprovado!' : type === 'corrected' ? 'Ajuste solicitado.' : 'Reprovado.', type === 'rejected' ? 'erro' : 'sucesso')
+    const msg = type === 'approved' ? 'Aprovado!' : type === 'caption' ? 'Legenda corrigida e aprovado!' : type === 'corrected' ? 'Ajuste de layout solicitado.' : 'Reprovado.'
+    toast(msg, type === 'rejected' ? 'erro' : 'sucesso')
     onDecidido()
   }
 
@@ -123,15 +125,28 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
           <p style={{ margin: '0 0 10px', fontSize: 12, color: '#888' }}><strong style={{ color: '#555' }}>Publicação prevista:</strong> {new Date(post.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         )}
         {modo === 'view' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <button onClick={() => decidir('approved')} disabled={enviando} style={btn('#16a34a', '#fff')}>Aprovar</button>
-            <button onClick={() => setModo('ajuste')} disabled={enviando} style={btn('#ffc00f', '#111')}>Pedir ajuste</button>
-            <button onClick={() => setModo('reject')} disabled={enviando} style={btn('#fff', '#dc2626', '#dc2626')}>Rejeitar</button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
+            <button onClick={() => { setModo('legenda'); setLegendaTxt(post.legenda || '') }} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#166534', '#bbf7d0') }}>Corrigir legenda</button>
+            <button onClick={() => setModo('ajuste')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Ajustar layout</button>
+            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
+          </div>
+        )}
+        {modo === 'legenda' && (
+          <div>
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>Corrigir a legenda</p>
+            <textarea autoFocus value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Escreva a legenda do jeito que você quer..."
+              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #86efac', fontSize: 14, minHeight: 120, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
+            <p style={{ margin: '8px 0 0', fontSize: 11.5, color: '#16a34a' }}>Ao salvar, a legenda é substituída e o post segue a programação (é aprovado).</p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button onClick={() => setModo('view')} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
+              <button onClick={() => decidir('caption', '', legendaTxt)} disabled={enviando} style={{ flex: 2, ...btn('#16a34a', '#fff') }}>{enviando ? '...' : 'Salvar e aprovar'}</button>
+            </div>
           </div>
         )}
         {(modo === 'ajuste' || modo === 'reject') && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>{modo === 'ajuste' ? 'Descreva o ajuste desejado' : 'Motivo da reprovação'}</p>
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>{modo === 'ajuste' ? 'Descreva o ajuste de layout desejado' : 'Motivo da reprovação'}</p>
             <textarea autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder={modo === 'ajuste' ? 'Ex: trocar a cor do título, ajustar a legenda...' : 'Descreva o motivo...'}
               style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, minHeight: 84, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>

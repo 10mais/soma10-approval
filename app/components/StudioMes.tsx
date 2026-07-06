@@ -313,6 +313,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     }
   }
 
+  // Remove SÓ o criativo (imagem/arte) da pauta — a pauta continua existindo.
+  async function removerCriativo(p: Pauta) {
+    if (!(await confirmar('Remover o criativo desta pauta? A pauta continua — só a arte/imagem é apagada.', { titulo: 'Remover criativo', okLabel: 'Remover', cancelLabel: 'Cancelar', perigo: true }))) return
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: p.id, imagens: [], criativoData: null, criativoGerado: false, thumbnail: '', capasVideo: {} }),
+    }).catch(() => {})
+    toast('Criativo removido. A pauta continua.', 'sucesso')
+    carregarPautas(planoSel)
+  }
+
   // Abre o modal de geração — carrega os ativos do cliente p/ escolher a referência.
   async function abrirGerarModal(p: Pauta) {
     setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
@@ -761,6 +772,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                               <img className="st-preview" src={capa} alt="" onClick={() => setPreview(p)} title="Ampliar (prévia de post)" style={{ width: 160, height: 200, borderRadius: 16, objectFit: 'cover', border: '1px solid rgba(17,17,17,.06)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
                               {p.criativoGerado && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c3aed' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed' }} />Gerado pela IA · toque para ampliar</span>}
                               {podeEditar && p.criativoData && <button className="st-btn" onClick={() => abrirEditor(p)} style={{ width: 160, padding: '8px 0', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Editar arte</button>}
+                              {podeEditar && <button className="st-btn" onClick={() => removerCriativo(p)} style={{ width: 160, padding: '7px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Remover criativo</button>}
                             </div>
                           ) : <div style={{ width: 160, height: 200, borderRadius: 16, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8, background: '#fbfbfc' }}>Sem criativo ainda</div>}
                         </div>

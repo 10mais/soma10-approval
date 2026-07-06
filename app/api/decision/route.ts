@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Post } from '@/lib/redis'
+import { redis, Post, Cliente } from '@/lib/redis'
 import { list } from '@vercel/blob'
 import nodemailer from 'nodemailer'
-import { notificarEquipe } from '@/lib/notificacoes'
+import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -13,7 +13,9 @@ const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { id, type, annotations, rejectReason, codigo, token } = body
+  const { id, annotations, rejectReason, codigo, token, novaLegenda } = body
+  // type: 'approved' | 'corrected' | 'rejected' | 'caption' (correção só de legenda)
+  let type = body.type as 'approved' | 'corrected' | 'rejected' | 'caption'
 
   // Buscar post do Redis
   let post = await redis.get<Post>(`post:${id}`)
@@ -45,6 +47,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
+  // Correção SÓ da legenda: substitui o texto e SEGUE a programação (= aprova).
+  const soLegenda = type === 'caption'
+  if (soLegenda) {
+    if (typeof novaLegenda === 'string') post.legenda = novaLegenda
+    type = 'approved'
+  }
+
   // Atualizar status
   const novoStatus = type === 'approved' ? 'aprovado' : type === 'corrected' ? 'corrigir' : 'reprovado'
   const atualizado = { ...post, status: novoStatus, anotacoes: annotations, motivoReprovacao: rejectReason, atualizadoEm: new Date().toISOString() }
@@ -60,13 +69,28 @@ export async function POST(req: NextRequest) {
   try {
     const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
     const notifInfo: Record<string, { tipo: any; titulo: string; mensagem: string }> = {
-      approved: { tipo: 'post_aprovado', titulo: `Post aprovado — ${clienteNome}`, mensagem: `${clienteNome} aprovou um post. A publicação será iniciada automaticamente.` },
-      corrected: { tipo: 'post_corrigir', titulo: `Correção solicitada — ${clienteNome}`, mensagem: `${clienteNome} pediu ajustes em um post.${rejectReason ? ' Motivo: ' + rejectReason : ''}` },
+      approved: { tipo: 'post_aprovado', titulo: soLegenda ? `Legenda ajustada e aprovado — ${clienteNome}` : `Post aprovado — ${clienteNome}`, mensagem: soLegenda ? `${clienteNome} ajustou a legenda e aprovou. A publicação segue a programação.` : `${clienteNome} aprovou um post. A publicação será iniciada automaticamente.` },
+      corrected: { tipo: 'post_corrigir', titulo: `Ajuste de layout — ${clienteNome}`, mensagem: `${clienteNome} pediu ajuste no layout.${rejectReason ? ' Motivo: ' + rejectReason : ''} A programação foi cancelada.` },
       rejected: { tipo: 'post_reprovado', titulo: `Post reprovado — ${clienteNome}`, mensagem: `${clienteNome} reprovou um post.${rejectReason ? ' Motivo: ' + rejectReason : ''}` },
     }
     const info = notifInfo[type]
     if (info) await notificarEquipe(info.tipo, info.titulo, info.mensagem, id)
   } catch (e) { console.error('Erro ao notificar equipe:', e) }
+
+  // Ajuste de LAYOUT: cancela a programação (sai dos agendados) e notifica o
+  // responsável pela pauta (criador + squad do cliente), além da equipe acima.
+  if (type === 'corrected') {
+    try {
+      await redis.srem('agendados', id)
+      const clienteNome = (post as any).clienteNome || (post as any).cliente || 'Cliente'
+      const msg = `${clienteNome} pediu ajuste no layout.${rejectReason ? ' Motivo: ' + rejectReason : ''} A programação foi cancelada.`
+      await notificarDono((post as any).criadoPor, 'post_corrigir', `Ajuste de layout — ${clienteNome}`, msg, id)
+      const cli = (post as any).clienteId ? await redis.get<Cliente>(`cliente:${(post as any).clienteId}`) : null
+      for (const email of (cli?.squad || [])) {
+        if (email && email !== (post as any).criadoPor) await notificar(email, 'post_corrigir', `Ajuste de layout — ${clienteNome}`, msg, id)
+      }
+    } catch (e) { console.error('Erro ao cancelar/notificar ajuste de layout:', e) }
+  }
 
   // Email
   try {
