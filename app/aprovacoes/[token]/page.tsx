@@ -66,7 +66,7 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
   const [logoErro, setLogoErro] = useState(false)
   // Marcações por ponto no criativo (só no modo "Ajustar layout").
   const [annotations, setAnnotations] = useState<{ x: number; y: number; text: string; id: number; img: number }[]>([])
-  const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null)
+  const [pendingPin, setPendingPin] = useState<{ x: number; y: number; cx: number; cy: number } | null>(null)
   const [pinText, setPinText] = useState('')
 
   const midia = post.imagens[cur]
@@ -78,7 +78,7 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
-    setPendingPin({ x, y }); setPinText('')
+    setPendingPin({ x, y, cx: e.clientX, cy: e.clientY }); setPinText('')
   }
   function confirmPin() {
     if (!pinText.trim() || !pendingPin) return
@@ -133,21 +133,30 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
         })}
       </div>
 
-      {/* Popover do pino pendente — MODAL FIXO centralizado: nunca recortado pelo
-          quadro (overflow) e sempre na frente, clique onde clicar. */}
-      {pendingPin && (
-        <div onClick={() => { setPendingPin(null); setPinText('') }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 18, width: '100%', maxWidth: 340, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', lineHeight: 1.4 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: '#111' }}>O que ajustar aqui?</p>
-            <textarea autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13.5, resize: 'vertical', minHeight: 84, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5 }} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ flex: 1, ...btn('#f5f5f5', '#666') }}>Cancelar</button>
-              <button onClick={confirmPin} disabled={!pinText.trim()} style={{ flex: 1, ...btn('#ffc00f', '#111') }}>Marcar</button>
+      {/* Popover do pino pendente — pequeno e ANCORADO no ponto clicado (position:fixed
+          nas coords do clique = fora do recorte do quadro e sempre na frente). */}
+      {pendingPin && (() => {
+        const W = 224
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 400
+        const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+        const left = Math.min(Math.max(10, pendingPin.cx - W / 2), vw - W - 10)
+        const abaixo = pendingPin.cy + 190 < vh
+        const top = abaixo ? pendingPin.cy + 12 : Math.max(10, pendingPin.cy - 178)
+        const mini: React.CSSProperties = { flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', border: 'none' }
+        return (
+          <div onClick={() => { setPendingPin(null); setPinText('') }} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
+            <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', left, top, width: W, background: '#fff', borderRadius: 12, padding: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.24)', border: '1px solid #e0e0e0', lineHeight: 1.35 }}>
+              <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: '#111' }}>O que ajustar aqui?</p>
+              <textarea autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: '#f5f5f5', color: '#666' }}>Cancelar</button>
+                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: pinText.trim() ? '#ffc00f' : '#f0e6b8', color: '#111', cursor: pinText.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Ícones do feed (decorativos) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px 2px', color: '#222' }}>
