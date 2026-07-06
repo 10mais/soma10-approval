@@ -2400,6 +2400,12 @@ function Dashboard() {
                             </div>
                           </>
                         )}
+                        {/* Marcações do cliente sobre a imagem (pinos numerados = itens da lista abaixo) */}
+                        {!ehVideo && Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.map((a: any, i: number) => (
+                          (typeof a?.x === 'number' && typeof a?.y === 'number' && ((a.img ?? 0) === sidx))
+                            ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid #fff' }}>{i + 1}</div>
+                            : null
+                        ))}
                       </div>
                     )
                   })()}
@@ -2429,9 +2435,20 @@ function Dashboard() {
                         <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
                         {(postPreview as any).motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{(postPreview as any).motivoReprovacao}</div>}
                         {Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0 && (
-                          <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                            {(postPreview as any).anotacoes.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}
-                          </ol>
+                          <>
+                            {(postPreview.imagens?.length || 0) > 1 && <div style={{ marginTop: 4, fontSize: 11, color: '#b45309' }}>Toque numa marcação para ver o ponto na imagem.</div>}
+                            <ol style={{ margin: '6px 0 0', paddingLeft: 6, listStyle: 'none' }}>
+                              {(postPreview as any).anotacoes.map((a: any, i: number) => {
+                                const temPonto = typeof a?.x === 'number' && typeof a?.y === 'number'
+                                return (
+                                  <li key={i} onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0', cursor: temPonto ? 'pointer' : 'default' }}>
+                                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
+                                    <span style={{ flex: 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
+                                  </li>
+                                )
+                              })}
+                            </ol>
+                          </>
                         )}
                       </div>
                     )}
