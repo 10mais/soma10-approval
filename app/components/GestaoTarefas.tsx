@@ -7,7 +7,7 @@ import RichText from './RichText'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 
-type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; squad?: string[] }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
 type Anotacao = { id: string; x: number; y: number; texto: string; autor: string; autorNome: string; criadoEm: string }
 type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[] }
@@ -1126,7 +1126,17 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Sem responsavel</option>
-                    {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+                    {(() => {
+                      const squadEmails = ((clientes || []).find(c => c.id === form.clienteId)?.squad || [])
+                      const time = (usuarios || []).filter(u => u.role !== 'cliente')
+                      const naSquad = time.filter(u => squadEmails.includes(u.email))
+                      const resto = time.filter(u => !squadEmails.includes(u.email))
+                      if (!naSquad.length) return time.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)
+                      return <>
+                        <optgroup label="Squad do cliente">{naSquad.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}</optgroup>
+                        <optgroup label="Outros">{resto.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}</optgroup>
+                      </>
+                    })()}
                   </select>
                 </div>
               </div>
@@ -1134,7 +1144,12 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <OptImg src={c.logo} size={28} style={{ flexShrink: 0 }} /> : null })()}
-                  <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value, marcoId: '' }))}
+                  <select value={form.clienteId} onChange={e => {
+                    const cid = e.target.value
+                    const sq = ((clientes || []).find(c => c.id === cid)?.squad || []).filter(em => (usuarios || []).some(u => u.email === em && u.role !== 'cliente'))
+                    // Ao escolher o cliente, sugere o 1º membro do squad como responsável (só se ainda vazio).
+                    setForm(f => ({ ...f, clienteId: cid, marcoId: '', responsavelEmail: (!f.responsavelEmail && sq.length) ? sq[0] : f.responsavelEmail }))
+                  }}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Nenhum</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}

@@ -173,6 +173,9 @@ export type Cliente = {
   assetsMarca?: AssetMarca[]
   // Token do link público de NPS (pesquisa de satisfação)
   npsToken?: string
+  // Squad do cliente: e-mails dos colaboradores responsáveis por atendê-lo.
+  // Usado como responsável padrão sugerido ao criar tarefas do cliente.
+  squad?: string[]
 }
 
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.

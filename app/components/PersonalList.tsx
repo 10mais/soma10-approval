@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import RichText from './RichText'
+import { confirmar } from '@/lib/toast'
 
 type Item = { id: string; texto: string; feito: boolean }
 type Notepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string }
@@ -133,7 +134,7 @@ export default function PersonalList() {
 
       {/* Editor do notepad em MODAL */}
       {aberto && (
-        <div onClick={() => setAbertoId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={async () => { if (await confirmar('Deseja fechar a nota? Ela já foi salva automaticamente.', { titulo: 'Fechar nota', okLabel: 'Sair', cancelLabel: 'Continuar editando' })) setAbertoId(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
               <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota" autoFocus

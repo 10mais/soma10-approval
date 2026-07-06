@@ -461,3 +461,16 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 3. ~~**Editor de arte Nível 2**~~ — **FEITO (sessão 2026-07-05).** Template `'livre'` (camadas) + editor visual de arrastar/camadas no Studio (ver §19.2). Futuro opcional: drag-resize por alça no canvas (hoje resize é por painel).
 4. ~~**Painel (home): conteúdo**~~ — **FEITO (sessão 2026-07-05).** `DashboardHome.tsx` (que já tinha KPIs + gráfico de metas + alertas) ganhou: **atalhos** rápidos pras abas (`onIr` → `setAba`: Studio/Tarefas/Playbook/Planner/CRM/Conversão), **Ações da semana** (tarefas + marcos vencendo ≤7d incluindo atrasados + posts aguardando aprovação — busca `/api/tarefas` e `/api/playbook` no próprio componente) e **Andamento do Playbook** (% de marcos concluídos + atrasados + lista "em andamento"). Prop nova `onIr?` no `DashboardHome` (passada em `dashboard/page.tsx`).
 5. **Validar em prod:** gerar criativo com marca (ler log `[gerar-criativo]`), NPS ponta-a-ponta, permissões por papel.
+
+## 20. Evolução 2026-07-06 — squads por cliente + guard do notepad
+
+> Push direto na main (caminho B), type-check antes de cada commit.
+
+### 20.1 Squad por cliente (membros direto no cliente)
+- **Modelo (decidido pelo dono):** sem entidade separada — `Cliente.squad?: string[]` (e-mails dos colaboradores que atendem o cliente), **um squad por cliente**. Persistido em `/api/clientes` PUT (campo adicionado a `camposPermitidos`).
+- **Atribuição:** seção **"Squad do cliente"** no form de edição do cliente (Config → Clientes → Editar), chips toggle dos colaboradores (`usuarios` com `role !== 'cliente'`). `edicaoCliente.squad` salvo via `salvarEdicaoCliente`.
+- **Função — responsável padrão de tarefas:** no `TarefaModal` (`GestaoTarefas.tsx`), ao escolher o cliente, **auto-preenche o responsável com o 1º membro do squad** (só se ainda vazio — não sobrescreve escolha manual); o dropdown de responsável **agrupa** "Squad do cliente" no topo + "Outros". Tipo local `Cliente` de `dashboard/page.tsx` e `GestaoTarefas.tsx` ganharam `squad?`.
+- Não há automação de notificação/filtragem por squad ainda (dono escolheu só "responsável padrão"). Futuro possível: filtro "meus clientes" no Painel.
+
+### 20.2 Notepad — guard ao clicar fora
+- `PersonalList.tsx`: clicar no overlay do editor de notepad agora **pede confirmação** (`confirmar()` de `lib/toast`, "Sair" / "Continuar editando") em vez de fechar direto. O × e o lixeira continuam fechando/excluindo direto (a nota já tem autosave).
