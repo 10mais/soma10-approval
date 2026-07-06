@@ -1178,6 +1178,32 @@ function Dashboard() {
     if (r?.post) setPosts(ps => ps.map(p => p && p.id === r.post.id ? r.post : p))
   }
 
+  // Checklist do ajuste do cliente: marca cada alteração como resolvida.
+  function aplicarPatchPostPreview(id: string, patch: any) {
+    setPostPreview(pp => (pp && pp.id === id ? { ...pp, ...patch } : pp) as any)
+    setPosts(ps => ps.map(p => p && p.id === id ? { ...p, ...patch } as any : p))
+    fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) }).catch(() => {})
+  }
+  function marcarAnotacaoResolvida(post: Post, idx: number, valor: boolean) {
+    const anot = Array.isArray((post as any).anotacoes) ? [...(post as any).anotacoes] : []
+    if (!anot[idx]) return
+    anot[idx] = { ...anot[idx], resolvido: valor }
+    aplicarPatchPostPreview(post.id, { anotacoes: anot })
+  }
+
+  // Reenvia um post corrigido para aprovação do cliente (libera após tudo resolvido).
+  async function reenviarAprovacao(post: Post) {
+    aplicarPatchPostPreview(post.id, { status: 'aguardando_aprovacao', etapa: 'aprovacao_criativo' })
+    const cliente = clientes.find(c => c.id === post.clienteId)
+    const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: post.clienteId }) }).then(x => x.json()).catch(() => null)
+    const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
+    if (url) {
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+      setLinkAprovModal({ url, cliente: cliente?.nome || 'cliente' })
+    }
+    toast('Reenviado para aprovação! Link pronto para compartilhar.', 'sucesso')
+  }
+
   async function excluirPost(post: Post) {
     if (!(await confirmar(`Excluir definitivamente este post${post.clienteNome ? ' de ' + post.clienteNome : ''}? Esta ação não pode ser desfeita.`, { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true }))) return
     setPosts(ps => ps.filter(p => p!.id !== post.id))
@@ -2430,28 +2456,49 @@ function Dashboard() {
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
                     )}
-                    {((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (
-                      <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
-                        <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
-                        {(postPreview as any).motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{(postPreview as any).motivoReprovacao}</div>}
-                        {Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0 && (
-                          <>
-                            {(postPreview.imagens?.length || 0) > 1 && <div style={{ marginTop: 4, fontSize: 11, color: '#b45309' }}>Toque numa marcação para ver o ponto na imagem.</div>}
-                            <ol style={{ margin: '6px 0 0', paddingLeft: 6, listStyle: 'none' }}>
-                              {(postPreview as any).anotacoes.map((a: any, i: number) => {
-                                const temPonto = typeof a?.x === 'number' && typeof a?.y === 'number'
-                                return (
-                                  <li key={i} onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0', cursor: temPonto ? 'pointer' : 'default' }}>
-                                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
-                                    <span style={{ flex: 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
-                                  </li>
-                                )
-                              })}
-                            </ol>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    {((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (() => {
+                      const anot: any[] = Array.isArray((postPreview as any).anotacoes) ? (postPreview as any).anotacoes : []
+                      const temMotivo = !!(postPreview as any).motivoReprovacao
+                      const total = anot.length + (temMotivo ? 1 : 0)
+                      const feitos = anot.filter(a => a.resolvido).length + (temMotivo && (postPreview as any).motivoResolvido ? 1 : 0)
+                      const tudo = total > 0 && feitos === total
+                      const podeReenviar = tudo && ['rascunho', 'corrigir', 'reprovado'].includes(postPreview.status)
+                      const Check = ({ on }: { on: boolean }) => (
+                        <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, border: on ? '1.5px solid #16a34a' : '1.5px solid #d6c48f', background: on ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: 'pointer' }}>
+                          {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                        </span>
+                      )
+                      return (
+                        <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
+                            {total > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: tudo ? '#16a34a' : '#b45309', whiteSpace: 'nowrap' }}>{feitos}/{total} resolvido{total > 1 ? 's' : ''}</span>}
+                          </div>
+                          <p style={{ margin: '2px 0 6px', fontSize: 10.5, color: '#b98a2e' }}>Marque cada item ao resolver. Ao concluir tudo, libera o reenvio para aprovação.</p>
+                          {temMotivo && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
+                              <span onClick={() => aplicarPatchPostPreview(postPreview.id, { motivoResolvido: !(postPreview as any).motivoResolvido })}><Check on={!!(postPreview as any).motivoResolvido} /></span>
+                              <span style={{ flex: 1, whiteSpace: 'pre-wrap', textDecoration: (postPreview as any).motivoResolvido ? 'line-through' : 'none', opacity: (postPreview as any).motivoResolvido ? 0.55 : 1 }}>{(postPreview as any).motivoReprovacao}</span>
+                            </div>
+                          )}
+                          {anot.map((a, i) => {
+                            const temPonto = typeof a?.x === 'number' && typeof a?.y === 'number'
+                            const done = !!a.resolvido
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
+                                <span onClick={() => marcarAnotacaoResolvida(postPreview, i, !done)}><Check on={done} /></span>
+                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
+                                <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.55 : 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
+                              </div>
+                            )
+                          })}
+                          {podeReenviar && (
+                            <button onClick={() => reenviarAprovacao(postPreview)} className="soma10-no-invert" style={{ marginTop: 10, width: '100%', padding: '10px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Tudo resolvido — Reenviar para aprovação</button>
+                          )}
+                          {tudo && !podeReenviar && <div style={{ marginTop: 8, fontSize: 11.5, color: '#16a34a', fontWeight: 700 }}>Todas as alterações resolvidas ✓</div>}
+                        </div>
+                      )
+                    })()}
                     {postPreview.status === 'falha_publicacao' && postPreview.erroPublicacao && (
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
                     )}

@@ -445,8 +445,9 @@ export type Post = {
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
-  anotacoes?: any[]
+  anotacoes?: any[] // marcações do cliente; cada item pode ter { resolvido?: boolean }
   motivoReprovacao?: string
+  motivoResolvido?: boolean // marca o texto geral do ajuste como resolvido pela equipe
   erroPublicacao?: string
   rascunhoInterno?: boolean
   colaboradores?: string[] // até 4 @usuários marcados em colab
