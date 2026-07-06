@@ -2398,12 +2398,14 @@ function Dashboard() {
                     const sidx = Math.min(postPreviewSlide, imgs.length - 1)
                     const m = imgs[sidx]
                     const ehVideo = /\.(mp4|mov|m4v)(\?|$)/i.test(m)
-                    const ratio = postPreview.formato === 'story' || postPreview.formato === 'reel' ? '9/16' : '4/5'
+                    // Mostra o criativo no FORMATO REAL: o wrapper inline-block se ajusta
+                    // à imagem (sem recorte), então os pinos das marcações caem no ponto certo.
                     return (
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, maxHeight: '46vh', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0, maxWidth: '100%' }}>
                         {ehVideo
-                          ? <video src={m} poster={(postPreview as any).capasVideo?.[m]} controls playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          ? <video src={m} poster={(postPreview as any).capasVideo?.[m]} controls playsInline muted style={{ display: 'block', maxWidth: '100%', maxHeight: '58vh' }} />
+                          : <img src={m} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: '58vh' }} />}
                         {imgs.length > 1 && (
                           <>
                             {sidx > 0 && (
@@ -2432,6 +2434,7 @@ function Dashboard() {
                             ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid #fff' }}>{i + 1}</div>
                             : null
                         ))}
+                        </div>
                       </div>
                     )
                   })()}
@@ -2456,9 +2459,11 @@ function Dashboard() {
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
                     )}
-                    {((postPreview as any).motivoReprovacao || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (() => {
+                    {((postPreview as any).motivoReprovacao || (postPreview as any).ajusteCriativo || (postPreview as any).ajusteCopy || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (() => {
                       const anot: any[] = Array.isArray((postPreview as any).anotacoes) ? (postPreview as any).anotacoes : []
-                      const temMotivo = !!(postPreview as any).motivoReprovacao
+                      // Texto do ajuste: link único grava em motivoReprovacao; portal em ajusteCriativo/ajusteCopy.
+                      const textoAjuste = (postPreview as any).motivoReprovacao || (postPreview as any).ajusteCriativo || (postPreview as any).ajusteCopy || ''
+                      const temMotivo = !!textoAjuste
                       const total = anot.length + (temMotivo ? 1 : 0)
                       const feitos = anot.filter(a => a.resolvido).length + (temMotivo && (postPreview as any).motivoResolvido ? 1 : 0)
                       const tudo = total > 0 && feitos === total
@@ -2478,7 +2483,7 @@ function Dashboard() {
                           {temMotivo && (
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
                               <span onClick={() => aplicarPatchPostPreview(postPreview.id, { motivoResolvido: !(postPreview as any).motivoResolvido })}><Check on={!!(postPreview as any).motivoResolvido} /></span>
-                              <span style={{ flex: 1, whiteSpace: 'pre-wrap', textDecoration: (postPreview as any).motivoResolvido ? 'line-through' : 'none', opacity: (postPreview as any).motivoResolvido ? 0.55 : 1 }}>{(postPreview as any).motivoReprovacao}</span>
+                              <span style={{ flex: 1, whiteSpace: 'pre-wrap', textDecoration: (postPreview as any).motivoResolvido ? 'line-through' : 'none', opacity: (postPreview as any).motivoResolvido ? 0.55 : 1 }}>{textoAjuste}</span>
                             </div>
                           )}
                           {anot.map((a, i) => {
