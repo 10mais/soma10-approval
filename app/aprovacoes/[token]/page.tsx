@@ -61,14 +61,31 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
   const [legendaTxt, setLegendaTxt] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [logoErro, setLogoErro] = useState(false)
+  // Marcações por ponto no criativo (só no modo "Ajustar layout").
+  const [annotations, setAnnotations] = useState<{ x: number; y: number; text: string; id: number; img: number }[]>([])
+  const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null)
+  const [pinText, setPinText] = useState('')
 
   const midia = post.imagens[cur]
   const ehVideo = ehVideoUrl(midia)
   const inicial = (handle || '?').charAt(0).toUpperCase()
 
+  function handleImageClick(e: any) {
+    if (modo !== 'ajuste' || ehVideo) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setPendingPin({ x, y }); setPinText('')
+  }
+  function confirmPin() {
+    if (!pinText.trim() || !pendingPin) return
+    setAnnotations(prev => [...prev, { x: pendingPin.x, y: pendingPin.y, text: pinText, id: Date.now(), img: cur }])
+    setPendingPin(null); setPinText('')
+  }
+
   async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', motivo?: string, novaLegenda?: string) {
     setEnviando(true)
-    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: motivo || '', token, novaLegenda }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: motivo || '', token, novaLegenda, annotations: type === 'corrected' ? annotations : [] }) }).then(x => x.json()).catch(() => null)
     setEnviando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
     const msg = type === 'approved' ? 'Aprovado!' : type === 'caption' ? 'Legenda corrigida e aprovado!' : type === 'corrected' ? 'Ajuste de layout solicitado.' : 'Reprovado.'
@@ -90,18 +107,39 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
       </div>
 
       {/* Mídia nas medidas ORIGINAIS do post (sem recorte) */}
-      <div style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden', lineHeight: 0 }}>
+      <div onClick={handleImageClick} style={{ position: 'relative', width: '100%', background: '#000', overflow: 'hidden', lineHeight: 0, cursor: (modo === 'ajuste' && !ehVideo) ? 'crosshair' : 'default' }}>
         {ehVideo
           ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', height: 'auto', maxHeight: '82vh', display: 'block' }} />
           : <img src={midia} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />}
         {post.imagens.length > 1 && (<>
-          {cur > 0 && <button onClick={() => setCur(cur - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
-          {cur < post.imagens.length - 1 && <button onClick={() => setCur(cur + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
+          {cur > 0 && <button onClick={e => { e.stopPropagation(); setCur(cur - 1) }} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
+          {cur < post.imagens.length - 1 && <button onClick={e => { e.stopPropagation(); setCur(cur + 1) }} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
           <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{cur + 1}/{post.imagens.length}</div>
           <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
             {post.imagens.map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === cur ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)' }} />)}
           </div>
         </>)}
+        {/* Pinos de marcação do slide atual */}
+        {!ehVideo && annotations.filter(a => a.img === cur).map((ann) => {
+          const n = annotations.indexOf(ann) + 1
+          return (
+            <div key={ann.id} onClick={e => e.stopPropagation()} title={ann.text} style={{ position: 'absolute', left: `${ann.x}%`, top: `${ann.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff', cursor: 'default' }}>{n}</div>
+          )
+        })}
+        {/* Popover do pino pendente */}
+        {pendingPin && (
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: `${pendingPin.x}%`, top: `${pendingPin.y}%`, transform: 'translate(-50%, -112%)', zIndex: 10 }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', width: 250, border: '1px solid #e0e0e0', lineHeight: 1.4 }}>
+              <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 700, color: '#111' }}>O que ajustar aqui?</p>
+              <textarea autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, resize: 'vertical', minHeight: 56, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ flex: 1, ...btn('#f5f5f5', '#666') }}>Cancelar</button>
+                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ flex: 1, ...btn('#ffc00f', '#111') }}>Marcar</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ícones do feed (decorativos) */}
@@ -128,7 +166,7 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
             <button onClick={() => { setModo('legenda'); setLegendaTxt(post.legenda || '') }} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#166534', '#bbf7d0') }}>Corrigir legenda</button>
-            <button onClick={() => setModo('ajuste')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Ajustar layout</button>
+            <button onClick={() => { setModo('ajuste'); setAnnotations([]); setPendingPin(null); setTexto('') }} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Ajustar layout</button>
             <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
           </div>
         )}
@@ -146,13 +184,30 @@ function PostCard({ post, token, handle, logo, onDecidido }: { post: PostA; toke
         )}
         {(modo === 'ajuste' || modo === 'reject') && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>{modo === 'ajuste' ? 'Descreva o ajuste de layout desejado' : 'Motivo da reprovação'}</p>
-            <textarea autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder={modo === 'ajuste' ? 'Ex: trocar a cor do título, ajustar a legenda...' : 'Descreva o motivo...'}
-              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, minHeight: 84, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>{modo === 'ajuste' ? 'Ajuste de layout' : 'Motivo da reprovação'}</p>
+            {modo === 'ajuste' && (
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>
+                <strong style={{ color: '#b45309' }}>Clique sobre o criativo</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}, e/ou descreva abaixo.
+              </p>
+            )}
+            {modo === 'ajuste' && annotations.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+                {annotations.map((a, i) => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 8px' }}>
+                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 12.5, color: '#333' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: '#aaa' }}> · slide {a.img + 1}</em> : null}</span>
+                    <button onClick={() => setAnnotations(prev => prev.filter(x => x.id !== a.id))} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <textarea autoFocus={modo === 'reject'} value={texto} onChange={e => setTexto(e.target.value)} placeholder={modo === 'ajuste' ? 'Observação geral (opcional)...' : 'Descreva o motivo...'}
+              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, minHeight: modo === 'ajuste' ? 64 : 84, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => { setModo('view'); setTexto('') }} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
+              <button onClick={() => { setModo('view'); setTexto(''); setAnnotations([]); setPendingPin(null) }} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
               <button onClick={() => {
-                if (!texto.trim()) { toast(modo === 'ajuste' ? 'Descreva o ajuste desejado.' : 'Descreva o motivo da reprovação.', 'erro'); return }
+                if (modo === 'ajuste' && annotations.length === 0 && !texto.trim()) { toast('Marque um ponto no criativo ou descreva o ajuste.', 'erro'); return }
+                if (modo === 'reject' && !texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return }
                 decidir(modo === 'ajuste' ? 'corrected' : 'rejected', texto)
               }} disabled={enviando} style={{ flex: 2, ...btn(modo === 'ajuste' ? '#ffc00f' : '#dc2626', modo === 'ajuste' ? '#111' : '#fff') }}>
                 {enviando ? '...' : (modo === 'ajuste' ? 'Enviar ajuste' : 'Confirmar reprovação')}
