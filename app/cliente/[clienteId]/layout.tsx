@@ -3,6 +3,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
+import { temModulo } from '@/lib/modulos'
 import AvatarCliente from '@/app/components/AvatarCliente'
 
 // `perm` liga o item a uma flag de permissao do cliente (cliente.permissoes).
@@ -13,10 +14,11 @@ const NAV_ITEMS = [
   { key: '/aprovacoes', label: 'Aprovações', todos: true, perm: 'aprovacoes' as const },
   { key: '/solicitar', label: 'Solicitar conteúdo', todos: true, perm: 'solicitar' as const },
   { key: '/planner', label: 'Planner', equipe: true }, // movido p/ Produção (agência); no portal só a equipe alcança
-  { key: '/playbook', label: 'Playbook', equipe: true },
-  { key: '/marca', label: 'Marca', equipe: true },
-  { key: '/listening', label: 'Social Listening', equipe: true },
-  { key: '/analytics', label: 'Analytics', equipe: true },
+  // Add-ons do plano modular: equipe sempre vê (ferramenta); cliente vê se contratou.
+  { key: '/playbook', label: 'Playbook', equipe: true, modulo: 'playbook' as const },
+  { key: '/marca', label: 'Marca', equipe: true }, // 'marca' é billável, mas a visão do cliente ainda não foi construída (é editor da equipe)
+  { key: '/listening', label: 'Social Listening', equipe: true, modulo: 'listening' as const },
+  { key: '/analytics', label: 'Analytics', equipe: true, modulo: 'analytics' as const },
 ]
 
 // Icones da barra inferior (mobile / cara de app)
@@ -63,7 +65,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!cliente || ehEquipe) return
     const item = NAV_ITEMS.find(i => i.key === subpath)
-    const soEquipe = !!(item && (item as any).equipe)
+    // Add-on contratado (módulo ativo) libera a página mesmo sendo equipe:true.
+    const moduloOk = !!(item && (item as any).modulo && temModulo((cliente as any).modulos, (item as any).modulo))
+    const soEquipe = !!(item && (item as any).equipe && !moduloOk)
     const semPerm = !!(item && (item as any).perm && cliente.permissoes?.[(item as any).perm] === false)
     if (soEquipe || semPerm) router.replace(basePath)
   }, [cliente, subpath, ehEquipe])
@@ -193,7 +197,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                 </button>
               )
             }
-            const grupoCliente = NAV_ITEMS.filter(i => i.todos && clientePode((i as any).perm))
+            // O cliente vê: núcleo (todos + permitido) + add-ons CONTRATADOS (módulo ativo).
+            // Para a equipe (ehEquipe), os add-ons aparecem em "Ferramentas da equipe".
+            const grupoCliente = NAV_ITEMS.filter(i => (i.todos && clientePode((i as any).perm)) || (!ehEquipe && (i as any).modulo && temModulo((cliente as any)?.modulos, (i as any).modulo)))
             const grupoEquipe = NAV_ITEMS.filter(i => i.equipe)
             const rotulo = { display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }
             return (

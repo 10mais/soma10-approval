@@ -176,6 +176,9 @@ export type Cliente = {
   // Squad do cliente: e-mails dos colaboradores responsáveis por atendê-lo.
   // Usado como responsável padrão sugerido ao criar tarefas do cliente.
   squad?: string[]
+  // Módulos contratados (plano modular): { moduloKey: { ativo, valor, desde } }.
+  // Núcleo (entregas/aprovacoes/solicitar) é sempre liberado; add-ons por aqui.
+  modulos?: Record<string, { ativo?: boolean; valor?: number; desde?: string }>
 }
 
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.

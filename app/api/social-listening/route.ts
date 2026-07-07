@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { temModulo } from '@/lib/modulos'
 
 export const runtime = 'nodejs'
 
@@ -106,13 +107,16 @@ async function buscarTikTok(termos: string[]): Promise<{ ok: boolean; hashtags: 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
-  if (!session || role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const clienteId = req.nextUrl.searchParams.get('clienteId') || ''
+  // Cliente só o próprio; e só se tiver o add-on "listening" contratado.
+  let clienteId = req.nextUrl.searchParams.get('clienteId') || ''
+  if (role === 'cliente') clienteId = (session.user as any).clienteId || ''
   if (!clienteId) return NextResponse.json({ error: 'clienteId é obrigatório' }, { status: 400 })
 
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
+  if (role === 'cliente' && !temModulo(cliente.modulos, 'listening')) return NextResponse.json({ error: 'Módulo Social Listening não contratado.' }, { status: 403 })
 
   const palavras = (cliente.palavrasChave || '').split(',').map(s => s.trim()).filter(Boolean)
   const segmento = (cliente.segmento || '').trim()

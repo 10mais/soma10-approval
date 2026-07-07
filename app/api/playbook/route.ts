@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Marco } from '@/lib/redis'
+import { redis, Marco, Cliente } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { temModulo } from '@/lib/modulos'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role === 'cliente') {
-    return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  if (!session) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  const role = (session.user as any).role
+  let clienteId = req.nextUrl.searchParams.get('clienteId')
+  // Cliente só o próprio Playbook, e só se contratou o add-on.
+  if (role === 'cliente') {
+    clienteId = (session.user as any).clienteId || ''
+    const cli = clienteId ? await redis.get<Cliente>(`cliente:${clienteId}`) : null
+    if (!temModulo(cli?.modulos, 'playbook')) return NextResponse.json({ error: 'Módulo Playbook não contratado.' }, { status: 403 })
   }
-  const clienteId = req.nextUrl.searchParams.get('clienteId')
   const ids = await redis.smembers('marcos')
   let marcos = (await Promise.all(ids.map(id => redis.get<Marco>(`marco:${id}`)))).filter(Boolean) as Marco[]
   if (clienteId) marcos = marcos.filter(m => m.clienteId === clienteId)

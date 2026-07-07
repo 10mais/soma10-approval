@@ -500,6 +500,20 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - `/api/briefings/relacionar` reescrito: a tarefa recebe o **BRIEFING COMPLETO** (`descricaoBriefing`: objetivo/plataformas/verba/período/público/oferta/observações + `conteudo`), não só o objetivo. Aceita `{ briefingId, tarefaId }` para **vincular a uma tarefa EXISTENTE** (anexa o briefing à descrição + registra atividade; barra outro cliente) ou `{ briefingId }` para **criar nova**.
 - `Briefings.tsx`: botão "Relacionar a tarefa" abre **modal** com "**+ Criar tarefa nova**" OU **buscar+vincular** uma tarefa existente do mesmo cliente (`abrirRelModal` carrega `/api/tarefas` filtrando por `clienteId` e sem `tarefaPaiId`; `relacionar(tarefaId?)`).
 
+## 23. Fase 1 — Plano modular (entitlement por cliente)
+
+> Núcleo grátis + add-ons pagos por cliente. Push direto na main.
+
+### 23.1 Catálogo + dado + billing
+- `lib/modulos.ts` (client-safe): `MODULOS` (key/label/descricao/gratuito/valorPadrao/rota), `MODULOS_PAGOS`, `temModulo(modulos,key)` (grátis=sempre; pago=`ativo`), `totalMensalModulos()`. Núcleo grátis: **entregas, aprovacoes, solicitar**. Add-ons: **analytics(149), listening(99), marca(79), playbook(129)** (valores padrão editáveis).
+- `Cliente.modulos: { [key]: { ativo?, valor?, desde? } }` — persistido em `/api/clientes` PUT (`camposPermitidos`).
+- **UI admin:** seção **"Módulos & assinatura"** no form de edição do cliente (Config → Clientes): toggle por add-on + valor mensal + **total/mês** somado. `edicaoCliente.modulos`.
+
+### 23.2 Enforcement
+- **Servidor:** `lib/modulosServer.ts bloqueiaModuloCliente(role, clienteId, key)`. Rotas dos add-ons passaram a **liberar cliente COM o módulo** (antes bloqueavam cliente de vez): `analytics` (força session.clienteId + `temModulo('analytics')`), `social-listening` (idem 'listening'), `playbook` GET (idem 'playbook', escopado ao próprio). `brand/playbook` (Marca) segue **team-only** (é editor de curadoria).
+- **Portal:** add-ons ganham `modulo` no `NAV_ITEMS`; o cliente vê no menu os que **contratou** (`grupoCliente` inclui `!ehEquipe && temModulo(...)`); guard de URL libera a página do add-on contratado. **Expostos ao cliente:** Analytics, Social Listening, Playbook. **`marca` fica billável mas sem visão do cliente ainda** (página é editor de equipe — construir visão read-only depois).
+- **Ressalva:** as páginas de portal dos add-ons foram feitas como ferramenta da EQUIPE (sub-account) — o dado já é isolado (Fase 0), mas alguns controles de equipe podem aparecer pro cliente; **polir cada visão** é o próximo passo antes de vender de fato.
+
 ## 22. Fase 0 — Blindagem (rumo a abrir para clientes) — em andamento
 
 > Antes de disponibilizar acesso a clientes externos + plano modular pago. Push direto na main.

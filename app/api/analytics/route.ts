@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { temModulo } from '@/lib/modulos'
 
 export const runtime = 'nodejs'
 
@@ -38,6 +39,10 @@ export async function GET(req: NextRequest) {
 
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
+  // Plano modular: Analytics é add-on — o cliente só acessa se tiver contratado.
+  if (role === 'cliente' && !temModulo(cliente.modulos, 'analytics')) {
+    return NextResponse.json({ error: 'Módulo Analytics não contratado.' }, { status: 403 })
+  }
 
   // IMPORTANTE: usar SEMPRE as credenciais do próprio cliente. Nunca cair em uma
   // conta global de ambiente — isso faria todos os clientes mostrarem os mesmos dados.

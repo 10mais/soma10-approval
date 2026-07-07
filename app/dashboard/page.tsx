@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
+import { MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -1429,7 +1430,7 @@ function Dashboard() {
     setEditandoCliente(c.id)
     setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
       contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, diaVencimento: (c as any).diaVencimento, receitasAvulsas: (c as any).receitasAvulsas || [],
-      permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '', squad: (c as any).squad || [] })
+      permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '', squad: (c as any).squad || [], modulos: (c as any).modulos || {} } as any)
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -3771,6 +3772,38 @@ function Dashboard() {
                             )
                           })}
                           {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: '#bbb' }}>Nenhum colaborador cadastrado ainda.</span>}
+                        </div>
+                      </div>
+
+                      {/* Módulos & assinatura (plano modular) */}
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888' }}>Módulos & assinatura</label>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#16a34a' }}>{totalMensalModulos((edicaoCliente as any).modulos).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</span>
+                        </div>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Núcleo (Entregas, Aprovações, Solicitar conteúdo) é grátis. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {MODULOS_PAGOS.map(m => {
+                            const mod = ((edicaoCliente as any).modulos || {})[m.key] || {}
+                            const ativo = !!mod.ativo
+                            const valor = typeof mod.valor === 'number' ? mod.valor : m.valorPadrao
+                            const set = (patch: any) => setEdicaoCliente(p => ({ ...p, modulos: { ...((p as any).modulos || {}), [m.key]: { ...(((p as any).modulos || {})[m.key] || {}), ...patch } } } as any))
+                            return (
+                              <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: ativo ? '#f0fdf4' : '#fafafa', border: `1px solid ${ativo ? '#bbf7d0' : '#f0f0f0'}`, borderRadius: 10 }}>
+                                <button type="button" onClick={() => set({ ativo: !ativo, ...(!ativo && !mod.desde ? { desde: new Date().toISOString() } : {}) })} aria-label={ativo ? 'Desativar' : 'Ativar'} style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: ativo ? '#16a34a' : '#e0e0e0', position: 'relative' }}>
+                                  <span style={{ position: 'absolute', top: 3, left: ativo ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+                                </button>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{m.label}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, opacity: ativo ? 1 : 0.5 }}>
+                                  <span style={{ fontSize: 12, color: '#888' }}>R$</span>
+                                  <input type="number" min="0" value={valor} disabled={!ativo} onChange={e => set({ valor: Number(e.target.value) || 0 })} style={{ width: 64, padding: '5px 7px', borderRadius: 7, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
 
