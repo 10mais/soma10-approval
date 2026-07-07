@@ -152,8 +152,10 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 >
 > **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅, Fase 1 (fundação) ✅ e **Fase 1.5 (visões cliente dos add-ons) ✅ — ver §24.** **PRÓXIMO:**
 > 1. ~~**Fase 1.5 — polir as VISÕES CLIENTE dos add-ons**~~ — **FEITO (§24):** Playbook read-only no portal; Marca (Brand Board) exposta ao cliente contratante (menu + galeria de identidade read-only); Analytics/Listening com tom de cliente.
-> 2. **Fase 2 — billing (PRÓXIMO):** somar os módulos ativos (`totalMensalModulos`) no Financeiro/DRE + base de suspensão por inadimplência.
+> 2. **Fase 2 — billing:** ~~somar os módulos ativos no Financeiro/DRE~~ **FEITO (§25):** receita dos módulos entra no DRE e no MRR/LTV. **FALTA:** suspensão por inadimplência (marcar cliente inadimplente + bloquear portal/add-ons).
 > 3. **Fase 3 — cobrança real:** gateway (Stripe/PIX) + rate limiting em endpoints públicos + expiração/rotação dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken).
+>
+> **Refino de UI paralelo (Config → Clientes):** card virou **tile clicável → ficha em MODAL** (fim do acordeão); modo Bloco mostra só prévia (nome + tipo); Módulos & assinatura lista núcleo grátis (incluído) + add-ons pagos (a selecionar).
 > 4. **Nome do produto** (em aberto): sugestões **Maestro** / **Soma10 Studio** / **Órbita** — decisão do dono (importa se for revender pra outras agências).
 >
 > **Ação do dono pendente:** setar **`IDEOGRAM_API_KEY`** (Studio Track 2 já integrado, §19.2) — validar aspect/custo; conferir o cron `backup` rodando (§22.2).
@@ -567,4 +569,20 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 ### 24.4 Pendências que sobraram do 1.5
 - **`marca` no NAV** continua com `equipe: true` **+** `modulo: 'marca'` (a equipe vê sempre; o cliente vê se contratou) — mesma mecânica dos outros add-ons.
 - Não foi construída visão de **posts/entregas por marco** no detalhe do cliente (o `MarcoDetalhe` não busca `/api/playbook/entregas` — evitei outro endpoint no portal do cliente). Se o dono quiser, dá pra expor as entregas da etapa em read-only depois.
-- **PRÓXIMO = Fase 2 (billing):** `totalMensalModulos(cliente.modulos)` somado no Financeiro/DRE + suspensão por inadimplência.
+
+## 25. Fase 2 — Billing: receita dos módulos no financeiro (2026-07-07)
+
+> Plano modular vira receita recorrente de verdade. Push direto na main.
+
+### 25.1 Config → Clientes (UI, antes do billing)
+- **Card virou tile clicável → ficha em MODAL** (`app/dashboard/page.tsx`, aba `clientes`): acabou o acordeão inline (quebrava a grade). `iniciarEdicaoCliente(c)` abre um overlay `position:fixed` (cabeçalho avatar/nome/fechar · corpo rolável com Compartilhar/Conexões/Dados/Entregáveis/Contrato/Squad/Módulos/Permissões/Identidade · rodapé fixo Excluir/Cancelar/Salvar). **Bug corrigido:** `.cliente-card:hover` NÃO pode ter `transform` (viraria containing block do modal fixed e o prenderia no card) — só `box-shadow`.
+- **Modo Bloco = só prévia:** tile mostra avatar + nome + selo (Cliente/Projeto interno); @handle, Brand Board, renovação e status ficam só na Lista/ficha (gate `clientesView !== 'blocos'`).
+- **Módulos & assinatura mostra TODOS:** grupo "Incluído no núcleo (grátis)" (entregas/aprovações/solicitar, selo "Incluído", sem toggle) + grupo "Add-ons (opcionais)" (analytics/listening/marca/playbook, toggle + valor). Importa `MODULOS` (catálogo completo).
+
+### 25.2 Receita dos módulos no financeiro
+- **Rentabilidade.tsx (DRE):** receita recorrente por cliente = `contratoValor + totalMensalModulos(c.modulos) + avulsas`. Aplicado em: linha-cliente (`linhasCliente`), fluxo de caixa (`recorrente`), previsão de recebimentos (mensalidade por `diaVencimento`). KPI renomeado p/ **"Receita recorrente"** + linha "· R$X em módulos" (`mrrModulos`). Importa `totalMensalModulos`/`ClienteModulos`.
+- **`/api/dashboard-vendas` (Conversão & Retenção):** `mensal(c) = contrato + totalMensalModulos(modulos)`; MRR, LTV e valor das renovações usam `mensal`. Números batem com o DRE.
+- `/api/clientes` já expõe `modulos` (sanitização só remove tokens/senha) → o dado chega aos dois.
+
+### 25.3 FALTA na Fase 2
+- **Suspensão por inadimplência:** marcar cliente como inadimplente (campo tipo `Cliente.inadimplente`/`pagamentoEmDia`) + bloquear portal/add-ons enquanto inadimplente (enforcement em `temModulo` ou guard do layout do portal) + aviso na ficha e no Financeiro. Ainda NÃO construído (é o próximo passo do billing, antes da Fase 3 = gateway real).
