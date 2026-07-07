@@ -3630,17 +3630,13 @@ function Dashboard() {
                           <span style={{ ...chip, marginLeft: 'auto', background: '#f3f4f6', color: '#6b7280' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                         </div>
 
-                        {/* Gestão (admin) */}
+                        {/* Gestão (admin) — abre a ficha completa em modal */}
                         {role === 'admin' && (
                           <div style={linha}>
                             <span style={rotulo}>Gestão</span>
-                            <button onClick={() => editandoCliente === c.id ? setEditandoCliente(null) : iniciarEdicaoCliente(c)} style={btn}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-                              {editandoCliente === c.id ? 'Fechar edição' : 'Editar'}
-                            </button>
-                            <button onClick={() => excluirCliente(c.id, c.nome)} style={{ ...btn, color: '#ef4444', borderColor: '#fecaca' }}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                              Excluir
+                            <button onClick={() => iniciarEdicaoCliente(c)} style={{ ...btn, background: '#111', border: '1px solid #111', color: '#fff' }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                              Editar ficha
                             </button>
                           </div>
                         )}
@@ -3648,9 +3644,70 @@ function Dashboard() {
                     )
                   })()}
 
-                  {/* Painel de edição */}
-                  {clienteAberto === c.id && editandoCliente === c.id && (
-                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Ficha completa do cliente — modal com todas as informações */}
+                  {editandoCliente === c.id && (() => {
+                    const temFB = !!c.facebookPageId
+                    const temIG = !!(c.instagramConectado || c.instagramUserId)
+                    const nPosts = posts.filter(p => p.clienteNome === c.nome).length
+                    const mbtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 9, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, color: '#374151', cursor: 'pointer', lineHeight: 1, whiteSpace: 'nowrap' }
+                    const mchip: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 999, padding: '5px 11px', fontSize: 12, fontWeight: 600, lineHeight: 1 }
+                    const secLabel: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }
+                    const secDiv: React.CSSProperties = { marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb' }
+                    const igIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/></svg>
+                    const fbIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    return (
+                    <div onClick={() => setEditandoCliente(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1200, padding: '5vh 16px', overflowY: 'auto' }}>
+                      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 800, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
+                        {/* Cabeçalho do modal */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', borderBottom: '1px solid #eef0f2', flexShrink: 0 }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: '#111' }}>{c.nome}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#94a3b8' }}>Ficha do cliente{c.loginEmail ? ' · ' + c.loginEmail : ''}</p>
+                          </div>
+                          <button onClick={() => setEditandoCliente(null)} aria-label="Fechar" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                        {/* Corpo rolável */}
+                        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 22px' }}>
+                          {c.tipo !== 'interno' && (
+                            <div>
+                              <span style={secLabel}>Compartilhar com o cliente</span>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button onClick={() => abrirResumo(c.id)} title="Gerar o resumo da semana para enviar ao cliente" style={mbtn}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.1.1.3 0 .5l-.4.5-.2.2c-.1.1-.3.3-.1.5.1.3.7 1.1 1.4 1.8.96.85 1.7 1.1 2 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.3.1.1.1.6-.1 1.2z" /></svg>
+                                  Resumo semanal
+                                </button>
+                                <button onClick={() => statusPublico(c.id)} title="Copiar o link público de status (sem login)" style={mbtn}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
+                                  Status público
+                                </button>
+                                <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: '#111', border: '1px solid #111', color: '#fff' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                  Link de aprovação
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          <div style={c.tipo !== 'interno' ? secDiv : undefined}>
+                            <span style={secLabel}>Conexões</span>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                              {temIG && <span style={{ ...mchip, background: '#fdecf3', color: '#c2185b' }}>{igIcon}Instagram{c.instagramUsername ? ' · @' + c.instagramUsername : ''}</span>}
+                              {temFB && <span style={{ ...mchip, background: '#e7f0fd', color: '#1877f2' }}>{fbIcon}Facebook</span>}
+                              {role === 'admin' ? (
+                                <>
+                                  {!temIG && <a href={`/api/instagram/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#c2185b' }}>{igIcon} Conectar Instagram</a>}
+                                  {!temFB && <a href={`/api/meta/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#1877f2' }}>{fbIcon} Conectar Facebook</a>}
+                                  {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: '#9ca3af' }}>Desconectar</button>}
+                                </>
+                              ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: '#b45309' }}>Não conectado</span> : null}
+                              <span style={{ ...mchip, marginLeft: 'auto', background: '#f3f4f6', color: '#6b7280' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
+                            </div>
+                          </div>
+                          <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb' }}>Dados do cliente</span>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
@@ -3816,6 +3873,7 @@ function Dashboard() {
                         </div>
                       </div>
 
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb', marginBottom: 10 }}>Identidade visual</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                           <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -3835,14 +3893,24 @@ function Dashboard() {
                           <input type="color" value={edicaoCliente.corSecundaria || '#111111'} onChange={e => setEdicaoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
                             style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                         </label>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                          {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: '#fff', color: '#b45309', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
-                          <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
-                          <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+                      </div>
+                        </div>
+                        {/* Rodapé fixo do modal */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 22px', borderTop: '1px solid #eef0f2', flexShrink: 0, flexWrap: 'wrap', background: '#fff' }}>
+                          <button onClick={() => excluirCliente(c.id, c.nome)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #fecaca', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: '#ef4444', cursor: 'pointer' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                            Excluir cliente
+                          </button>
+                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: '#fff', color: '#b45309', border: '1px solid #fde68a', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
+                            <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f1f5f9', border: 'none', borderRadius: 9, fontSize: 13, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                            <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar alterações</button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  )}
+                    )
+                  })()}
                 </div>
               ))}
                 </div>
