@@ -605,10 +605,11 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - Ficha (modal, seção "Cobrança e acesso"): botão **"Cobrar via Stripe"** + status da assinatura, aparece só quando `stripeOn` (GET configurado). `cobrarStripe()` abre o checkout em nova aba.
 - **AÇÃO DO DONO:** setar **`STRIPE_SECRET_KEY`** + **`STRIPE_WEBHOOK_SECRET`** na Vercel; criar o endpoint de webhook no dashboard do Stripe apontando p/ `https://approval.soma10.com.br/api/stripe/webhook` (eventos: `invoice.paid`, `invoice.payment_failed`, `customer.subscription.*`). Depois, testar um checkout de ponta a ponta.
 
-### 25.6 Ainda em aberto (Fase 3)
-- **Rate limiting** nos endpoints públicos + **expiração/rotação** dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken). *Sweep de segurança, código.*
+### 25.6 Fase 3 — hardening
+- **Rate limiting** nos endpoints públicos — **FEITO.** `lib/rateLimit.ts` (`rateLimit`/`ipDaReq`/`checarRate`): contador por IP+rota no Redis (janela fixa, falha aberta). Limites/min: `decision` 40 · `candidaturas` 5 · `solicitar-briefing` 15 · `nps` (resposta pública) 10 · GETs por token (`aprov-link`/`status`/`doc-publico`) 60. Devolve 429 com mensagem amigável.
+- **Expiração/rotação dos tokens públicos** — **FALTA.** Doc já tem "Revogar" (§16.8). Para aprov/status/npstoken: adicionar rotação sob demanda (regenerar token, invalidando o antigo). Auto-expiry NÃO (quebraria links já enviados no WhatsApp) — decisão do dono.
 - **PIX recorrente nativo** (Asaas/Pagar.me/Mercado Pago) se não quiser depender de cartão.
-- **Nome do produto** — dono decidiu **MANTER "Soma10 Approval"** por ora (não renomear). Domínios: Maestro/Órbita indisponíveis; livres achados: `regencia.app`, `orquestre.app`, `batuta.studio`, `pauta.studio` (se um dia revender white-label).
+- **Nome do produto** — dono decidiu **MANTER "Soma10 Approval"** por ora. Domínios livres se um dia revender: `regencia.app`/`orquestre.app`/`batuta.studio`/`pauta.studio`.
 
 ## 26. Aprovação do cliente — fluxo "Solicitar ajustes" consolidado + EM AJUSTE (2026-07-07)
 
