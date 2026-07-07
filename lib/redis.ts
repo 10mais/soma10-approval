@@ -179,6 +179,9 @@ export type Cliente = {
   // Módulos contratados (plano modular): { moduloKey: { ativo, valor, desde } }.
   // Núcleo (entregas/aprovacoes/solicitar) é sempre liberado; add-ons por aqui.
   modulos?: Record<string, { ativo?: boolean; valor?: number; desde?: string }>
+  // Suspensão por inadimplência: bloqueia o acesso do cliente ao portal.
+  inadimplente?: boolean
+  suspensoDesde?: string
 }
 
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.

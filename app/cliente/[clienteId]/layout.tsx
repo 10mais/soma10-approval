@@ -106,6 +106,22 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     : { ...asideBase, minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56 }
   const irPara = (href: string) => { router.push(href); if (mobile) setMenuAberto(false) }
 
+  // Suspensão por inadimplência: o cliente (não a equipe) perde acesso ao portal.
+  if (cliente && (cliente as any).inadimplente && !ehEquipe) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#fafafa' }}>
+        <div style={{ maxWidth: 440, width: '100%', background: '#fff', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', padding: '32px 28px', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          </div>
+          <h1 style={{ margin: '0 0 8px', fontSize: 19, color: '#111' }}>Acesso temporariamente suspenso</h1>
+          <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666', lineHeight: 1.6 }}>O acesso ao portal está pausado por pendência de pagamento. Assim que a situação for regularizada, tudo volta ao normal. Fale com a nossa equipe para resolver.</p>
+          <button onClick={() => signOut()} style={{ padding: '10px 22px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Sair</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ ['--marca' as any]: MARCA, ['--marca-texto' as any]: MARCA_TEXTO }}>
       {/* Header padrao da agencia (neutro) — igual para todos os clientes */}

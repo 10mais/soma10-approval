@@ -500,7 +500,7 @@ function Dashboard() {
   const [clientesView, setClientesView] = useState<'lista' | 'blocos'>(() => (typeof window !== 'undefined' && localStorage.getItem('clientesView') === 'blocos') ? 'blocos' : 'lista')
   const [clienteAberto, setClienteAberto] = useState<string | null>(null)
   const [clienteBusca, setClienteBusca] = useState('')
-  const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon'>('todos')
+  const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon' | 'suspenso'>('todos')
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -3544,7 +3544,7 @@ function Dashboard() {
                 {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on']] as const).map(([k, label]) => (
+                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on'], ['suspenso', 'Suspensos']] as const).map(([k, label]) => (
                   <button key={k} onClick={() => setClienteFiltro(k)}
                     style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid #111' : '1px solid #e5e7eb', background: clienteFiltro === k ? '#111' : '#fff', color: clienteFiltro === k ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
                 ))}
@@ -3562,6 +3562,7 @@ function Dashboard() {
               const match = (c: any) => {
                 if (q && !(`${c.nome || ''} ${c.instagram || ''} ${c.loginEmail || ''}`.toLowerCase().includes(q))) return false
                 if (clienteFiltro === 'com_addon') return totalMensalModulos(c.modulos) > 0
+                if (clienteFiltro === 'suspenso') return !!c.inadimplente
                 if (clienteFiltro === 'sem_conexao') return !c.facebookPageId && !c.instagramConectado && !c.instagramUserId
                 if (clienteFiltro === 'renovar') { if (!c.contratoRenovacao) return false; return Math.ceil((new Date(c.contratoRenovacao).getTime() - Date.now()) / 86400000) <= 30 }
                 return true
@@ -3584,6 +3585,7 @@ function Dashboard() {
                       <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {c.nome}
                         <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? '#dbeafe' : '#f0fdf4', color: (c as any).tipo === 'interno' ? '#1d4ed8' : '#16a34a' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
+                        {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>Suspenso</span>}
                         {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
                         ) : null })()}
@@ -3862,6 +3864,27 @@ function Dashboard() {
                           })}
                         </div>
                       </div>
+
+                      {/* Cobrança / acesso — suspensão por inadimplência */}
+                      {(() => {
+                        const suspenso = !!(edicaoCliente as any).inadimplente
+                        return (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Cobrança e acesso</label>
+                            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Suspender por inadimplência bloqueia o acesso do cliente ao portal (a equipe continua vendo tudo). Reative ao regularizar o pagamento.</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: suspenso ? '#fef2f2' : '#f8fafc', border: `1px solid ${suspenso ? '#fecaca' : '#eef0f2'}` }}>
+                              <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, inadimplente: !suspenso, suspensoDesde: !suspenso ? new Date().toISOString() : undefined } as any))} aria-label={suspenso ? 'Reativar acesso' : 'Suspender acesso'}
+                                style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: suspenso ? '#dc2626' : '#e0e0e0', position: 'relative' }}>
+                                <span style={{ position: 'absolute', top: 3, left: suspenso ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+                              </button>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: suspenso ? '#b91c1c' : '#111' }}>{suspenso ? 'Acesso suspenso (inadimplente)' : 'Acesso liberado'}</p>
+                                <p style={{ margin: 0, fontSize: 11, color: '#999' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString('pt-BR')}` : 'Cliente sem acesso ao portal.') : 'Cliente acessa o portal normalmente.'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })()}
 
                       {/* Permissoes do portal do cliente */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
