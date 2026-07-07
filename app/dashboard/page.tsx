@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
-import { MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
+import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -3791,7 +3791,27 @@ function Dashboard() {
                           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888' }}>Módulos & assinatura</label>
                           <span style={{ fontSize: 12, fontWeight: 800, color: '#16a34a' }}>{totalMensalModulos((edicaoCliente as any).modulos).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</span>
                         </div>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Núcleo (Entregas, Aprovações, Solicitar conteúdo) é grátis. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O núcleo é grátis e vem incluído em todo cliente. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
+
+                        {/* Núcleo — grátis, pré-definido (sempre incluído) */}
+                        <p style={{ margin: '4px 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Incluído no núcleo (grátis)</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                          {MODULOS.filter(m => m.gratuito).map(m => (
+                            <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', border: '1px solid #eef0f2', borderRadius: 10 }}>
+                              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              </span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{m.label}</p>
+                                <p style={{ margin: 0, fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
+                              </div>
+                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 999, padding: '3px 10px' }}>Incluído</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Add-ons — pagos, a selecionar */}
+                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add-ons (opcionais)</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {MODULOS_PAGOS.map(m => {
                             const mod = ((edicaoCliente as any).modulos || {})[m.key] || {}
