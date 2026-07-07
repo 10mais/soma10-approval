@@ -37,12 +37,14 @@ aside,
   display: none; /* Chrome/Safari/Edge */
 }
 
-/* Cartao de cliente (Config > Clientes) — clicavel, com leve elevacao no hover. */
+/* Cartao de cliente (Config > Clientes) — clicavel, com leve elevacao no hover.
+   IMPORTANTE: nada de `transform` aqui. O modal da ficha usa position:fixed e um
+   ancestral com transform viraria seu containing block, prendendo o overlay dentro
+   do card (bug do layout). So box-shadow no hover. */
 .cliente-card {
-  transition: box-shadow .15s ease, transform .15s ease;
+  transition: box-shadow .15s ease, border-color .15s ease;
   cursor: pointer;
 }
 .cliente-card:hover {
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
