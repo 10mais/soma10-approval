@@ -499,6 +499,8 @@ function Dashboard() {
   // #7 — tela de Clientes: visao lista/blocos + expandir detalhes ao clicar
   const [clientesView, setClientesView] = useState<'lista' | 'blocos'>(() => (typeof window !== 'undefined' && localStorage.getItem('clientesView') === 'blocos') ? 'blocos' : 'lista')
   const [clienteAberto, setClienteAberto] = useState<string | null>(null)
+  const [clienteBusca, setClienteBusca] = useState('')
+  const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon'>('todos')
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -3534,8 +3536,19 @@ function Dashboard() {
                 )}
               </div>
             )}
-            {/* Toggle de visualização lista/blocos */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+            {/* Busca + filtros + toggle de visualização */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                <input value={clienteBusca} onChange={e => setClienteBusca(e.target.value)} placeholder="Buscar por nome, @ ou e-mail..." style={{ width: '100%', padding: '9px 34px 9px 36px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on']] as const).map(([k, label]) => (
+                  <button key={k} onClick={() => setClienteFiltro(k)}
+                    style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid #111' : '1px solid #e5e7eb', background: clienteFiltro === k ? '#111' : '#fff', color: clienteFiltro === k ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
+                ))}
+              </div>
               <div style={{ display: 'inline-flex', background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
                 {(['lista', 'blocos'] as const).map(v => (
                   <button key={v} onClick={() => { setClientesView(v); try { localStorage.setItem('clientesView', v) } catch {} }}
@@ -3544,7 +3557,20 @@ function Dashboard() {
               </div>
             </div>
 
-            {[{ titulo: 'Clientes', lista: clientes.filter(c => (c as any).tipo !== 'interno') }, { titulo: 'Projetos internos', lista: clientes.filter(c => (c as any).tipo === 'interno') }].map(g => g.lista.length === 0 ? null : (
+            {(() => {
+              const q = clienteBusca.trim().toLowerCase()
+              const match = (c: any) => {
+                if (q && !(`${c.nome || ''} ${c.instagram || ''} ${c.loginEmail || ''}`.toLowerCase().includes(q))) return false
+                if (clienteFiltro === 'com_addon') return totalMensalModulos(c.modulos) > 0
+                if (clienteFiltro === 'sem_conexao') return !c.facebookPageId && !c.instagramConectado && !c.instagramUserId
+                if (clienteFiltro === 'renovar') { if (!c.contratoRenovacao) return false; return Math.ceil((new Date(c.contratoRenovacao).getTime() - Date.now()) / 86400000) <= 30 }
+                return true
+              }
+              const grupos = [{ titulo: 'Clientes', lista: clientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: 'Projetos internos', lista: clientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
+              if (grupos.every(g => g.lista.length === 0)) return (
+                <div style={{ textAlign: 'center', padding: '48px 20px', color: '#aaa', fontSize: 14, background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhum cliente encontrado{(clienteBusca || clienteFiltro !== 'todos') ? ' com esse filtro.' : '.'}</div>
+              )
+              return grupos.map(g => g.lista.length === 0 ? null : (
               <div key={g.titulo} style={{ marginBottom: 24 }}>
                 <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{g.titulo} <span style={{ color: '#ccc' }}>({g.lista.length})</span></h3>
                 <div style={clientesView === 'blocos' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 12 } : { display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -3897,7 +3923,8 @@ function Dashboard() {
               ))}
                 </div>
               </div>
-            ))}
+              ))
+            })()}
           </div>
         )}
 
