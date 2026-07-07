@@ -609,3 +609,20 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Rate limiting** nos endpoints públicos + **expiração/rotação** dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken). *Sweep de segurança, código.*
 - **PIX recorrente nativo** (Asaas/Pagar.me/Mercado Pago) se não quiser depender de cartão.
 - **Nome do produto** — dono decidiu **MANTER "Soma10 Approval"** por ora (não renomear). Domínios: Maestro/Órbita indisponíveis; livres achados: `regencia.app`, `orquestre.app`, `batuta.studio`, `pauta.studio` (se um dia revender white-label).
+
+## 26. Aprovação do cliente — fluxo "Solicitar ajustes" consolidado + EM AJUSTE (2026-07-07)
+
+> Dor: cada ação do cliente era one-shot ("Corrigir legenda" até aprovava) e o criativo SUMIA da tela ao pedir ajuste — cliente e agência ficavam perdidos. Push direto na main.
+
+### 26.1 Link público (`app/aprovacoes/[token]`) + `/api/decision`
+- Botões: **Aprovar · Solicitar ajustes · Rejeitar**. "Solicitar ajustes" abre UM painel acumulativo (legenda + marcações de layout por pino + observação + data/hora). **Nada é enviado até "Enviar solicitação"** (fim do envio no 1º clique). Atalho "Aprovar com esta legenda" quando só a legenda mudou.
+- Ao enviar: `decision` type **`corrected`** agora aplica **`novaLegenda` + `novaData`** além das `annotations`; fica `status:'corrigir'` (NÃO aprova) e cancela a programação. O post **não some**: `/api/aprovacao-link` GET passou a incluir `status:'corrigir'` (com `status/anotacoes/ajusteCriativo`), e o card vira **EM AJUSTE** (selo + borda laranja) com **"Editar ajuste"** (reabre pré-preenchido) + "Aprovar assim mesmo".
+
+### 26.2 Portal (`app/cliente/[id]/aprovacoes`) + `/api/esteira/aprovar`
+- Paridade com o link. Botões: **Aprovar · Solicitar ajustes · Rejeitar** + painel consolidado (legenda + o-que-ajustar-no-layout em texto + data/hora; copy = legenda + observação).
+- **Correção-chave no backend:** `ajuste_criativo`/`ajuste_copy` **MANTÊM a etapa** (`aprovacao_criativo`/`aprovacao_copy`) — antes viravam `'criativo'`/`'copy'` e, como a tela filtra por etapa, o item **sumia**. Agora ficam `status:'corrigir'` e VISÍVEIS (EM AJUSTE). Ajuste consolidado aplica `novaLegenda`+`novaData`+`annotations`. Banner/"Aprovar todos" contam só `status!=='corrigir'`.
+- Tudo isso também alimenta o **log de solicitações** (§ logs-cliente, 30 dias).
+
+### 26.3 Observações
+- Reprovar no portal ainda passa por `ajuste_copy/criativo` com prefixo "REJEITADO:" (herdado) → aparece como EM AJUSTE com esse texto. Se quiser um estado "reprovado" separado, é um passo à parte.
+- Quando a agência refaz e reenvia (Planner → "Enviar para aprovação", §21/§25), o item volta a `aguardando_aprovacao` (etapa `aprovacao_criativo`) e reaparece fresco para o cliente. Loop fechado.
