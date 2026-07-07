@@ -182,6 +182,10 @@ export type Cliente = {
   // Suspensão por inadimplência: bloqueia o acesso do cliente ao portal.
   inadimplente?: boolean
   suspensoDesde?: string
+  // Cobrança recorrente (Stripe). Vinculados server-side pela cobrança/webhook.
+  stripeCustomerId?: string
+  stripeSubscriptionId?: string
+  assinaturaStatus?: string // active | past_due | canceled | ...
 }
 
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.

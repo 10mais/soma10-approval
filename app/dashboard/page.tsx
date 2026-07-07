@@ -501,6 +501,8 @@ function Dashboard() {
   const [clienteAberto, setClienteAberto] = useState<string | null>(null)
   const [clienteBusca, setClienteBusca] = useState('')
   const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon' | 'suspenso'>('todos')
+  const [stripeOn, setStripeOn] = useState(false)
+  useEffect(() => { fetch('/api/stripe/cobrar').then(r => r.json()).then(d => setStripeOn(!!d?.configurado)).catch(() => {}) }, [])
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
   const [enviandoLogoNovoCliente, setEnviandoLogoNovoCliente] = useState(false)
   const [credenciaisGeradas, setCredenciaisGeradas] = useState<{ nome: string; email: string; senha: string } | null>(null)
@@ -1464,6 +1466,13 @@ function Dashboard() {
     })
     setEditandoCliente(null)
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
+  }
+
+  // Cobrança recorrente via Stripe: cria/reaproveita a assinatura mensal e abre o checkout.
+  async function cobrarStripe(clienteId: string) {
+    const r = await fetch('/api/stripe/cobrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
+    if (r?.url) window.open(r.url, '_blank')
+    else toast(r?.error || 'Não foi possível iniciar a cobrança.', 'erro')
   }
 
   // ---- Brands Board ----
@@ -3882,6 +3891,14 @@ function Dashboard() {
                                 <p style={{ margin: 0, fontSize: 11, color: '#999' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString('pt-BR')}` : 'Cliente sem acesso ao portal.') : 'Cliente acessa o portal normalmente.'}</p>
                               </div>
                             </div>
+                            {stripeOn && (
+                              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                <button type="button" onClick={() => cobrarStripe(c.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', background: '#635bff', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                                  {(c as any).stripeCustomerId ? 'Nova cobrança (Stripe)' : 'Cobrar via Stripe (assinatura mensal)'}
+                                </button>
+                                {(c as any).stripeCustomerId && <span style={{ fontSize: 11.5, fontWeight: 700, color: (c as any).assinaturaStatus === 'active' ? '#16a34a' : '#b45309' }}>Assinatura vinculada{(c as any).assinaturaStatus ? ` · ${(c as any).assinaturaStatus}` : ''}</span>}
+                              </div>
+                            )}
                           </div>
                         )
                       })()}
