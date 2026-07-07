@@ -886,7 +886,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
@@ -1895,7 +1895,7 @@ function Dashboard() {
             <>
               {([
                 { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -3772,7 +3772,7 @@ function Dashboard() {
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Permissões do portal</label>
                         <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo'], ['planner', 'Planner']] as [string, string][]).map(([chave, rotulo]) => {
+                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo']] as [string, string][]).map(([chave, rotulo]) => {
                             const ligado = (edicaoCliente as any).permissoes?.[chave] !== false
                             return (
                               <button key={chave} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, permissoes: { ...((p as any).permissoes || {}), [chave]: ((p as any).permissoes?.[chave] !== false) ? false : true } } as any))}

@@ -500,5 +500,9 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - `/api/briefings/relacionar` reescrito: a tarefa recebe o **BRIEFING COMPLETO** (`descricaoBriefing`: objetivo/plataformas/verba/período/público/oferta/observações + `conteudo`), não só o objetivo. Aceita `{ briefingId, tarefaId }` para **vincular a uma tarefa EXISTENTE** (anexa o briefing à descrição + registra atividade; barra outro cliente) ou `{ briefingId }` para **criar nova**.
 - `Briefings.tsx`: botão "Relacionar a tarefa" abre **modal** com "**+ Criar tarefa nova**" OU **buscar+vincular** uma tarefa existente do mesmo cliente (`abrirRelModal` carrega `/api/tarefas` filtrando por `clienteId` e sem `tarefaPaiId`; `relacionar(tarefaId?)`).
 
+### 21.4 Planner movido para PRODUÇÃO (agência) — sai da área do cliente
+- Dashboard: `['planner','Planner']` entrou no grupo **Produção** logo após Studio; `ABA_GRUPO.planner='producao'`. A equipe acessa o Planner direto (todos os posts; filtra por cliente via `verComoClienteId`).
+- Portal do cliente (`layout.tsx`): item `/planner` virou `equipe: true` (cliente não vê mais). Guard de URL reforçado: cliente que acessa página `equipe:true` (Planner/Playbook/Marca/Listening/Analytics) por URL direto é **redirecionado ao Início** (buraco pré-existente também fechado). Toggle "Planner" removido da matriz de permissões do portal.
+
 ### 21.3 Notepads — fixar (até 3) + ordenar por recente
 - `PersonalList.tsx`: `Notepad.fixado`. Botão de **fixar** (pin) por nota — **máx. 3** (`toggleFixar`, toast ao exceder; não altera `atualizadoEm`). Ordenação `ordenadas`: **fixadas primeiro**, e dentro de cada grupo as **editadas mais recentemente no topo** (`atualizadoEm || criadoEm`). `/api/personal` sanitiza e persiste `fixado`.

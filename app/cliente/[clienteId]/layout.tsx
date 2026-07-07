@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { key: '/entregas', label: 'Entregas', todos: true, perm: 'entregas' as const },
   { key: '/aprovacoes', label: 'Aprovações', todos: true, perm: 'aprovacoes' as const },
   { key: '/solicitar', label: 'Solicitar conteúdo', todos: true, perm: 'solicitar' as const },
-  { key: '/planner', label: 'Planner', todos: true, perm: 'planner' as const },
+  { key: '/planner', label: 'Planner', equipe: true }, // movido p/ Produção (agência); no portal só a equipe alcança
   { key: '/playbook', label: 'Playbook', equipe: true },
   { key: '/marca', label: 'Marca', equipe: true },
   { key: '/listening', label: 'Social Listening', equipe: true },
@@ -57,13 +57,15 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     if (ehEquipe) return true
     return (cliente?.permissoes?.[perm]) !== false
   }
-  // Guard de acesso direto por URL: se a pagina atual nao e permitida, volta ao Inicio.
+  // Guard de acesso direto por URL: cliente só acessa páginas "todos" liberadas.
+  // Páginas só-equipe (equipe:true, ex.: Planner/Playbook/Marca) ou sem permissão
+  // no Brand Board redirecionam pro Início.
   useEffect(() => {
     if (!cliente || ehEquipe) return
     const item = NAV_ITEMS.find(i => i.key === subpath)
-    if (item && (item as any).perm && cliente.permissoes?.[(item as any).perm] === false) {
-      router.replace(basePath)
-    }
+    const soEquipe = !!(item && (item as any).equipe)
+    const semPerm = !!(item && (item as any).perm && cliente.permissoes?.[(item as any).perm] === false)
+    if (soEquipe || semPerm) router.replace(basePath)
   }, [cliente, subpath, ehEquipe])
 
   // Pendências de aprovação do cliente (banner "o que está esperando você", em todo o portal)
