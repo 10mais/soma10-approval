@@ -1163,17 +1163,24 @@ function Dashboard() {
     setCriandoPost(true)
     const cliente = clientes.find(c => c.id === valor.clienteId)
     const postAtual = posts.find(p => p?.id === editandoPostId)
-    // Ajusta o status pela data: com data futura = agendado; sem data = rascunho.
-    // Posts já publicados mantêm o status (editar não republica).
+    // "Enviar para aprovação" tem prioridade: volta o post para o cliente aprovar.
+    // Senão: data futura = agendado; sem data = rascunho. Publicados mantêm o status.
+    const paraAprovacao = valor.acao === 'aprovacao'
     let status = postAtual?.status
-    if (postAtual?.status !== 'publicado') {
+    if (paraAprovacao) {
+      status = 'aguardando_aprovacao'
+    } else if (postAtual?.status !== 'publicado') {
       status = valor.dataAgendada ? 'agendado' : 'rascunho'
     }
     const dataISO = valor.dataAgendada ? new Date(valor.dataAgendada).toISOString() : ''
+    const body: any = { id: editandoPostId, ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome, status }
+    // Ao reenviar para aprovação, marca a etapa: as Aprovações do portal filtram por etapa
+    // e o link público filtra por status — assim o material reaparece para o cliente.
+    if (paraAprovacao) body.etapa = 'aprovacao_criativo'
     const r = await fetch('/api/posts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editandoPostId, ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome, status }),
+      body: JSON.stringify(body),
     }).then(x => x.json()).catch(() => null)
     setCriandoPost(false)
     setEditandoPostId(null)
@@ -1181,6 +1188,16 @@ function Dashboard() {
     setComposerKey(k => k + 1)
     setAba(abaAntesComposer.current) // volta pra onde o editor foi aberto
     if (r?.post) setPosts(ps => ps.map(p => p && p.id === r.post.id ? r.post : p))
+    // Enviado para aprovação: pega o link ÚNICO do cliente e abre o modal para compartilhar.
+    if (paraAprovacao && cliente) {
+      const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: valor.clienteId }) }).then(x => x.json()).catch(() => null)
+      const url = tk?.token ? `${window.location.origin}/aprovacoes/${tk.token}` : ''
+      if (url) {
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+        setLinkAprovModal({ url, cliente: cliente.nome || 'cliente' })
+      }
+      toast('Enviado para aprovação do cliente!', 'sucesso')
+    }
   }
 
   // Checklist do ajuste do cliente: marca cada alteração como resolvida.
