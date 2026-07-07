@@ -597,7 +597,15 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - Links públicos: **`/api/aprovacao-link` GET** e **`/api/status` GET** devolvem `{ suspenso:true }`; páginas `/aprovacoes/[token]` e `/status/[token]` mostram aviso amigável de suspensão.
 - **MRR em risco (Financeiro):** KPI "Receita recorrente" mostra em vermelho o total mensal (contrato + módulos) dos clientes suspensos (`mrrRisco`). Receita segue no MRR total (é contratado); o "em risco" só destaca.
 
-### 25.5 Próximo — Fase 3 (cobrança real)
-- **Gateway de pagamento** (Stripe/PIX) + **dunning** (marca inadimplente sozinho ao falhar cobrança; reativa ao pagar). *Precisa das contas do dono.*
-- **Rate limiting** nos endpoints públicos + **expiração/rotação** dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken). *Código; sweep de segurança.*
-- **Nome do produto** (Maestro / Soma10 Studio / Órbita) — decisão do dono.
+### 25.5 Fase 3 — Gateway Stripe (assinatura + dunning) — FEITO (scaffold)
+- Dep **`stripe`** (v22). `lib/stripe.ts`: `getStripe()` + `stripeConfigurado()` (no-op sem `STRIPE_SECRET_KEY`, padrão WhatsApp/Ideogram).
+- Campos `Cliente.stripeCustomerId`/`stripeSubscriptionId`/`assinaturaStatus`.
+- **`/api/stripe/cobrar`**: GET `{configurado}`; POST (admin) cria/reaproveita o customer e abre um **Checkout de ASSINATURA mensal (BRL)** com o total do cliente (contrato + `totalMensalModulos`). Recorrência = cartão (PIX do Stripe é avulso).
+- **`/api/stripe/webhook`** (valida assinatura por `STRIPE_WEBHOOK_SECRET`): **dunning** liga/desliga `Cliente.inadimplente` — `invoice.payment_failed`/`subscription past_due|canceled` → suspende (fecha o loop com o §25.3/25.4); `invoice.paid`/`subscription active` → reativa. `payment_failed` também notifica os admins.
+- Ficha (modal, seção "Cobrança e acesso"): botão **"Cobrar via Stripe"** + status da assinatura, aparece só quando `stripeOn` (GET configurado). `cobrarStripe()` abre o checkout em nova aba.
+- **AÇÃO DO DONO:** setar **`STRIPE_SECRET_KEY`** + **`STRIPE_WEBHOOK_SECRET`** na Vercel; criar o endpoint de webhook no dashboard do Stripe apontando p/ `https://approval.soma10.com.br/api/stripe/webhook` (eventos: `invoice.paid`, `invoice.payment_failed`, `customer.subscription.*`). Depois, testar um checkout de ponta a ponta.
+
+### 25.6 Ainda em aberto (Fase 3)
+- **Rate limiting** nos endpoints públicos + **expiração/rotação** dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken). *Sweep de segurança, código.*
+- **PIX recorrente nativo** (Asaas/Pagar.me/Mercado Pago) se não quiser depender de cartão.
+- **Nome do produto** — dono decidiu **MANTER "Soma10 Approval"** por ora (não renomear). Domínios: Maestro/Órbita indisponíveis; livres achados: `regencia.app`, `orquestre.app`, `batuta.studio`, `pauta.studio` (se um dia revender white-label).
