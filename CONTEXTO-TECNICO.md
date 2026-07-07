@@ -512,7 +512,9 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 ### 22.2 Backup automático (Redis → Blob privado)
 - `lib/backup.ts`: `exportarTudo()` (clientes, usuarios, posts, tarefas, marcos, templates, despesas, candidaturas, briefings, planos, CRM, agentes, documentos, mapas, config:*, personal:*) + `salvarBackup()` → `put` em **`backups/YYYY-MM-DD.json` (access: private)**, sobrescreve o do dia, **retenção 35 diários**.
 - **Cron** `/api/cron/backup` (`cronAutorizado`, diário `0 6 * * *` no `vercel.json`). **Download on-demand admin** `/api/backup` (GET admin → JSON attachment). Botão **"Baixar backup agora"** em Config → Geral (admin). Requer `BLOB_READ_WRITE_TOKEN` (já existe).
-- **AINDA PENDENTE na Fase 0:** sanitização XSS do RichText (HTML armazenado) e parar de guardar `Cliente.loginSenha` em texto plano.
+### 22.3 Sanitização XSS do conteúdo rico
+- Dep nova **`isomorphic-dompurify`**. `lib/sanitize.ts` `sanitizeHtml()` (client+server, USE_PROFILES html, remove `<script>`/`<iframe>`/`<style>`/handlers on*/`javascript:`). Aplicado no **`RichText`** (sanitiza o HTML externo antes de virar `innerHTML`; conteúdo do próprio editor — `value === últimoEmit` — não re-seta, evita pulo de cursor) e na **página pública de documento** `app/doc/[token]` (`dangerouslySetInnerHTML` sanitizado). Cobre task descriptions, documentos e notepads.
+- **AINDA PENDENTE (decisão do dono — mexe em auth):** parar de guardar `Cliente.loginSenha` em texto plano (hoje o admin re-vê a senha do cliente; a alternativa é só **resetar**). Sugerido, não feito sem OK.
 
 ### 21.4 Planner movido para PRODUÇÃO (agência) — sai da área do cliente
 - Dashboard: `['planner','Planner']` entrou no grupo **Produção** logo após Studio; `ABA_GRUPO.planner='producao'`. A equipe acessa o Planner direto (todos os posts; filtra por cliente via `verComoClienteId`).

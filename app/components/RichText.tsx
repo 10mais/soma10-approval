@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 // Editor de texto rico leve (sem dependências): negrito, itálico, sublinhado,
 // cores e links clicáveis. Guarda HTML. Usa document.execCommand (suportado em
@@ -19,18 +20,21 @@ const ehHtml = (s: string) => /<[a-z!/][\s\S]*>/i.test(s) || /&(nbsp|amp|lt|gt|q
 
 export default function RichText({ value, onChange, placeholder = '', minHeight = 80, completo = false }: { value: string; onChange: (html: string) => void; placeholder?: string; minHeight?: number; completo?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
+  const ultimoEmit = useRef('')
   const [corAberta, setCorAberta] = useState(false)
 
-  // Sincroniza só quando o valor muda de fora (não a cada tecla, p/ não resetar o cursor)
+  // Sincroniza só quando o valor muda DE FORA (não a cada tecla, p/ não resetar o
+  // cursor). Conteúdo externo é SANITIZADO (XSS) antes de virar innerHTML; o que
+  // veio do próprio editor (value === último emit) não re-seta nem re-sanitiza.
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    // Conteúdo vindo do app: HTML é usado direto; texto puro antigo é convertido (quebras + links)
-    const desejado = value ? (ehHtml(value) ? value : linkify(escapeHtml(value)).replace(/\n/g, '<br>')) : ''
+    if (value === ultimoEmit.current) return
+    const desejado = value ? (ehHtml(value) ? sanitizeHtml(value) : linkify(escapeHtml(value)).replace(/\n/g, '<br>')) : ''
     if (el.innerHTML !== desejado) el.innerHTML = desejado
   }, [value])
 
-  const emit = () => onChange(ref.current?.innerHTML || '')
+  const emit = () => { const h = ref.current?.innerHTML || ''; ultimoEmit.current = h; onChange(h) }
   const cmd = (c: string, arg?: string) => { ref.current?.focus(); document.execCommand(c, false, arg); emit() }
 
   function onPaste(e: React.ClipboardEvent) {

@@ -1,6 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 export default function DocPublico() {
   const { token } = useParams()
@@ -24,7 +25,7 @@ export default function DocPublico() {
       <div style={{ maxWidth: 760, margin: '0 auto', background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '40px 44px' }}>
         <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, color: '#111' }}>{doc.titulo?.trim() || 'Documento'}</h1>
         <p style={{ margin: '0 0 24px', fontSize: 12.5, color: '#aaa' }}>{doc.autor ? `Por ${doc.autor} · ` : ''}Atualizado em {new Date(doc.atualizadoEm).toLocaleDateString('pt-BR')}</p>
-        <div className="doc-conteudo" style={{ fontSize: 15, lineHeight: 1.65, color: '#222', wordBreak: 'break-word' }} dangerouslySetInnerHTML={{ __html: doc.conteudo || '<p style="color:#aaa">Documento vazio.</p>' }} />
+        <div className="doc-conteudo" style={{ fontSize: 15, lineHeight: 1.65, color: '#222', wordBreak: 'break-word' }} dangerouslySetInnerHTML={{ __html: doc.conteudo ? sanitizeHtml(doc.conteudo) : '<p style="color:#aaa">Documento vazio.</p>' }} />
       </div>
       <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#bbb' }}>Soma10</p>
     </div>
