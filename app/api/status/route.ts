@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Post } from '@/lib/redis'
 import { getPostsDoCliente } from '@/lib/postsIndex'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +11,7 @@ function titulo(p: Post) { const l = (p.legenda || '').replace(/\s+/g, ' ').trim
 
 // GET ?token= -> status PÚBLICO do cliente (sem login)
 export async function GET(req: NextRequest) {
+  const rl = await checarRate(req, 'status', 60, 60); if (rl) return rl
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return NextResponse.json({ error: 'token obrigatório' }, { status: 400 })
 

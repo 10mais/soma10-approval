@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, NpsResposta } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
 
   // Envio público de resposta: { token, score, comentario, periodo }
   if (body?.token) {
+    const rl = await checarRate(req, 'nps', 10, 60); if (rl) return rl
     const clienteId = await redis.get<string>(`npstoken:${body.token}`)
     if (!clienteId) return NextResponse.json({ error: 'link inválido' }, { status: 404 })
     const score = Math.min(Math.max(Math.round(Number(body.score)), 0), 10)

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Documento } from '@/lib/redis'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
 // Leitura PÚBLICA de um documento compartilhado por token. Sem login.
 export async function GET(req: NextRequest) {
+  const rl = await checarRate(req, 'doc-publico', 60, 60); if (rl) return rl
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return NextResponse.json({ error: 'token obrigatório' }, { status: 400 })
   const id = await redis.get<string>(`doctoken:${token}`)

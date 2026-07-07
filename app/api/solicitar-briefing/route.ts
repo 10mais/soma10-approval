@@ -4,11 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { redis, Tarefa, Cliente, podeCliente } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificarEquipe } from '@/lib/notificacoes'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
 // Solicitacao de briefing/conteudo pelo cliente (ou equipe). Cai como Tarefa tipo Criativo.
 export async function POST(req: NextRequest) {
+  const rl = await checarRate(req, 'solicitar-briefing', 15, 60); if (rl) return rl
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
 

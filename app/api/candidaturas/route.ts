@@ -4,11 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { redis, Candidatura } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificarAdmins } from '@/lib/notificacoes'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
 // POST: publico (qualquer candidato envia, sem login)
 export async function POST(req: NextRequest) {
+  const rl = await checarRate(req, 'candidaturas', 5, 60); if (rl) return rl
   const body = await req.json()
   const nome = (body.nome || '').toString().trim()
   const email = (body.email || '').toString().trim()

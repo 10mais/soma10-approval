@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Post } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
 
 // GET ?token= (público): lista os materiais aguardando aprovação do cliente.
 export async function GET(req: NextRequest) {
+  const rl = await checarRate(req, 'aprov-link', 60, 60); if (rl) return rl
   const token = req.nextUrl.searchParams.get('token') || ''
   if (!token) return NextResponse.json({ error: 'token obrigatório' }, { status: 400 })
 

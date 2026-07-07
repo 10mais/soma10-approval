@@ -6,6 +6,7 @@ import { list } from '@vercel/blob'
 import nodemailer from 'nodemailer'
 import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
 import { clienteSuspenso } from '@/lib/suspensao'
+import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -13,6 +14,7 @@ export const maxDuration = 300
 const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {
+  const rl = await checarRate(req, 'decision', 40, 60); if (rl) return rl
   const body = await req.json()
   const { id, annotations, rejectReason, codigo, token, novaLegenda, novaData } = body
   // type: 'approved' | 'corrected' | 'rejected' | 'caption' (correção só de legenda)
