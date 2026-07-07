@@ -150,9 +150,9 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 > ⚠️ **ESTADO MAIS RECENTE (2026-07-07): LEIA §23 → §22 → §21 → §20 PRIMEIRO.** O que rolou nas últimas sessões, em ordem: §19 (Studio construído + motor de criativos), §20 (aprovação: corrigir-legenda×ajustar-layout, marcações por ponto no link único, checklist+reenviar, conserto DEFINITIVO da foto de perfil via proxy `/api/foto-cliente`, compartilhar link), §21 (solicitar-conteúdo com anexo, campanhas relacionar briefing completo/criar/vincular, notepads fixar/ordenar, **Planner movido p/ Produção**), §22 (**Fase 0 — blindagem: isolamento auditado, backup automático, XSS sanitizado, senha em texto plano eliminada**), §23 (**Fase 1 — plano modular: núcleo grátis + add-ons pagos por cliente, UI admin "Módulos & assinatura", enforcement**).
 >
-> **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅ e Fase 1 (fundação) ✅. **PRÓXIMO:**
-> 1. **Fase 1.5 — polir as VISÕES CLIENTE dos add-ons** (Analytics/Listening/Playbook foram feitos como ferramenta de equipe; o dado já é isolado, mas falta "modo cliente" na UI) + construir a visão read-only do **Brand Board** (hoje `marca` é billável mas não exposto ao cliente).
-> 2. **Fase 2 — billing:** somar os módulos ativos no Financeiro/DRE + suspensão por inadimplência.
+> **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅, Fase 1 (fundação) ✅ e **Fase 1.5 (visões cliente dos add-ons) ✅ — ver §24.** **PRÓXIMO:**
+> 1. ~~**Fase 1.5 — polir as VISÕES CLIENTE dos add-ons**~~ — **FEITO (§24):** Playbook read-only no portal; Marca (Brand Board) exposta ao cliente contratante (menu + galeria de identidade read-only); Analytics/Listening com tom de cliente.
+> 2. **Fase 2 — billing (PRÓXIMO):** somar os módulos ativos (`totalMensalModulos`) no Financeiro/DRE + base de suspensão por inadimplência.
 > 3. **Fase 3 — cobrança real:** gateway (Stripe/PIX) + rate limiting em endpoints públicos + expiração/rotação dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken).
 > 4. **Nome do produto** (em aberto): sugestões **Maestro** / **Soma10 Studio** / **Órbita** — decisão do dono (importa se for revender pra outras agências).
 >
@@ -548,3 +548,23 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 21.3 Notepads — fixar (até 3) + ordenar por recente
 - `PersonalList.tsx`: `Notepad.fixado`. Botão de **fixar** (pin) por nota — **máx. 3** (`toggleFixar`, toast ao exceder; não altera `atualizadoEm`). Ordenação `ordenadas`: **fixadas primeiro**, e dentro de cada grupo as **editadas mais recentemente no topo** (`atualizadoEm || criadoEm`). `/api/personal` sanitiza e persiste `fixado`.
+
+## 24. Fase 1.5 — Visões cliente dos add-ons (2026-07-07)
+
+> Polir o "modo cliente" dos add-ons pagos antes de vender de fato. Push direto na main (commit `e243ba5`, build READY). Servidor já estava seguro (Fase 0/1); esta fase é **UX do portal**.
+
+### 24.1 Playbook read-only no portal
+- `Playbook.tsx` ganhou prop **`somenteLeitura`**. Quando true: esconde "+ Novo marco" e desabilita excluir (`editavel = podeEditar && !somenteLeitura`, idem `excluivel`); e o **clique no marco abre um DETALHE read-only** (`MarcoDetalhe`) em vez do formulário de edição (`MarcoModal`). Empty-state também troca o texto ("assim que a estratégia for montada..."). `MarcoDetalhe` mostra categoria + badge de status + período + responsável + descrição, sem nenhum campo editável.
+- Portal `app/cliente/[id]/playbook/page.tsx` calcula `ehEquipe` (admin/gerente && !viewAs) e passa `somenteLeitura={!ehEquipe}`. Servidor já bloqueava POST/PUT/DELETE de `role:cliente` (401) — isto é só a UX. Equipe (sub-account) mantém edição total.
+
+### 24.2 Marca (Brand Board) exposta ao cliente
+- `layout.tsx`: o `NAV_ITEM` `/marca` ganhou **`modulo: 'marca'`** → o cliente que **contratou** o add-on passa a ver "Marca" no menu (o guard de URL já libera add-on contratado). A página `marca/page.tsx` já tinha modo-leitura p/ não-equipe (Brand Board + documento de marca por IA).
+- **Galeria de identidade visual read-only** (cliente): novo bloco em `marca/page.tsx` que lista `cliente.assetsMarca` filtrando só as categorias de identidade **logo/foto/elemento/icone** (esconde `print`/`outro`, que são referências internas). Grid de imagens clicáveis (abre em nova aba), sem dropzone/excluir. O editor de ativos (`ReferenciasVisuais`) segue **só para equipe**.
+
+### 24.3 Analytics / Listening — tom de cliente
+- Ambas ganharam **subtítulo explicativo** (o que a tela é). Analytics: empty-state amigável ("Ainda não há métricas... assim que suas redes estiverem conectadas...") no lugar do `data.error` técnico. Sem mudança de lógica/enforcement.
+
+### 24.4 Pendências que sobraram do 1.5
+- **`marca` no NAV** continua com `equipe: true` **+** `modulo: 'marca'` (a equipe vê sempre; o cliente vê se contratou) — mesma mecânica dos outros add-ons.
+- Não foi construída visão de **posts/entregas por marco** no detalhe do cliente (o `MarcoDetalhe` não busca `/api/playbook/entregas` — evitei outro endpoint no portal do cliente). Se o dono quiser, dá pra expor as entregas da etapa em read-only depois.
+- **PRÓXIMO = Fase 2 (billing):** `totalMensalModulos(cliente.modulos)` somado no Financeiro/DRE + suspensão por inadimplência.
