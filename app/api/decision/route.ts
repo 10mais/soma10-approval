@@ -167,7 +167,9 @@ export async function POST(req: NextRequest) {
     const futuro = !!(dataAg && new Date(dataAg).getTime() > Date.now())
     const quando = futuro ? dataAg : new Date(Date.now() - 1000).toISOString() // "agora": já vencido -> publica no próximo ciclo
 
-    await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', dataAgendada: quando, atualizadoEm: new Date().toISOString() })
+    // etapa -> 'pronto' para o criativo aprovado APARECER no Planner (que só mostra
+    // posts sem etapa ou 'pronto'). Sem isso ele fica preso com 'aprovacao_criativo'.
+    await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
     await redis.sadd('agendados', id)
 
     // Automação: post aprovado -> cria tarefa de publicação para a equipe

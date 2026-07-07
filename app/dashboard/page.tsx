@@ -780,7 +780,11 @@ function Dashboard() {
 
   const role = (session?.user as any)?.role
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
-  const postsPlanner = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto')
+  // Planner mostra o que NÃO está mais em produção: sem etapa, etapa 'pronto', OU
+  // já saiu da esteira (aprovado/agendado/publicando/publicado/falha). Isso também
+  // "cura" posts antigos que ficaram presos com etapa='aprovacao_criativo'.
+  const PLANNER_STATUS_OK = ['aprovado', 'agendado', 'publicando', 'publicado', 'falha_publicacao']
+  const postsPlanner = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || PLANNER_STATUS_OK.includes((p as any).status))
   const postsView = verComoClienteId ? postsPlanner.filter(p => p.clienteId === verComoClienteId) : postsPlanner
 
   // Cliente logado: trava na visao dele, aba padrao aprovacoes
@@ -997,7 +1001,7 @@ function Dashboard() {
       const ehDoMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === mes && d.getFullYear() === ano }
       const entregue = (posts as any[]).filter(p => {
         if (p.clienteId !== analyticsClienteId) return false
-        if (p.etapa && p.etapa !== 'pronto') return false
+        if (p.etapa && p.etapa !== 'pronto' && !PLANNER_STATUS_OK.includes(p.status)) return false
         if (p.status === 'publicado') return ehDoMes(p.atualizadoEm || p.criadoEm)
         if (p.status === 'agendado') return ehDoMes(p.dataAgendada)
         return false
