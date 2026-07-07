@@ -14,7 +14,7 @@ const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { id, annotations, rejectReason, codigo, token, novaLegenda } = body
+  const { id, annotations, rejectReason, codigo, token, novaLegenda, novaData } = body
   // type: 'approved' | 'corrected' | 'rejected' | 'caption' (correção só de legenda)
   let type = body.type as 'approved' | 'corrected' | 'rejected' | 'caption'
 
@@ -58,6 +58,13 @@ export async function POST(req: NextRequest) {
   if (soLegenda) {
     if (typeof novaLegenda === 'string') post.legenda = novaLegenda
     type = 'approved'
+  }
+
+  // Solicitação de ajuste CONSOLIDADA: junto das marcações de layout, o cliente pode
+  // pedir nova legenda e/ou nova data. Aplica o que veio (fica EM AJUSTE, não aprova).
+  if (type === 'corrected') {
+    if (typeof novaLegenda === 'string' && novaLegenda.trim()) post.legenda = novaLegenda
+    if (novaData) { const d = new Date(novaData); if (!isNaN(d.getTime())) (post as any).dataAgendada = d.toISOString() }
   }
 
   // Atualizar status

@@ -40,11 +40,14 @@ export async function GET(req: NextRequest) {
   const ids = await redis.smembers('posts')
   const todos = ids.length ? ((await redis.mget<(Post | null)[]>(...ids.map(i => `post:${i}`))).filter(Boolean) as Post[]) : []
   const posts = todos
-    .filter(p => p.clienteId === clienteId && p.status === 'aguardando_aprovacao')
+    // Mostra os aguardando aprovação E os que estão EM AJUSTE (corrigir) — para o
+    // criativo não sumir enquanto a agência trabalha e o cliente poder editar o ajuste.
+    .filter(p => p.clienteId === clienteId && (p.status === 'aguardando_aprovacao' || p.status === 'corrigir'))
     .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
     .map(p => ({
       id: p.id, codigo: (p as any).codigo, imagens: p.imagens || [], legenda: p.legenda || '',
       formato: (p as any).formato || '', dataAgendada: (p as any).dataAgendada || '', capasVideo: (p as any).capasVideo || {},
+      status: p.status, anotacoes: (p as any).anotacoes || [], ajusteCriativo: (p as any).ajusteCriativo || '', motivoReprovacao: (p as any).motivoReprovacao || '',
     }))
 
   // Logo do perfil: cliente.logo pode estar expirado (URL do IG → 403). Manda

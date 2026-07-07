@@ -4,9 +4,22 @@ import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
 
 const ehVideoUrl = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u || '')
-type PostA = { id: string; codigo?: string; imagens: string[]; legenda: string; formato?: string; dataAgendada?: string; capasVideo?: Record<string, string> }
+type Anot = { x: number; y: number; text: string; id: number; img: number }
+type PostA = { id: string; codigo?: string; imagens: string[]; legenda: string; formato?: string; dataAgendada?: string; capasVideo?: Record<string, string>; status?: string; anotacoes?: Anot[]; ajusteCriativo?: string; motivoReprovacao?: string }
 
 const btn = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '12px 8px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' })
+
+// ISO -> valor de <input type="datetime-local"> (hora local).
+function toLocalInput(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', marginBottom: 6 }
+const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
 
 export default function AprovacoesPublicas() {
   const { token } = useParams()
@@ -41,11 +54,16 @@ export default function AprovacoesPublicas() {
             <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.</p>
           </div>
         )}
-        {dados.posts.length > 0 && (
-          <p style={{ margin: '0 0 18px', fontSize: 14, color: '#555' }}>
-            <strong>{dados.posts.length}</strong> {dados.posts.length === 1 ? 'material aguardando' : 'materiais aguardando'} sua aprovação. Analise cada um abaixo.
-          </p>
-        )}
+        {dados.posts.length > 0 && (() => {
+          const aguardando = dados.posts.filter(p => p.status !== 'corrigir').length
+          const ajuste = dados.posts.length - aguardando
+          return (
+            <p style={{ margin: '0 0 18px', fontSize: 14, color: '#555' }}>
+              {aguardando > 0 ? <><strong>{aguardando}</strong> {aguardando === 1 ? 'material aguardando' : 'materiais aguardando'} sua aprovação.</> : 'Nada aguardando sua aprovação.'}
+              {ajuste > 0 ? <> <strong>{ajuste}</strong> em ajuste.</> : ''} Analise cada um abaixo.
+            </p>
+          )
+        })()}
         {dados.posts.map(p => (
           <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} logo={dados.logo} logoAlt={dados.logoAlt} onDecidido={() => removerPost(p.id)} />
         ))}
@@ -57,19 +75,38 @@ export default function AprovacoesPublicas() {
 
 function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; logoAlt?: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
-  const [modo, setModo] = useState<'view' | 'ajuste' | 'reject' | 'legenda'>('view')
-  const [texto, setTexto] = useState('')
+  const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
+  const [texto, setTexto] = useState('')          // observação geral do ajuste / motivo da reprovação
   const [legendaTxt, setLegendaTxt] = useState('')
+  const [dataTxt, setDataTxt] = useState('')       // data/hora desejada (datetime-local)
   const [enviando, setEnviando] = useState(false)
   const [logoErro, setLogoErro] = useState(false)
-  // Marcações por ponto no criativo (só no modo "Ajustar layout").
-  const [annotations, setAnnotations] = useState<{ x: number; y: number; text: string; id: number; img: number }[]>([])
+  const [annotations, setAnnotations] = useState<Anot[]>([])
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number; cx: number; cy: number } | null>(null)
   const [pinText, setPinText] = useState('')
+  // Estado local do post — reflete "EM AJUSTE" na hora, sem sumir nem recarregar.
+  const [st, setSt] = useState({
+    status: post.status || 'aguardando_aprovacao', legenda: post.legenda || '', dataAgendada: post.dataAgendada || '',
+    anotacoes: (post.anotacoes || []) as Anot[], motivoReprovacao: post.motivoReprovacao || post.ajusteCriativo || '',
+  })
 
+  const emAjuste = st.status === 'corrigir'
   const midia = post.imagens[cur]
   const ehVideo = ehVideoUrl(midia)
   const inicial = (handle || '?').charAt(0).toUpperCase()
+  // Pinos exibidos: no modo ajuste os que estão sendo criados; em EM AJUSTE (view) os já enviados.
+  const pinsMostrar = modo === 'ajuste' ? annotations : (emAjuste ? st.anotacoes : [])
+  const legendaMudou = legendaTxt.trim() !== (st.legenda || '').trim()
+  const dataMudou = !!dataTxt && dataTxt !== toLocalInput(st.dataAgendada)
+
+  function abrirAjuste() {
+    setAnnotations((st.anotacoes || []).map((a, i) => ({ x: a.x, y: a.y, text: a.text, id: a.id || Date.now() + i, img: a.img || 0 })))
+    setLegendaTxt(st.legenda || '')
+    setDataTxt(toLocalInput(st.dataAgendada))
+    setTexto(st.motivoReprovacao || '')
+    setPendingPin(null); setPinText('')
+    setModo('ajuste')
+  }
 
   function handleImageClick(e: any) {
     if (modo !== 'ajuste' || ehVideo) return
@@ -84,18 +121,36 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
     setPendingPin(null); setPinText('')
   }
 
-  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', motivo?: string, novaLegenda?: string) {
+  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', opts?: { motivo?: string; novaLegenda?: string; novaData?: string }) {
     setEnviando(true)
-    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: motivo || '', token, novaLegenda, annotations: type === 'corrected' ? annotations : [] }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: opts?.motivo || '', token, novaLegenda: opts?.novaLegenda, novaData: opts?.novaData, annotations: type === 'corrected' ? annotations : [] }) }).then(x => x.json()).catch(() => null)
     setEnviando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
-    const msg = type === 'approved' ? 'Aprovado!' : type === 'caption' ? 'Legenda corrigida e aprovado!' : type === 'corrected' ? 'Ajuste de layout solicitado.' : 'Reprovado.'
-    toast(msg, type === 'rejected' ? 'erro' : 'sucesso')
+    if (type === 'corrected') {
+      // Fica EM AJUSTE — não some. Atualiza o card no lugar.
+      setSt(s => ({
+        ...s, status: 'corrigir',
+        legenda: opts?.novaLegenda && opts.novaLegenda.trim() ? opts.novaLegenda : s.legenda,
+        dataAgendada: opts?.novaData ? new Date(opts.novaData).toISOString() : s.dataAgendada,
+        anotacoes: annotations, motivoReprovacao: opts?.motivo || '',
+      }))
+      setModo('view')
+      toast('Ajustes enviados! O criativo fica marcado como EM AJUSTE — você pode editar o pedido quando quiser.', 'sucesso')
+      return
+    }
+    toast(type === 'approved' ? (opts?.novaLegenda ? 'Legenda corrigida e aprovado!' : 'Aprovado!') : 'Reprovado.', type === 'rejected' ? 'erro' : 'sucesso')
     onDecidido()
   }
 
+  function enviarAjuste() {
+    if (annotations.length === 0 && !texto.trim() && !legendaMudou && !dataMudou) {
+      toast('Faça pelo menos um ajuste (legenda, layout ou data) antes de enviar.', 'erro'); return
+    }
+    decidir('corrected', { motivo: texto.trim() || undefined, novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataMudou ? dataTxt : undefined })
+  }
+
   return (
-    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
         <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
@@ -104,8 +159,9 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
             : inicial}
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>
+        {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>}
         {post.formato && post.formato !== 'feed' && (
-          <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: '#888', background: '#f5f5f5', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
+          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: '#888', background: '#f5f5f5', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
         )}
       </div>
 
@@ -122,9 +178,9 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
             {post.imagens.map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === cur ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)' }} />)}
           </div>
         </>)}
-        {/* Pinos de marcação do slide atual */}
-        {!ehVideo && annotations.filter(a => a.img === cur).map((ann) => {
-          const n = annotations.indexOf(ann) + 1
+        {/* Pinos de marcação do slide atual (rascunho do ajuste OU já enviados em EM AJUSTE) */}
+        {!ehVideo && pinsMostrar.filter(a => a.img === cur).map((ann) => {
+          const n = pinsMostrar.indexOf(ann) + 1
           return (
             <div key={ann.id} onClick={e => e.stopPropagation()} title={ann.text} style={{ position: 'absolute', left: `${ann.x}%`, top: `${ann.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff', cursor: 'default' }}>{n}</div>
           )
@@ -164,48 +220,66 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ marginLeft: 'auto' }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
       </div>
 
-      {/* Legenda estilo feed */}
-      {post.legenda && (
+      {/* Legenda estilo feed (reflete a legenda pedida no ajuste) */}
+      {st.legenda && (
         <p style={{ margin: 0, padding: '2px 14px 12px', fontSize: 13.5, color: '#222', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          <strong>{handle}</strong> {post.legenda}
+          <strong>{handle}</strong> {st.legenda}
         </p>
       )}
 
       {/* Info + decisão */}
       <div style={{ padding: '12px 14px 16px', borderTop: '1px solid #f2f2f2' }}>
-        {post.dataAgendada && (
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#888' }}><strong style={{ color: '#555' }}>Publicação prevista:</strong> {new Date(post.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        {st.dataAgendada && (
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#888' }}><strong style={{ color: '#555' }}>Publicação prevista:</strong> {new Date(st.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         )}
-        {modo === 'view' && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
-            <button onClick={() => { setModo('legenda'); setLegendaTxt(post.legenda || '') }} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#166534', '#bbf7d0') }}>Corrigir legenda</button>
-            <button onClick={() => { setModo('ajuste'); setAnnotations([]); setPendingPin(null); setTexto('') }} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Ajustar layout</button>
-            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
-          </div>
-        )}
-        {modo === 'legenda' && (
+
+        {/* EM AJUSTE — o criativo fica visível e o cliente pode editar o pedido */}
+        {emAjuste && modo === 'view' && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>Corrigir a legenda</p>
-            <textarea autoFocus value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Escreva a legenda do jeito que você quer..."
-              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #86efac', fontSize: 14, minHeight: 120, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
-            <p style={{ margin: '8px 0 0', fontSize: 11.5, color: '#16a34a' }}>Ao salvar, a legenda é substituída e o post segue a programação (é aprovado).</p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => setModo('view')} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
-              <button onClick={() => decidir('caption', '', legendaTxt)} disabled={enviando} style={{ flex: 2, ...btn('#16a34a', '#fff') }}>{enviando ? '...' : 'Salvar e aprovar'}</button>
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#b45309' }}>Em ajuste</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#9a6b2e', lineHeight: 1.5 }}>Seu pedido foi enviado para a agência. Enquanto eles trabalham, você pode continuar editando o que pediu.</p>
+            </div>
+            {st.anotacoes.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
+                {st.anotacoes.map((a, i) => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 8px' }}>
+                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 12.5, color: '#333' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: '#aaa' }}> · slide {a.img + 1}</em> : null}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#555' }}><strong>Observação:</strong> {st.motivoReprovacao}</p>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('#ffc00f', '#111') }}>Editar ajuste</button>
+              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('#fff', '#166534', '#bbf7d0') }}>Aprovar assim mesmo</button>
             </div>
           </div>
         )}
-        {(modo === 'ajuste' || modo === 'reject') && (
+
+        {/* Ações padrão (aguardando aprovação) */}
+        {!emAjuste && modo === 'view' && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Solicitar ajustes</button>
+            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
+          </div>
+        )}
+
+        {/* Solicitar ajustes — TUDO num lugar só: legenda + layout + data/hora */}
+        {modo === 'ajuste' && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>{modo === 'ajuste' ? 'Ajuste de layout' : 'Motivo da reprovação'}</p>
-            {modo === 'ajuste' && (
-              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>
-                <strong style={{ color: '#b45309' }}>Clique sobre o criativo</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}, e/ou descreva abaixo.
-              </p>
-            )}
-            {modo === 'ajuste' && annotations.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#111' }}>Solicitar ajustes</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>Peça tudo de uma vez — legenda, layout e/ou data. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
+
+            <label style={rotuloAj}>Legenda</label>
+            <textarea value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Deixe como está ou reescreva do seu jeito..." style={{ ...campoAj, minHeight: 84 }} />
+
+            <label style={{ ...rotuloAj, marginTop: 14 }}>Layout do criativo</label>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>Clique sobre o criativo acima</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
+            {annotations.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
                 {annotations.map((a, i) => (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 8px' }}>
                     <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
@@ -215,17 +289,29 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
                 ))}
               </div>
             )}
-            <textarea autoFocus={modo === 'reject'} value={texto} onChange={e => setTexto(e.target.value)} placeholder={modo === 'ajuste' ? 'Observação geral (opcional)...' : 'Descreva o motivo...'}
-              style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, minHeight: modo === 'ajuste' ? 64 : 84, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }} />
+            <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="Observação geral sobre o layout (opcional)..." style={{ ...campoAj, minHeight: 56 }} />
+
+            <label style={{ ...rotuloAj, marginTop: 14 }}>Data e horário da publicação</label>
+            <input type="datetime-local" value={dataTxt} onChange={e => setDataTxt(e.target.value)} style={campoAj} />
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('#f5f5f5', '#555'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
+              {legendaMudou && annotations.length === 0 && !texto.trim() && !dataMudou && (
+                <button onClick={() => decidir('caption', { novaLegenda: legendaTxt })} disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>Aprovar com esta legenda</button>
+              )}
+              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('#ffc00f', '#111') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Rejeitar */}
+        {modo === 'reject' && (
+          <div>
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>Motivo da reprovação</p>
+            <textarea autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => { setModo('view'); setTexto(''); setAnnotations([]); setPendingPin(null) }} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
-              <button onClick={() => {
-                if (modo === 'ajuste' && annotations.length === 0 && !texto.trim()) { toast('Marque um ponto no criativo ou descreva o ajuste.', 'erro'); return }
-                if (modo === 'reject' && !texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return }
-                decidir(modo === 'ajuste' ? 'corrected' : 'rejected', texto)
-              }} disabled={enviando} style={{ flex: 2, ...btn(modo === 'ajuste' ? '#ffc00f' : '#dc2626', modo === 'ajuste' ? '#111' : '#fff') }}>
-                {enviando ? '...' : (modo === 'ajuste' ? 'Enviar ajuste' : 'Confirmar reprovação')}
-              </button>
+              <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
+              <button onClick={() => { if (!texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return } decidir('rejected', { motivo: texto }) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar reprovação'}</button>
             </div>
           </div>
         )}
