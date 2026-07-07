@@ -39,13 +39,19 @@ const STATUS_LABEL: Record<string, string> = {
 function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || '#888' }
 function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
 
-export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean }) {
+export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [periodo, setPeriodo] = useState('mensal')
   const [filtroCliente, setFiltroCliente] = useState('')
   const [editModal, setEditModal] = useState<Marco | null>(null)
+  const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
   const [novoModal, setNovoModal] = useState(false)
   const [refDate, setRefDate] = useState(new Date())
+
+  // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
+  // marco abre um DETALHE, nunca o formulario de edicao da equipe.
+  const editavel = podeEditar && !somenteLeitura
+  const excluivel = podeExcluir && !somenteLeitura
 
   // Playbook e sempre escopado a UM cliente. No portal vem fixo; na agencia, escolhido.
   const clienteAtivo = clienteFixo || filtroCliente
@@ -121,7 +127,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
           </div>
-          {podeEditar && <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>}
+          {editavel && <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>}
         </>}
       </div>
 
@@ -158,7 +164,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
-          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.</p>
+          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estrategia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
         )}
 
         {clientesComMarcos.map(c => {
@@ -182,7 +188,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                   const left = posicaoPct(m.dataInicio)
                   const width = larguraPct(m.dataInicio, m.dataFim)
                   return (
-                    <div key={m.id} onClick={() => setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${m.dataFim ? ' - ' + fmtData(m.dataFim) : ''})`}
+                    <div key={m.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${m.dataFim ? ' - ' + fmtData(m.dataFim) : ''})`}
                       style={{
                         position: 'absolute', top: 4 + i * 34, left: `${left}%`, width: `${width}%`, height: 28,
                         background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
@@ -200,14 +206,59 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       </div>
       </>}
 
-      {/* Modal novo/editar marco */}
+      {/* Modal novo/editar marco (equipe) */}
       {(novoModal || editModal) && (
         <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo} corMarca={corMarca} corMarcaTexto={corMarcaTexto}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
-          onExcluir={editModal && podeExcluir ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
+          onExcluir={editModal && excluivel ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
         />
       )}
+
+      {/* Modal DETALHE (cliente, read-only) */}
+      {detalheModal && <MarcoDetalhe marco={detalheModal} onClose={() => setDetalheModal(null)} />}
+    </div>
+  )
+}
+
+// Detalhe de um marco em modo somente-leitura (portal do cliente): sem edicao,
+// so a informacao da etapa (titulo, categoria, status, periodo, responsavel, descricao).
+function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void }) {
+  const cat = CATEGORIAS.find(c => c.key === marco.categoria)
+  const statusCor = STATUS_COR[marco.status] === '#e0e0e0' ? '#9ca3af' : (STATUS_COR[marco.status] || '#9ca3af')
+  const lbl: React.CSSProperties = { margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const val: React.CSSProperties = { margin: 0, fontSize: 14, color: '#222' }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: cat?.cor || '#888' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>{cat?.label || 'Outro'}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: '#fff', background: statusCor, padding: '3px 10px', borderRadius: 999 }}>{STATUS_LABEL[marco.status] || marco.status}</span>
+        </div>
+        <h3 style={{ margin: '0 0 16px', fontSize: 17, color: '#111' }}>{marco.titulo}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div>
+              <p style={lbl}>Periodo</p>
+              <p style={val}>{fmtData(marco.dataInicio)}{marco.dataFim ? ' — ' + fmtData(marco.dataFim) : ''}</p>
+            </div>
+            {marco.responsavelNome && (
+              <div>
+                <p style={lbl}>Responsavel</p>
+                <p style={val}>{marco.responsavelNome}</p>
+              </div>
+            )}
+          </div>
+          {marco.descricao && (
+            <div>
+              <p style={lbl}>Descricao</p>
+              <p style={{ ...val, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{marco.descricao}</p>
+            </div>
+          )}
+        </div>
+        <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+      </div>
     </div>
   )
 }

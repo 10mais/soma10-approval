@@ -17,14 +17,17 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+      <div style={{ marginBottom: 4 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Analytics</h2>
+        <p style={{ margin: '2px 0 0', fontSize: 13, color: '#999' }}>Os números reais das suas redes (Instagram e Facebook) no período escolhido.</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '14px 0 18px' }}>
         <input type="date" value={desde} onChange={e => setDesde(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12 }} />
         <input type="date" value={ate} onChange={e => setAte(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12 }} />
         <button onClick={buscar} disabled={loading} style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{loading ? 'Buscando...' : 'Buscar'}</button>
       </div>
       {loading && <p style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Carregando...</p>}
-      {!loading && data && !data.conectado && <p style={{ background: '#fffbeb', borderRadius: 12, padding: 20, color: '#92400e', fontSize: 14 }}>{data.error || 'Conta nao conectada.'}</p>}
+      {!loading && data && !data.conectado && <p style={{ background: '#fffbeb', borderRadius: 12, padding: 20, color: '#92400e', fontSize: 14 }}>Ainda não há métricas para exibir. Assim que suas redes estiverem conectadas, seus números aparecem aqui.</p>}
       {!loading && data?.conectado && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>

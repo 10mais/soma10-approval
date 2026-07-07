@@ -181,6 +181,26 @@ export default function MarcaPage() {
           <ReferenciasVisuais clienteId={clienteId as string} />
         </div>
       )}
+
+      {/* Identidade visual (cliente, read-only): só as categorias de marca (logo/foto/elemento/ícone) */}
+      {!ehEquipe && (() => {
+        const assets = ((cliente.assetsMarca || []) as any[]).filter(a => ['logo', 'foto', 'elemento', 'icone'].includes(a?.categoria) && a?.url)
+        if (assets.length === 0) return null
+        return (
+          <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Identidade visual</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Logos, fotos e elementos da sua marca.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
+              {assets.map((a, i) => (
+                <a key={a.id || i} href={a.url} target="_blank" rel="noreferrer" title={a.nome || a.categoria}
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid #f0f0f0', background: '#fafafa' }}>
+                  <img src={a.url} alt={a.nome || a.categoria} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

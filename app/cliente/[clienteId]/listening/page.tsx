@@ -15,9 +15,12 @@ export default function ListeningPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Social Listening</h2>
-        <button onClick={carregar} disabled={loading} style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Social Listening</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#999' }}>O que está em alta no seu nicho agora — ideias e referências para o seu conteúdo.</p>
+        </div>
+        <button onClick={carregar} disabled={loading} style={{ flexShrink: 0, padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Buscando...' : 'Atualizar'}
         </button>
       </div>

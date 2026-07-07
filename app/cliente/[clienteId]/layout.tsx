@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { key: '/planner', label: 'Planner', equipe: true }, // movido p/ Produção (agência); no portal só a equipe alcança
   // Add-ons do plano modular: equipe sempre vê (ferramenta); cliente vê se contratou.
   { key: '/playbook', label: 'Playbook', equipe: true, modulo: 'playbook' as const },
-  { key: '/marca', label: 'Marca', equipe: true }, // 'marca' é billável, mas a visão do cliente ainda não foi construída (é editor da equipe)
+  { key: '/marca', label: 'Marca', equipe: true, modulo: 'marca' as const }, // cliente contratante vê o Brand Board + identidade visual em modo leitura
   { key: '/listening', label: 'Social Listening', equipe: true, modulo: 'listening' as const },
   { key: '/analytics', label: 'Analytics', equipe: true, modulo: 'analytics' as const },
 ]
