@@ -152,7 +152,7 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 >
 > **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅, Fase 1 (fundação) ✅ e **Fase 1.5 (visões cliente dos add-ons) ✅ — ver §24.** **PRÓXIMO:**
 > 1. ~~**Fase 1.5 — polir as VISÕES CLIENTE dos add-ons**~~ — **FEITO (§24):** Playbook read-only no portal; Marca (Brand Board) exposta ao cliente contratante (menu + galeria de identidade read-only); Analytics/Listening com tom de cliente.
-> 2. **Fase 2 — billing:** ~~somar os módulos ativos no Financeiro/DRE~~ **FEITO (§25):** receita dos módulos entra no DRE e no MRR/LTV. **FALTA:** suspensão por inadimplência (marcar cliente inadimplente + bloquear portal/add-ons).
+> 2. ~~**Fase 2 — billing**~~ **FEITO (§25):** receita dos módulos no DRE + MRR/LTV, e suspensão por inadimplência (flag + ficha + selo/filtro + bloqueio do portal). **FALTA hardening** (§25.4): bloqueio server-side do suspenso (links públicos + APIs).
 > 3. **Fase 3 — cobrança real:** gateway (Stripe/PIX) + rate limiting em endpoints públicos + expiração/rotação dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken).
 >
 > **Refino de UI paralelo (Config → Clientes):** card virou **tile clicável → ficha em MODAL** (fim do acordeão); modo Bloco mostra só prévia (nome + tipo); Módulos & assinatura lista núcleo grátis (incluído) + add-ons pagos (a selecionar).
@@ -584,5 +584,13 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **`/api/dashboard-vendas` (Conversão & Retenção):** `mensal(c) = contrato + totalMensalModulos(modulos)`; MRR, LTV e valor das renovações usam `mensal`. Números batem com o DRE.
 - `/api/clientes` já expõe `modulos` (sanitização só remove tokens/senha) → o dado chega aos dois.
 
-### 25.3 FALTA na Fase 2
-- **Suspensão por inadimplência:** marcar cliente como inadimplente (campo tipo `Cliente.inadimplente`/`pagamentoEmDia`) + bloquear portal/add-ons enquanto inadimplente (enforcement em `temModulo` ou guard do layout do portal) + aviso na ficha e no Financeiro. Ainda NÃO construído (é o próximo passo do billing, antes da Fase 3 = gateway real).
+### 25.3 Suspensão por inadimplência — FEITO
+- `Cliente.inadimplente` + `suspensoDesde` (persistidos no PUT de `/api/clientes`, `camposPermitidos`).
+- **Ficha (modal, `dashboard/page.tsx`):** seção "Cobrança e acesso" com toggle vermelho suspender/reativar (grava `inadimplente` + `suspensoDesde`).
+- **Lista:** selo "Suspenso" no tile (ambas as views) + chip de filtro "Suspensos".
+- **Portal (`app/cliente/[id]/layout.tsx`):** cliente inadimplente E não-equipe → tela "Acesso temporariamente suspenso" + Sair; bloqueia toda a navegação. Equipe (e "visualizar como cliente") não é bloqueada da gestão.
+- **Busca/filtros da lista (§25.1 cont.):** barra no topo de Config → Clientes — busca (nome/@/e-mail) + chips (Todos / A renovar ≤30d / Sem conexão / Com add-on / Suspensos).
+
+### 25.4 FALTA (hardening — vai junto com a Fase 3)
+- **Bloqueio server-side do cliente suspenso:** hoje a suspensão é só o guard do layout do portal. Um cliente suspenso ainda consegue: (a) abrir os **links públicos** `/aprovacoes/{aprovtoken}` e `/status/{statustoken}` (não passam pelo layout), e (b) bater direto nas **APIs** (`/api/posts?clienteId`, `/api/decision`, `esteira/aprovar`) com a sessão. Falta um helper `clienteSuspenso(clienteId)` e aplicá-lo nessas rotas + páginas públicas. Encaixa na Fase 3 (rate limiting + expiração de tokens).
+- **Financeiro:** decidir se receita de cliente suspenso continua no MRR (hoje continua — é MRR contratado, não recebido). Eventual "MRR em risco" separando suspensos.
