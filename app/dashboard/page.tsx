@@ -1327,8 +1327,8 @@ function Dashboard() {
       setErroCliente(data?.error || 'Erro ao criar cliente.')
       return
     }
-    if (data?.cliente?.loginEmail && data?.cliente?.loginSenha) {
-      setCredenciaisGeradas({ nome: data.cliente.nome, email: data.cliente.loginEmail, senha: data.cliente.loginSenha })
+    if (data?.cliente?.loginEmail && data?.senhaGerada) {
+      setCredenciaisGeradas({ nome: data.cliente.nome, email: data.cliente.loginEmail, senha: data.senhaGerada })
     }
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
     setNovoCliente({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
@@ -1416,6 +1416,13 @@ function Dashboard() {
     const url = await enviarImagem(arquivo)
     if (url) setConfigAgencia(c => ({ ...c, logo: url }))
     setEnviandoLogoAgencia(false)
+  }
+
+  async function resetarSenhaCliente(clienteId: string, nome: string) {
+    if (!(await confirmar('Gerar uma NOVA senha de acesso para este cliente? A senha atual deixa de funcionar.', { titulo: 'Resetar senha do cliente', okLabel: 'Resetar senha' }))) return
+    const r = await fetch('/api/clientes/senha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
+    if (!r || r.error) { toast(r?.error || 'Não foi possível resetar a senha.', 'erro'); return }
+    setCredenciaisGeradas({ nome, email: r.email, senha: r.senha })
   }
 
   function iniciarEdicaoCliente(c: Cliente) {
@@ -3805,6 +3812,7 @@ function Dashboard() {
                             style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                         </label>
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                          {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: '#fff', color: '#b45309', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
                           <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
                           <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
                         </div>

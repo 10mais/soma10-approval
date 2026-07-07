@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     criadoEm: new Date().toISOString() }
 
   // Criar acesso de login para o cliente, se um e-mail foi informado
+  let senhaGerada = ''
   if (loginEmail) {
     const jaExiste = await redis.get(`usuario:${loginEmail}`)
     if (jaExiste) {
@@ -82,7 +83,9 @@ export async function POST(req: NextRequest) {
     await redis.sadd('usuarios', loginEmail)
 
     cliente.loginEmail = loginEmail
-    cliente.loginSenha = senhaPlana
+    // NÃO persistimos a senha em texto plano. Ela é devolvida só nesta resposta
+    // (exibição única ao admin); depois, só dá pra RESETAR (gera uma nova).
+    senhaGerada = senhaPlana
   }
 
   await redis.set(`cliente:${cliente.id}`, cliente)
@@ -105,7 +108,7 @@ export async function POST(req: NextRequest) {
   const { dispararEvento } = await import('@/lib/automacoesEngine')
   await dispararEvento('cliente_novo', { clienteId: cliente.id, clienteNome: cliente.nome, segmento: (cliente as any).segmento || '', contratoValor: (cliente as any).contratoValor || 0 })
 
-  return NextResponse.json({ ok: true, cliente })
+  return NextResponse.json({ ok: true, cliente, senhaGerada: senhaGerada || undefined })
 }
 
 export async function PUT(req: NextRequest) {
@@ -127,10 +130,13 @@ export async function PUT(req: NextRequest) {
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]
   }
+  // Higieniza: nunca manter senha em texto plano (migração de dados antigos).
+  delete (atualizado as any).loginSenha
 
   await redis.set(`cliente:${id}`, atualizado)
   revalidateTag('clientes')
-  return NextResponse.json({ ok: true, cliente: atualizado })
+  const { facebookPageToken, instagramToken, loginSenha, ...seguro } = atualizado as any
+  return NextResponse.json({ ok: true, cliente: seguro })
 }
 
 export async function DELETE(req: NextRequest) {

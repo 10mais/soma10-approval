@@ -63,6 +63,9 @@ export async function exportarTudo(): Promise<any> {
   const personal: Record<string, any> = {}
   emails.forEach((e, i) => { if (personalVals[i] != null) personal[e] = personalVals[i] })
 
+  // Remove senha em texto plano residual dos clientes (o hash fica em usuarios).
+  const clientesLimpos = clientes.map((c: any) => { const { loginSenha, ...resto } = c || {}; return resto })
+
   return {
     _meta: {
       versao: 1,
@@ -73,7 +76,7 @@ export async function exportarTudo(): Promise<any> {
         crm: { negocios: negocios.length, contatos: contatos.length, empresas: empresas.length },
       },
     },
-    clientes, usuarios, posts, tarefas, tarefasExcluidas, marcos, templates, despesas, candidaturas, briefings, planos,
+    clientes: clientesLimpos, usuarios, posts, tarefas, tarefasExcluidas, marcos, templates, despesas, candidaturas, briefings, planos,
     crm: { negocios, contatos, empresas },
     agentes, documentos, mapas, config, personal,
   }

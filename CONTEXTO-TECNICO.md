@@ -514,7 +514,10 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Cron** `/api/cron/backup` (`cronAutorizado`, diário `0 6 * * *` no `vercel.json`). **Download on-demand admin** `/api/backup` (GET admin → JSON attachment). Botão **"Baixar backup agora"** em Config → Geral (admin). Requer `BLOB_READ_WRITE_TOKEN` (já existe).
 ### 22.3 Sanitização XSS do conteúdo rico
 - Dep nova **`isomorphic-dompurify`**. `lib/sanitize.ts` `sanitizeHtml()` (client+server, USE_PROFILES html, remove `<script>`/`<iframe>`/`<style>`/handlers on*/`javascript:`). Aplicado no **`RichText`** (sanitiza o HTML externo antes de virar `innerHTML`; conteúdo do próprio editor — `value === últimoEmit` — não re-seta, evita pulo de cursor) e na **página pública de documento** `app/doc/[token]` (`dangerouslySetInnerHTML` sanitizado). Cobre task descriptions, documentos e notepads.
-- **AINDA PENDENTE (decisão do dono — mexe em auth):** parar de guardar `Cliente.loginSenha` em texto plano (hoje o admin re-vê a senha do cliente; a alternativa é só **resetar**). Sugerido, não feito sem OK.
+### 22.4 Senha do cliente — sem texto plano (só reset)
+- `Cliente.loginSenha` **não é mais persistido** (era guardado em claro só p/ re-exibir; o GET já o removia — risco sem função). No POST de cliente a senha gerada volta em `senhaGerada` (exibição única). PUT faz `delete atualizado.loginSenha` (higieniza dados antigos ao salvar). Backup (`lib/backup.ts`) também remove `loginSenha` dos clientes.
+- Novo **`/api/clientes/senha` (POST admin)** = **resetar senha**: gera nova, grava só o **hash** no `Usuario`, devolve a senha 1x. Botão **"Resetar senha"** no form de edição do cliente (só se tem `loginEmail`), reusa o modal `credenciaisGeradas`. Login continua validando pelo `Usuario.senha` (bcrypt) — nada mudou pro cliente.
+- **Fase 0 concluída.** (Restam melhorias opcionais: rate limiting em endpoints públicos + expiração de tokens públicos — Fase 3.)
 
 ### 21.4 Planner movido para PRODUÇÃO (agência) — sai da área do cliente
 - Dashboard: `['planner','Planner']` entrou no grupo **Produção** logo após Studio; `ABA_GRUPO.planner='producao'`. A equipe acessa o Planner direto (todos os posts; filtra por cliente via `verComoClienteId`).
