@@ -52,6 +52,23 @@ export async function POST(req: NextRequest) {
   const nome = post.clienteNome || 'Cliente'
   const quem = session.user?.name || 'Usuário'
 
+  // LOG das solicitações do cliente (30 dias) — só ações iniciadas pelo próprio cliente,
+  // e não a aprovação de criativo sem data (que falha logo abaixo).
+  if (role === 'cliente' && !(acao === 'aprovar_criativo' && !post.dataAgendada)) {
+    try {
+      const { registrarLogCliente } = await import('@/lib/logCliente')
+      const mapa: Record<string, { tipo: any; label: string }> = {
+        aprovar_copy: { tipo: 'aprovacao', label: 'Aprovou a copy' },
+        aprovar_criativo: { tipo: 'aprovacao', label: 'Aprovou o criativo' },
+        ajuste_copy: { tipo: 'ajuste_copy', label: 'Pediu ajuste na copy' },
+        ajuste_criativo: { tipo: 'ajuste_layout', label: 'Pediu ajuste no layout' },
+        corrigir_legenda: { tipo: 'corrigir_legenda', label: 'Corrigiu a legenda' },
+      }
+      const m = mapa[acao] || { tipo: 'aprovacao', label: String(acao) }
+      await registrarLogCliente({ clienteId: post.clienteId || '', clienteNome: nome, tipo: m.tipo, acao: m.label, postId, resumo: (post.legenda || post.briefing || '').slice(0, 140), motivo: comentario || undefined, origem: 'portal' })
+    } catch { /* nunca bloqueia */ }
+  }
+
   if (acao === 'aprovar_copy') {
     post.etapa = 'criativo'
     post.copyAprovadaEm = agora

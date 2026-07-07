@@ -71,5 +71,13 @@ export async function POST(req: NextRequest) {
 
   await notificarEquipe('briefing_solicitado', `Nova solicitacao de conteudo — ${cliente.nome}`, `${cliente.nome} solicitou: "${tema}". Triar e vincular a uma etapa do Playbook.`).catch(() => {})
 
+  // LOG (30 dias) — só quando é o cliente que solicita, para não se perder.
+  if (role === 'cliente') {
+    try {
+      const { registrarLogCliente } = await import('@/lib/logCliente')
+      await registrarLogCliente({ clienteId, clienteNome: cliente.nome, tipo: 'solicitacao_conteudo', acao: 'Solicitou conteúdo', resumo: tema.slice(0, 140), motivo: [objetivo, observacoes].filter(Boolean).join(' — ') || undefined, origem: 'portal' })
+    } catch { /* nunca bloqueia */ }
+  }
+
   return NextResponse.json({ ok: true })
 }

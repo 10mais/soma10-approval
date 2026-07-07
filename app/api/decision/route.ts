@@ -65,6 +65,22 @@ export async function POST(req: NextRequest) {
   const atualizado = { ...post, status: novoStatus, anotacoes: annotations, motivoReprovacao: rejectReason, atualizadoEm: new Date().toISOString() }
   await redis.set(`post:${id}`, atualizado)
 
+  // LOG da solicitação do cliente (30 dias) — para reencontrar mesmo depois de editar.
+  try {
+    const { registrarLogCliente } = await import('@/lib/logCliente')
+    const pontos = Array.isArray(annotations) ? annotations.map((a: any) => a?.text).filter(Boolean).join(' · ') : ''
+    await registrarLogCliente({
+      clienteId: (post as any).clienteId || '',
+      clienteNome: (post as any).clienteNome || (post as any).cliente || 'Cliente',
+      tipo: soLegenda ? 'corrigir_legenda' : type === 'approved' ? 'aprovacao' : type === 'corrected' ? 'ajuste_layout' : 'reprovacao',
+      acao: soLegenda ? 'Corrigiu a legenda' : type === 'approved' ? 'Aprovou' : type === 'corrected' ? 'Pediu ajuste no layout' : 'Reprovou',
+      postId: id,
+      resumo: (post.legenda || '').slice(0, 140),
+      motivo: [rejectReason, pontos].filter(Boolean).join(' — ') || undefined,
+      origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+    })
+  } catch { /* nunca bloqueia a decisão */ }
+
   {
     const { dispararEvento } = await import('@/lib/automacoesEngine')
     const ctxPost = { postId: id, clienteId: (post as any).clienteId || '', clienteNome: (post as any).clienteNome || (post as any).cliente || '', formato: (post as any).formato || '' }

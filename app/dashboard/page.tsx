@@ -32,6 +32,7 @@ const MapasMentais = dynamic(() => import('../components/MapasMentais'), { ssr: 
 const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const LogsCliente = dynamic(() => import('../components/LogsCliente'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
 const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
@@ -392,7 +393,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -1943,6 +1944,7 @@ function Dashboard() {
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
                 <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
+                <NavBtn chave="solicitacoes" label="Solicitações do cliente" onClick={() => setAba('solicitacoes' as any)} />
               </nav>
               {([
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
@@ -4228,6 +4230,10 @@ function Dashboard() {
 
         {aba === 'mapas' && role !== 'cliente' && (
           <MapasMentais />
+        )}
+
+        {aba === 'solicitacoes' && role !== 'cliente' && (
+          <LogsCliente clientes={clientes} />
         )}
 
         {/* MEU DIA (equipe) */}
