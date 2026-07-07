@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { totalMensalModulos, type ClienteModulos } from '@/lib/modulos'
 
-type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; inadimplente?: boolean; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
 type Despesa = { id: string; descricao: string; valor: number; tipo: 'fixo' | 'variavel'; categoria?: string; mes: string }
 
@@ -123,6 +123,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const receitaTotal = linhasCliente.reduce((s, l) => s + l.receita, 0)
   // MRR só dos add-ons de módulos (recorrência do plano modular), para destaque.
   const mrrModulos = useMemo(() => clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + totalMensalModulos(c.modulos), 0), [clientes])
+  // MRR EM RISCO: mensalidade (contrato + módulos) dos clientes suspensos por inadimplência.
+  const mrrRisco = useMemo(() => clientes.filter(c => c.tipo !== 'interno' && c.inadimplente).reduce((s, c) => s + (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos), 0), [clientes])
   const lucro = receitaTotal - folha - despesasTotal
   const margemPct = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : null
 
@@ -248,7 +250,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
         <div>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita recorrente</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p></div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita recorrente</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p>{mrrRisco > 0 && <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: '#b91c1c' }}>{brl(mrrRisco)}/mês em risco (suspensos)</p>}</div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Folha (fixo + variável)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(folha)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Despesas</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(despesasTotal)}</p></div>
             <div style={{ ...card, background: lucro >= 0 ? '#f0fdf4' : '#fef2f2' }}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? '#16a34a' : '#dc2626' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: '#999' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>
