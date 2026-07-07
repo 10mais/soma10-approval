@@ -90,7 +90,7 @@ export default function PlannerPage() {
     const body: any = { ...valor, dataAgendada: dataISO, clienteId, clienteNome: cliente?.nome }
     if (acao === 'rascunho') body.rascunhoInterno = true
     if (acao === 'agendar') body.statusInicial = 'agendado'
-    if (acao === 'aprovacao') body.statusInicial = 'aguardando_aprovacao'
+    if (acao === 'aprovacao') { body.statusInicial = 'aguardando_aprovacao'; body.etapa = 'aprovacao_criativo' } // etapa: aparece nas Aprovações do portal (filtram por etapa)
 
     const res = await fetch('/api/posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -143,7 +143,7 @@ export default function PlannerPage() {
     }
     if (acao === 'agendar') updates.status = 'agendado'
     else if (acao === 'salvar') updates.status = 'rascunho'
-    else if (acao === 'aprovacao') updates.status = 'aguardando_aprovacao'
+    else if (acao === 'aprovacao') { updates.status = 'aguardando_aprovacao'; updates.etapa = 'aprovacao_criativo' } // etapa faz aparecer nas Aprovações do portal (que filtram por etapa)
     const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
     if (acao === 'aprovacao') { toast('Reenviado para aprovação!', 'sucesso'); setEnviando(false); setEditPost(null); carregar(); return }
     if (acao === 'publicar' && res?.post?.id) {

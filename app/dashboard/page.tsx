@@ -1028,7 +1028,7 @@ function Dashboard() {
     const body: any = { ...valor, dataAgendada: dataISO, clienteNome: cliente?.nome }
     if (acao === 'rascunho') body.rascunhoInterno = true
     if (acao === 'agendar') body.statusInicial = 'agendado'
-    if (acao === 'aprovacao') body.statusInicial = 'aguardando_aprovacao'
+    if (acao === 'aprovacao') { body.statusInicial = 'aguardando_aprovacao'; body.etapa = 'aprovacao_criativo' } // etapa: aparece nas Aprovações do portal (filtram por etapa) além do link público
 
     const res = await fetch('/api/posts', {
       method: 'POST',
