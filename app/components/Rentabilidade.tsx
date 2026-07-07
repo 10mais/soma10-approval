@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { totalMensalModulos, type ClienteModulos } from '@/lib/modulos'
 
-type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
 type Despesa = { id: string; descricao: string; valor: number; tipo: 'fixo' | 'variavel'; categoria?: string; mes: string }
 
@@ -101,7 +102,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const linhasCliente = useMemo(() => clientes.filter(c => c.tipo !== 'interno').map(c => {
     const ag = porCliente[c.id] || { min: 0, custo: 0 }
     const avulsas = (c.receitasAvulsas || []).filter(r => !mes || r.mes === mes).reduce((s, r) => s + (Number(r.valor) || 0), 0)
-    const receita = (Number(c.contratoValor) || 0) + avulsas
+    const modulos = totalMensalModulos(c.modulos)
+    const receita = (Number(c.contratoValor) || 0) + modulos + avulsas
     const margem = receita - ag.custo
     return { c, min: ag.min, custo: ag.custo, receita, margem, pct: receita > 0 ? (margem / receita) * 100 : null }
   }).sort((a, b) => a.margem - b.margem), [clientes, porCliente, mes])
@@ -119,6 +121,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const despesasTotal = despFixas + despVar
 
   const receitaTotal = linhasCliente.reduce((s, l) => s + l.receita, 0)
+  // MRR só dos add-ons de módulos (recorrência do plano modular), para destaque.
+  const mrrModulos = useMemo(() => clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + totalMensalModulos(c.modulos), 0), [clientes])
   const lucro = receitaTotal - folha - despesasTotal
   const margemPct = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : null
 
@@ -149,7 +153,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   // Fluxo de caixa — entradas (receita) x saídas (folha + despesas) por mês.
   // Janela: termina 3 meses no futuro (meses futuros = previsão dos recorrentes já lançados).
   const fluxo = useMemo(() => {
-    const recorrente = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + (Number(c.contratoValor) || 0), 0)
+    const recorrente = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos), 0)
     const out: { mes: string; label: string; entradas: number; saidas: number; saldo: number; futuro: boolean }[] = []
     for (let i = -(periodoFluxo - 4); i <= 3; i++) {
       const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
@@ -184,7 +188,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     const eventos: { data: Date; tipo: 'entrada' | 'saida'; desc: string; valor: number }[] = []
     for (const c of clientes) {
       if (c.tipo === 'interno') continue
-      const v = Number(c.contratoValor) || 0
+      const v = (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos)
       const dia = Number((c as any).diaVencimento) || 0
       if (v <= 0 || dia < 1) continue
       for (let k = 0; k <= 2; k++) {
@@ -223,7 +227,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Financeiro</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Resultado financeiro: receita dos contratos menos folha (fixo + variável) e despesas.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Resultado financeiro: receita recorrente (contratos + assinaturas de módulos) menos folha (fixo + variável) e despesas.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={toggleOcultar} title={ocultar ? 'Mostrar valores' : 'Ocultar valores'} aria-label={ocultar ? 'Mostrar valores' : 'Ocultar valores'}
@@ -244,7 +248,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
         <div>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita (contratos)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p></div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Receita recorrente</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#111' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Folha (fixo + variável)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(folha)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Despesas</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{brl(despesasTotal)}</p></div>
             <div style={{ ...card, background: lucro >= 0 ? '#f0fdf4' : '#fef2f2' }}><p style={{ margin: 0, fontSize: 12, color: '#888' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? '#16a34a' : '#dc2626' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: '#999' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>

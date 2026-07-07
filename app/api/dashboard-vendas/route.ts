@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, CrmNegocio, Post, NpsResposta } from '@/lib/redis'
+import { totalMensalModulos } from '@/lib/modulos'
 
 export const runtime = 'nodejs'
 
@@ -48,11 +49,13 @@ export async function GET() {
 
   // ---- RETENÇÃO (clientes) ----
   const ativos = clientes.filter(c => c.tipo !== 'interno')
-  const mrr = ativos.reduce((s, c) => s + (Number(c.contratoValor) || 0), 0)
+  // Mensalidade recorrente por cliente = contrato + assinaturas de módulos ativas.
+  const mensal = (c: Cliente) => (Number(c.contratoValor) || 0) + totalMensalModulos((c as any).modulos)
+  const mrr = ativos.reduce((s, c) => s + mensal(c), 0)
   const ltvs = ativos.map(c => {
     const d = dias(c.contratoInicio)
     const meses = Math.max(1, d ? Math.floor(d / 30) + 1 : 1)
-    return (Number(c.contratoValor) || 0) * meses
+    return mensal(c) * meses
   })
   const ltvMedio = ativos.length ? Math.round(ltvs.reduce((s, v) => s + v, 0) / ativos.length) : 0
 
@@ -66,7 +69,7 @@ export async function GET() {
 
   // Renovações nos próximos 45 dias
   const renovacoes = ativos
-    .map(c => ({ id: c.id, nome: c.nome, valor: Number(c.contratoValor) || 0, data: c.contratoRenovacao, faltam: ateData(c.contratoRenovacao) }))
+    .map(c => ({ id: c.id, nome: c.nome, valor: mensal(c), data: c.contratoRenovacao, faltam: ateData(c.contratoRenovacao) }))
     .filter(c => c.faltam !== null && c.faltam >= 0 && c.faltam <= 45)
     .sort((a, b) => (a.faltam || 0) - (b.faltam || 0))
 
