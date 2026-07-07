@@ -15,6 +15,7 @@ export default function AprovacoesPublicas() {
 
   async function carregar() {
     const d = await fetch(`/api/aprovacao-link?token=${token}`).then(r => r.json()).catch(() => null)
+    if (d?.suspenso) { setErro('Este acesso está temporariamente suspenso por pendência de pagamento. Fale com a nossa equipe para regularizar.'); setDados({ posts: [] }); return }
     if (!d || d.error) { setErro(d?.error || 'Não foi possível carregar.'); setDados({ posts: [] }); return }
     setDados(d)
   }

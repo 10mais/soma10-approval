@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
     if (cliente) { clienteId = cliente.id; await redis.set(`statustoken:${token}`, cliente.id) }
   }
   if (!cliente) return NextResponse.json({ error: 'link inválido' }, { status: 404 })
+  // Cliente suspenso por inadimplência: link público de status fica indisponível.
+  if (cliente.inadimplente) return NextResponse.json({ suspenso: true, clienteNome: cliente.nome })
 
   const meus = await getPostsDoCliente(cliente.id)
 

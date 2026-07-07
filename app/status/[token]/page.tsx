@@ -16,13 +16,15 @@ export default function StatusPublico() {
   const { token } = useParams()
   const [s, setS] = useState<Status | null>(null)
   const [erro, setErro] = useState(false)
+  const [suspenso, setSuspenso] = useState(false)
   const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/status?token=${token}`).then(r => r.json()).then(d => { if (d && !d.error) setS(d); else setErro(true); setCarregando(false) }).catch(() => { setErro(true); setCarregando(false) })
+    fetch(`/api/status?token=${token}`).then(r => r.json()).then(d => { if (d?.suspenso) setSuspenso(true); else if (d && !d.error) setS(d); else setErro(true); setCarregando(false) }).catch(() => { setErro(true); setCarregando(false) })
   }, [token])
 
   if (carregando) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontFamily: 'Inter, system-ui, sans-serif' }}>Carregando...</div>
+  if (suspenso) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, color: '#666', fontFamily: 'Inter, system-ui, sans-serif' }}><div style={{ maxWidth: 380 }}><p style={{ fontSize: 17, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>Acesso temporariamente suspenso</p><p style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>Este link está pausado por pendência de pagamento. Fale com a nossa equipe para regularizar.</p></div></div>
   if (erro || !s) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontFamily: 'Inter, system-ui, sans-serif' }}>Link inválido ou expirado.</div>
 
   const cor = '#111' // layout padrao da agencia: acento neutro, igual para todos os clientes

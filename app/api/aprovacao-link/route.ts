@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
   if (!clienteId) return NextResponse.json({ error: 'link inválido' }, { status: 404 })
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  // Cliente suspenso por inadimplência: o link público não mostra/aprova conteúdo.
+  if (cliente.inadimplente) return NextResponse.json({ suspenso: true, clienteNome: cliente.nome })
 
   const ids = await redis.smembers('posts')
   const todos = ids.length ? ((await redis.mget<(Post | null)[]>(...ids.map(i => `post:${i}`))).filter(Boolean) as Post[]) : []

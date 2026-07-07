@@ -6,6 +6,7 @@ import { getPostsDoCliente, indexarPost, desindexarPost } from '@/lib/postsIndex
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
+import { clienteSuspenso } from '@/lib/suspensao'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -25,6 +26,11 @@ export async function GET(req: NextRequest) {
 
   const role = (session.user as any).role
   let clienteId = req.nextUrl.searchParams.get('clienteId')
+
+  // Cliente suspenso por inadimplência não acessa o próprio conteúdo.
+  if (role === 'cliente' && await clienteSuspenso((session.user as any).clienteId)) {
+    return NextResponse.json({ error: 'acesso suspenso' }, { status: 403 })
+  }
 
   // Busca de UM post por id (usado pelo acompanhamento de status da publicacao)
   const id = req.nextUrl.searchParams.get('id')

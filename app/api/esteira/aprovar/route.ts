@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
   // Permissao do portal: cliente sem "aprovar" pode visualizar, mas nao decidir
   if (role === 'cliente') {
     const cli = await redis.get<Cliente>(`cliente:${clienteId}`)
+    if (cli?.inadimplente) {
+      return NextResponse.json({ error: 'acesso suspenso por pendência de pagamento' }, { status: 403 })
+    }
     if (!podeCliente(cli?.permissoes, 'aprovar')) {
       return NextResponse.json({ error: 'sem permissao para aprovar conteudo' }, { status: 403 })
     }

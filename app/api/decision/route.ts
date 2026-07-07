@@ -5,6 +5,7 @@ import { redis, Post, Cliente } from '@/lib/redis'
 import { list } from '@vercel/blob'
 import nodemailer from 'nodemailer'
 import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
+import { clienteSuspenso } from '@/lib/suspensao'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -45,6 +46,11 @@ export async function POST(req: NextRequest) {
 
   if (!autorizadoPorSessao && !autorizadoPorCodigo && !autorizadoPorToken) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  }
+
+  // Cliente suspenso por inadimplência não pode aprovar/corrigir/reprovar (cobre sessão, código e token).
+  if (await clienteSuspenso(post.clienteId)) {
+    return NextResponse.json({ error: 'acesso suspenso por pendência de pagamento' }, { status: 403 })
   }
 
   // Correção SÓ da legenda: substitui o texto e SEGUE a programação (= aprova).
