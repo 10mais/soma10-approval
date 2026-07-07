@@ -591,6 +591,13 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Portal (`app/cliente/[id]/layout.tsx`):** cliente inadimplente E não-equipe → tela "Acesso temporariamente suspenso" + Sair; bloqueia toda a navegação. Equipe (e "visualizar como cliente") não é bloqueada da gestão.
 - **Busca/filtros da lista (§25.1 cont.):** barra no topo de Config → Clientes — busca (nome/@/e-mail) + chips (Todos / A renovar ≤30d / Sem conexão / Com add-on / Suspensos).
 
-### 25.4 FALTA (hardening — vai junto com a Fase 3)
-- **Bloqueio server-side do cliente suspenso:** hoje a suspensão é só o guard do layout do portal. Um cliente suspenso ainda consegue: (a) abrir os **links públicos** `/aprovacoes/{aprovtoken}` e `/status/{statustoken}` (não passam pelo layout), e (b) bater direto nas **APIs** (`/api/posts?clienteId`, `/api/decision`, `esteira/aprovar`) com a sessão. Falta um helper `clienteSuspenso(clienteId)` e aplicá-lo nessas rotas + páginas públicas. Encaixa na Fase 3 (rate limiting + expiração de tokens).
-- **Financeiro:** decidir se receita de cliente suspenso continua no MRR (hoje continua — é MRR contratado, não recebido). Eventual "MRR em risco" separando suspensos.
+### 25.4 Hardening server-side do suspenso — FEITO
+- `lib/suspensao.ts`: `clienteSuspenso(clienteId)` + `suspensoPorToken(tipo, token)`.
+- Bloqueado (403) para cliente suspenso: **`/api/posts` GET** (role cliente), **`/api/decision` POST** (cobre sessão + código 6 díg + `aprovtoken`), **`/api/esteira/aprovar` POST** (role cliente).
+- Links públicos: **`/api/aprovacao-link` GET** e **`/api/status` GET** devolvem `{ suspenso:true }`; páginas `/aprovacoes/[token]` e `/status/[token]` mostram aviso amigável de suspensão.
+- **MRR em risco (Financeiro):** KPI "Receita recorrente" mostra em vermelho o total mensal (contrato + módulos) dos clientes suspensos (`mrrRisco`). Receita segue no MRR total (é contratado); o "em risco" só destaca.
+
+### 25.5 Próximo — Fase 3 (cobrança real)
+- **Gateway de pagamento** (Stripe/PIX) + **dunning** (marca inadimplente sozinho ao falhar cobrança; reativa ao pagar). *Precisa das contas do dono.*
+- **Rate limiting** nos endpoints públicos + **expiração/rotação** dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken). *Código; sweep de segurança.*
+- **Nome do produto** (Maestro / Soma10 Studio / Órbita) — decisão do dono.
