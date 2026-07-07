@@ -684,7 +684,7 @@ export default function PostComposer({
             const m = midias[idx]
             return (
               <div style={{
-                position: 'relative', width: '100%', aspectRatio: formato === 'story' || formato === 'reel' ? '9/16' : '1', background: '#f4f4f4', overflow: 'hidden',
+                position: 'relative', width: '100%', aspectRatio: formato === 'story' || formato === 'reel' ? '9/16' : '4/5', background: '#f4f4f4', overflow: 'hidden',
               }}>
                 {midias.length === 0 ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 13, textAlign: 'center', padding: 16 }}>
