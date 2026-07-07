@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissão para aprovar' }, { status: 403 })
   }
 
-  const { postId, acao, comentario, novaLegenda } = await req.json()
+  const { postId, acao, comentario, novaLegenda, novaData, annotations } = await req.json()
   // acao: 'aprovar_copy' | 'ajuste_copy' | 'aprovar_criativo' | 'ajuste_criativo' | 'corrigir_legenda'
+  // O ajuste é CONSOLIDADO: pode vir novaLegenda + novaData + annotations junto do comentário.
   if (!postId || !acao) return NextResponse.json({ error: 'postId e acao são obrigatórios' }, { status: 400 })
 
   const post = await redis.get<Post>(`post:${postId}`)
@@ -80,8 +81,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (acao === 'ajuste_copy') {
-    post.etapa = 'copy'
+    // Mantém 'aprovacao_copy' para não sumir das Aprovações; fica EM AJUSTE.
+    post.etapa = 'aprovacao_copy'
     post.ajusteCopy = comentario || 'Ajuste solicitado'
+    if (typeof novaLegenda === 'string' && novaLegenda.trim()) post.legenda = novaLegenda
+    post.status = 'corrigir'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     await notificarDono(post.criadoPor, 'geral', `Ajuste de copy — ${nome}`, `${quem} pediu ajuste na copy: "${comentario || 'sem comentário'}".`, postId)
@@ -131,8 +135,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (acao === 'ajuste_criativo') {
-    post.etapa = 'criativo'
+    // MANTÉM a etapa 'aprovacao_criativo' para o criativo NÃO sumir das Aprovações
+    // (a tela filtra por etapa). Fica EM AJUSTE (status corrigir) e visível.
+    post.etapa = 'aprovacao_criativo'
     post.ajusteCriativo = comentario || 'Ajuste solicitado'
+    // Solicitação consolidada: aplica a legenda/data pedidas e guarda as marcações.
+    if (typeof novaLegenda === 'string' && novaLegenda.trim()) post.legenda = novaLegenda
+    if (novaData) { const d = new Date(novaData); if (!isNaN(d.getTime())) post.dataAgendada = d.toISOString() }
+    if (Array.isArray(annotations)) (post as any).anotacoes = annotations
     // Ajuste de LAYOUT cancela a programação: sai dos agendados e volta pra correção.
     await redis.srem('agendados', postId)
     post.status = 'corrigir'

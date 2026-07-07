@@ -35,6 +35,15 @@ function tempoEspera(aguardandoDesde?: string): { texto: string; atrasado: boole
   return { texto, atrasado }
 }
 
+// ISO -> valor de <input type="datetime-local"> (hora local).
+function toLocalInput(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 export default function AprovacoesPagina() {
   const { clienteId } = useParams()
   const { data: session } = useSession()
@@ -44,6 +53,8 @@ export default function AprovacoesPagina() {
   const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [editLegenda, setEditLegenda] = useState<{ id: string; texto: string } | null>(null)
+  // Painel "Solicitar ajustes" consolidado (legenda + layout + data) — um por vez.
+  const [ajuste, setAjuste] = useState<{ id: string; legenda: string; obs: string; data: string } | null>(null)
   const [aprovandoTodos, setAprovandoTodos] = useState(false)
   // Permissao de aprovar (default true). So restringe o proprio cliente; equipe nao.
   const [permAprovar, setPermAprovar] = useState(true)
@@ -77,14 +88,16 @@ export default function AprovacoesPagina() {
   }, [clienteId, session])
 
   const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
+  // "aguardando" = os que precisam da decisão do cliente; EM AJUSTE (corrigir) ficam visíveis mas não contam no banner/lote.
+  const aguardando = pendentes.filter(p => p.status !== 'corrigir')
   // espera mais antiga (para o banner "o que está esperando você")
   const maisAntiga = pendentes.reduce<string | undefined>((min, p) => (p.aguardandoDesde && (!min || p.aguardandoDesde < min)) ? p.aguardandoDesde : min, undefined)
 
   async function aprovarTodos() {
-    if (!(await confirmar(`Aprovar todos os ${pendentes.length} itens pendentes?`, { titulo: 'Aprovar em lote', okLabel: 'Aprovar todos' }))) return
+    if (!(await confirmar(`Aprovar todos os ${aguardando.length} itens pendentes?`, { titulo: 'Aprovar em lote', okLabel: 'Aprovar todos' }))) return
     setAprovandoTodos(true)
     const semData: string[] = []
-    for (const p of pendentes) {
+    for (const p of aguardando) {
       const ehCopy = p.etapa === 'aprovacao_copy'
       const r = await fetch('/api/esteira/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: p.id, acao: ehCopy ? 'aprovar_copy' : 'aprovar_criativo', comentario: '' }) }).then(x => x.json()).catch(() => ({ error: 'erro' }))
       if (r?.semData) semData.push(p.legenda?.slice(0, 30) || p.id)
@@ -94,11 +107,11 @@ export default function AprovacoesPagina() {
     if (semData.length) toast(`Estes criativos precisam de data/horário definidos antes de aprovar (peça à equipe): ${semData.join(', ')}`, 'erro')
   }
 
-  async function agir(postId: string, acao: string, comentarioOverride?: string, novaLegenda?: string) {
+  async function agir(postId: string, acao: string, comentarioOverride?: string, novaLegenda?: string, novaData?: string) {
     setEnviando(postId)
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || ''), novaLegenda }),
+      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || ''), novaLegenda, novaData }),
     }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
     if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
     if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
@@ -111,18 +124,18 @@ export default function AprovacoesPagina() {
       <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Aprovações</h2>
 
       {/* O que está esperando você */}
-      {pendentes.length > 0 && (() => { const e = tempoEspera(maisAntiga); const urgente = e?.atrasado; return (
+      {aguardando.length > 0 && (() => { const e = tempoEspera(maisAntiga); const urgente = e?.atrasado; return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: urgente ? '#fef2f2' : '#fffbeb', border: `1.5px solid ${urgente ? '#fecaca' : '#fde68a'}`, borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: urgente ? '#b91c1c' : '#92400e' }}>
-              {pendentes.length} {pendentes.length === 1 ? 'item aguardando' : 'itens aguardando'} a sua aprovação{e ? ` — o mais antigo ${e.texto}` : ''}.
+              {aguardando.length} {aguardando.length === 1 ? 'item aguardando' : 'itens aguardando'} a sua aprovação{e ? ` — o mais antigo ${e.texto}` : ''}.
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: urgente ? '#b91c1c' : '#92400e', opacity: 0.85 }}>Aprovar rápido mantém o ritmo das suas entregas.</p>
           </div>
-          {permAprovar && pendentes.length > 1 && (
+          {permAprovar && aguardando.length > 1 && (
             <button onClick={aprovarTodos} disabled={aprovandoTodos}
               style={{ padding: '10px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: aprovandoTodos ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
-              {aprovandoTodos ? 'Aprovando...' : `Aprovar todos (${pendentes.length})`}
+              {aprovandoTodos ? 'Aprovando...' : `Aprovar todos (${aguardando.length})`}
             </button>
           )}
         </div>
@@ -152,8 +165,8 @@ export default function AprovacoesPagina() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{p.clienteNome}</span>
-                      <span style={{ background: ehCopy ? '#dbeafe' : '#fef3c7', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? '#1d4ed8' : '#92400e' }}>
-                        {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
+                      <span style={{ background: p.status === 'corrigir' ? '#fff7ed' : ehCopy ? '#dbeafe' : '#fef3c7', border: p.status === 'corrigir' ? '1px solid #fed7aa' : 'none', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: p.status === 'corrigir' ? '#b45309' : ehCopy ? '#1d4ed8' : '#92400e' }}>
+                        {p.status === 'corrigir' ? 'Em ajuste' : ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
                       </span>
                       {(() => { const e = tempoEspera(p.aguardandoDesde); return e ? (
                         <span style={{ background: e.atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: e.atrasado ? '#b91c1c' : '#888' }}>
@@ -178,29 +191,63 @@ export default function AprovacoesPagina() {
                     )}
                     {permAprovar ? (
                       <>
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
-                          style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar</button>
-                        <button onClick={() => setEditLegenda({ id: p.id, texto: p.legenda || '' })} disabled={enviando === p.id}
-                          style={{ padding: '8px 16px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Corrigir legenda</button>
-                        <button onClick={() => agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo')} disabled={enviando === p.id}
-                          style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>{ehCopy ? 'Pedir ajuste' : 'Ajustar layout'}</button>
-                        <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
-                          style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Rejeitar</button>
-                      </div>
-                      {editLegenda?.id === p.id && (
-                        <div style={{ marginTop: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 12 }}>
-                          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#166534' }}>Corrigir a legenda</p>
-                          <textarea value={editLegenda.texto} onChange={e => setEditLegenda({ id: p.id, texto: e.target.value })} rows={5} autoFocus
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #86efac', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }} />
-                          <p style={{ margin: '6px 0 8px', fontSize: 11, color: '#16a34a' }}>Ao salvar, a legenda é substituída e o post {ehCopy ? 'segue para o criativo' : 'segue a programação (é aprovado e agendado)'}.</p>
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                            <button onClick={() => setEditLegenda(null)} style={{ padding: '8px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
-                            <button disabled={enviando === p.id} onClick={async () => { const t = editLegenda.texto; setEditLegenda(null); await agir(p.id, 'corrigir_legenda', undefined, t) }}
-                              style={{ padding: '8px 18px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar e aprovar</button>
+                      {p.status === 'corrigir' ? (
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800, color: '#b45309' }}>Em ajuste</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a6b2e', lineHeight: 1.5 }}>Seu pedido foi enviado para a agência. Você pode continuar editando enquanto eles trabalham.</p>
+                            {(ehCopy ? p.ajusteCopy : p.ajusteCriativo) && <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#7c4a12' }}><strong>Você pediu:</strong> {ehCopy ? p.ajusteCopy : p.ajusteCriativo}</p>}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <button onClick={() => setAjuste({ id: p.id, legenda: p.legenda || '', obs: (ehCopy ? p.ajusteCopy : p.ajusteCriativo) || '', data: toLocalInput(p.dataAgendada) })} disabled={enviando === p.id}
+                              style={{ padding: '8px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar ajuste</button>
+                            <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
+                              style={{ padding: '8px 16px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar assim mesmo</button>
                           </div>
                         </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
+                            style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aprovar</button>
+                          <button onClick={() => setAjuste({ id: p.id, legenda: p.legenda || '', obs: '', data: toLocalInput(p.dataAgendada) })} disabled={enviando === p.id}
+                            style={{ padding: '8px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Solicitar ajustes</button>
+                          <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
+                            style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Rejeitar</button>
+                        </div>
                       )}
+
+                      {ajuste?.id === p.id && (() => {
+                        const legendaMudou = ajuste.legenda.trim() !== (p.legenda || '').trim()
+                        const dataMudou = !ehCopy && !!ajuste.data && ajuste.data !== toLocalInput(p.dataAgendada)
+                        const campo: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }
+                        const rot: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', margin: '10px 0 5px' }
+                        return (
+                          <div style={{ marginTop: 10, background: '#fffdf7', border: '1px solid #fde68a', borderRadius: 10, padding: 12 }}>
+                            <p style={{ margin: '0 0 2px', fontSize: 13.5, fontWeight: 800, color: '#111' }}>Solicitar ajustes</p>
+                            <p style={{ margin: '0 0 4px', fontSize: 11.5, color: '#999', lineHeight: 1.5 }}>Peça tudo de uma vez. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
+                            <label style={rot}>Legenda</label>
+                            <textarea value={ajuste.legenda} onChange={e => setAjuste(a => a && { ...a, legenda: e.target.value })} rows={4} style={campo} />
+                            {!ehCopy ? (<>
+                              <label style={rot}>O que ajustar no layout</label>
+                              <textarea value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="Ex.: trocar a cor do título, aumentar a logo, mudar a foto..." style={campo} />
+                              <label style={rot}>Data e horário da publicação</label>
+                              <input type="datetime-local" value={ajuste.data} onChange={e => setAjuste(a => a && { ...a, data: e.target.value })} style={campo} />
+                            </>) : (<>
+                              <label style={rot}>Observação (opcional)</label>
+                              <textarea value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="O que ajustar no texto..." style={campo} />
+                            </>)}
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10, flexWrap: 'wrap' }}>
+                              <button onClick={() => setAjuste(null)} style={{ padding: '8px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Voltar</button>
+                              <button disabled={enviando === p.id} onClick={() => {
+                                if (!ajuste.obs.trim() && !legendaMudou && !dataMudou) { toast('Faça pelo menos um ajuste (legenda, layout ou data) antes de enviar.', 'erro'); return }
+                                const obs = ajuste.obs.trim(); const nl = legendaMudou ? ajuste.legenda : undefined; const nd = dataMudou ? ajuste.data : undefined
+                                setAjuste(null)
+                                agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo', obs || 'Ajuste solicitado', nl, nd)
+                              }} style={{ padding: '8px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{enviando === p.id ? '...' : 'Enviar solicitação'}</button>
+                            </div>
+                          </div>
+                        )
+                      })()}
                       </>
                     ) : (
                       <p style={{ margin: 0, textAlign: 'right', fontSize: 12, color: '#aaa', fontStyle: 'italic' }}>Somente visualização — a aprovação é feita pela equipe.</p>
