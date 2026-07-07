@@ -607,7 +607,7 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 25.6 Fase 3 — hardening
 - **Rate limiting** nos endpoints públicos — **FEITO.** `lib/rateLimit.ts` (`rateLimit`/`ipDaReq`/`checarRate`): contador por IP+rota no Redis (janela fixa, falha aberta). Limites/min: `decision` 40 · `candidaturas` 5 · `solicitar-briefing` 15 · `nps` (resposta pública) 10 · GETs por token (`aprov-link`/`status`/`doc-publico`) 60. Devolve 429 com mensagem amigável.
-- **Expiração/rotação dos tokens públicos** — **FALTA.** Doc já tem "Revogar" (§16.8). Para aprov/status/npstoken: adicionar rotação sob demanda (regenerar token, invalidando o antigo). Auto-expiry NÃO (quebraria links já enviados no WhatsApp) — decisão do dono.
+- **Rotação dos tokens públicos** — **PARCIAL.** Doc já tinha "Revogar" (§16.8); **link de APROVAÇÃO agora também:** `/api/aprovacao-link` POST aceita `{ rotacionar }` (apaga o `aprovtoken` atual + gera novo) e a ficha do cliente tem botão **"Revogar link"** (confirma → novo link + modal). Rotação sob demanda, sem auto-expiry (não quebra links já enviados). **FALTA (mesmo padrão):** botão de revogar para **status** (`statustoken`) e **NPS** (`npstoken`).
 - **PIX recorrente nativo** (Asaas/Pagar.me/Mercado Pago) se não quiser depender de cartão.
 - **Nome do produto** — dono decidiu **MANTER "Soma10 Approval"** por ora. Domínios livres se um dia revender: `regencia.app`/`orquestre.app`/`batuta.studio`/`pauta.studio`.
 
