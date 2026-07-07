@@ -409,7 +409,7 @@ function Dashboard() {
   }
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
-  const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>('lista')
+  const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_plannerView') === 'calendario') ? 'calendario' : 'lista')
   // Tema (claro/escuro) — persistido no navegador, inicializa direto do localStorage
   const [tema, setTema] = useState<'claro' | 'escuro'>(() => {
     if (typeof window !== 'undefined') {
@@ -474,8 +474,12 @@ function Dashboard() {
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
   const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string; foto: string; custoHora?: number; salarioFixo?: number; valorPorProjeto?: number; qtdProjetos?: number }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '', foto: '' })
   const [bibBusca, setBibBusca] = useState('')
-  const [bibCliente, setBibCliente] = useState('')
-  const [bibStatus, setBibStatus] = useState('')
+  // Cliente e status do Planner PERSISTEM ao atualizar (mesma aba/mesmo cliente).
+  const [bibCliente, setBibCliente] = useState(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_bibCliente')) || '')
+  const [bibStatus, setBibStatus] = useState(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_bibStatus')) || '')
+  useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem('soma10_plannerView', plannerView) }, [plannerView])
+  useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem('soma10_bibCliente', bibCliente) }, [bibCliente])
+  useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem('soma10_bibStatus', bibStatus) }, [bibStatus])
   const [bibSelecionados, setBibSelecionados] = useState<string[]>([])
   const [avisoFalhaOculto, setAvisoFalhaOculto] = useState(false)
   const [postPreview, setPostPreview] = useState<Post | null>(null)
@@ -2265,7 +2269,15 @@ function Dashboard() {
         {(aba === 'calendario' || (aba === 'planner' && plannerView === 'calendario')) && (
           <div>
             {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>}
-            <Calendar posts={postsView as any} onSelectPost={(p: any) => setPostPreview(p)} onAddPost={novoPostNoDia} onMovePost={moverPostData} />
+            {/* Filtro de cliente — mesma seleção da Lista (persiste ao atualizar) */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
+                style={{ minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                <option value="">Todos os clientes</option>
+                {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+              </select>
+            </div>
+            <Calendar posts={(bibCliente ? postsView.filter(p => p.clienteNome === bibCliente) : postsView) as any} onSelectPost={(p: any) => setPostPreview(p)} onAddPost={novoPostNoDia} onMovePost={moverPostData} />
           </div>
         )}
 
