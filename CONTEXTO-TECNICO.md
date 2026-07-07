@@ -146,10 +146,19 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 - Cor da marca do cliente: `var(--marca)` no portal; em alguns componentes a cor é passada direto do cliente.
 - Auto-aprovar (global CLAUDE.md): criar arquivos/pastas novos, instalar pacotes pedidos, componentes visuais. **Perguntar antes:** modificar arquivo existente, comandos de banco, `.env`/auth, refator >3 arquivos, deletar.
 
-## 12. Pendências / próximos passos (atualizado 2026-07-04)
+## 12. Pendências / próximos passos
 
-> ⚠️ **LEIA §17 e §18 PRIMEIRO** — são o estado mais recente. A sessão de 2026-07-04 entregou: App Review Meta **submetido**, Instagram Direct no CRM, sistema de conhecimento IA-First (Brand Playbook), e a aprovação de criativos por **link único** (fluxo pelo Planner). **PRÓXIMO PROJETO ATIVO: o "Studio" IA-First (§18), a iniciar pela Fase 0.**
-> A lista abaixo (de 2026-07-02) é histórica; itens já resolvidos: CRM Instagram Direct (feito, §17.2), Agentes Fase 3/conhecimento (feito, §17.3). Aqui fica o que RESTA do backlog antigo.
+> ⚠️ **ESTADO MAIS RECENTE (2026-07-07): LEIA §23 → §22 → §21 → §20 PRIMEIRO.** O que rolou nas últimas sessões, em ordem: §19 (Studio construído + motor de criativos), §20 (aprovação: corrigir-legenda×ajustar-layout, marcações por ponto no link único, checklist+reenviar, conserto DEFINITIVO da foto de perfil via proxy `/api/foto-cliente`, compartilhar link), §21 (solicitar-conteúdo com anexo, campanhas relacionar briefing completo/criar/vincular, notepads fixar/ordenar, **Planner movido p/ Produção**), §22 (**Fase 0 — blindagem: isolamento auditado, backup automático, XSS sanitizado, senha em texto plano eliminada**), §23 (**Fase 1 — plano modular: núcleo grátis + add-ons pagos por cliente, UI admin "Módulos & assinatura", enforcement**).
+>
+> **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅ e Fase 1 (fundação) ✅. **PRÓXIMO:**
+> 1. **Fase 1.5 — polir as VISÕES CLIENTE dos add-ons** (Analytics/Listening/Playbook foram feitos como ferramenta de equipe; o dado já é isolado, mas falta "modo cliente" na UI) + construir a visão read-only do **Brand Board** (hoje `marca` é billável mas não exposto ao cliente).
+> 2. **Fase 2 — billing:** somar os módulos ativos no Financeiro/DRE + suspensão por inadimplência.
+> 3. **Fase 3 — cobrança real:** gateway (Stripe/PIX) + rate limiting em endpoints públicos + expiração/rotação dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken).
+> 4. **Nome do produto** (em aberto): sugestões **Maestro** / **Soma10 Studio** / **Órbita** — decisão do dono (importa se for revender pra outras agências).
+>
+> **Ação do dono pendente:** setar **`IDEOGRAM_API_KEY`** (Studio Track 2 já integrado, §19.2) — validar aspect/custo; conferir o cron `backup` rodando (§22.2).
+>
+> A lista abaixo é histórico de backlog antigo (pré-2026-07-05); vários itens já foram entregues nas seções novas.
 
 **Pendente — CÓDIGO:**
 - **CRM Instagram Direct (Fase 3)** — depende do App Review da Meta (ação do dono).
