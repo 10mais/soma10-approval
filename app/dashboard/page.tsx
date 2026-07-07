@@ -3555,29 +3555,34 @@ function Dashboard() {
                       <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {c.nome}
                         <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? '#dbeafe' : '#f0fdf4', color: (c as any).tipo === 'interno' ? '#1d4ed8' : '#16a34a' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
-                        {(() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
+                        {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
                         ) : null })()}
                       </p>
-                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
-                      {c.loginEmail && (
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
+                      {/* Na visualizacao em BLOCO, o tile mostra so a previa (nome + tipo). O resto (contato, renovacao, status) fica na Lista e na ficha. */}
+                      {clientesView !== 'blocos' && (
+                        <>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
+                          {c.loginEmail && (
+                            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
+                          )}
+                          {(c as any).contratoRenovacao && (() => {
+                            const dias = Math.ceil((new Date((c as any).contratoRenovacao).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+                            const venceu = dias < 0
+                            const perto = dias >= 0 && dias <= 30
+                            return (
+                              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? '#b91c1c' : perto ? '#ea580c' : '#888' }}>
+                                Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString('pt-BR')}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
+                              </p>
+                            )
+                          })()}
+                        </>
                       )}
-                      {(c as any).contratoRenovacao && (() => {
-                        const dias = Math.ceil((new Date((c as any).contratoRenovacao).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-                        const venceu = dias < 0
-                        const perto = dias >= 0 && dias <= 30
-                        return (
-                          <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? '#b91c1c' : perto ? '#ea580c' : '#888' }}>
-                            Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString('pt-BR')}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
-                          </p>
-                        )
-                      })()}
                     </div>
-                    {(() => {
+                    {clientesView !== 'blocos' && (() => {
                       const temFB = !!c.facebookPageId
                       const temIG = !!(c.instagramConectado || c.instagramUserId)
                       const nPosts = posts.filter(p => p.clienteNome === c.nome).length
