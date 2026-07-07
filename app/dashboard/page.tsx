@@ -1156,6 +1156,18 @@ function Dashboard() {
     } else toast('Não foi possível gerar o link de aprovação.', 'erro')
   }
 
+  // Revoga o link de aprovação atual (para de funcionar) e gera um novo.
+  async function revogarLinkAprovacao(clienteId: string, nome: string) {
+    if (!(await confirmar('Revogar o link de aprovação atual? O link que você já enviou vai PARAR de funcionar e um novo será gerado no lugar.', { titulo: 'Revogar link', okLabel: 'Revogar e gerar novo', perigo: true }))) return
+    const r = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, rotacionar: true }) }).then(x => x.json()).catch(() => null)
+    if (r?.token) {
+      const url = `${window.location.origin}/aprovacoes/${r.token}`
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
+      setLinkAprovModal({ url, cliente: nome })
+      toast('Link antigo revogado. Novo link gerado e copiado.', 'sucesso')
+    } else toast('Não foi possível revogar o link.', 'erro')
+  }
+
   // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
   async function reaproveitar(post: any, formato: string) {
     const body = { clienteId: post.clienteId, clienteNome: post.clienteNome, imagens: post.imagens || [], legenda: post.legenda || '', formato, capasVideo: post.capasVideo || {}, redes: post.redes || ['instagram', 'facebook'], rascunhoInterno: true, ...(post.marcoId ? { marcoId: post.marcoId } : {}) }
@@ -3722,6 +3734,10 @@ function Dashboard() {
                                 <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: '#111', border: '1px solid #111', color: '#fff' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   Link de aprovação
+                                </button>
+                                <button onClick={() => revogarLinkAprovacao(c.id, c.nome)} title="Revoga o link atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: '#b91c1c', borderColor: '#fecaca' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
+                                  Revogar link
                                 </button>
                               </div>
                             </div>
