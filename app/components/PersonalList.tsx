@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import RichText from './RichText'
-import { confirmar } from '@/lib/toast'
+import { confirmar, toast } from '@/lib/toast'
 
 type Item = { id: string; texto: string; feito: boolean }
-type Notepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string }
+type Notepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string; fixado?: boolean }
 
 // Texto puro a partir do HTML (para a prévia na lista)
 function textoDe(html: string) {
@@ -62,9 +62,20 @@ export default function PersonalList() {
   }
   const patchNota = (id: string, patch: Partial<Notepad>) => setNotepads(a => a.map(n => n.id === id ? { ...n, ...patch, atualizadoEm: new Date().toISOString() } : n))
   function excluirNota(id: string) { setNotepads(a => a.filter(n => n.id !== id)); if (abertoId === id) setAbertoId(null) }
+  // Fixa/desafixa (até 3) — sem alterar a data de edição.
+  function toggleFixar(id: string) {
+    setNotepads(a => {
+      const alvo = a.find(n => n.id === id)
+      if (!alvo?.fixado && a.filter(n => n.fixado).length >= 3) { toast('Você pode fixar no máximo 3 notas.', 'info'); return a }
+      return a.map(n => n.id === id ? { ...n, fixado: !n.fixado } : n)
+    })
+  }
 
   const aberto = notepads.find(n => n.id === abertoId)
   const feitos = itens.filter(i => i.feito).length
+  // Fixadas primeiro; dentro de cada grupo, editadas mais recentemente no topo.
+  const quando = (n: Notepad) => new Date(n.atualizadoEm || n.criadoEm || 0).getTime()
+  const ordenadas = [...notepads].sort((a, b) => (a.fixado === b.fixado ? quando(b) - quando(a) : a.fixado ? -1 : 1))
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -91,10 +102,13 @@ export default function PersonalList() {
               </div>
             ) : (
               <div>
-                {notepads.map(n => {
+                {ordenadas.map(n => {
                   const previa = textoDe(n.conteudo)
                   return (
-                    <div key={n.id} onClick={() => setAbertoId(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderTop: '1px solid #f6f6f6', cursor: 'pointer' }}>
+                    <div key={n.id} onClick={() => setAbertoId(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderTop: '1px solid #f6f6f6', cursor: 'pointer', background: n.fixado ? '#fffdf5' : undefined }}>
+                      <button onClick={e => { e.stopPropagation(); toggleFixar(n.id) }} title={n.fixado ? 'Desafixar' : 'Fixar no topo (até 3)'} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: n.fixado ? '#eab308' : '#cfcfcf', display: 'flex', alignItems: 'center', padding: 2 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill={n.fixado ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 10.76V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6.76a2 2 0 0 0 .59 1.42l1.7 1.7a1 1 0 0 1 .29.71V16a1 1 0 0 1-1 1H7.42a1 1 0 0 1-1-1v-.41a1 1 0 0 1 .29-.71l1.7-1.7A2 2 0 0 0 9 10.76Z" /></svg>
+                      </button>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo.trim() || 'Sem título'}</p>
                         <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previa || 'Nota vazia'}</p>

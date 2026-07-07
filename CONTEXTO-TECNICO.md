@@ -488,3 +488,17 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 20.2 Notepad — guard ao clicar fora
 - `PersonalList.tsx`: clicar no overlay do editor de notepad agora **pede confirmação** (`confirmar()` de `lib/toast`, "Sair" / "Continuar editando") em vez de fechar direto. O × e o lixeira continuam fechando/excluindo direto (a nota já tem autosave).
+
+## 21. Evolução 2026-07-07 — solicitar conteúdo (anexo) · campanhas (relacionar) · notepads (fixar/ordenar)
+
+> Push direto na main (caminho B), type-check antes de cada commit.
+
+### 21.1 Solicitar conteúdo — anexos
+- Portal `app/cliente/[id]/solicitar/page.tsx`: campo **"Adicionar anexo"** (multiplos, imagem/vídeo/PDF/doc/xls/txt) via fluxo `upload()` client → Blob (`solicitacoes/{clienteId}/...`); lista com remover. `/api/solicitar-briefing` aceita `anexos[]` e grava em `Tarefa.anexos` (`{nome,url,tipo}`) + conta no histórico/descrição. `/api/upload` já autoriza qualquer sessão (inclui cliente); ppt/pptx ficam fora (não estão em `TIPOS_PERMITIDOS`).
+
+### 21.2 Campanhas — relacionar a tarefa (briefing completo + criar/vincular)
+- `/api/briefings/relacionar` reescrito: a tarefa recebe o **BRIEFING COMPLETO** (`descricaoBriefing`: objetivo/plataformas/verba/período/público/oferta/observações + `conteudo`), não só o objetivo. Aceita `{ briefingId, tarefaId }` para **vincular a uma tarefa EXISTENTE** (anexa o briefing à descrição + registra atividade; barra outro cliente) ou `{ briefingId }` para **criar nova**.
+- `Briefings.tsx`: botão "Relacionar a tarefa" abre **modal** com "**+ Criar tarefa nova**" OU **buscar+vincular** uma tarefa existente do mesmo cliente (`abrirRelModal` carrega `/api/tarefas` filtrando por `clienteId` e sem `tarefaPaiId`; `relacionar(tarefaId?)`).
+
+### 21.3 Notepads — fixar (até 3) + ordenar por recente
+- `PersonalList.tsx`: `Notepad.fixado`. Botão de **fixar** (pin) por nota — **máx. 3** (`toggleFixar`, toast ao exceder; não altera `atualizadoEm`). Ordenação `ordenadas`: **fixadas primeiro**, e dentro de cada grupo as **editadas mais recentemente no topo** (`atualizadoEm || criadoEm`). `/api/personal` sanitiza e persiste `fixado`.

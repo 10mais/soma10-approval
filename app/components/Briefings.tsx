@@ -30,6 +30,9 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   const [erro, setErro] = useState('')
   const [relacionando, setRelacionando] = useState(false)
   const [relMsg, setRelMsg] = useState('')
+  const [relModal, setRelModal] = useState(false)
+  const [tarefasCliente, setTarefasCliente] = useState<any[]>([])
+  const [buscaTarefa, setBuscaTarefa] = useState('')
 
   function carregar() {
     fetch('/api/briefings').then(r => r.json()).then(d => setBriefings(Array.isArray(d) ? d : [])).catch(() => {})
@@ -88,16 +91,25 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
     carregar()
   }
 
-  async function relacionarTarefa() {
+  // Abre o modal: criar nova tarefa OU vincular a uma existente (mesmo cliente).
+  function abrirRelModal() {
+    if (!editId) return
+    setRelModal(true); setBuscaTarefa(''); setTarefasCliente([])
+    fetch('/api/tarefas').then(r => r.json()).then((d: any[]) => {
+      const lista = Array.isArray(d) ? d.filter(t => !t.tarefaPaiId && (!clienteId || t.clienteId === clienteId)) : []
+      setTarefasCliente(lista)
+    }).catch(() => {})
+  }
+  async function relacionar(tarefaId?: string) {
     if (!editId) return
     setRelacionando(true); setRelMsg('')
     const r = await fetch('/api/briefings/relacionar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ briefingId: editId }),
+      body: JSON.stringify({ briefingId: editId, ...(tarefaId ? { tarefaId } : {}) }),
     }).then(x => x.json()).catch(() => null)
-    setRelacionando(false)
+    setRelacionando(false); setRelModal(false)
     if (!r || r.error) { setRelMsg(r?.error || 'Não foi possível relacionar.'); return }
-    setRelMsg(r.jaVinculada ? 'Já havia uma tarefa de campanha vinculada.' : 'Tarefa de campanha criada e vinculada.')
+    setRelMsg(r.resultado === 'vinculadaExistente' ? 'Briefing completo anexado à tarefa existente.' : r.jaVinculada ? 'Já havia uma tarefa de campanha vinculada.' : 'Tarefa de campanha criada com o briefing completo.')
     setTimeout(() => setRelMsg(''), 8000)
   }
 
@@ -233,7 +245,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
               {salvando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Salvar briefing'}
             </button>
             {editId && (
-              <button onClick={relacionarTarefa} disabled={relacionando} title="Cria uma tarefa do tipo Campanha vinculada a este briefing" style={{ padding: '11px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <button onClick={abrirRelModal} disabled={relacionando} title="Criar uma tarefa nova ou vincular a uma existente, com o briefing completo" style={{ padding: '11px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
               </button>
             )}
@@ -244,6 +256,36 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
           {relMsg && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Não') ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
         </div>
       </div>
+
+      {/* Modal: criar tarefa nova OU vincular a existente (com o briefing completo) */}
+      {relModal && (() => {
+        const q = buscaTarefa.trim().toLowerCase()
+        const filtradas = q ? tarefasCliente.filter(t => (t.titulo || '').toLowerCase().includes(q)) : tarefasCliente
+        return (
+          <div onClick={() => !relacionando && setRelModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 20 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Relacionar a tarefa</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>O briefing completo vai para a descrição da tarefa. Crie uma nova ou vincule a uma existente deste cliente.</p>
+              <button onClick={() => relacionar()} disabled={relacionando} style={{ width: '100%', padding: '12px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 13.5, cursor: relacionando ? 'wait' : 'pointer', marginBottom: 14 }}>
+                {relacionando ? 'Criando...' : '+ Criar tarefa nova (campanha)'}
+              </button>
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Ou vincular a uma existente</label>
+              <input value={buscaTarefa} onChange={e => setBuscaTarefa(e.target.value)} placeholder="Buscar tarefa deste cliente..."
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }} />
+              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {filtradas.length === 0 && <p style={{ margin: '6px 0', fontSize: 12.5, color: '#bbb' }}>Nenhuma tarefa {clienteId ? 'deste cliente' : ''} encontrada.</p>}
+                {filtradas.map(t => (
+                  <button key={t.id} onClick={() => relacionar(t.id)} disabled={relacionando} style={{ textAlign: 'left', padding: '9px 11px', background: '#fafafa', border: '1px solid #eee', borderRadius: 9, cursor: relacionando ? 'wait' : 'pointer' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{t.titulo || 'Sem título'}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: '#999', marginTop: 1 }}>{(t.tipo || 'tarefa')}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setRelModal(false)} disabled={relacionando} style={{ marginTop: 12, alignSelf: 'flex-end', padding: '9px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
   const dataDesejada = body.dataDesejada || ''
   const referencia = body.referencia || ''
   const observacoes = body.observacoes || ''
+  const anexos = Array.isArray(body.anexos)
+    ? body.anexos.filter((a: any) => a?.url).map((a: any) => ({ nome: String(a.nome || 'anexo').slice(0, 200), url: String(a.url), tipo: String(a.tipo || '') })).slice(0, 10)
+    : []
 
   const descricao = [
     'Solicitacao de conteudo enviada pelo cliente.',
@@ -43,6 +46,7 @@ export async function POST(req: NextRequest) {
     dataDesejada ? `Data desejada: ${dataDesejada}` : '',
     referencia ? `Referencia: ${referencia}` : '',
     observacoes ? `Observacoes: ${observacoes}` : '',
+    anexos.length ? `Anexos: ${anexos.length}` : '',
   ].filter(Boolean).join('\n')
 
   const agora = new Date().toISOString()
@@ -58,7 +62,8 @@ export async function POST(req: NextRequest) {
     criadoPor: session.user?.name || cliente.nome,
     criadoEm: agora,
     atualizadoEm: agora,
-    atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Solicitacao de conteudo recebida do cliente', autor: session.user?.name || cliente.nome, criadoEm: agora }],
+    ...(anexos.length ? { anexos } : {}),
+    atividades: [{ id: uuid(), tipo: 'criacao', descricao: `Solicitacao de conteudo recebida do cliente${anexos.length ? ` (${anexos.length} anexo(s))` : ''}`, autor: session.user?.name || cliente.nome, criadoEm: agora }],
     comentarios: [],
   }
   await redis.set(`tarefa:${tarefa.id}`, tarefa)

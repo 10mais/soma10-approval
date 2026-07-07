@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 export type PersonalItem = { id: string; texto: string; feito: boolean }
 export type PersonalNota = { id: string; texto: string; cor?: string }
 // Notepad: documento com título e texto formatado (HTML), estilo ClickUp Notepad.
-export type PersonalNotepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string }
+export type PersonalNotepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string; fixado?: boolean }
 export type PersonalData = { rascunho: string; notas?: PersonalNota[]; notepads?: PersonalNotepad[]; itens: PersonalItem[]; atualizadoEm?: string }
 
 const VAZIO: PersonalData = { rascunho: '', notas: [], notepads: [], itens: [] }
@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest) {
     ? body.notas.map((n: any) => ({ id: String(n.id), texto: String(n.texto || ''), cor: n.cor ? String(n.cor) : undefined }))
     : []
   const notepads: PersonalNotepad[] = Array.isArray(body.notepads)
-    ? body.notepads.map((n: any) => ({ id: String(n.id), titulo: String(n.titulo || '').slice(0, 200), conteudo: String(n.conteudo || '').slice(0, 100000), criadoEm: n.criadoEm ? String(n.criadoEm) : undefined, atualizadoEm: n.atualizadoEm ? String(n.atualizadoEm) : undefined }))
+    ? body.notepads.map((n: any) => ({ id: String(n.id), titulo: String(n.titulo || '').slice(0, 200), conteudo: String(n.conteudo || '').slice(0, 100000), criadoEm: n.criadoEm ? String(n.criadoEm) : undefined, atualizadoEm: n.atualizadoEm ? String(n.atualizadoEm) : undefined, fixado: !!n.fixado }))
     : []
   const data: PersonalData = {
     rascunho: typeof body.rascunho === 'string' ? body.rascunho : '',

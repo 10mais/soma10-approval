@@ -1,25 +1,46 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
+import { upload } from '@vercel/blob/client'
 
 const FORMATOS = ['Feed', 'Reel', 'Carrossel', 'Story', 'Indiferente']
+type Anexo = { nome: string; url: string; tipo: string }
 
 export default function SolicitarPage() {
   const { clienteId } = useParams()
   const [form, setForm] = useState({ tema: '', formato: 'Indiferente', objetivo: '', dataDesejada: '', referencia: '', observacoes: '' })
+  const [anexos, setAnexos] = useState<Anexo[]>([])
+  const [subindo, setSubindo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [msg, setMsg] = useState<{ texto: string; erro: boolean } | null>(null)
+
+  async function subirAnexos(files: FileList | null) {
+    if (!files || !files.length) return
+    setSubindo(true); setMsg(null)
+    try {
+      for (const file of Array.from(files)) {
+        const safe = file.name.replace(/[^\w.\-]+/g, '_')
+        const blob = await upload(`solicitacoes/${clienteId}/${Date.now()}-${safe}`, file, {
+          access: 'public', handleUploadUrl: '/api/upload', contentType: file.type, clientPayload: file.type,
+        })
+        setAnexos(a => [...a, { nome: file.name, url: blob.url, tipo: file.type }])
+      }
+    } catch (e: any) {
+      setMsg({ texto: `Falha ao anexar: ${e?.message || 'erro'}`, erro: true })
+    } finally { setSubindo(false) }
+  }
 
   async function enviar() {
     if (!form.tema.trim()) { setMsg({ texto: 'Informe o tema/título da solicitação.', erro: true }); return }
     setEnviando(true); setMsg(null)
     const r = await fetch('/api/solicitar-briefing', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, clienteId }),
+      body: JSON.stringify({ ...form, anexos, clienteId }),
     }).then(x => x.json()).catch(() => null)
     setEnviando(false)
     if (!r || r.error) { setMsg({ texto: r?.error ? `Erro: ${r.error}` : 'Não foi possível enviar. Tente novamente.', erro: true }); return }
     setForm({ tema: '', formato: 'Indiferente', objetivo: '', dataDesejada: '', referencia: '', observacoes: '' })
+    setAnexos([])
     setMsg({ texto: 'Solicitação enviada! Nossa equipe vai produzir e você acompanha em Entregas/Aprovações.', erro: false })
   }
 
@@ -62,8 +83,26 @@ export default function SolicitarPage() {
           <label style={label}>Observações</label>
           <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer detalhe importante..." style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
         </div>
-        <button onClick={enviar} disabled={enviando || !form.tema.trim()} style={{ padding: '12px 0', background: form.tema.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: form.tema.trim() ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: form.tema.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
-          {enviando ? 'Enviando...' : 'Enviar solicitação'}
+        <div>
+          <label style={label}>Anexos (imagens, PDF, documentos)</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed #d8d8d8', background: '#fbfbfc', cursor: subindo ? 'wait' : 'pointer', fontSize: 13, color: '#666', fontWeight: 600 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.49" /></svg>
+            {subindo ? 'Enviando anexo...' : 'Adicionar anexo'}
+            <input type="file" multiple accept="image/*,video/mp4,video/quicktime,application/pdf,.doc,.docx,.xls,.xlsx,.txt" style={{ display: 'none' }} disabled={subindo} onChange={e => { subirAnexos(e.target.files); e.currentTarget.value = '' }} />
+          </label>
+          {anexos.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+              {anexos.map((a, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#f6f6f6', borderRadius: 8, fontSize: 12.5, color: '#333' }}>
+                  <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1d4ed8', textDecoration: 'none' }}>{a.nome}</a>
+                  <button onClick={() => setAnexos(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button onClick={enviar} disabled={enviando || subindo || !form.tema.trim()} style={{ padding: '12px 0', background: form.tema.trim() && !subindo ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: form.tema.trim() && !subindo ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: form.tema.trim() && !enviando && !subindo ? 'pointer' : 'not-allowed' }}>
+          {enviando ? 'Enviando...' : subindo ? 'Aguarde o anexo...' : 'Enviar solicitação'}
         </button>
       </div>
     </div>
