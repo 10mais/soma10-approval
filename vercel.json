@@ -7,6 +7,7 @@
     { "path": "/api/cron/tarefas", "schedule": "30 * * * *" },
     { "path": "/api/cron/crm-followup", "schedule": "0 11 * * *" },
     { "path": "/api/cron/resumo-semanal", "schedule": "0 11 * * 1" },
-    { "path": "/api/cron/automacoes", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/automacoes", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/backup", "schedule": "0 6 * * *" }
   ]
 }

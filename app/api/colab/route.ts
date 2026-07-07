@@ -10,7 +10,9 @@ export const runtime = 'nodejs'
 // então confirmamos o username exato e devolvemos foto + nome para seleção.
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  // Ferramenta interna (menções em tarefas): bloqueia cliente — evita usar o token
+  // Meta de OUTRO cliente (via ?clienteId=) para buscar perfis no Instagram.
+  if (!session || (session.user as any).role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const clienteId = req.nextUrl.searchParams.get('clienteId') || ''
   const usernameBruto = (req.nextUrl.searchParams.get('username') || '').trim().replace(/^@/, '')

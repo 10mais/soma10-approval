@@ -4301,6 +4301,21 @@ function Dashboard() {
               </div>
             </div>
 
+            {/* Backup e segurança (admin) */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Backup dos dados</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: '#999', lineHeight: 1.5 }}>Um backup completo é gerado <strong>todo dia</strong> automaticamente (guardado de forma privada). Aqui você pode baixar uma cópia agora, quando quiser.</p>
+                </div>
+                <a href="/api/backup" title="Baixa um JSON com todos os dados (clientes, posts, tarefas, CRM, config...)"
+                  style={{ flexShrink: 0, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                  Baixar backup agora
+                </a>
+              </div>
+            </div>
+
             {/* Imagem de perfil dos clientes */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

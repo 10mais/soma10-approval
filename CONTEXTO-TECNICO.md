@@ -500,6 +500,20 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - `/api/briefings/relacionar` reescrito: a tarefa recebe o **BRIEFING COMPLETO** (`descricaoBriefing`: objetivo/plataformas/verba/período/público/oferta/observações + `conteudo`), não só o objetivo. Aceita `{ briefingId, tarefaId }` para **vincular a uma tarefa EXISTENTE** (anexa o briefing à descrição + registra atividade; barra outro cliente) ou `{ briefingId }` para **criar nova**.
 - `Briefings.tsx`: botão "Relacionar a tarefa" abre **modal** com "**+ Criar tarefa nova**" OU **buscar+vincular** uma tarefa existente do mesmo cliente (`abrirRelModal` carrega `/api/tarefas` filtrando por `clienteId` e sem `tarefaPaiId`; `relacionar(tarefaId?)`).
 
+## 22. Fase 0 — Blindagem (rumo a abrir para clientes) — em andamento
+
+> Antes de disponibilizar acesso a clientes externos + plano modular pago. Push direto na main.
+
+### 22.1 Auditoria de isolamento multi-tenant (server-side)
+- Auditoria completa das rotas `app/api/**`. **Resultado: isolamento já sólido** — `posts`/`clientes`/`analytics` forçam `clienteId = session.clienteId` p/ `role:cliente`; `social-listening`/`playbook`/`briefings`/`resumo-semanal`/`crm`/`financeiro`/`documentos`/`assistente-chat`/`usuarios`/`equipe` **bloqueiam cliente** (401). `planos` GET filtra por `sessionClienteId` **antes** do filtro de query (id alheio → conjunto vazio). Falsos-positivos descartados.
+- **Único buraco real corrigido:** `app/api/colab` (busca de perfis p/ menções) não bloqueava cliente → um cliente podia usar o **token Meta de OUTRO cliente** via `?clienteId=`. Agora bloqueia `role:cliente` (401).
+- **Guard de URL do portal** reforçado (§21.4): cliente em página `equipe:true` → redirect ao Início.
+
+### 22.2 Backup automático (Redis → Blob privado)
+- `lib/backup.ts`: `exportarTudo()` (clientes, usuarios, posts, tarefas, marcos, templates, despesas, candidaturas, briefings, planos, CRM, agentes, documentos, mapas, config:*, personal:*) + `salvarBackup()` → `put` em **`backups/YYYY-MM-DD.json` (access: private)**, sobrescreve o do dia, **retenção 35 diários**.
+- **Cron** `/api/cron/backup` (`cronAutorizado`, diário `0 6 * * *` no `vercel.json`). **Download on-demand admin** `/api/backup` (GET admin → JSON attachment). Botão **"Baixar backup agora"** em Config → Geral (admin). Requer `BLOB_READ_WRITE_TOKEN` (já existe).
+- **AINDA PENDENTE na Fase 0:** sanitização XSS do RichText (HTML armazenado) e parar de guardar `Cliente.loginSenha` em texto plano.
+
 ### 21.4 Planner movido para PRODUÇÃO (agência) — sai da área do cliente
 - Dashboard: `['planner','Planner']` entrou no grupo **Produção** logo após Studio; `ABA_GRUPO.planner='producao'`. A equipe acessa o Planner direto (todos os posts; filtra por cliente via `verComoClienteId`).
 - Portal do cliente (`layout.tsx`): item `/planner` virou `equipe: true` (cliente não vê mais). Guard de URL reforçado: cliente que acessa página `equipe:true` (Planner/Playbook/Marca/Listening/Analytics) por URL direto é **redirecionado ao Início** (buraco pré-existente também fechado). Toggle "Planner" removido da matriz de permissões do portal.
