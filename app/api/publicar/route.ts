@@ -5,6 +5,7 @@ import { redis, Post } from '@/lib/redis'
 import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -17,7 +18,15 @@ export async function POST(req: NextRequest) {
   if (await bloqueiaAcao(role, 'publicar', (session.user as any).permissoesGranular)) {
     return NextResponse.json({ error: 'sem permissão para publicar' }, { status: 403 })
   }
+  try {
+    return await publicarAgora(req)
+  } catch (e) {
+    await capturarErro('publicar', e)
+    return NextResponse.json({ error: 'falha ao publicar' }, { status: 500 })
+  }
+}
 
+async function publicarAgora(req: NextRequest): Promise<NextResponse> {
   const { id } = await req.json()
   const post = await redis.get<Post>(`post:${id}`)
   if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
