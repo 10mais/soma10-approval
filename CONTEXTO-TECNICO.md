@@ -782,3 +782,12 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 33.3 Arquivos
 - **Libs:** `twoFactor.ts`; deps `otplib`+`qrcode`(+types). **Rotas:** `/api/2fa`, `/api/2fa/precheck`; `usuarios` PUT (resetar2FA). **Componentes:** `login/page.tsx` (2 passos), `MinhaConta.tsx` (card 2FA), `SaudeSistema.tsx` (labels). **Campos redis:** `Usuario.twoFactorSecret/twoFactorEnabled`.
+
+## 34. LGPD — portabilidade + direito ao esquecimento (2026-07-08)
+
+> Privacidade profissional: exportar e apagar os dados de um cliente sob demanda. Push direto na main.
+
+- **`lib/lgpd.ts`**: `exportarCliente(id)` (read-only — reúne cliente+posts+planos+tarefas+marcos+briefings+nps+logs; **sem segredos/tokens**) e `apagarDadosCliente(id)` (cascata: apaga tudo do cliente + índices + tokens + login/notificações; **escopado só ao clienteId**, nunca toca em dados de outros).
+- **`/api/clientes/lgpd` (admin):** GET `?id=` baixa o JSON (portabilidade); POST `{ id, confirmar }` apaga — **dupla trava: `confirmar` precisa ser o NOME EXATO do cliente**. Ambos auditados (`dados_exportados`/`dados_apagados`) e a exclusão captura erro.
+- **UI:** componente **`LgpdCliente.tsx`** na ficha do cliente (Config → Clientes): "Exportar dados" + "Apagar todos os dados" (revela input que exige o nome exato). Rótulos na tela Saúde do sistema.
+- **Nota:** a exclusão é destrutiva/irreversível; testar com cuidado quando os deploys estiverem estáveis. CRM (negócios) NÃO é apagado (entidade de vendas separada).

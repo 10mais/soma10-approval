@@ -12,6 +12,7 @@ import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
 import SaudeSistema from '../components/SaudeSistema'
+import LgpdCliente from '../components/LgpdCliente'
 import AvatarCliente from '../components/AvatarCliente'
 import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 
@@ -4009,6 +4010,7 @@ function Dashboard() {
                             style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                         </label>
                       </div>
+                        <LgpdCliente clienteId={c.id} clienteNome={c.nome} onApagado={() => { setEditandoCliente(null); setClientes(cs => cs.filter((x: any) => x.id !== c.id)) }} />
                         </div>
                         {/* Rodapé fixo do modal */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 22px', borderTop: '1px solid #eef0f2', flexShrink: 0, flexWrap: 'wrap', background: '#fff' }}>
