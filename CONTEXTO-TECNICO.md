@@ -148,17 +148,22 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 ## 12. Pendências / próximos passos
 
-> ⚠️ **ESTADO MAIS RECENTE (2026-07-07): LEIA §23 → §22 → §21 → §20 PRIMEIRO.** O que rolou nas últimas sessões, em ordem: §19 (Studio construído + motor de criativos), §20 (aprovação: corrigir-legenda×ajustar-layout, marcações por ponto no link único, checklist+reenviar, conserto DEFINITIVO da foto de perfil via proxy `/api/foto-cliente`, compartilhar link), §21 (solicitar-conteúdo com anexo, campanhas relacionar briefing completo/criar/vincular, notepads fixar/ordenar, **Planner movido p/ Produção**), §22 (**Fase 0 — blindagem: isolamento auditado, backup automático, XSS sanitizado, senha em texto plano eliminada**), §23 (**Fase 1 — plano modular: núcleo grátis + add-ons pagos por cliente, UI admin "Módulos & assinatura", enforcement**).
+> ⚠️ **ESTADO MAIS RECENTE (2026-07-08): LEIA §27 → §26 → §25 → §24 PRIMEIRO.** Ordem do que rolou: §24 (**Fase 1.5** — visões cliente dos add-ons), §25 (**Fase 2 billing** + suspensão por inadimplência + hardening server-side do suspenso + **§25.5 gateway Stripe scaffold** + **§25.6 rate limiting + rotação do link de aprovação**), §26 (**fluxo de aprovação CONSOLIDADO** "Solicitar ajustes" no link público E no portal + EM AJUSTE), §27 (**log de solicitações do cliente 30d, fix do Planner, dropdown/persistência do Calendário, prévia 4:5**).
 >
-> **TRACK ATIVO: abrir o sistema para clientes + monetização modular.** Fase 0 ✅, Fase 1 (fundação) ✅ e **Fase 1.5 (visões cliente dos add-ons) ✅ — ver §24.** **PRÓXIMO:**
-> 1. ~~**Fase 1.5 — polir as VISÕES CLIENTE dos add-ons**~~ — **FEITO (§24):** Playbook read-only no portal; Marca (Brand Board) exposta ao cliente contratante (menu + galeria de identidade read-only); Analytics/Listening com tom de cliente.
-> 2. ~~**Fase 2 — billing**~~ **FEITO (§25):** receita dos módulos no DRE + MRR/LTV, e suspensão por inadimplência (flag + ficha + selo/filtro + bloqueio do portal). **FALTA hardening** (§25.4): bloqueio server-side do suspenso (links públicos + APIs).
-> 3. **Fase 3 — cobrança real:** gateway (Stripe/PIX) + rate limiting em endpoints públicos + expiração/rotação dos tokens públicos (aprovtoken/statustoken/npstoken/doctoken).
+> **TRACK: abrir o sistema para clientes externos + monetização modular.** Fases **0 ✅ · 1 ✅ · 1.5 ✅ (§24) · 2 ✅ (§25, inclui suspensão + hardening) · 3 (hardening de código) ✅** (§25.6: rate limiting nos endpoints públicos + revogação/rotação do link de aprovação). O sistema já está **pronto pra abrir pra clientes** no que depende de código.
 >
-> **Refino de UI paralelo (Config → Clientes):** card virou **tile clicável → ficha em MODAL** (fim do acordeão); modo Bloco mostra só prévia (nome + tipo); Módulos & assinatura lista núcleo grátis (incluído) + add-ons pagos (a selecionar).
-> 4. **Nome do produto** (em aberto): sugestões **Maestro** / **Soma10 Studio** / **Órbita** — decisão do dono (importa se for revender pra outras agências).
+> **PRÓXIMO — depende AÇÃO DO DONO (externo ao código):**
+> 1. **Stripe (cobrança real):** setar **`STRIPE_SECRET_KEY`** + **`STRIPE_WEBHOOK_SECRET`** na Vercel e criar o webhook no dashboard do Stripe → `https://approval.soma10.com.br/api/stripe/webhook` (eventos `invoice.paid`/`invoice.payment_failed`/`customer.subscription.*`). Código 100% pronto (§25.5): botão "Cobrar via Stripe" na ficha + dunning que liga/desliga a suspensão sozinho.
+> 2. **PIX recorrente** (opcional): Stripe só faz PIX avulso; recorrente nativo = provedor BR (Asaas/Pagar.me/Mercado Pago) — a construir se quiser não depender de cartão.
 >
-> **Ação do dono pendente:** setar **`IDEOGRAM_API_KEY`** (Studio Track 2 já integrado, §19.2) — validar aspect/custo; conferir o cron `backup` rodando (§22.2).
+> **PRÓXIMO — CÓDIGO (opcional, pequeno):**
+> - Botão **revogar link** também para **status** (`statustoken`) e **NPS** (`npstoken`) — mesmo padrão do de aprovação (§25.6), ~2 min cada.
+> - **"Reprovado" de verdade** no portal de aprovações (hoje "Rejeitar" entra como ajuste com texto "REJEITADO:", §26.3).
+> - Visão de **entregas/posts por marco** no `MarcoDetalhe` do cliente (§24.4).
+>
+> **Nome do produto:** dono decidiu **MANTER "Soma10 Approval"**. Domínios livres se um dia revender white-label: `regencia.app`/`orquestre.app`/`batuta.studio`/`pauta.studio`.
+>
+> **Ação do dono já OK:** `IDEOGRAM_API_KEY` setado (§19.2, ligado em prod). Conferir o cron `backup` rodando (§22.2).
 >
 > A lista abaixo é histórico de backlog antigo (pré-2026-07-05); vários itens já foram entregues nas seções novas.
 
@@ -627,3 +632,30 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 ### 26.3 Observações
 - Reprovar no portal ainda passa por `ajuste_copy/criativo` com prefixo "REJEITADO:" (herdado) → aparece como EM AJUSTE com esse texto. Se quiser um estado "reprovado" separado, é um passo à parte.
 - Quando a agência refaz e reenvia (Planner → "Enviar para aprovação", §21/§25), o item volta a `aguardando_aprovacao` (etapa `aprovacao_criativo`) e reaparece fresco para o cliente. Loop fechado.
+
+## 27. Log de solicitações + fixes do Planner/Calendário (2026-07-08)
+
+> Push direto na main. Fecha a janela do dia.
+
+### 27.1 Log das solicitações do cliente (30 dias, descartável)
+- Dor: ao editar, a notificação/solicitação do cliente sumia e ninguém reencontrava.
+- `lib/logCliente.ts`: `registrarLogCliente` (grava `log:{id}` com **TTL 30d** + índices ZSET `logs:cliente` e `logs:cliente:{id}` podados por tempo) + `listarLogsCliente({clienteId,postId})`. Nunca bloqueia a ação principal.
+- Disparado em: `/api/decision` (aprovar/ajuste-layout/reprovar/corrigir-legenda), `/api/esteira/aprovar` (ações do cliente no portal), `/api/solicitar-briefing` (solicitar conteúdo).
+- Leitura: **`/api/logs-cliente`** GET (equipe; filtra por clienteId/postId). UI: **nova aba "Solicitações do cliente"** no grupo **Comunicação** (`LogsCliente.tsx`) — lista com busca + filtro por cliente/tipo. Registros persistem, não somem ao editar.
+
+### 27.2 Fix: criativos aprovados sumiam do Planner
+- O fix de "Enviar para aprovação" passou a marcar `etapa='aprovacao_criativo'`; o Planner só mostra posts **sem etapa ou `pronto`** (`postsPlanner`, `dashboard/page.tsx`). Aprovado pelo LINK público (`decision`) ficava preso e invisível.
+- `decision` (aprovação) agora seta **`etapa='pronto'`** junto de `status:'agendado'` (igual `esteira/aprovar` já fazia). Aprovar move o post para **"Agendado"** (fila de publicação), NÃO "Aprovado" — filtrar por Agendado/Todos no Planner.
+- Filtro do Planner passou a incluir posts que **já saíram da produção** (`PLANNER_STATUS_OK = aprovado/agendado/publicando/publicado/falha_publicacao`) mesmo com etapa antiga — **cura** posts que ficaram presos. Mesmo ajuste no filtro do relatório mensal.
+
+### 27.3 Calendário do Planner: dropdown de cliente + persistência ao atualizar
+- Visão **Calendário** ganhou o **seletor de cliente** (reusa `bibCliente`, compartilha com a Lista) e filtra os posts do calendário.
+- **Persiste ao dar F5** (sessionStorage): `soma10_plannerView` (lista/calendário), `soma10_bibCliente` (cliente), `soma10_bibStatus` (status). A aba (`soma10_aba`) já persistia. Fica na mesma página, mesmo cliente/visão.
+
+### 27.4 Prévia do composer no formato real 4:5
+- `PostComposer.tsx`: prévia estilo Instagram do **feed** usa `aspectRatio 4/5` (era `1`); story/reel `9/16`. Vale para novo post e edição.
+
+### 27.5 Arquivos/rotas novos desta janela
+- **Libs:** `logCliente.ts`, `rateLimit.ts`, `stripe.ts`, `suspensao.ts`.
+- **Componentes:** `LogsCliente.tsx`. `Rentabilidade.tsx` (MRR de módulos + em risco), `PostComposer.tsx` (4:5).
+- **Rotas:** `/api/logs-cliente`, `/api/stripe/{cobrar,webhook}`. Campos: `Cliente.inadimplente/suspensoDesde/stripeCustomerId/stripeSubscriptionId/assinaturaStatus`. Chaves Redis: `log:{id}`/`logs:cliente(:{id})`, `rl:{...}`.
