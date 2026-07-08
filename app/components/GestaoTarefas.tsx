@@ -726,6 +726,24 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     setRelacionadas(arr => arr.filter(x => x !== outroId))
     if (tarefa?.id) await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, desrelacionarTarefa: outroId }) }).catch(() => {})
   }
+  // Documento e Mapa mental vinculados à tarefa
+  const [documentoId, setDocumentoId] = useState<string>((tarefa as any)?.documentoId || '')
+  const [mapaId, setMapaId] = useState<string>((tarefa as any)?.mapaId || '')
+  const [docsList, setDocsList] = useState<{ id: string; titulo: string }[]>([])
+  const [mapasList, setMapasList] = useState<{ id: string; titulo: string }[]>([])
+  useEffect(() => {
+    if (!tarefa?.id) return
+    fetch('/api/documentos').then(r => r.json()).then(d => setDocsList(Array.isArray(d) ? d.map((x: any) => ({ id: x.id, titulo: x.titulo })) : [])).catch(() => {})
+    fetch('/api/mapas').then(r => r.json()).then(d => setMapasList(Array.isArray(d) ? d.map((x: any) => ({ id: x.id, titulo: x.titulo })) : [])).catch(() => {})
+  }, [tarefa?.id])
+  async function vincularDoc(v: string) {
+    setDocumentoId(v)
+    if (tarefa?.id) await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, documentoId: v }) }).catch(() => {})
+  }
+  async function vincularMapa(v: string) {
+    setMapaId(v)
+    if (tarefa?.id) await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, mapaId: v }) }).catch(() => {})
+  }
   // Apontamento de horas
   const [apontamentos, setApontamentos] = useState<any[]>((tarefa as any)?.apontamentos || [])
   const [apontH, setApontH] = useState('')
@@ -1328,6 +1346,26 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   </>
                 )
               })()}
+            </div>
+          )}
+
+          {/* Documento e Mapa mental vinculados */}
+          {tarefa?.id && (
+            <div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Documento vinculado</label>
+                <select value={documentoId} onChange={e => vincularDoc(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box', color: documentoId ? '#111' : '#888' }}>
+                  <option value="">Nenhum</option>
+                  {docsList.map(d => <option key={d.id} value={d.id}>{d.titulo?.trim() || 'Sem título'}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mapa mental vinculado</label>
+                <select value={mapaId} onChange={e => vincularMapa(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box', color: mapaId ? '#111' : '#888' }}>
+                  <option value="">Nenhum</option>
+                  {mapasList.map(m => <option key={m.id} value={m.id}>{m.titulo?.trim() || 'Sem título'}</option>)}
+                </select>
+              </div>
             </div>
           )}
 

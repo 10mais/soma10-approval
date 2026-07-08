@@ -125,7 +125,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist']
+  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist', 'documentoId', 'mapaId']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
   const agora = new Date().toISOString()

@@ -2,16 +2,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { confirmar, toast } from '@/lib/toast'
+import AvatarCliente from './AvatarCliente'
 
-type No = { id: string; texto: string; x: number; y: number; cor?: string }
+type No = { id: string; texto: string; x: number; y: number; cor?: string; colapsado?: boolean }
 type Conexao = { id: string; de: string; para: string }
-type MapaMeta = { id: string; titulo: string; atualizadoEm: string; nosQtd?: number }
+type ClienteLite = { id: string; nome: string; logo?: string }
+type MapaMeta = { id: string; titulo: string; atualizadoEm: string; nosQtd?: number; clienteId?: string; clienteNome?: string }
 
 const CORES = ['#ffc00f', '#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626']
+const COR_LIGACAO = '#ffc00f' // cor padrão das ligações (amarelo da marca)
 const LARG = 170, ALT = 46 // largura fixa do nó e altura aproximada (p/ centro das conexões)
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
-export default function MapasMentais() {
+export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite[] }) {
   const [mapas, setMapas] = useState<MapaMeta[]>([])
   const [carregando, setCarregando] = useState(true)
   const [abertoId, setAbertoId] = useState<string | null>(null)
@@ -44,7 +47,7 @@ export default function MapasMentais() {
     setMapas(ms => ms.filter(m => m.id !== id))
   }
 
-  if (abertoId) return <Editor id={abertoId} onVoltar={() => { setAbertoId(null); carregar() }} />
+  if (abertoId) return <Editor id={abertoId} clientes={clientes} onVoltar={() => { setAbertoId(null); carregar() }} />
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -62,7 +65,9 @@ export default function MapasMentais() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-          {mapas.map(m => (
+          {mapas.map(m => {
+            const cli = m.clienteId ? clientes.find(c => c.id === m.clienteId) : null
+            return (
             <div key={m.id} onClick={() => setAbertoId(m.id)} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -70,10 +75,18 @@ export default function MapasMentais() {
                 </span>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo?.trim() || 'Sem título'}</p>
               </div>
+              {(cli || m.clienteNome) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#888' }}>
+                    <AvatarCliente logo={cli?.logo} nome={cli?.nome || m.clienteNome} clienteId={m.clienteId} />
+                  </span>
+                  <span style={{ fontSize: 11.5, color: '#7c3aed', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cli?.nome || m.clienteNome}</span>
+                </div>
+              )}
               <p style={{ margin: 0, fontSize: 11.5, color: '#aaa' }}>{m.nosQtd || 0} nó(s) · {new Date(m.atualizadoEm).toLocaleDateString('pt-BR')}</p>
               <button onClick={e => { e.stopPropagation(); excluir(m.id) }} style={{ marginTop: 8, background: 'none', border: 'none', color: '#c00', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Excluir</button>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -111,15 +124,18 @@ export default function MapasMentais() {
   )
 }
 
-function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
+function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: ClienteLite[]; onVoltar: () => void }) {
   const [titulo, setTitulo] = useState('')
   const [nos, setNos] = useState<No[]>([])
   const [conexoes, setConexoes] = useState<Conexao[]>([])
+  const [clienteId, setClienteId] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [salvo, setSalvo] = useState<'idle' | 'salvando' | 'ok'>('idle')
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [layout, setLayout] = useState<'mapa' | 'organograma' | 'lista'>('mapa')
+  const [autoArrumar, setAutoArrumar] = useState(false)
+  const [reflowTick, setReflowTick] = useState(0)
   const [selId, setSelId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [conectarDe, setConectarDe] = useState<string | null>(null)
@@ -130,7 +146,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
 
   useEffect(() => {
     fetch(`/api/mapas?id=${id}`).then(r => r.json()).then(m => {
-      if (m && !m.error) { setTitulo(m.titulo || ''); setNos(m.nos || []); setConexoes(m.conexoes || []); setLayout(m.layout || 'mapa') }
+      if (m && !m.error) { setTitulo(m.titulo || ''); setNos(m.nos || []); setConexoes(m.conexoes || []); setLayout(m.layout || 'mapa'); setClienteId(m.clienteId || '') }
       setCarregando(false); montado.current = true
     }).catch(() => { setCarregando(false); montado.current = true })
   }, [id])
@@ -139,12 +155,13 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     if (!montado.current) return
     setSalvo('salvando')
     if (timer.current) clearTimeout(timer.current)
+    const nome = clienteId ? (clientes.find(c => c.id === clienteId)?.nome || '') : ''
     timer.current = setTimeout(() => {
-      fetch('/api/mapas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, titulo, nos, conexoes, layout }) })
+      fetch('/api/mapas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, titulo, nos, conexoes, layout, clienteId: clienteId || '', clienteNome: nome }) })
         .then(() => { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1200) }).catch(() => setSalvo('idle'))
     }, 700)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [titulo, nos, conexoes, layout])
+  }, [titulo, nos, conexoes, layout, clienteId])
 
   const setNo = (nid: string, patch: Partial<No>) => setNos(ns => ns.map(n => n.id === nid ? { ...n, ...patch } : n))
   function criarConexao(de: string, para: string) {
@@ -203,6 +220,21 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selId, editId, nos, conexoes])
+
+  // Auto-organizar: reflui as posições quando muda a estrutura (adiciona/remove nó
+  // ou ramifica) ou quando o usuário liga o modo. Não dispara ao arrastar (o
+  // comprimento não muda) nem ao editar texto — só na estrutura.
+  useEffect(() => {
+    if (!autoArrumar || !montado.current) return
+    const pos = computarPosicoes(layout, nos, conexoes)
+    setNos(ns => {
+      let mudou = false
+      const novo = ns.map(n => { const p = pos[n.id]; if (p && (p.x !== n.x || p.y !== n.y)) { mudou = true; return { ...n, x: p.x, y: p.y } } return n })
+      return mudou ? novo : ns
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nos.length, conexoes.length, autoArrumar, layout, reflowTick])
+
   function zoomBotao(fator: number) {
     const r = canvasRef.current!.getBoundingClientRect()
     const cx = r.width / 2, cy = r.height / 2
@@ -246,44 +278,69 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     if (conectarDe && remover.has(conectarDe)) setConectarDe(null)
   }
   function cicloCor(no: No) { const i = CORES.indexOf(no.cor || CORES[0]); setNo(no.id, { cor: CORES[(i + 1) % CORES.length] }) }
+  function alternarColapso(no: No) { setNo(no.id, { colapsado: !no.colapsado }); setReflowTick(t => t + 1) }
   const centro = (n: No) => ({ x: n.x + LARG / 2, y: n.y + ALT / 2 })
   const temPai = (nid: string) => conexoes.some(c => c.para === nid)
 
-  // Reposiciona os nós conforme o layout escolhido (Mapa mental mantém as posições livres)
-  function aplicarLayout(tipo: 'mapa' | 'organograma' | 'lista') {
-    setLayout(tipo)
-    if (tipo === 'mapa') return
+  // Reposiciona os nós em árvore conforme o layout: organograma = vertical (pai em
+  // cima, filhos abaixo); mapa mental = horizontal (pai à esquerda, filhos à direita);
+  // lista = indentado. Ramos colapsados contam como folha (não ocupam espaço).
+  function computarPosicoes(tipo: 'mapa' | 'organograma' | 'lista', nsArg: No[], csArg: Conexao[]): Record<string, { x: number; y: number }> {
     const filhos: Record<string, string[]> = {}
-    for (const c of conexoes) (filhos[c.de] ||= []).push(c.para)
-    const raizes = nos.filter(n => !temPai(n.id)).map(n => n.id)
+    for (const c of csArg) (filhos[c.de] ||= []).push(c.para)
+    const temPaiL = (nid: string) => csArg.some(c => c.para === nid)
+    const raizes = nsArg.filter(n => !temPaiL(n.id)).map(n => n.id)
+    const colaps = new Set(nsArg.filter(n => n.colapsado).map(n => n.id))
     const pos: Record<string, { x: number; y: number }> = {}
     const visto = new Set<string>()
-    if (tipo === 'organograma') {
-      const NW = 190, NH = 110; let cursor = 0
-      const tree = (idn: string, depth: number): number => {
-        if (visto.has(idn)) return cursor; visto.add(idn)
-        const ch = (filhos[idn] || []).filter(c => !visto.has(c))
-        if (!ch.length) { const x = cursor; cursor += NW; pos[idn] = { x, y: depth * NH }; return x }
-        const xs = ch.map(c => tree(c, depth + 1))
-        const x = (xs[0] + xs[xs.length - 1]) / 2; pos[idn] = { x, y: depth * NH }; return x
-      }
-      raizes.forEach((r, i) => { if (i) cursor += NW; tree(r, 0) })
-    } else {
+    if (tipo === 'lista') {
       const INDENT = 46, ROW = 54; let row = 0
       const walk = (idn: string, depth: number) => {
         if (visto.has(idn)) return; visto.add(idn)
-        pos[idn] = { x: depth * INDENT, y: row * ROW }; row++
-        for (const c of (filhos[idn] || [])) walk(c, depth + 1)
+        pos[idn] = { x: depth * INDENT + 90, y: row * ROW + 90 }; row++
+        if (!colaps.has(idn)) for (const c of (filhos[idn] || [])) walk(c, depth + 1)
       }
       raizes.forEach(r => walk(r, 0))
+      return pos
     }
-    setNos(ns => ns.map(n => pos[n.id] ? { ...n, x: pos[n.id].x + 90, y: pos[n.id].y + 70 } : n))
-    setPan({ x: 0, y: 0 }); setZoom(1); setSelId(null); setEditId(null)
+    const horizontal = tipo === 'mapa'
+    const DEPTH = horizontal ? 240 : 150 // distância entre níveis
+    const SPREAD = horizontal ? 64 : 200 // distância entre folhas irmãs
+    let cursor = 0
+    const walk = (idn: string, depth: number): number => {
+      if (visto.has(idn)) return cursor; visto.add(idn)
+      const ch = colaps.has(idn) ? [] : (filhos[idn] || []).filter(c => !visto.has(c))
+      let coord: number
+      if (!ch.length) { coord = cursor; cursor += SPREAD }
+      else { const xs = ch.map(c => walk(c, depth + 1)); coord = (xs[0] + xs[xs.length - 1]) / 2 }
+      pos[idn] = horizontal ? { x: depth * DEPTH + 90, y: coord + 90 } : { x: coord + 90, y: depth * DEPTH + 90 }
+      return coord
+    }
+    raizes.forEach((r, i) => { if (i) cursor += SPREAD; walk(r, 0) })
+    return pos
+  }
+
+  function aplicarLayout(tipo: 'mapa' | 'organograma' | 'lista') {
+    setLayout(tipo)
+    const pos = computarPosicoes(tipo, nos, conexoes)
+    setNos(ns => ns.map(n => pos[n.id] ? { ...n, x: pos[n.id].x, y: pos[n.id].y } : n))
+    setPan({ x: 0, y: 0 }); setZoom(1); setSelId(null); setEditId(null); setConectarDe(null)
   }
 
   if (carregando) return <p style={{ color: '#aaa' }}>Carregando mapa...</p>
 
-  const sel = nos.find(n => n.id === selId)
+  // Colapso: esconde os descendentes de qualquer nó colapsado.
+  const filhosMap: Record<string, string[]> = {}
+  for (const c of conexoes) (filhosMap[c.de] ||= []).push(c.para)
+  const oculto = new Set<string>()
+  const esconder = (idn: string) => { for (const ch of (filhosMap[idn] || [])) if (!oculto.has(ch)) { oculto.add(ch); esconder(ch) } }
+  for (const n of nos) if (n.colapsado) esconder(n.id)
+  const nosVis = nos.filter(n => !oculto.has(n.id))
+  const conVis = conexoes.filter(c => !oculto.has(c.de) && !oculto.has(c.para))
+  const temFilho = (nid: string) => (filhosMap[nid] || []).length > 0
+
+  const sel = nos.find(n => n.id === selId && !oculto.has(n.id))
+  const cliente = clienteId ? clientes.find(c => c.id === clienteId) : null
   const TBtn = ({ title, onClick, children, cor }: any) => (
     <button onPointerDown={e => e.stopPropagation()} onClick={onClick} title={title} style={{ width: 30, height: 30, border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', color: cor || '#444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
   )
@@ -294,14 +351,34 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <button onClick={onVoltar} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', padding: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 160, maxWidth: 380, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 140, maxWidth: 320, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+
+        {/* Atribuir a um cliente (fixa a logomarca) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {cliente && (
+            <span title={cliente.nome} style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#888', border: '2px solid var(--marca, #ffc00f)' }}>
+              <AvatarCliente logo={cliente.logo} nome={cliente.nome} clienteId={cliente.id} />
+            </span>
+          )}
+          <select value={clienteId} onChange={e => setClienteId(e.target.value)} title="Atribuir a um cliente" style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', color: clienteId ? '#111' : '#888', maxWidth: 160 }}>
+            <option value="">Sem cliente</option>
+            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+
         {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: '#aaa' }}>salvando…</span>}
         {salvo === 'ok' && <span style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>salvo</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
           {([['mapa', 'Mapa mental'], ['organograma', 'Organograma'], ['lista', 'Lista']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Posições livres' : 'Reorganiza automaticamente'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? '#fff' : 'transparent', color: layout === k ? '#111' : '#888', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Ligações curvas, fluxo horizontal' : k === 'organograma' ? 'Ligações retas, ramificação vertical' : 'Lista indentada'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? '#fff' : 'transparent', color: layout === k ? '#111' : '#888', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
+        {/* Auto-organizar: reflui os espaços conforme os ramos são criados */}
+        <button onClick={() => setAutoArrumar(v => !v)} title={autoArrumar ? 'Auto-organizar ligado — desligar' : 'Auto-organizar os espaços conforme cria ramos'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: autoArrumar ? '1.5px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: autoArrumar ? '#fffbeb' : '#fff', color: autoArrumar ? '#a16207' : '#666', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
+          Auto
+        </button>
+        <button onClick={() => aplicarLayout(layout)} title="Organizar agora" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid #e6e6e6', background: '#fff', color: '#666', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Organizar</button>
         <button onClick={() => addNo()} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
       </div>
 
@@ -310,34 +387,33 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         style={{ position: 'relative', height: 'calc(100vh - 220px)', minHeight: 440, overflow: 'hidden', background: '#fbfbfc', backgroundImage: 'radial-gradient(#e7e7ea 1px, transparent 1px)', backgroundSize: `${22 * zoom}px ${22 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px`, border: '1px solid #eee', borderRadius: 14, cursor: dragRef.current?.tipo === 'pan' ? 'grabbing' : 'default', touchAction: 'none' }}>
 
         <div style={{ position: 'absolute', top: 0, left: 0, transformOrigin: '0 0', transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
-          {/* Conexões (curvas) */}
+          {/* Conexões — NÃO deletáveis por clique (a estrutura vem dos nós). Cor: amarelo da marca. */}
           <svg width={4000} height={3000} style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}>
-            {layout !== 'lista' && conexoes.map(c => {
+            {layout !== 'lista' && conVis.map(c => {
               const a = nos.find(n => n.id === c.de), b = nos.find(n => n.id === c.para)
               if (!a || !b) return null
               let path: string
               if (layout === 'organograma') {
+                // Ligações retas/quadradas (cotovelo), ramificação vertical
                 const p1 = { x: a.x + LARG / 2, y: a.y + ALT }, p2 = { x: b.x + LARG / 2, y: b.y }
                 const midY = (p1.y + p2.y) / 2
                 path = `M ${p1.x} ${p1.y} L ${p1.x} ${midY} L ${p2.x} ${midY} L ${p2.x} ${p2.y}`
               } else {
+                // Ligações curvas, fluxo horizontal
                 const p1 = centro(a), p2 = centro(b), dx = Math.abs(p2.x - p1.x) / 2 + 20
                 path = `M ${p1.x} ${p1.y} C ${p1.x + (p2.x > p1.x ? dx : -dx)} ${p1.y}, ${p2.x + (p2.x > p1.x ? -dx : dx)} ${p2.y}, ${p2.x} ${p2.y}`
               }
-              return (
-                <g key={c.id} style={{ pointerEvents: 'stroke', cursor: 'pointer' }} onClick={() => setConexoes(cs => cs.filter(x => x.id !== c.id))}>
-                  <path d={path} stroke="transparent" strokeWidth={14} fill="none" />
-                  <path d={path} stroke="#ffc00f" strokeWidth={2.75} fill="none" strokeLinecap="round" />
-                </g>
-              )
+              return <path key={c.id} d={path} stroke={COR_LIGACAO} strokeWidth={2.75} fill="none" strokeLinecap="round" />
             })}
           </svg>
           {/* Nós (pill minimalista) */}
-          {nos.map(no => {
+          {nosVis.map(no => {
             const selecionado = selId === no.id
             const alvo = !!conectarDe && conectarDe !== no.id
             const editando = editId === no.id
             const raiz = !temPai(no.id)
+            const pai = temFilho(no.id)
+            const colapBottom = layout === 'organograma'
             return (
               <div key={no.id} onPointerDown={e => {
                   e.stopPropagation()
@@ -360,10 +436,11 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
                       }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? '#fff' : '#222', background: 'transparent', minHeight: 30 }} rows={2} />
                   : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? '#fff' : (no.texto ? '#222' : '#bbb'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
-                {selecionado && !editando && (
-                  <button onPointerDown={e => e.stopPropagation()} onClick={() => addNo(no)} title="Adicionar nó filho"
-                    style={{ position: 'absolute', right: -13, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, borderRadius: '50%', background: '#fff', border: '1.5px solid #d0d0d5', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                {/* Botão de ocultar/mostrar ramificação (só em nós com filhos) */}
+                {pai && !editando && (
+                  <button onPointerDown={e => e.stopPropagation()} onClick={() => alternarColapso(no)} title={no.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'}
+                    style={{ position: 'absolute', ...(colapBottom ? { bottom: -12, left: '50%', transform: 'translateX(-50%)' } : { right: -12, top: '50%', transform: 'translateY(-50%)' }), width: 22, height: 22, borderRadius: '50%', background: no.colapsado ? 'var(--marca, #ffc00f)' : '#fff', border: '1.5px solid ' + (no.colapsado ? 'var(--marca, #ffc00f)' : '#d0d0d5'), color: no.colapsado ? '#111' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0, fontSize: 13, fontWeight: 900, lineHeight: 1, zIndex: 2 }}>
+                    {no.colapsado ? '+' : '−'}
                   </button>
                 )}
               </div>
@@ -386,6 +463,12 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
             <TBtn title={conectarDe === sel.id ? 'Clique em outro nó (ou aqui p/ cancelar)' : 'Conectar a outro nó'} cor={conectarDe === sel.id ? '#7c3aed' : '#444'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
             </TBtn>
+            {temFilho(sel.id) && <>
+              <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
+              <TBtn title={sel.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'} onClick={() => alternarColapso(sel)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d={sel.colapsado ? 'M12 5v14M5 12h14' : 'M5 12h14'} /></svg>
+              </TBtn>
+            </>}
             {temPai(sel.id) && <>
               <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
               <TBtn title="Excluir nó" cor="#dc2626" onClick={() => excluirNo(sel.id)}>
@@ -405,7 +488,7 @@ function Editor({ id, onVoltar }: { id: string; onVoltar: () => void }) {
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · arraste o fundo para mover · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria um irmão, <b style={{ color: '#999' }}>Tab</b> cria um filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó e sua ramificação.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria irmão, <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> em cada nó oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> reorganiza os espaços sozinho.</p>
     </div>
   )
 }

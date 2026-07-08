@@ -695,3 +695,26 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Componentes:** `SaudeSistema.tsx`. **Rotas:** `/api/health`, `/api/sistema`.
 - **Chaves Redis:** `erro:{id}`, `erros:log` (lista), `erro_alerta:{escopo}` (dedupe TTL). `package.json`: dep `vitest` + scripts `test`/`build` com portão.
 - **Nota de handoff:** os 4 arquivos novos do bloco de observabilidade (`erros.ts`/health/sistema/`SaudeSistema.tsx`) já existiam **untracked** de uma sessão anterior interrompida e foram **reescritos** nesta (conteúdo anterior não recuperável pelo git; versão atual completa e testada).
+
+## 29. Ajustes pontuais — Documento, Tarefas, Mapa Mental (2026-07-08)
+
+> Batch de melhorias pedidas pelo dono (janela do almoço). Push direto na main; portão de testes valida antes do deploy.
+
+### 29.1 Documento (`Documentos.tsx` + `RichText.tsx`)
+- **Barra de formatação flutuante:** `RichText` ganhou prop `sticky` — a barra fica fixa no topo ao rolar documentos longos. Ligada no editor de Documentos.
+- **Tamanho da fonte:** `RichText` prop `fontSize` (base da área de edição; títulos escalam por `em`). Botões **A− / A+** no cabeçalho. Persistido em `Documento.fontSize` (11–28, padrão 15).
+- **Atribuir a um cliente:** dropdown no cabeçalho + **logomarca fixada** (`AvatarCliente`, borda amarela). Persistido em `Documento.clienteId`/`clienteNome`; nome aparece na lista. `Documentos` recebe `clientes` do dashboard.
+
+### 29.2 Tarefas (`GestaoTarefas.tsx` > `TarefaModal`)
+- **Vincular um Documento e um Mapa Mental** à tarefa: dois seletores (após "Relacionadas", só em tarefa existente), PUT imediato. Persistido em `Tarefa.documentoId`/`mapaId` (allowlist `camposPermitidos`). *(Abrir o item vinculado direto = follow-up; hoje a associação é editável no seletor.)*
+
+### 29.3 Mapa Mental (`MapasMentais.tsx` — reescrito)
+- **Atribuir a um cliente:** dropdown no editor + logomarca fixada; badge nos cards da lista. `MapaMental.clienteId`/`clienteNome` (no GET-lista).
+- **Auto-organizar:** toggle **Auto** reflui os espaços em árvore conforme os ramos são criados/removidos (só reage à estrutura, não briga com arraste). Botão **Organizar** aplica na hora.
+- **Ocultar ramificação:** botão **−/+** em cada nó com filhos (colapsa/expande a sub-árvore). Posição segue o layout. `MapaNo.colapsado`; ramo colapsado conta como folha no layout.
+- **Ligações não-deletáveis:** removido o clique-para-excluir conexão (excluir nó ainda remove suas ligações). Cor padrão = **#ffc00f**.
+- **Fix organograma × mapa mental:** trocar de visão reorganiza limpo. Organograma = retas/cotovelo + vertical; Mapa = curvas + horizontal; Lista = indentado. Antes "mapa" mantinha as posições do organograma e só trocava a curva (bagunçava).
+
+### 29.4 Campos/rotas desta janela
+- **Campos redis:** `MapaNo.colapsado`; `MapaMental.clienteId/clienteNome`; `Documento.clienteId/clienteNome/fontSize`; `Tarefa.documentoId/mapaId`. **Rotas:** `api/mapas`, `api/documentos`, `api/tarefas` atualizadas.
+- **Decisão:** cor das ligações = `#ffc00f` (dono escreveu `#ffc007`; corrigido p/ o amarelo oficial da marca).

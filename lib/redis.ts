@@ -350,6 +350,8 @@ export type Tarefa = {
   checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
   origemPostId?: string // pauta da Esteira que originou esta tarefa (vinculo)
   origemBriefingId?: string // briefing de campanha que originou esta tarefa (vinculo)
+  documentoId?: string // documento interno vinculado à tarefa
+  mapaId?: string // mapa mental vinculado à tarefa
   relacionadas?: string[] // ids de outras tarefas relacionadas (vinculo bidirecional manual)
   criadoPor: string
   criadoEm: string
@@ -606,7 +608,7 @@ export type CrmNegocio = {
 }
 
 // Mapa mental (nós + conexões). Chave `mapa:{id}`, índice `mapas`.
-export type MapaNo = { id: string; texto: string; x: number; y: number; cor?: string }
+export type MapaNo = { id: string; texto: string; x: number; y: number; cor?: string; colapsado?: boolean }
 export type MapaConexao = { id: string; de: string; para: string }
 export type MapaMental = {
   id: string
@@ -614,6 +616,8 @@ export type MapaMental = {
   nos: MapaNo[]
   conexoes: MapaConexao[]
   layout?: 'mapa' | 'organograma' | 'lista'
+  clienteId?: string // atribuído a um cliente (fixa a logomarca no editor)
+  clienteNome?: string
   criadoPor?: string
   criadoEm: string
   atualizadoEm: string
@@ -625,6 +629,9 @@ export type Documento = {
   titulo: string
   conteudo: string // HTML (RichText)
   token?: string // link público de leitura (compartilhar externamente)
+  clienteId?: string // atribuído a um cliente (fixa a logomarca no editor)
+  clienteNome?: string
+  fontSize?: number // tamanho base da fonte do documento (conforto de leitura)
   criadoPor?: string
   criadoPorNome?: string
   atualizadoPorNome?: string

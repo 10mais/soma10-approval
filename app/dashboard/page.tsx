@@ -4269,7 +4269,7 @@ function Dashboard() {
         )}
 
         {aba === 'documentos' && role !== 'cliente' && (
-          <Documentos />
+          <Documentos clientes={clientes as any} />
         )}
 
         {aba === 'conversao' && (role === 'admin' || role === 'gerente' || role === 'vendas') && (
@@ -4277,7 +4277,7 @@ function Dashboard() {
         )}
 
         {aba === 'mapas' && role !== 'cliente' && (
-          <MapasMentais />
+          <MapasMentais clientes={clientes as any} />
         )}
 
         {aba === 'solicitacoes' && role !== 'cliente' && (

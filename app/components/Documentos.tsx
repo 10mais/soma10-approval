@@ -2,8 +2,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { confirmar, toast } from '@/lib/toast'
 import RichText from './RichText'
+import AvatarCliente from './AvatarCliente'
 
-type Doc = { id: string; titulo: string; conteudo: string; token?: string; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+type ClienteLite = { id: string; nome: string; logo?: string }
+type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+
+const FONTE_MIN = 11, FONTE_MAX = 28, FONTE_PADRAO = 15
 
 function textoDe(html: string) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
@@ -13,7 +17,7 @@ function quando(iso?: string) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-export default function Documentos() {
+export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[] }) {
   const [docs, setDocs] = useState<Doc[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aberto, setAberto] = useState<Doc | null>(null)
@@ -34,8 +38,8 @@ export default function Documentos() {
     const alvo = aberto?.id
     timer.current = setTimeout(async () => {
       const atual = { ...(aberto as Doc), ...patch }
-      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo }) }).then(x => x.json()).catch(() => null)
-      if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
+      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId || '', clienteNome: atual.clienteNome || '', fontSize: atual.fontSize || FONTE_PADRAO }) }).then(x => x.json()).catch(() => null)
+      if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId, clienteNome: atual.clienteNome, fontSize: atual.fontSize, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
       else setSalvo('idle')
     }, 700)
   }
@@ -99,7 +103,7 @@ export default function Documentos() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.titulo.trim() || 'Sem título'}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{textoDe(d.conteudo).slice(0, 90) || 'Documento vazio'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.clienteNome ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{d.clienteNome} · </span> : ''}{textoDe(d.conteudo).slice(0, 90) || 'Documento vazio'}</p>
               </div>
               <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0, textAlign: 'right' }}>{quando(d.atualizadoEm)}{d.atualizadoPorNome ? <><br />{d.atualizadoPorNome}</> : ''}</span>
               <button onClick={e => { e.stopPropagation(); excluir(d.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
@@ -115,6 +119,23 @@ export default function Documentos() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
               <input value={aberto.titulo} onChange={e => editar({ titulo: e.target.value })} placeholder="Título do documento" autoFocus
                 style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+              {/* Tamanho da fonte */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                <button onClick={() => editar({ fontSize: Math.max(FONTE_MIN, (aberto.fontSize || FONTE_PADRAO) - 1) })} title="Diminuir a fonte" style={{ width: 28, height: 28, border: '1px solid #eee', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 800, color: '#555' }}>A−</button>
+                <button onClick={() => editar({ fontSize: Math.min(FONTE_MAX, (aberto.fontSize || FONTE_PADRAO) + 1) })} title="Aumentar a fonte" style={{ width: 28, height: 28, border: '1px solid #eee', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 800, color: '#555' }}>A+</button>
+              </div>
+              {/* Atribuir a um cliente (fixa a logomarca) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                {aberto.clienteId && (
+                  <span title={aberto.clienteNome} style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#888', border: '2px solid var(--marca, #ffc00f)' }}>
+                    <AvatarCliente logo={clientes.find(c => c.id === aberto.clienteId)?.logo} nome={aberto.clienteNome} clienteId={aberto.clienteId} />
+                  </span>
+                )}
+                <select value={aberto.clienteId || ''} onChange={e => { const c = clientes.find(x => x.id === e.target.value); editar({ clienteId: e.target.value, clienteNome: c?.nome || '' }) }} title="Atribuir a um cliente" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: aberto.clienteId ? '#111' : '#888', maxWidth: 130 }}>
+                  <option value="">Sem cliente</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
               {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
               {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
               <button onClick={compartilhar} title="Compartilhar por link" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: aberto.token ? '#eef2ff' : '#111', color: aberto.token ? '#3730a3' : '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
@@ -134,7 +155,7 @@ export default function Documentos() {
               </div>
             )}
             <div style={{ padding: 16, overflowY: 'auto' }}>
-              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => editar({ conteudo: html })} placeholder="Escreva o documento… títulos, listas, cor e links na barra acima." minHeight={380} completo />
+              <RichText key={aberto.id} value={aberto.conteudo} onChange={html => editar({ conteudo: html })} placeholder="Escreva o documento… títulos, listas, cor e links na barra acima." minHeight={380} completo sticky fontSize={aberto.fontSize || FONTE_PADRAO} />
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ function linkify(s: string) {
 // Sem checar entidades, um espaço (&nbsp;) fazia re-escapar e virar literal na tela.
 const ehHtml = (s: string) => /<[a-z!/][\s\S]*>/i.test(s) || /&(nbsp|amp|lt|gt|quot|#\d+);/i.test(s)
 
-export default function RichText({ value, onChange, placeholder = '', minHeight = 80, completo = false }: { value: string; onChange: (html: string) => void; placeholder?: string; minHeight?: number; completo?: boolean }) {
+export default function RichText({ value, onChange, placeholder = '', minHeight = 80, completo = false, sticky = false, fontSize }: { value: string; onChange: (html: string) => void; placeholder?: string; minHeight?: number; completo?: boolean; sticky?: boolean; fontSize?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const ultimoEmit = useRef('')
   const [corAberta, setCorAberta] = useState(false)
@@ -73,7 +73,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
         .rt-edit h1{font-size:1.5em;font-weight:800;margin:.5em 0 .3em}.rt-edit h2{font-size:1.25em;font-weight:800;margin:.5em 0 .3em}.rt-edit h3{font-size:1.08em;font-weight:700;margin:.4em 0 .2em}
         .rt-edit ul,.rt-edit ol{padding-left:1.4em;margin:.3em 0}.rt-edit li{margin:.15em 0}
         .rt-edit blockquote{border-left:3px solid #e0e0e0;margin:.4em 0;padding:.1em 0 .1em .8em;color:#666}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 4, borderBottom: '1px solid #f0f0f0', background: '#fafafa', borderRadius: '8px 8px 0 0', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 4, borderBottom: '1px solid #f0f0f0', background: '#fafafa', borderRadius: '8px 8px 0 0', flexWrap: 'wrap', ...(sticky ? { position: 'sticky', top: 0, zIndex: 6 } : {}) }}>
         <Btn title="Negrito" onClick={() => cmd('bold')}><b>B</b></Btn>
         <Btn title="Itálico" onClick={() => cmd('italic')}><i>I</i></Btn>
         <Btn title="Sublinhado" onClick={() => cmd('underline')}><u>U</u></Btn>
@@ -126,7 +126,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
         onPaste={onPaste}
         onClick={onClick}
         title="Clique num link para abrir em nova aba"
-        style={{ minHeight, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, outline: 'none', color: '#222', fontFamily: 'inherit', wordBreak: 'break-word' }}
+        style={{ minHeight, padding: '10px 12px', fontSize: fontSize || 13, lineHeight: 1.5, outline: 'none', color: '#222', fontFamily: 'inherit', wordBreak: 'break-word' }}
       />
     </div>
   )

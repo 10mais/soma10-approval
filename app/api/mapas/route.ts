@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const mapas = ids.length ? ((await redis.mget<(MapaMental | null)[]>(...ids.map(i => `mapa:${i}`))).filter(Boolean) as MapaMental[]) : []
   mapas.sort((a, b) => new Date(b.atualizadoEm || b.criadoEm).getTime() - new Date(a.atualizadoEm || a.criadoEm).getTime())
   // Lista sem os nós (leve) — só metadados
-  return NextResponse.json(mapas.map(m => ({ id: m.id, titulo: m.titulo, atualizadoEm: m.atualizadoEm, criadoEm: m.criadoEm, nosQtd: (m.nos || []).length })))
+  return NextResponse.json(mapas.map(m => ({ id: m.id, titulo: m.titulo, atualizadoEm: m.atualizadoEm, criadoEm: m.criadoEm, nosQtd: (m.nos || []).length, clienteId: m.clienteId, clienteNome: m.clienteNome })))
 }
 
 export async function POST(req: NextRequest) {
@@ -50,15 +50,16 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await equipe()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id, titulo, nos, conexoes, layout } = await req.json()
+  const { id, titulo, nos, conexoes, layout, clienteId, clienteNome } = await req.json()
   const mapa = await redis.get<MapaMental>(`mapa:${id}`)
   if (!mapa) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
-  const nosSan: MapaNo[] = Array.isArray(nos) ? nos.slice(0, 500).map((n: any) => ({ id: String(n.id), texto: String(n.texto || '').slice(0, 500), x: Number(n.x) || 0, y: Number(n.y) || 0, cor: n.cor ? String(n.cor) : undefined })) : mapa.nos
+  const nosSan: MapaNo[] = Array.isArray(nos) ? nos.slice(0, 500).map((n: any) => ({ id: String(n.id), texto: String(n.texto || '').slice(0, 500), x: Number(n.x) || 0, y: Number(n.y) || 0, cor: n.cor ? String(n.cor) : undefined, ...(n.colapsado ? { colapsado: true } : {}) })) : mapa.nos
   const conSan: MapaConexao[] = Array.isArray(conexoes) ? conexoes.slice(0, 1000).map((c: any) => ({ id: String(c.id), de: String(c.de), para: String(c.para) })) : mapa.conexoes
   const atualizado: MapaMental = {
     ...mapa,
     ...(titulo !== undefined ? { titulo: String(titulo).slice(0, 200) } : {}),
     ...(['mapa', 'organograma', 'lista'].includes(layout) ? { layout } : {}),
+    ...(clienteId !== undefined ? { clienteId: clienteId ? String(clienteId) : undefined, clienteNome: clienteId ? String(clienteNome || '') : undefined } : {}),
     nos: nosSan,
     conexoes: conSan,
     atualizadoEm: new Date().toISOString(),

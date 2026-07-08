@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await equipe()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id, titulo, conteudo, gerarLink, revogarLink } = await req.json()
+  const { id, titulo, conteudo, gerarLink, revogarLink, clienteId, clienteNome, fontSize } = await req.json()
   const doc = await redis.get<Documento>(`documento:${id}`)
   if (!doc) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
   // Gerar / revogar link público de leitura
@@ -71,6 +71,8 @@ export async function PUT(req: NextRequest) {
     ...doc,
     ...(titulo !== undefined ? { titulo: String(titulo).slice(0, 200) } : {}),
     ...(conteudo !== undefined ? { conteudo: String(conteudo).slice(0, 500000) } : {}),
+    ...(clienteId !== undefined ? { clienteId: clienteId ? String(clienteId) : undefined, clienteNome: clienteId ? String(clienteNome || '') : undefined } : {}),
+    ...(fontSize !== undefined ? { fontSize: Math.max(11, Math.min(28, Number(fontSize) || 15)) } : {}),
     atualizadoPorNome: session.user?.name || '',
     atualizadoEm: new Date().toISOString(),
   }
