@@ -1,9 +1,11 @@
-import { redis, Automacao, AutomacaoCondicao, AutomacaoPasso, Tarefa, Marco, Cliente, Usuario } from './redis'
+import { redis, Automacao, AutomacaoPasso, Tarefa, Marco, Cliente, Usuario } from './redis'
 import { notificar, notificarEquipe, notificarAdmins } from './notificacoes'
+import { avaliarCondicoes, escopoBate } from './automacoesCondicoes'
 import { v4 as uuid } from 'uuid'
 
 // Motor de automações FLEXÍVEL. Os catálogos (gatilhos/ações) ficam em
 // ./automacoesCatalogo (client-safe); aqui fica o dispatcher + executor (server).
+// A lógica pura de condições/escopo vive em ./automacoesCondicoes (testável).
 export { GATILHOS, ACOES } from './automacoesCatalogo'
 
 // ============================================================================
@@ -16,35 +18,6 @@ const interpolar = (txt: string, ctx: Record<string, any>): string =>
 async function carregarRegras(): Promise<Automacao[]> {
   const r = await redis.get<Automacao[]>('config:automacoesRegras')
   return Array.isArray(r) ? r : []
-}
-
-function escopoBate(regra: Automacao, ctx: Record<string, any>): boolean {
-  const cid = ctx.clienteId as string | undefined
-  if (regra.alvo === 'selecionados') return !!cid && (regra.clienteIds || []).includes(cid)
-  // alvo 'todos' — com override de exclusão por cliente
-  if (cid && (regra.clienteIdsExcluidos || []).includes(cid)) return false
-  return true
-}
-
-function condBate(c: AutomacaoCondicao, ctx: Record<string, any>): boolean {
-  const v = ctx[c.campo]
-  const alvo = c.valor ?? ''
-  switch (c.operador) {
-    case 'preenchido': return v != null && String(v) !== ''
-    case 'vazio': return v == null || String(v) === ''
-    case 'igual': return String(v ?? '').toLowerCase() === alvo.toLowerCase()
-    case 'diferente': return String(v ?? '').toLowerCase() !== alvo.toLowerCase()
-    case 'contem': return String(v ?? '').toLowerCase().includes(alvo.toLowerCase())
-    case 'maior': return Number(v) > Number(alvo)
-    case 'menor': return Number(v) < Number(alvo)
-    default: return true
-  }
-}
-
-function avaliarCondicoes(regra: Automacao, ctx: Record<string, any>): boolean {
-  const cs = regra.condicoes || []
-  if (!cs.length) return true
-  return regra.condicaoLogica === 'qualquer' ? cs.some(c => condBate(c, ctx)) : cs.every(c => condBate(c, ctx))
 }
 
 // ============================================================================

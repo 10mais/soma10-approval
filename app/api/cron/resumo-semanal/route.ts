@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Cliente } from '@/lib/redis'
 import { gerarResumoSemanal } from '@/lib/resumoSemanal'
+import { capturarErro } from '@/lib/erros'
 import nodemailer from 'nodemailer'
 
 export const runtime = 'nodejs'
@@ -17,7 +18,15 @@ export async function GET(req: NextRequest) {
     if (auth !== `Bearer ${secret}` && qs !== secret) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
   if (!process.env.SMTP_USER) return NextResponse.json({ ok: false, error: 'SMTP não configurado' })
+  try {
+    return await enviarResumos()
+  } catch (e) {
+    await capturarErro('cron/resumo-semanal', e)
+    return NextResponse.json({ error: 'falha no resumo semanal' }, { status: 500 })
+  }
+}
 
+async function enviarResumos(): Promise<NextResponse> {
   const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST || 'smtp.titan.email', port: Number(process.env.SMTP_PORT) || 587, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } })
 
   const ids = await redis.smembers('clientes')

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redis, CrmNegocio } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
 import { cronAutorizado } from '@/lib/cronAuth'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 
@@ -9,7 +10,15 @@ export const runtime = 'nodejs'
 // venceu (hoje ou antes). Dedupe por dia. Aceita ?secret= ou Authorization.
 export async function GET(req: NextRequest) {
   if (!cronAutorizado(req)) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  try {
+    return await rodarFollowups()
+  } catch (e) {
+    await capturarErro('cron/crm-followup', e)
+    return NextResponse.json({ error: 'falha nos follow-ups' }, { status: 500 })
+  }
+}
 
+async function rodarFollowups(): Promise<NextResponse> {
   const ids = await redis.smembers('crm:negocios')
   const negocios = ids.length ? ((await redis.mget<(CrmNegocio | null)[]>(...ids.map(i => `negocio:${i}`))).filter(Boolean) as CrmNegocio[]) : []
 

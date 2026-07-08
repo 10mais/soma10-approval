@@ -718,3 +718,10 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 ### 29.4 Campos/rotas desta janela
 - **Campos redis:** `MapaNo.colapsado`; `MapaMental.clienteId/clienteNome`; `Documento.clienteId/clienteNome/fontSize`; `Tarefa.documentoId/mapaId`. **Rotas:** `api/mapas`, `api/documentos`, `api/tarefas` atualizadas.
 - **Decisão:** cor das ligações = `#ffc00f` (dono escreveu `#ffc007`; corrigido p/ o amarelo oficial da marca).
+
+## 30. Robustez (cont.) — observabilidade em todos os crons + testes de automação (2026-07-08)
+
+> Continuação da fundação de robustez (§28). Push direto na main.
+
+- **Observabilidade em TODOS os crons:** `capturarErro` agora cobre os 7 crons — antes só `publicar`/`backup`/`automacoes` (§28.1); adicionados `alertas`, `tarefas`, `crm-followup`, `resumo-semanal` (corpo extraído p/ função interna + try de topo; resposta HTTP inalterada). Qualquer job agendado que falhar sozinho agora alerta os admins e aparece em Config → Saúde do sistema.
+- **Rede de testes ampliada (23 → 33):** lógica pura de **condições de automação** extraída para **`lib/automacoesCondicoes.ts`** (`condBate`/`avaliarCondicoes`/`escopoBate`; `import type` do redis = não instancia o cliente, testável). `automacoesEngine.ts` passa a importar de lá. `tests/automacoesCondicoes.test.ts` cobre operadores (preenchido/vazio/igual/diferente/contem/maior/menor), lógica todas/qualquer e escopo (selecionados/todos/excluídos). Guarda contra automação disparar errado (spam) ou não disparar.

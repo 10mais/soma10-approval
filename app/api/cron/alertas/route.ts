@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redis, Post, Cliente } from '@/lib/redis'
 import { notificar, notificarEquipe, notificarAdmins } from '@/lib/notificacoes'
 import { cronAutorizado } from '@/lib/cronAuth'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   if (!cronAutorizado(req)) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  try {
+    return await rodarAlertas()
+  } catch (e) {
+    await capturarErro('cron/alertas', e)
+    return NextResponse.json({ error: 'falha nos alertas' }, { status: 500 })
+  }
+}
 
+async function rodarAlertas(): Promise<NextResponse> {
   const agora = Date.now()
   const UM_DIA = 24 * 60 * 60 * 1000
   const { getOperacional } = await import('@/lib/operacional')

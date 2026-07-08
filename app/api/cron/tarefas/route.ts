@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redis, Tarefa } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
 import { cronAutorizado } from '@/lib/cronAuth'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   if (!cronAutorizado(req)) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
+  try {
+    return await rodarPrazos()
+  } catch (e) {
+    await capturarErro('cron/tarefas', e)
+    return NextResponse.json({ error: 'falha nos prazos de tarefa' }, { status: 500 })
+  }
+}
 
+async function rodarPrazos(): Promise<NextResponse> {
   const ids = await redis.smembers('tarefas')
   const tarefas = (await Promise.all(ids.map(id => redis.get<Tarefa>(`tarefa:${id}`)))).filter(Boolean) as Tarefa[]
   const agora = Date.now()
