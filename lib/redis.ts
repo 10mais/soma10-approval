@@ -32,6 +32,8 @@ export type Usuario = {
   salarioVariavel?: number // remuneração variável mensal em R$ (= valorPorProjeto x qtdProjetos)
   valorPorProjeto?: number // valor pago por projeto/cliente
   qtdProjetos?: number // quantidade de projetos/clientes atendidos
+  twoFactorSecret?: string // segredo TOTP (verificação em 2 fatores) — opt-in por usuário
+  twoFactorEnabled?: boolean // 2FA confirmado e ativo (exige código no login)
   criadoEm: string
 }
 

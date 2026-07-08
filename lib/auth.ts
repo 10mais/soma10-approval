@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { redis, Usuario } from './redis'
+import { verificarCodigo } from './twoFactor'
 import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
@@ -10,6 +11,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Senha', type: 'password' },
+        codigo: { label: 'Código 2FA', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -19,6 +21,12 @@ export const authOptions: NextAuthOptions = {
 
         const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
         if (!senhaCorreta) return null
+
+        // Verificação em 2 fatores — SÓ para quem ativou (opt-in). Sem 2FA ativo,
+        // o login segue exatamente como antes.
+        if (usuario.twoFactorEnabled && usuario.twoFactorSecret) {
+          if (!(await verificarCodigo(credentials.codigo || '', usuario.twoFactorSecret))) return null
+        }
 
         return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId, permissoes: usuario.permissoes, permissoesGranular: usuario.permissoesGranular } as any
       },

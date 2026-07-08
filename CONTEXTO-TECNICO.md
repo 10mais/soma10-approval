@@ -764,3 +764,21 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 32.2 Desfazer (Ctrl+Z) no Mapa Mental (2026-07-08)
 - Pilha de histórico (`historico` ref, até 60 estados) com `snapshot()` ANTES de cada ação estrutural (criar nó via addNo, criar irmão, excluir nó/ramo, conectar) e `desfazer()` que restaura o último estado. **Ctrl+Z / Cmd+Z** (fora de campos de texto — lá vale o desfazer nativo). Após desfazer, o auto-layout re-arruma o estado restaurado.
+
+## 33. Segurança de acesso — 2FA (TOTP) opt-in (2026-07-08)
+
+> Verificação em 2 fatores no login. **Opt-in: DESLIGADO por padrão** — logins de quem não ativou seguem exatamente iguais (zero risco). Push direto na main.
+
+### 33.1 Como funciona
+- **TOTP** (apps: Google Authenticator/Authy/1Password) via **`otplib` v13** (API funcional async) + **`qrcode`** (QR no setup). `lib/twoFactor.ts`: `gerarSegredo`/`otpauthUrl`/`verificarCodigo` (epochTolerance 30s). Campos `Usuario.twoFactorSecret`/`twoFactorEnabled`.
+- **Login em 2 passos** (`app/login`): 1) e-mail+senha → **`/api/2fa/precheck`** (verifica senha, rate-limited, diz se a conta exige 2FA); 2) se exige, revela o campo de código de 6 dígitos → `signIn` com `codigo`. `lib/auth.ts` `authorize` só exige código quando `twoFactorEnabled` (senão, inalterado).
+- **Gestão** em Minha Conta (`MinhaConta.tsx`): "Ativar" → `/api/2fa` acao `setup` (segredo pendente + QR) → digitar código → acao `ativar`. "Desativar" pede um código atual. Cada usuário protege a própria conta.
+- **Recuperação de lockout:** admin reseta o 2FA de um colaborador via `/api/usuarios` PUT `{ resetar2FA }` (auditado). *(UI do botão de reset = follow-up rápido.)*
+
+### 33.2 Segurança / auditoria / testes
+- Segredo TOTP **nunca vaza**: `/api/usuarios` GET e o retorno do PUT stripam `twoFactorSecret`; `meu-perfil` GET só devolve campos públicos; `/api/2fa` GET só retorna `{ativo}`.
+- **Auditoria:** `2fa_ativado`/`2fa_desativado`/`2fa_resetado` (aparecem na tela Saúde do sistema).
+- **Testes (35):** `tests/twoFactor.test.ts` — gera segredo/URL e valida que um código gerado passa e entradas inválidas/sem-segredo falham.
+
+### 33.3 Arquivos
+- **Libs:** `twoFactor.ts`; deps `otplib`+`qrcode`(+types). **Rotas:** `/api/2fa`, `/api/2fa/precheck`; `usuarios` PUT (resetar2FA). **Componentes:** `login/page.tsx` (2 passos), `MinhaConta.tsx` (card 2FA), `SaudeSistema.tsx` (labels). **Campos redis:** `Usuario.twoFactorSecret/twoFactorEnabled`.

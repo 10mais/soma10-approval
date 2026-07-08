@@ -14,7 +14,8 @@ export async function GET() {
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const usuarios = await getUsuariosRaw()
-  return NextResponse.json(usuarios.map(u => ({ ...u, senha: undefined })))
+  // Nunca expõe senha (hash) nem o segredo 2FA.
+  return NextResponse.json(usuarios.map(u => ({ ...u, senha: undefined, twoFactorSecret: undefined })))
 }
 
 export async function POST(req: NextRequest) {
@@ -40,10 +41,16 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { email, nome, role, novaSenha, cargo, funcaoVendas, permissoes, permissoesGranular, foto, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos } = await req.json()
+  const { email, nome, role, novaSenha, cargo, funcaoVendas, permissoes, permissoesGranular, foto, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos, resetar2FA } = await req.json()
   const usuario = await redis.get<Usuario>(`usuario:${email}`)
   if (!usuario) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
+  // Recuperação de acesso: admin reseta o 2FA de um colaborador que perdeu o autenticador.
+  if (resetar2FA) {
+    delete (usuario as any).twoFactorSecret
+    delete (usuario as any).twoFactorEnabled
+    await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: '2fa_resetado', alvo: email })
+  }
   if (nome) usuario.nome = nome
   if (role) usuario.role = role
   if (cargo !== undefined) usuario.cargo = cargo
@@ -64,7 +71,7 @@ export async function PUT(req: NextRequest) {
 
   await redis.set(`usuario:${email}`, usuario)
   revalidateTag('usuarios')
-  return NextResponse.json({ ok: true, usuario: { ...usuario, senha: undefined } })
+  return NextResponse.json({ ok: true, usuario: { ...usuario, senha: undefined, twoFactorSecret: undefined } })
 }
 
 export async function DELETE(req: NextRequest) {

@@ -23,6 +23,9 @@ const ACAO_LABEL: Record<string, string> = {
   permissoes_papel_alteradas: 'Permissões por papel alteradas',
   permissoes_granular_alteradas: 'Permissões detalhadas alteradas',
   backup_restaurado: 'Backup restaurado',
+  '2fa_ativado': 'Verificação em 2 fatores ativada',
+  '2fa_desativado': 'Verificação em 2 fatores desativada',
+  '2fa_resetado': 'Verificação em 2 fatores resetada (admin)',
 }
 
 function tempoRelativo(iso: string): string {

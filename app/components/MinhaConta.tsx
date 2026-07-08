@@ -31,9 +31,41 @@ export default function MinhaConta() {
   const [senhaErro, setSenhaErro] = useState('')
   const [salvandoSenha, setSalvandoSenha] = useState(false)
 
+  // Verificação em 2 fatores (2FA / TOTP)
+  const [tfaAtivo, setTfaAtivo] = useState(false)
+  const [tfaQr, setTfaQr] = useState('')
+  const [tfaSegredo, setTfaSegredo] = useState('')
+  const [tfaCodigo, setTfaCodigo] = useState('')
+  const [tfaMsg, setTfaMsg] = useState('')
+  const [tfaErro, setTfaErro] = useState('')
+  const [tfaBusy, setTfaBusy] = useState(false)
+
   useEffect(() => {
     fetch('/api/meu-perfil').then(r => r.json()).then(d => setPerfil(d)).catch(() => {})
+    fetch('/api/2fa').then(r => r.json()).then(d => { if (d && !d.error) setTfaAtivo(!!d.ativo) }).catch(() => {})
   }, [])
+
+  async function iniciar2FA() {
+    setTfaBusy(true); setTfaErro(''); setTfaMsg('')
+    const r = await fetch('/api/2fa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'setup' }) }).then(x => x.json()).catch(() => null)
+    setTfaBusy(false)
+    if (r?.ok) { setTfaQr(r.qr); setTfaSegredo(r.segredo); setTfaCodigo('') } else setTfaErro('Não foi possível iniciar a configuração.')
+  }
+  async function ativar2FA() {
+    setTfaBusy(true); setTfaErro(''); setTfaMsg('')
+    const r = await fetch('/api/2fa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'ativar', codigo: tfaCodigo }) }).then(x => x.json()).catch(() => null)
+    setTfaBusy(false)
+    if (r?.ok) { setTfaAtivo(true); setTfaQr(''); setTfaSegredo(''); setTfaCodigo(''); setTfaMsg('Verificação em 2 fatores ativada!'); setTimeout(() => setTfaMsg(''), 5000) }
+    else setTfaErro(r?.error || 'Código inválido.')
+  }
+  async function desativar2FA() {
+    const cod = window.prompt('Para desativar, digite um código atual do seu app autenticador:')
+    if (!cod) return
+    setTfaBusy(true); setTfaErro(''); setTfaMsg('')
+    const r = await fetch('/api/2fa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'desativar', codigo: cod }) }).then(x => x.json()).catch(() => null)
+    setTfaBusy(false)
+    if (r?.ok) { setTfaAtivo(false); setTfaMsg('2FA desativado.'); setTimeout(() => setTfaMsg(''), 5000) } else setTfaErro(r?.error || 'Não foi possível desativar.')
+  }
 
   async function salvarPerfil() {
     setSalvando(true); setMsg(''); setErro('')
@@ -186,6 +218,43 @@ export default function MinhaConta() {
             {senhaMsg && <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a' }}>{senhaMsg}</span>}
             {senhaErro && <span style={{ fontSize: 12, fontWeight: 600, color: '#dc2626' }}>{senhaErro}</span>}
           </div>
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: '#f0f0f0', marginBottom: 32 }} />
+
+      {/* VERIFICAÇÃO EM 2 FATORES */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
+        <div style={{ flex: '0 0 220px' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Verificação em 2 fatores</h3>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Camada extra de segurança: além da senha, pede um código do seu app autenticador ao entrar.</p>
+        </div>
+        <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          {tfaAtivo ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eafaf0', color: '#1a7d4b', padding: '6px 12px', borderRadius: 999, fontWeight: 800, fontSize: 12.5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#27ae60' }} /> Ativado
+              </span>
+              <button onClick={desativar2FA} disabled={tfaBusy} style={{ padding: '9px 16px', background: '#fff', color: '#b91c1c', border: '1.5px solid #fecaca', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Desativar</button>
+            </div>
+          ) : tfaQr ? (
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <img src={tfaQr} alt="QR Code 2FA" className="soma10-no-invert" style={{ width: 160, height: 160, borderRadius: 10, border: '1px solid #eee' }} />
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#555', lineHeight: 1.5 }}>1. Escaneie o QR no seu app (Google Authenticator, Authy, 1Password…) ou digite a chave:</p>
+                <code style={{ display: 'inline-block', fontSize: 12, background: '#f4f4f5', padding: '6px 10px', borderRadius: 8, color: '#333', wordBreak: 'break-all', marginBottom: 12 }}>{tfaSegredo}</code>
+                <p style={{ margin: '0 0 6px', fontSize: 12.5, color: '#555' }}>2. Digite o código de 6 dígitos que aparece no app:</p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input value={tfaCodigo} onChange={e => setTfaCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" placeholder="000000" style={{ width: 120, padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 16, letterSpacing: 4, textAlign: 'center', fontFamily: 'inherit' }} />
+                  <button onClick={ativar2FA} disabled={tfaBusy || tfaCodigo.length < 6} style={{ padding: '9px 18px', background: tfaCodigo.length >= 6 ? '#111' : '#f0f0f0', color: tfaCodigo.length >= 6 ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: tfaCodigo.length >= 6 ? 'pointer' : 'not-allowed' }}>{tfaBusy ? 'Ativando…' : 'Confirmar e ativar'}</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button onClick={iniciar2FA} disabled={tfaBusy} style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tfaBusy ? 'Preparando…' : 'Ativar verificação em 2 fatores'}</button>
+          )}
+          {tfaMsg && <p style={{ margin: '12px 0 0', fontSize: 12.5, fontWeight: 600, color: '#16a34a' }}>{tfaMsg}</p>}
+          {tfaErro && <p style={{ margin: '12px 0 0', fontSize: 12.5, fontWeight: 600, color: '#dc2626' }}>{tfaErro}</p>}
         </div>
       </div>
 

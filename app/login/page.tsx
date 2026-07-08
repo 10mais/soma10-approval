@@ -6,24 +6,35 @@ import { useRouter } from 'next/navigation'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [mostrar2FA, setMostrar2FA] = useState(false)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setErro('')
-
-    const res = await signIn('credentials', { email, password: senha, redirect: false })
+  async function entrar(cod: string) {
+    const res = await signIn('credentials', { email, password: senha, codigo: cod, redirect: false })
     if (res?.ok) {
       const session = await getSession()
       const role = (session?.user as any)?.role
       router.push(role === 'cliente' ? '/portal' : '/dashboard')
     } else {
-      setErro('Email ou senha incorretos.')
+      setErro(mostrar2FA ? 'Código inválido. Tente de novo.' : 'Email ou senha incorretos.')
       setLoading(false)
     }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setErro('')
+    // 2º passo: já mostrando o campo de código → entra com o código.
+    if (mostrar2FA) { await entrar(codigo); return }
+    // 1º passo: confere e-mail+senha e descobre se a conta exige 2FA.
+    const pre = await fetch('/api/2fa/precheck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) }).then(r => r.json()).catch(() => null)
+    if (!pre?.ok) { setErro('Email ou senha incorretos.'); setLoading(false); return }
+    if (pre.needs2FA) { setMostrar2FA(true); setLoading(false); return } // revela o campo de código
+    await entrar('') // conta sem 2FA — login normal, inalterado
   }
 
   return (
@@ -63,6 +74,24 @@ export default function LoginPage() {
             />
           </div>
 
+          {mostrar2FA && (
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Código de verificação</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={codigo}
+                onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                autoFocus
+                required
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 20, letterSpacing: 6, textAlign: 'center', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+              />
+              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>Abra seu app autenticador e digite o código de 6 dígitos.</p>
+            </div>
+          )}
+
           {erro && (
             <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#ef4444' }}>
               {erro}
@@ -74,7 +103,7 @@ export default function LoginPage() {
             disabled={loading}
             style={{ width: '100%', padding: '14px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? (mostrar2FA ? 'Verificando...' : 'Entrando...') : (mostrar2FA ? 'Verificar' : 'Entrar')}
           </button>
         </form>
 
