@@ -224,6 +224,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 // Detalhe de um marco em modo somente-leitura (portal do cliente): sem edicao,
 // so a informacao da etapa (titulo, categoria, status, periodo, responsavel, descricao).
 function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void }) {
+  // Entregas (posts/campanhas) vinculadas a esta etapa. O endpoint força o
+  // cliente a ver só o próprio; tarefas internas ficam ocultas (ocultarTarefas).
+  const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
+  useEffect(() => {
+    if (!marco.clienteId) return
+    fetch(`/api/playbook/entregas?clienteId=${marco.clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setEntregas(d) }).catch(() => {})
+  }, [marco.clienteId])
   const cat = CATEGORIAS.find(c => c.key === marco.categoria)
   const statusCor = STATUS_COR[marco.status] === '#e0e0e0' ? '#9ca3af' : (STATUS_COR[marco.status] || '#9ca3af')
   const lbl: React.CSSProperties = { margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }
@@ -256,6 +263,10 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
               <p style={{ ...val, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{marco.descricao}</p>
             </div>
           )}
+          <div>
+            <p style={lbl}>Entregas desta etapa</p>
+            <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="#16a34a" />
+          </div>
         </div>
         <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
       </div>

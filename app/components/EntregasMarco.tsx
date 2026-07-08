@@ -15,8 +15,10 @@ function chip(label: string, cor: string) {
   return <span style={{ fontSize: 10, fontWeight: 700, color: cor, background: `${cor}1a`, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{label}</span>
 }
 
-export default function EntregasMarco({ marcoId, entregas, cor = '#16a34a' }: { marcoId: string; entregas: Entregas; cor?: string }) {
-  const tarefas = entregas.tarefas.filter(t => t.marcoId === marcoId)
+export default function EntregasMarco({ marcoId, entregas, cor = '#16a34a', ocultarTarefas = false }: { marcoId: string; entregas: Entregas; cor?: string; ocultarTarefas?: boolean }) {
+  // ocultarTarefas: view do cliente — esconde as tarefas internas (trabalho da
+  // equipe, com responsáveis) e conta o progresso só pelos posts/campanhas.
+  const tarefas = ocultarTarefas ? [] : entregas.tarefas.filter(t => t.marcoId === marcoId)
   const posts = entregas.posts.filter(p => p.marcoId === marcoId)
   const briefings = entregas.briefings.filter(b => b.marcoId === marcoId)
 

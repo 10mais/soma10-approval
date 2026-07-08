@@ -158,8 +158,8 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 >
 > **PRÓXIMO — CÓDIGO (opcional, pequeno):**
 > - ~~Botão **revogar link** para **status** e **NPS**~~ — **FEITO (§28.2).**
+> - ~~Visão de **entregas/posts por marco** no `MarcoDetalhe` do cliente~~ — **FEITO (§28.6).**
 > - **"Reprovado" de verdade** no portal de aprovações (hoje "Rejeitar" entra como ajuste com texto "REJEITADO:", §26.3).
-> - Visão de **entregas/posts por marco** no `MarcoDetalhe` do cliente (§24.4).
 > - **Robustez (§28):** ligar `/api/health` num monitor de uptime; testar o restore do backup.
 >
 > **Nome do produto:** dono decidiu **MANTER "Soma10 Approval"**. Domínios livres se um dia revender white-label: `regencia.app`/`orquestre.app`/`batuta.studio`/`pauta.studio`.
@@ -685,6 +685,10 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Ação do dono:** plugar `/api/health` num monitor de uptime; setar Stripe (`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`) e ver a integração ficar verde na tela Saúde do sistema.
 - **Backlog de código (acabamento, não robustez):** **"reprovado de verdade"** no portal (§26.3) e **entregas/posts por marco** no `MarcoDetalhe` do cliente (§24.4).
 - **Testar o restore do backup** (backup que não se testa não é backup) — próximo passo de confiabilidade.
+
+### 28.6 Entregas por marco no portal do cliente (fecha §24.4)
+- `MarcoDetalhe` (view read-only do cliente em `Playbook.tsx`) agora busca `/api/playbook/entregas?clienteId=` e renderiza `<EntregasMarco ocultarTarefas />` numa seção **"Entregas desta etapa"**: posts (miniatura + status + progresso) e campanhas vinculadas ao marco. O endpoint já força `role:cliente` a ver só o próprio.
+- `EntregasMarco.tsx` ganhou prop **`ocultarTarefas`** — esconde as tarefas internas (trabalho da equipe/responsáveis) e conta o progresso só por posts. A view da equipe (`MarcoModal`) segue mostrando tudo.
 
 ### 28.5 Arquivos/rotas novos desta janela
 - **Libs:** `erros.ts`. **Config:** `vitest.config.ts`, `tests/{modulos,permissoes,permissoesGranular}.test.ts`.
