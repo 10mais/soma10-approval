@@ -746,3 +746,13 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 ### 31.4 Arquivos desta janela
 - **Libs:** `auditoria.ts`; `backup.ts` (+`restaurarBackup`). **Rotas:** `/api/backup/restore`, `/api/sistema` (+auditoria/+backups), + auditoria em clientes/usuarios/permissoes-papel/permissoes-granular/clientes-senha. **Componente:** `SaudeSistema.tsx` (auditoria + restore + monitoramento). **Chaves Redis:** `audit:{id}`, `auditoria:log`.
+
+## 32. Fix crítico do Mapa Mental — sem sobreposição de nós (2026-07-08)
+
+> Dono reportou nós cobrindo uns aos outros (print). Push direto na main.
+
+- **Causa:** auto-organizar vinha DESLIGADO por padrão (nós ficavam em posições aleatórias de `addNo`) e o layout usava espaçamento FIXO, sem considerar a altura real dos nós (textos de 2+ linhas encostavam).
+- **Fix (`MapasMentais.tsx`):**
+  1. **Auto-organizar LIGADO por padrão** (`autoArrumar` default true) — o mapa se arruma sozinho ao adicionar/editar/colapsar e ao ABRIR (tidy imediato de mapas antigos bagunçados).
+  2. **Layout mede a ALTURA REAL de cada nó** (`alturas` ref via `offsetHeight` no `ref` do nó) e é **centro-baseado**: cada folha ocupa uma faixa = altura + gap; o pai é centralizado no meio dos filhos. Garante **zero sobreposição**, mesmo com texto longo. Reflow também dispara no **blur** (fim da edição, quando a altura muda).
+  3. Espaçamento entre níveis: mapa 250px (horizontal), organograma 160px (vertical); respiro entre irmãos 22px (v) / 40px (h). Múltiplas raízes empilham sem colidir (cursor compartilhado).

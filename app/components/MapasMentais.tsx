@@ -134,11 +134,12 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [layout, setLayout] = useState<'mapa' | 'organograma' | 'lista'>('mapa')
-  const [autoArrumar, setAutoArrumar] = useState(false)
+  const [autoArrumar, setAutoArrumar] = useState(true) // LIGADO por padrão: o mapa se arruma sozinho e nunca sobrepõe nós
   const [reflowTick, setReflowTick] = useState(0)
   const [selId, setSelId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [conectarDe, setConectarDe] = useState<string | null>(null)
+  const alturas = useRef<Record<string, number>>({}) // altura REAL (medida) de cada nó — layout sem sobreposição
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<null | { tipo: 'no' | 'pan'; id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean; orig?: Record<string, { x: number; y: number }> }>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -285,38 +286,55 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   // Reposiciona os nós em árvore conforme o layout: organograma = vertical (pai em
   // cima, filhos abaixo); mapa mental = horizontal (pai à esquerda, filhos à direita);
   // lista = indentado. Ramos colapsados contam como folha (não ocupam espaço).
+  // Layout em árvore que MEDE a altura real de cada nó (alturas.current) para que
+  // as folhas nunca se sobreponham, mesmo com textos de várias linhas. Cada folha
+  // ocupa uma faixa = altura do nó + gap; o pai é centralizado no meio dos filhos.
   function computarPosicoes(tipo: 'mapa' | 'organograma' | 'lista', nsArg: No[], csArg: Conexao[]): Record<string, { x: number; y: number }> {
     const filhos: Record<string, string[]> = {}
     for (const c of csArg) (filhos[c.de] ||= []).push(c.para)
     const temPaiL = (nid: string) => csArg.some(c => c.para === nid)
     const raizes = nsArg.filter(n => !temPaiL(n.id)).map(n => n.id)
     const colaps = new Set(nsArg.filter(n => n.colapsado).map(n => n.id))
+    const H = (id: string) => Math.max(alturas.current[id] || ALT, ALT) // altura real medida
     const pos: Record<string, { x: number; y: number }> = {}
     const visto = new Set<string>()
+    const M = 100 // margem inicial
+
     if (tipo === 'lista') {
-      const INDENT = 46, ROW = 54; let row = 0
+      let y = 0
       const walk = (idn: string, depth: number) => {
         if (visto.has(idn)) return; visto.add(idn)
-        pos[idn] = { x: depth * INDENT + 90, y: row * ROW + 90 }; row++
+        pos[idn] = { x: depth * 46 + M, y: y + M }; y += H(idn) + 14
         if (!colaps.has(idn)) for (const c of (filhos[idn] || [])) walk(c, depth + 1)
       }
       raizes.forEach(r => walk(r, 0))
       return pos
     }
+
     const horizontal = tipo === 'mapa'
-    const DEPTH = horizontal ? 240 : 150 // distância entre níveis
-    const SPREAD = horizontal ? 64 : 200 // distância entre folhas irmãs
+    const NIVEL = horizontal ? 250 : 160 // distância entre níveis
+    const GAPV = 22 // respiro vertical entre irmãos (mapa)
+    const GAPH = 40 // respiro horizontal entre irmãos (organograma)
     let cursor = 0
     const walk = (idn: string, depth: number): number => {
       if (visto.has(idn)) return cursor; visto.add(idn)
       const ch = colaps.has(idn) ? [] : (filhos[idn] || []).filter(c => !visto.has(c))
-      let coord: number
-      if (!ch.length) { coord = cursor; cursor += SPREAD }
-      else { const xs = ch.map(c => walk(c, depth + 1)); coord = (xs[0] + xs[xs.length - 1]) / 2 }
-      pos[idn] = horizontal ? { x: depth * DEPTH + 90, y: coord + 90 } : { x: coord + 90, y: depth * DEPTH + 90 }
-      return coord
+      let centro: number
+      if (!ch.length) {
+        const tam = horizontal ? H(idn) : LARG
+        centro = cursor + tam / 2
+        cursor += tam + (horizontal ? GAPV : GAPH)
+      } else {
+        const cs = ch.map(c => walk(c, depth + 1))
+        centro = (cs[0] + cs[cs.length - 1]) / 2
+      }
+      // 'centro' é o centro no eixo de espalhamento; converte para canto sup-esq.
+      pos[idn] = horizontal
+        ? { x: depth * NIVEL + M, y: centro - H(idn) / 2 + M }
+        : { x: centro - LARG / 2 + M, y: depth * NIVEL + M }
+      return centro
     }
-    raizes.forEach((r, i) => { if (i) cursor += SPREAD; walk(r, 0) })
+    raizes.forEach((r, i) => { if (i) cursor += horizontal ? 46 : 60; walk(r, 0) })
     return pos
   }
 
@@ -415,7 +433,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
             const pai = temFilho(no.id)
             const colapBottom = layout === 'organograma'
             return (
-              <div key={no.id} onPointerDown={e => {
+              <div key={no.id} ref={el => { if (el) alturas.current[no.id] = el.offsetHeight }} onPointerDown={e => {
                   e.stopPropagation()
                   if (editando) return
                   // Move o nó + toda a sua sub-árvore (nós subsequentes) juntos
@@ -429,7 +447,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                 style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
-                  ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => setEditId(null)} placeholder="Ideia…"
+                  ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => { setEditId(null); setReflowTick(t => t + 1) }} placeholder="Ideia…"
                       onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditId(null); criarIrmao(no) }
                         else if (e.key === 'Tab') { e.preventDefault(); setEditId(null); criarFilho(no) }
