@@ -140,6 +140,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   const [editId, setEditId] = useState<string | null>(null)
   const [conectarDe, setConectarDe] = useState<string | null>(null)
   const alturas = useRef<Record<string, number>>({}) // altura REAL (medida) de cada nó — layout sem sobreposição
+  const historico = useRef<{ nos: No[]; conexoes: Conexao[] }[]>([]) // pilha de estados p/ desfazer (Ctrl+Z)
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<null | { tipo: 'no' | 'pan'; id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean; orig?: Record<string, { x: number; y: number }> }>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -168,6 +169,17 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   function criarConexao(de: string, para: string) {
     setConexoes(cs => cs.some(c => (c.de === de && c.para === para) || (c.de === para && c.para === de)) ? cs : [...cs, { id: uuid(), de, para }])
   }
+  // Desfazer (Ctrl+Z): tira uma "foto" do estado ANTES de cada ação estrutural.
+  function snapshot() {
+    historico.current.push({ nos, conexoes })
+    if (historico.current.length > 60) historico.current.shift()
+  }
+  function desfazer() {
+    const anterior = historico.current.pop()
+    if (!anterior) { toast('Nada para desfazer.', 'info'); return }
+    setNos(anterior.nos); setConexoes(anterior.conexoes)
+    setSelId(null); setEditId(null); setConectarDe(null)
+  }
 
   // Arraste de nó / pan do fundo (via window para não perder o ponteiro)
   useEffect(() => {
@@ -182,7 +194,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
       const d = dragRef.current
       if (d && !d.moved) {
         if (d.tipo === 'no') {
-          if (conectarDe && conectarDe !== d.id) { criarConexao(conectarDe, d.id!); setConectarDe(null) }
+          if (conectarDe && conectarDe !== d.id) { snapshot(); criarConexao(conectarDe, d.id!); setConectarDe(null) }
           else { setSelId(d.id!); setEditId(null) }
         } else { setSelId(null); setEditId(null); setConectarDe(null) }
       }
@@ -222,6 +234,21 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
     return () => window.removeEventListener('keydown', onKey)
   }, [selId, editId, nos, conexoes])
 
+  // Ctrl+Z / Cmd+Z = desfazer a última ação estrutural (criar/excluir nó, conectar).
+  // Fora de campos de texto (lá vale o desfazer nativo do navegador).
+  useEffect(() => {
+    function onUndo(e: KeyboardEvent) {
+      if (!((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z'))) return
+      if (editId) return
+      const tag = (document.activeElement?.tagName || '').toLowerCase()
+      if (tag === 'input' || tag === 'textarea') return
+      e.preventDefault(); desfazer()
+    }
+    window.addEventListener('keydown', onUndo)
+    return () => window.removeEventListener('keydown', onUndo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId])
+
   // Auto-organizar: reflui as posições quando muda a estrutura (adiciona/remove nó
   // ou ramifica) ou quando o usuário liga o modo. Não dispara ao arrastar (o
   // comprimento não muda) nem ao editar texto — só na estrutura.
@@ -246,6 +273,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   }
 
   function addNo(base?: No) {
+    snapshot()
     // Sem base: liga na RAIZ (mantém uma única ideia central — nunca cria nó solto)
     const pai = base || nos.find(n => !conexoes.some(c => c.para === n.id))
     const nid = uuid()
@@ -261,6 +289,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   function criarIrmao(no: No) {
     const conPai = conexoes.find(c => c.para === no.id)
     if (!conPai) { toast('O nó raiz é o ponto de partida — use Tab para criar ramos.', 'info'); return }
+    snapshot()
     const nid = uuid()
     setNos(ns => [...ns, { id: nid, texto: '', x: no.x, y: no.y + ALT + 24, cor: no.cor }])
     criarConexao(conPai.de, nid)
@@ -273,6 +302,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
     const remover = new Set<string>([nid]); const fila = [nid]
     while (fila.length) { const cur = fila.shift()!; for (const c of conexoes) if (c.de === cur && !remover.has(c.para)) { remover.add(c.para); fila.push(c.para) } }
     if (remover.size > 1 && !(await confirmar(`Excluir este nó e seus ${remover.size - 1} sub-nó(s)? Toda a ramificação será removida.`, { titulo: 'Excluir nó', okLabel: 'Excluir', perigo: true }))) return
+    snapshot()
     setNos(ns => ns.filter(n => !remover.has(n.id)))
     setConexoes(cs => cs.filter(c => !remover.has(c.de) && !remover.has(c.para)))
     if (selId && remover.has(selId)) setSelId(null)
@@ -535,7 +565,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> mantém tudo organizado (nunca sobrepõe).</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> mantém tudo organizado · <b style={{ color: '#999' }}>Ctrl+Z</b> desfaz.</p>
     </div>
   )
 }

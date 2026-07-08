@@ -761,3 +761,6 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Enquadramento ancorado no nó principal:** `ancorarNaRaiz(pos)` translada as posições para manter a 1ª raiz PARADA e ajustar o resto ao redor; `aplicarLayout` não reseta mais pan/zoom. A visão não "pula" ao reorganizar.
 - **Enter em dois tempos:** 1º Enter só CONFIRMA o texto (`finalizarNo`); o 2º Enter (nó já selecionado, atalho global) cria o irmão. Tab segue criando filho.
 - **Sem nós vazios:** `finalizarNo` remove o nó ao sair da edição sem texto (se for recém-criado — sem filhos e não-raiz).
+
+### 32.2 Desfazer (Ctrl+Z) no Mapa Mental (2026-07-08)
+- Pilha de histórico (`historico` ref, até 60 estados) com `snapshot()` ANTES de cada ação estrutural (criar nó via addNo, criar irmão, excluir nó/ramo, conectar) e `desfazer()` que restaura o último estado. **Ctrl+Z / Cmd+Z** (fora de campos de texto — lá vale o desfazer nativo). Após desfazer, o auto-layout re-arruma o estado restaurado.
