@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { redis, Usuario } from './redis'
 import { verificarCodigo } from './twoFactor'
+import { loginBloqueado, registrarFalhaLogin, limparFalhasLogin } from './loginThrottle'
 import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
@@ -16,18 +17,22 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Proteção contra força bruta: bloqueia temporariamente após muitas falhas.
+        if (await loginBloqueado(credentials.email)) return null
+
         const usuario = await redis.get<Usuario>(`usuario:${credentials.email}`)
-        if (!usuario) return null
+        if (!usuario) { await registrarFalhaLogin(credentials.email); return null }
 
         const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
-        if (!senhaCorreta) return null
+        if (!senhaCorreta) { await registrarFalhaLogin(credentials.email); return null }
 
         // Verificação em 2 fatores — SÓ para quem ativou (opt-in). Sem 2FA ativo,
         // o login segue exatamente como antes.
         if (usuario.twoFactorEnabled && usuario.twoFactorSecret) {
-          if (!(await verificarCodigo(credentials.codigo || '', usuario.twoFactorSecret))) return null
+          if (!(await verificarCodigo(credentials.codigo || '', usuario.twoFactorSecret))) { await registrarFalhaLogin(credentials.email); return null }
         }
 
+        await limparFalhasLogin(credentials.email) // login OK: zera o contador
         return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId, permissoes: usuario.permissoes, permissoesGranular: usuario.permissoesGranular } as any
       },
     }),

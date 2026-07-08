@@ -791,3 +791,11 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **`/api/clientes/lgpd` (admin):** GET `?id=` baixa o JSON (portabilidade); POST `{ id, confirmar }` apaga — **dupla trava: `confirmar` precisa ser o NOME EXATO do cliente**. Ambos auditados (`dados_exportados`/`dados_apagados`) e a exclusão captura erro.
 - **UI:** componente **`LgpdCliente.tsx`** na ficha do cliente (Config → Clientes): "Exportar dados" + "Apagar todos os dados" (revela input que exige o nome exato). Rótulos na tela Saúde do sistema.
 - **Nota:** a exclusão é destrutiva/irreversível; testar com cuidado quando os deploys estiverem estáveis. CRM (negócios) NÃO é apagado (entidade de vendas separada).
+
+## 35. Segurança — anti-força-bruta no login + piso de senha (2026-07-08)
+
+> Endurecimento do login. Push direto na main.
+
+- **`lib/loginThrottle.ts`**: conta falhas por e-mail (`login_fail:{email}`, janela 15min, limite 8) e bloqueia temporariamente ao passar do limite. Best-effort (falha aberta — infra fora não tranca ninguém). Zera a cada login correto.
+- **Ligado nos DOIS caminhos:** `lib/auth.ts` `authorize` (checa `loginBloqueado` → registra falha em senha/2FA errados → `limparFalhasLogin` no sucesso) e `/api/2fa/precheck` (mesmo contador; já era rate-limited por IP 20/min). Cobre força bruta por senha via formulário e via signIn direto.
+- **Piso de senha:** `/api/usuarios` POST passa a exigir **≥ 8 caracteres** (antes não validava). `meu-perfil` já exigia ≥6.

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
   const { nome, email, senha, role, cargo, funcaoVendas, permissoes, permissoesGranular, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos } = await req.json()
   const jaExiste = await redis.get(`usuario:${email}`)
   if (jaExiste) return NextResponse.json({ error: 'email já cadastrado' }, { status: 400 })
+  if (!senha || String(senha).length < 8) return NextResponse.json({ error: 'A senha deve ter pelo menos 8 caracteres.' }, { status: 400 })
 
   const hash = await bcrypt.hash(senha, 10)
   const usuario: Usuario = { id: uuid(), nome, email, senha: hash, role, cargo: cargo || '', custoHora: Number(custoHora) || 0, salarioFixo: Number(salarioFixo) || 0, valorPorProjeto: Number(valorPorProjeto) || 0, qtdProjetos: Number(qtdProjetos) || 0, salarioVariavel: (Number(valorPorProjeto) || 0) * (Number(qtdProjetos) || 0), ...(role === 'cliente' && clienteId ? { clienteId } : {}), ...(role === 'vendas' && funcaoVendas ? { funcaoVendas } : {}), ...((role === 'gerente' || role === 'usuario') && permissoes ? { permissoes } : {}), ...((role === 'gerente' || role === 'usuario') && permissoesGranular ? { permissoesGranular } : {}), criadoEm: new Date().toISOString() }
