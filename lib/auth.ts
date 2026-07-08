@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { redis, Usuario } from './redis'
 import { verificarCodigo } from './twoFactor'
 import { verificarCodigoEmail } from './twoFactorEmail'
+import { doisFatoresGlobalAtivo } from './seguranca'
 import { loginBloqueado, registrarFalhaLogin, limparFalhasLogin } from './loginThrottle'
 import bcrypt from 'bcryptjs'
 
@@ -27,9 +28,10 @@ export const authOptions: NextAuthOptions = {
         const senhaCorreta = await bcrypt.compare(credentials.password, usuario.senha)
         if (!senhaCorreta) { await registrarFalhaLogin(credentials.email); return null }
 
-        // Verificação em 2 fatores — SÓ para quem ativou (opt-in). Sem 2FA ativo,
-        // o login segue exatamente como antes. App (TOTP) ou e-mail (código enviado).
-        if (usuario.twoFactorEnabled) {
+        // Verificação em 2 fatores — SÓ se o interruptor GLOBAL estiver ligado E o
+        // usuário tiver ativado. Global desligado (padrão) = login normal, sem código
+        // (protege o App Review da Meta). App (TOTP) ou e-mail.
+        if (usuario.twoFactorEnabled && await doisFatoresGlobalAtivo()) {
           const met = usuario.twoFactorMethod || 'app'
           const codOk = met === 'email'
             ? await verificarCodigoEmail(credentials.email, credentials.codigo || '')

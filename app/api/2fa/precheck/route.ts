@@ -3,6 +3,7 @@ import { redis, Usuario } from '@/lib/redis'
 import { checarRate } from '@/lib/rateLimit'
 import { loginBloqueado, registrarFalhaLogin } from '@/lib/loginThrottle'
 import { dispararCodigoEmail } from '@/lib/twoFactorEmail'
+import { doisFatoresGlobalAtivo } from '@/lib/seguranca'
 import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
@@ -20,8 +21,10 @@ export async function POST(req: NextRequest) {
   const senhaOk = await bcrypt.compare(senha, u.senha)
   if (!senhaOk) { await registrarFalhaLogin(email); return NextResponse.json({ ok: false }) }
   // Não zera o contador aqui — só o login completo (authorize) zera.
-  const metodo = u.twoFactorEnabled ? (u.twoFactorMethod || 'app') : null
+  // Só exige 2FA se o interruptor GLOBAL estiver ligado (padrão desligado).
+  const exige = !!u.twoFactorEnabled && (await doisFatoresGlobalAtivo())
+  const metodo = exige ? (u.twoFactorMethod || 'app') : null
   // Método e-mail: já dispara o código para a caixa do usuário.
   if (metodo === 'email') await dispararCodigoEmail(email)
-  return NextResponse.json({ ok: true, needs2FA: !!u.twoFactorEnabled, metodo })
+  return NextResponse.json({ ok: true, needs2FA: exige, metodo })
 }

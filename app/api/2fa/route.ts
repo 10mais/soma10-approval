@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
 import { gerarSegredo, otpauthUrl, verificarCodigo } from '@/lib/twoFactor'
 import { dispararCodigoEmail, verificarCodigoEmail } from '@/lib/twoFactorEmail'
+import { doisFatoresGlobalAtivo } from '@/lib/seguranca'
 import { registrarAuditoria } from '@/lib/auditoria'
 import QRCode from 'qrcode'
 
@@ -16,7 +17,7 @@ export async function GET() {
   const email = session?.user?.email
   if (!email) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const u = await redis.get<Usuario>(`usuario:${email}`)
-  return NextResponse.json({ ativo: !!u?.twoFactorEnabled, metodo: u?.twoFactorMethod || null })
+  return NextResponse.json({ ativo: !!u?.twoFactorEnabled, metodo: u?.twoFactorMethod || null, globalAtivo: await doisFatoresGlobalAtivo() })
 }
 
 export async function POST(req: NextRequest) {

@@ -34,6 +34,7 @@ export default function MinhaConta() {
   // Verificação em 2 fatores (2FA) — método 'app' (TOTP) ou 'email'
   const [tfaAtivo, setTfaAtivo] = useState(false)
   const [tfaMetodoAtivo, setTfaMetodoAtivo] = useState<'app' | 'email' | null>(null)
+  const [tfaGlobalAtivo, setTfaGlobalAtivo] = useState(true) // exigência global do 2FA no login
   const [tfaConfig, setTfaConfig] = useState<'app' | 'email' | null>(null) // setup em andamento
   const [tfaQr, setTfaQr] = useState('')
   const [tfaSegredo, setTfaSegredo] = useState('')
@@ -44,7 +45,7 @@ export default function MinhaConta() {
 
   useEffect(() => {
     fetch('/api/meu-perfil').then(r => r.json()).then(d => setPerfil(d)).catch(() => {})
-    fetch('/api/2fa').then(r => r.json()).then(d => { if (d && !d.error) { setTfaAtivo(!!d.ativo); setTfaMetodoAtivo(d.metodo || null) } }).catch(() => {})
+    fetch('/api/2fa').then(r => r.json()).then(d => { if (d && !d.error) { setTfaAtivo(!!d.ativo); setTfaMetodoAtivo(d.metodo || null); setTfaGlobalAtivo(!!d.globalAtivo) } }).catch(() => {})
   }, [])
 
   async function iniciar2FA(metodo: 'app' | 'email') {
@@ -238,12 +239,15 @@ export default function MinhaConta() {
         </div>
         <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           {tfaAtivo ? (
+            <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eafaf0', color: '#1a7d4b', padding: '6px 12px', borderRadius: 999, fontWeight: 800, fontSize: 12.5 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#27ae60' }} /> Ativado{tfaMetodoAtivo === 'email' ? ' · por e-mail' : tfaMetodoAtivo === 'app' ? ' · por app' : ''}
               </span>
               <button onClick={desativar2FA} disabled={tfaBusy} style={{ padding: '9px 16px', background: '#fff', color: '#b91c1c', border: '1.5px solid #fecaca', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Desativar</button>
             </div>
+            {!tfaGlobalAtivo && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: '#a16207', lineHeight: 1.5 }}>Preparado, mas o login ainda <b>não exige</b> o código — a exigência é ligada globalmente pelo admin (Configurações → Saúde do sistema), previsto para <b>depois da liberação da Meta/Facebook</b>.</p>}
+            </>
           ) : tfaConfig ? (
             <div>
               {tfaConfig === 'app' && (

@@ -806,3 +806,10 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **`/api/2fa`**: `setup` aceita `metodo` (email envia o código; app gera QR); `ativar` verifica pelo método pendente; `reenviar-email`; `desativar` só com a sessão (sem código). `authorize` (auth.ts) e `precheck` verificam por método; **precheck com método email JÁ dispara o código** para a caixa.
 - **Login** (`app/login`): texto e "Reenviar" quando é e-mail. **Minha Conta**: escolhe "Ativar por e-mail (sem app)" ou "Por app autenticador".
 - **WhatsApp:** o mesmo padrão plugaria WhatsApp, mas depende do dono montar a conta **WhatsApp Business + credenciais Meta** (scaffold em §14.9 segue inativo). Até lá, e-mail é a via app-free.
+
+### 33.5 INTERRUPTOR GLOBAL do 2FA — desligado por padrão (App Review Meta) (2026-07-08)
+- **CRÍTICO:** o App Review da Meta usa um login de teste (e-mail+senha); se o login exigir código 2FA, o revisor não entra e a verificação FALHA. Por isso o 2FA fica **pronto mas NÃO exigido** até a Meta aprovar.
+- **`lib/seguranca.ts`** `doisFatoresGlobalAtivo()` (config `config:doisFatoresGlobal`, **default false**, falha fechada = não exige). `authorize` (auth.ts) e `/api/2fa/precheck` só exigem 2FA se **global ligado E** usuário ativou. Desligado = login normal sem código (destrava também quem já tinha ativado o app).
+- **Toggle admin:** `/api/seguranca` GET/PUT + botão em **Config → Saúde do sistema → "Segurança de acesso"** (com aviso vermelho: só ligar após a Meta aprovar). Auditado (`2fa_global_ligado/desligado`).
+- **Minha Conta:** quando global desligado, o card mostra "preparado, mas o login ainda não exige o código". `/api/2fa` GET devolve `globalAtivo`.
+- **Pós-aprovação Meta:** basta o admin ligar o toggle. Ver [[app-review-meta]].

@@ -30,6 +30,8 @@ const ACAO_LABEL: Record<string, string> = {
   dados_apagados: 'Dados do cliente apagados (LGPD)',
   cliente_suspenso: 'Cliente suspenso (inadimplência)',
   cliente_reativado: 'Cliente reativado',
+  '2fa_global_ligado': '2FA global LIGADO (login exige código)',
+  '2fa_global_desligado': '2FA global desligado',
 }
 
 function tempoRelativo(iso: string): string {
@@ -59,6 +61,19 @@ export default function SaudeSistema() {
   const [selPath, setSelPath] = useState('') // backup gerenciado escolhido (primário)
   const [conf, setConf] = useState('')
   const [restaurando, setRestaurando] = useState(false)
+  // Interruptor global do 2FA
+  const [g2fa, setG2fa] = useState<boolean | null>(null)
+  const [g2faBusy, setG2faBusy] = useState(false)
+
+  useEffect(() => { fetch('/api/seguranca').then(r => r.json()).then(d => { if (d && !d.error) setG2fa(!!d.doisFatores) }).catch(() => {}) }, [])
+  async function alternar2FAGlobal(v: boolean) {
+    if (v && !window.confirm('LIGAR a exigência de 2FA no login para TODOS?\n\nSó ligue DEPOIS de a Meta/Facebook aprovar o app — enquanto o App Review estiver em análise, o login de teste do revisor NÃO pode pedir código, senão a verificação falha.')) return
+    setG2faBusy(true)
+    const r = await fetch('/api/seguranca', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doisFatores: v }) }).then(x => x.json()).catch(() => null)
+    setG2faBusy(false)
+    if (r?.ok) { setG2fa(!!r.doisFatores); toast(v ? '2FA global LIGADO — o login passa a exigir código.' : '2FA global desligado — login sem código.', 'sucesso') }
+    else toast('Não foi possível alterar.', 'erro')
+  }
 
   const carregar = useCallback(() => {
     setCarregando(true)
@@ -156,6 +171,20 @@ export default function SaudeSistema() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <code style={{ fontSize: 12, background: '#f4f4f5', padding: '7px 10px', borderRadius: 8, color: '#333' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
           <button onClick={copiarHealth} style={{ padding: '7px 12px', background: '#f2f2f2', color: '#333', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
+        </div>
+      </div>
+
+      {/* Segurança de acesso — interruptor GLOBAL do 2FA */}
+      <div>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#333' }}>Segurança de acesso</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 10, border: `1px solid ${g2fa ? '#fde68a' : '#eee'}`, background: g2fa ? '#fffbeb' : '#fafafa' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#222' }}>Exigir verificação em 2 fatores no login (global)</div>
+            <div style={{ fontSize: 11.5, color: '#a15656', marginTop: 2, lineHeight: 1.5 }}>⚠️ Só LIGUE após a aprovação da Meta/Facebook. Enquanto o App Review estiver em análise, o login de teste do revisor não pode pedir código — senão a verificação falha. Com isto desligado, o 2FA fica pronto mas o login não exige código.</div>
+          </div>
+          <button onClick={() => alternar2FAGlobal(!g2fa)} disabled={g2fa === null || g2faBusy} style={{ padding: '8px 18px', borderRadius: 999, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: g2fa === null || g2faBusy ? 'default' : 'pointer', background: g2fa ? '#16a34a' : '#e5e7eb', color: g2fa ? '#fff' : '#555' }}>
+            {g2fa === null ? '…' : g2fa ? 'Ligado' : 'Desligado'}
+          </button>
         </div>
       </div>
 
