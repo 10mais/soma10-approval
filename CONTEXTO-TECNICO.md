@@ -799,3 +799,10 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **`lib/loginThrottle.ts`**: conta falhas por e-mail (`login_fail:{email}`, janela 15min, limite 8) e bloqueia temporariamente ao passar do limite. Best-effort (falha aberta — infra fora não tranca ninguém). Zera a cada login correto.
 - **Ligado nos DOIS caminhos:** `lib/auth.ts` `authorize` (checa `loginBloqueado` → registra falha em senha/2FA errados → `limparFalhasLogin` no sucesso) e `/api/2fa/precheck` (mesmo contador; já era rate-limited por IP 20/min). Cobre força bruta por senha via formulário e via signIn direto.
 - **Piso de senha:** `/api/usuarios` POST passa a exigir **≥ 8 caracteres** (antes não validava). `meu-perfil` já exigia ≥6.
+
+### 33.4 2FA por E-MAIL (alternativa app-free) (2026-07-08)
+- Agora o 2FA tem **dois métodos**: `app` (TOTP/QR, como antes) e **`email`** (código de 6 dígitos enviado por SMTP — sem app). `Usuario.twoFactorMethod`.
+- **`lib/twoFactorEmail.ts`**: gera/guarda o código no Redis (`2fa_email:{email}`, 5 min) + envia por nodemailer. `dispararCodigoEmail`/`verificarCodigoEmail`.
+- **`/api/2fa`**: `setup` aceita `metodo` (email envia o código; app gera QR); `ativar` verifica pelo método pendente; `reenviar-email`; `desativar` só com a sessão (sem código). `authorize` (auth.ts) e `precheck` verificam por método; **precheck com método email JÁ dispara o código** para a caixa.
+- **Login** (`app/login`): texto e "Reenviar" quando é e-mail. **Minha Conta**: escolhe "Ativar por e-mail (sem app)" ou "Por app autenticador".
+- **WhatsApp:** o mesmo padrão plugaria WhatsApp, mas depende do dono montar a conta **WhatsApp Business + credenciais Meta** (scaffold em §14.9 segue inativo). Até lá, e-mail é a via app-free.

@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { redis, Usuario } from './redis'
 import { verificarCodigo } from './twoFactor'
+import { verificarCodigoEmail } from './twoFactorEmail'
 import { loginBloqueado, registrarFalhaLogin, limparFalhasLogin } from './loginThrottle'
 import bcrypt from 'bcryptjs'
 
@@ -27,9 +28,13 @@ export const authOptions: NextAuthOptions = {
         if (!senhaCorreta) { await registrarFalhaLogin(credentials.email); return null }
 
         // Verificação em 2 fatores — SÓ para quem ativou (opt-in). Sem 2FA ativo,
-        // o login segue exatamente como antes.
-        if (usuario.twoFactorEnabled && usuario.twoFactorSecret) {
-          if (!(await verificarCodigo(credentials.codigo || '', usuario.twoFactorSecret))) { await registrarFalhaLogin(credentials.email); return null }
+        // o login segue exatamente como antes. App (TOTP) ou e-mail (código enviado).
+        if (usuario.twoFactorEnabled) {
+          const met = usuario.twoFactorMethod || 'app'
+          const codOk = met === 'email'
+            ? await verificarCodigoEmail(credentials.email, credentials.codigo || '')
+            : await verificarCodigo(credentials.codigo || '', usuario.twoFactorSecret)
+          if (!codOk) { await registrarFalhaLogin(credentials.email); return null }
         }
 
         await limparFalhasLogin(credentials.email) // login OK: zera o contador

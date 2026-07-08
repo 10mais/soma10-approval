@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [senha, setSenha] = useState('')
   const [codigo, setCodigo] = useState('')
   const [mostrar2FA, setMostrar2FA] = useState(false)
+  const [metodo2FA, setMetodo2FA] = useState<'app' | 'email' | null>(null)
+  const [reenviado, setReenviado] = useState(false)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -33,8 +35,14 @@ export default function LoginPage() {
     // 1º passo: confere e-mail+senha e descobre se a conta exige 2FA.
     const pre = await fetch('/api/2fa/precheck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) }).then(r => r.json()).catch(() => null)
     if (!pre?.ok) { setErro('Email ou senha incorretos.'); setLoading(false); return }
-    if (pre.needs2FA) { setMostrar2FA(true); setLoading(false); return } // revela o campo de código
+    if (pre.needs2FA) { setMetodo2FA(pre.metodo || 'app'); setMostrar2FA(true); setLoading(false); return } // revela o campo de código
     await entrar('') // conta sem 2FA — login normal, inalterado
+  }
+
+  async function reenviarCodigo() {
+    setReenviado(false); setErro('')
+    await fetch('/api/2fa/precheck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) }).catch(() => {})
+    setReenviado(true)
   }
 
   return (
@@ -88,7 +96,14 @@ export default function LoginPage() {
                 required
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 20, letterSpacing: 6, textAlign: 'center', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
               />
-              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>Abra seu app autenticador e digite o código de 6 dígitos.</p>
+              {metodo2FA === 'email' ? (
+                <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>
+                  Enviamos um código de 6 dígitos para <b>{email}</b>.{' '}
+                  {reenviado ? <span style={{ color: '#16a34a', fontWeight: 700 }}>Reenviado.</span> : <button type="button" onClick={reenviarCodigo} style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', padding: 0, fontSize: 11.5, fontWeight: 700 }}>Reenviar</button>}
+                </p>
+              ) : (
+                <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#999' }}>Abra seu app autenticador e digite o código de 6 dígitos.</p>
+              )}
             </div>
           )}
 

@@ -34,6 +34,7 @@ export type Usuario = {
   qtdProjetos?: number // quantidade de projetos/clientes atendidos
   twoFactorSecret?: string // segredo TOTP (verificação em 2 fatores) — opt-in por usuário
   twoFactorEnabled?: boolean // 2FA confirmado e ativo (exige código no login)
+  twoFactorMethod?: 'app' | 'email' // como recebe o código: app autenticador ou e-mail
   criadoEm: string
 }
 
