@@ -756,3 +756,8 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
   1. **Auto-organizar LIGADO por padrão** (`autoArrumar` default true) — o mapa se arruma sozinho ao adicionar/editar/colapsar e ao ABRIR (tidy imediato de mapas antigos bagunçados).
   2. **Layout mede a ALTURA REAL de cada nó** (`alturas` ref via `offsetHeight` no `ref` do nó) e é **centro-baseado**: cada folha ocupa uma faixa = altura + gap; o pai é centralizado no meio dos filhos. Garante **zero sobreposição**, mesmo com texto longo. Reflow também dispara no **blur** (fim da edição, quando a altura muda).
   3. Espaçamento entre níveis: mapa 250px (horizontal), organograma 160px (vertical); respiro entre irmãos 22px (v) / 40px (h). Múltiplas raízes empilham sem colidir (cursor compartilhado).
+
+### 32.1 Refinamentos do Mapa Mental (2026-07-08)
+- **Enquadramento ancorado no nó principal:** `ancorarNaRaiz(pos)` translada as posições para manter a 1ª raiz PARADA e ajustar o resto ao redor; `aplicarLayout` não reseta mais pan/zoom. A visão não "pula" ao reorganizar.
+- **Enter em dois tempos:** 1º Enter só CONFIRMA o texto (`finalizarNo`); o 2º Enter (nó já selecionado, atalho global) cria o irmão. Tab segue criando filho.
+- **Sem nós vazios:** `finalizarNo` remove o nó ao sair da edição sem texto (se for recém-criado — sem filhos e não-raiz).

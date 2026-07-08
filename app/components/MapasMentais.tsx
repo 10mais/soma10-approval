@@ -228,9 +228,10 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   useEffect(() => {
     if (!autoArrumar || !montado.current) return
     const pos = computarPosicoes(layout, nos, conexoes)
+    ancorarNaRaiz(pos) // enquadramento fixo no nó principal
     setNos(ns => {
       let mudou = false
-      const novo = ns.map(n => { const p = pos[n.id]; if (p && (p.x !== n.x || p.y !== n.y)) { mudou = true; return { ...n, x: p.x, y: p.y } } return n })
+      const novo = ns.map(n => { const p = pos[n.id]; if (p && (Math.abs(p.x - n.x) > 0.5 || Math.abs(p.y - n.y) > 0.5)) { mudou = true; return { ...n, x: p.x, y: p.y } } return n })
       return mudou ? novo : ns
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,6 +283,20 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   function alternarColapso(no: No) { setNo(no.id, { colapsado: !no.colapsado }); setReflowTick(t => t + 1) }
   const centro = (n: No) => ({ x: n.x + LARG / 2, y: n.y + ALT / 2 })
   const temPai = (nid: string) => conexoes.some(c => c.para === nid)
+  // Não deixa nó VAZIO: ao terminar a edição (Enter/blur) sem texto, remove o nó
+  // (se for recém-criado — sem filhos e não-raiz). Depois reajusta o mapa.
+  function finalizarNo(no: No) {
+    setEditId(null)
+    const vazio = !(no.texto || '').trim()
+    const temFilhoNo = conexoes.some(c => c.de === no.id)
+    if (vazio && !temFilhoNo && temPai(no.id)) {
+      setNos(ns => ns.filter(n => n.id !== no.id))
+      setConexoes(cs => cs.filter(c => c.de !== no.id && c.para !== no.id))
+      if (selId === no.id) setSelId(null)
+      delete alturas.current[no.id]
+    }
+    setReflowTick(t => t + 1)
+  }
 
   // Reposiciona os nós em árvore conforme o layout: organograma = vertical (pai em
   // cima, filhos abaixo); mapa mental = horizontal (pai à esquerda, filhos à direita);
@@ -338,11 +353,24 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
     return pos
   }
 
+  // Mantém o NÓ PRINCIPAL (1ª raiz) parado e ajusta o resto ao redor dele —
+  // assim o enquadramento não "pula" quando o mapa se reorganiza.
+  function ancorarNaRaiz(pos: Record<string, { x: number; y: number }>) {
+    const raizId = nos.find(n => !conexoes.some(c => c.para === n.id))?.id
+    if (!raizId || !pos[raizId]) return
+    const atual = nos.find(n => n.id === raizId)
+    if (!atual) return
+    const dx = atual.x - pos[raizId].x, dy = atual.y - pos[raizId].y
+    if (!dx && !dy) return
+    for (const k in pos) { pos[k].x += dx; pos[k].y += dy }
+  }
+
   function aplicarLayout(tipo: 'mapa' | 'organograma' | 'lista') {
     setLayout(tipo)
     const pos = computarPosicoes(tipo, nos, conexoes)
+    ancorarNaRaiz(pos) // enquadramento fixo no nó principal
     setNos(ns => ns.map(n => pos[n.id] ? { ...n, x: pos[n.id].x, y: pos[n.id].y } : n))
-    setPan({ x: 0, y: 0 }); setZoom(1); setSelId(null); setEditId(null); setConectarDe(null)
+    setSelId(null); setEditId(null); setConectarDe(null)
   }
 
   if (carregando) return <p style={{ color: '#aaa' }}>Carregando mapa...</p>
@@ -447,10 +475,11 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                 style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
-                  ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => { setEditId(null); setReflowTick(t => t + 1) }} placeholder="Ideia…"
+                  ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder="Ideia…"
                       onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditId(null); criarIrmao(no) }
-                        else if (e.key === 'Tab') { e.preventDefault(); setEditId(null); criarFilho(no) }
+                        // 1º Enter só CONFIRMA o texto; o 2º Enter (nó já selecionado) cria o irmão via atalho global.
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizarNo(no) }
+                        else if (e.key === 'Tab') { e.preventDefault(); criarFilho(no) } // Tab = novo filho (regra inalterada)
                       }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? '#fff' : '#222', background: 'transparent', minHeight: 30 }} rows={2} />
                   : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? '#fff' : (no.texto ? '#222' : '#bbb'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
@@ -506,7 +535,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> cria irmão, <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> em cada nó oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> reorganiza os espaços sozinho.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> mantém tudo organizado (nunca sobrepõe).</p>
     </div>
   )
 }
