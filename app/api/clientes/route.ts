@@ -136,6 +136,10 @@ export async function PUT(req: NextRequest) {
 
   await redis.set(`cliente:${id}`, atualizado)
   revalidateTag('clientes')
+  // Auditoria: mudança de estado de suspensão por inadimplência.
+  if ('inadimplente' in updates && !!updates.inadimplente !== !!cliente.inadimplente) {
+    await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'equipe', acao: updates.inadimplente ? 'cliente_suspenso' : 'cliente_reativado', alvo: cliente.nome })
+  }
   const { facebookPageToken, instagramToken, loginSenha, ...seguro } = atualizado as any
   return NextResponse.json({ ok: true, cliente: seguro })
 }

@@ -28,6 +28,8 @@ const ACAO_LABEL: Record<string, string> = {
   '2fa_resetado': 'Verificação em 2 fatores resetada (admin)',
   dados_exportados: 'Dados do cliente exportados (LGPD)',
   dados_apagados: 'Dados do cliente apagados (LGPD)',
+  cliente_suspenso: 'Cliente suspenso (inadimplência)',
+  cliente_reativado: 'Cliente reativado',
 }
 
 function tempoRelativo(iso: string): string {
