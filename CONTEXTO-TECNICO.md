@@ -725,3 +725,24 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 
 - **Observabilidade em TODOS os crons:** `capturarErro` agora cobre os 7 crons — antes só `publicar`/`backup`/`automacoes` (§28.1); adicionados `alertas`, `tarefas`, `crm-followup`, `resumo-semanal` (corpo extraído p/ função interna + try de topo; resposta HTTP inalterada). Qualquer job agendado que falhar sozinho agora alerta os admins e aparece em Config → Saúde do sistema.
 - **Rede de testes ampliada (23 → 33):** lógica pura de **condições de automação** extraída para **`lib/automacoesCondicoes.ts`** (`condBate`/`avaliarCondicoes`/`escopoBate`; `import type` do redis = não instancia o cliente, testável). `automacoesEngine.ts` passa a importar de lá. `tests/automacoesCondicoes.test.ts` cobre operadores (preenchido/vazio/igual/diferente/contem/maior/menor), lógica todas/qualquer e escopo (selecionados/todos/excluídos). Guarda contra automação disparar errado (spam) ou não disparar.
+
+## 31. Robustez (cont.) — DR (restaurar backup) + auditoria + monitoramento (2026-07-08)
+
+> Os 3 próximos passos de robustez, em sequência. Push direto na main.
+
+### 31.1 Recuperação de desastre — restaurar backup
+- **`lib/backup.restaurarBackup(dados)`** — semântica de **UPSERT** (reescreve cada entidade do backup + re-indexa; **nunca apaga/flush**). Reconstrói `agendados` dos posts. Limitação: índices derivados não exportados não são reconstruídos (posts-por-cliente é lazy).
+- **`/api/backup/restore` POST (admin)** — dupla trava: exige `confirmar==='RESTAURAR'`. Dois modos: **`{ pathname }`** lê o backup gerenciado do Blob no SERVIDOR (recomendado — sem o limite ~4,5MB de corpo da Vercel) ou **`{ dados }`** (arquivo enviado). Loga na auditoria; captura erro.
+- **UI** em Config → Saúde do sistema (Zona de risco): dropdown dos backups diários gerenciados (primário) + upload de arquivo (alternativa) + campo de confirmação "RESTAURAR". `/api/sistema` passou a listar `backups[]`.
+
+### 31.2 Auditoria — quem fez o quê
+- **`lib/auditoria.ts`** `registrarAuditoria({ator,acao,alvo,detalhe})` (best-effort, nunca quebra) — `audit:{id}` TTL 180d + lista `auditoria:log` (cap 500). `listarAuditoria()`.
+- **Instrumentado:** cliente_excluido (`clientes` DELETE), colaborador_criado/excluido (`usuarios` POST/DELETE), senha_resetada (`clientes/senha`), permissoes_papel_alteradas + permissoes_granular_alteradas (PUTs), backup_restaurado. **Visualizador** na tela Saúde do sistema (via `/api/sistema`).
+- *(Suspensão por inadimplência ainda não auditada — fica de follow-up, exigiria comparar antes/depois no `clientes` PUT grande.)*
+
+### 31.3 Monitoramento (turnkey) + ações do dono
+- Tela Saúde do sistema mostra a **URL `/api/health` copiável** + instruções para plugar num monitor de uptime (UptimeRobot/BetterStack).
+- **Ação do dono (sem código):** (1) criar o monitor com essa URL; (2) setar `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` na Vercel → a integração fica verde na mesma tela.
+
+### 31.4 Arquivos desta janela
+- **Libs:** `auditoria.ts`; `backup.ts` (+`restaurarBackup`). **Rotas:** `/api/backup/restore`, `/api/sistema` (+auditoria/+backups), + auditoria em clientes/usuarios/permissoes-papel/permissoes-granular/clientes-senha. **Componente:** `SaudeSistema.tsx` (auditoria + restore + monitoramento). **Chaves Redis:** `audit:{id}`, `auditoria:log`.

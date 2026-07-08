@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Usuario } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
+import { registrarAuditoria } from '@/lib/auditoria'
 import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
@@ -36,5 +37,6 @@ export async function POST(req: NextRequest) {
   if ((cliente as any).loginSenha) { delete (cliente as any).loginSenha; await redis.set(`cliente:${clienteId}`, cliente) }
 
   revalidateTag('usuarios')
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'senha_resetada', alvo: cliente.nome, detalhe: `Senha de login (${cliente.loginEmail}) redefinida` })
   return NextResponse.json({ ok: true, email: cliente.loginEmail, senha })
 }

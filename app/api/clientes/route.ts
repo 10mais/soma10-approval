@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Usuario } from '@/lib/redis'
 import { getClientesRaw } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
+import { registrarAuditoria } from '@/lib/auditoria'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -155,5 +156,6 @@ export async function DELETE(req: NextRequest) {
   await redis.srem('clientes', id)
   revalidateTag('clientes')
   if (cliente?.loginEmail) revalidateTag('usuarios')
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'cliente_excluido', alvo: cliente?.nome || id, detalhe: cliente?.loginEmail ? `Login removido: ${cliente.loginEmail}` : undefined })
   return NextResponse.json({ ok: true })
 }

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
 import { getUsuariosRaw } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
+import { registrarAuditoria } from '@/lib/auditoria'
 import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
 
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   await redis.sadd('usuarios', email)
 
   revalidateTag('usuarios')
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'colaborador_criado', alvo: nome || email, detalhe: `Papel: ${role}` })
   return NextResponse.json({ ok: true })
 }
 
@@ -73,5 +75,6 @@ export async function DELETE(req: NextRequest) {
   await redis.del(`usuario:${email}`)
   await redis.srem('usuarios', email)
   revalidateTag('usuarios')
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'colaborador_excluido', alvo: email })
   return NextResponse.json({ ok: true })
 }

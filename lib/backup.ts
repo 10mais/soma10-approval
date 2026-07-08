@@ -106,3 +106,60 @@ export async function salvarBackup(): Promise<{ pathname: string; tamanho: numbe
 
   return { pathname: res.pathname, tamanho: json.length, contagens: dados._meta.contagens }
 }
+
+// Restaura um backup (recuperação de desastre). Semântica de SEGURANÇA: UPSERT —
+// reescreve cada entidade do backup e a re-indexa, mas NUNCA apaga/flush nada que
+// exista hoje. Assim, no pior caso sobrescreve registros atuais com a versão do
+// backup (comportamento esperado de DR), sem risco de zerar o banco.
+// Limitação conhecida: índices derivados não exportados (ex.: cliente:{id}:posts,
+// plano:{id}:pautas, notificacoes) não são reconstruídos aqui — o de posts por
+// cliente é lazy (reconstrói sozinho); 'agendados' é reconstruído dos posts.
+export async function restaurarBackup(dados: any): Promise<{ contagens: Record<string, number> }> {
+  if (!dados || typeof dados !== 'object' || !dados._meta) throw new Error('arquivo de backup inválido (sem _meta)')
+  const contagens: Record<string, number> = {}
+
+  async function restaurarColecao(itens: any, setKey: string, prefixo: string, extra?: (o: any) => Promise<void>) {
+    if (!Array.isArray(itens)) return
+    let n = 0
+    for (const o of itens) {
+      if (!o || !o.id) continue
+      await redis.set(`${prefixo}${o.id}`, o)
+      await redis.sadd(setKey, o.id)
+      if (extra) await extra(o)
+      n++
+    }
+    contagens[setKey] = n
+  }
+
+  await restaurarColecao(dados.clientes, 'clientes', 'cliente:')
+  await restaurarColecao(dados.usuarios, 'usuarios', 'usuario:')
+  await restaurarColecao(dados.posts, 'posts', 'post:', async o => { if (o.status === 'agendado') await redis.sadd('agendados', o.id) })
+  await restaurarColecao(dados.tarefas, 'tarefas', 'tarefa:')
+  await restaurarColecao(dados.tarefasExcluidas, 'tarefas_excluidas', 'tarefa:')
+  await restaurarColecao(dados.marcos, 'marcos', 'marco:')
+  await restaurarColecao(dados.templates, 'templates', 'template:')
+  await restaurarColecao(dados.despesas, 'despesas', 'despesa:')
+  await restaurarColecao(dados.candidaturas, 'candidaturas', 'candidatura:')
+  await restaurarColecao(dados.briefings, 'briefings', 'briefing:')
+  await restaurarColecao(dados.planos, 'planos', 'plano:')
+  await restaurarColecao(dados.crm?.negocios, 'crm:negocios', 'negocio:')
+  await restaurarColecao(dados.crm?.contatos, 'crm:contatos', 'contato:')
+  await restaurarColecao(dados.crm?.empresas, 'crm:empresas', 'empresa:')
+  await restaurarColecao(dados.agentes, 'agentes', 'agente:')
+  await restaurarColecao(dados.documentos, 'documentos', 'documento:')
+  await restaurarColecao(dados.mapas, 'mapas', 'mapa:')
+
+  let nc = 0
+  if (dados.config && typeof dados.config === 'object') {
+    for (const [k, v] of Object.entries(dados.config)) { if (v != null) { await redis.set(k, v); nc++ } }
+  }
+  contagens['config'] = nc
+
+  let np = 0
+  if (dados.personal && typeof dados.personal === 'object') {
+    for (const [email, v] of Object.entries(dados.personal)) { if (v != null) { await redis.set(`personal:${email}`, v); np++ } }
+  }
+  contagens['personal'] = np
+
+  return { contagens }
+}

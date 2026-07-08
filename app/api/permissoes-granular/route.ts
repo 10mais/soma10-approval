@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { getPermGranularPapel } from '@/lib/permissoesGranularServer'
+import { registrarAuditoria } from '@/lib/auditoria'
 
 export const runtime = 'nodejs'
 
@@ -22,5 +23,6 @@ export async function PUT(req: NextRequest) {
     if (body?.[papel]) limpo[papel] = { abas: body[papel].abas || {}, acoes: body[papel].acoes || {} }
   }
   await redis.set('config:permissoesGranular', limpo)
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'permissoes_granular_alteradas', detalhe: 'Permissões detalhadas (telas/ações) atualizadas' })
   return NextResponse.json({ ok: true })
 }

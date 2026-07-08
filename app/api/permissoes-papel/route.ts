@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { getPermissoesPapel, PermissoesPapel } from '@/lib/permissoesPapel'
+import { registrarAuditoria } from '@/lib/auditoria'
 
 export const runtime = 'nodejs'
 
@@ -25,5 +26,6 @@ export async function PUT(req: NextRequest) {
     ...(body.usuario ? { usuario: { ...atual.usuario, ...body.usuario } } : {}),
   }
   await redis.set('config:permissoesPapel', novo)
+  await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'admin', acao: 'permissoes_papel_alteradas', detalhe: 'Matriz de permissões por papel atualizada' })
   return NextResponse.json({ ok: true, permissoes: novo })
 }
