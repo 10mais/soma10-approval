@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cronAutorizado } from '@/lib/cronAuth'
 import { salvarBackup } from '@/lib/backup'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, ...r })
   } catch (e: any) {
     console.error('[cron/backup] erro:', e?.message)
+    await capturarErro('cron/backup', e)
     return NextResponse.json({ error: e?.message || 'falha no backup' }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { redis, Cliente } from '@/lib/redis'
 import { notificarAdmins } from '@/lib/notificacoes'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 
@@ -71,7 +72,8 @@ export async function POST(req: NextRequest) {
         break
       }
     }
-  } catch {
+  } catch (e) {
+    await capturarErro('stripe/webhook', e, { tipo: event?.type })
     // Nunca falhar o webhook por erro interno (Stripe reenvia; evita loop de retry infinito por bug nosso).
     return NextResponse.json({ received: true, warn: 'erro ao processar' })
   }

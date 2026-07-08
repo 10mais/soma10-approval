@@ -55,9 +55,14 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { clienteId } = await req.json()
+  const { clienteId, rotacionar } = await req.json()
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'cliente não encontrado' }, { status: 404 })
+  // Rotação: revoga o token atual (o link antigo para de funcionar) e gera um novo.
+  if (rotacionar && cliente.statusToken) {
+    await redis.del(`statustoken:${cliente.statusToken}`)
+    cliente.statusToken = undefined
+  }
   if (!cliente.statusToken) {
     cliente.statusToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
     await redis.set(`cliente:${clienteId}`, cliente)

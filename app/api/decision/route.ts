@@ -7,6 +7,7 @@ import nodemailer from 'nodemailer'
 import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
 import { clienteSuspenso } from '@/lib/suspensao'
 import { checarRate } from '@/lib/rateLimit'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -14,6 +15,15 @@ export const maxDuration = 300
 const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
 export async function POST(req: NextRequest) {
+  try {
+    return await decidir(req)
+  } catch (e) {
+    await capturarErro('decision', e)
+    return NextResponse.json({ error: 'erro ao processar decisão' }, { status: 500 })
+  }
+}
+
+async function decidir(req: NextRequest): Promise<NextResponse> {
   const rl = await checarRate(req, 'decision', 40, 60); if (rl) return rl
   const body = await req.json()
   const { id, annotations, rejectReason, codigo, token, novaLegenda, novaData } = body

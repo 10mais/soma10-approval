@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { toast } from '@/lib/toast'
+import { toast, confirmar } from '@/lib/toast'
 
 const fmtR$ = (v: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const STAT_COR: Record<string, string> = { saudavel: '#16a34a', atencao: '#b45309', risco: '#b91c1c' }
@@ -37,6 +37,19 @@ export default function DashboardVendas() {
       setNpsLink(link)
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(() => toast('Link do NPS copiado!', 'sucesso')).catch(() => {})
     } else toast('Falha ao gerar link.', 'erro')
+  }
+
+  // Revoga o link de NPS atual (para de funcionar) e gera um novo.
+  async function revogarLinkNps() {
+    if (!npsCliente) return
+    if (!(await confirmar('Revogar o link de NPS atual? O link que você já enviou vai PARAR de funcionar e um novo será gerado no lugar.', { titulo: 'Revogar link de NPS', okLabel: 'Revogar e gerar novo', perigo: true }))) return
+    const r = await fetch('/api/nps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: npsCliente, acao: 'link', rotacionar: true }) }).then(x => x.json()).catch(() => null)
+    if (r?.token) {
+      const link = `${window.location.origin}/nps/${r.token}?p=${npsPeriodo}`
+      setNpsLink(link)
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).catch(() => {})
+      toast('Link de NPS antigo revogado. Novo link gerado e copiado.', 'sucesso')
+    } else toast('Não foi possível revogar o link.', 'erro')
   }
 
   if (carregando) return <p style={{ color: '#aaa' }}>Carregando...</p>
@@ -168,6 +181,7 @@ export default function DashboardVendas() {
             <option value="trimestral">Trimestral</option>
           </select>
           <button onClick={gerarLinkNps} disabled={!npsCliente} style={{ padding: '10px 18px', background: npsCliente ? '#111' : '#f0f0f0', color: npsCliente ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: npsCliente ? 'pointer' : 'default' }}>Gerar link</button>
+          <button onClick={revogarLinkNps} disabled={!npsCliente} title="Revoga o link de NPS atual (para de funcionar) e gera um novo" style={{ padding: '10px 16px', background: '#fff', color: npsCliente ? '#b91c1c' : '#ccc', border: `1.5px solid ${npsCliente ? '#fecaca' : '#eee'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: npsCliente ? 'pointer' : 'default' }}>Revogar</button>
         </div>
         {npsLink && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: '#16a34a', wordBreak: 'break-all' }}>Link copiado — envie ao cliente: <a href={npsLink} target="_blank" rel="noreferrer" style={{ color: '#1d4ed8' }}>{npsLink}</a></p>}
       </div>

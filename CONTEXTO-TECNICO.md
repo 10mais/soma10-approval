@@ -148,7 +148,7 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 ## 12. Pendências / próximos passos
 
-> ⚠️ **ESTADO MAIS RECENTE (2026-07-08): LEIA §27 → §26 → §25 → §24 PRIMEIRO.** Ordem do que rolou: §24 (**Fase 1.5** — visões cliente dos add-ons), §25 (**Fase 2 billing** + suspensão por inadimplência + hardening server-side do suspenso + **§25.5 gateway Stripe scaffold** + **§25.6 rate limiting + rotação do link de aprovação**), §26 (**fluxo de aprovação CONSOLIDADO** "Solicitar ajustes" no link público E no portal + EM AJUSTE), §27 (**log de solicitações do cliente 30d, fix do Planner, dropdown/persistência do Calendário, prévia 4:5**).
+> ⚠️ **ESTADO MAIS RECENTE (2026-07-08): LEIA §28 → §27 → §26 → §25 PRIMEIRO.** §28 (**Robustez — Visão A**: observabilidade `lib/erros.ts` + tela Config→Saúde do sistema, revogar link status/NPS, **rede de segurança de testes com portão no build**). Antes: §24 (**Fase 1.5** — visões cliente dos add-ons), §25 (**Fase 2 billing** + suspensão + hardening + **§25.5 Stripe scaffold** + **§25.6 rate limiting + rotação do link de aprovação**), §26 (**aprovação CONSOLIDADA** "Solicitar ajustes" + EM AJUSTE), §27 (**log de solicitações 30d, fix Planner, Calendário, prévia 4:5**).
 >
 > **TRACK: abrir o sistema para clientes externos + monetização modular.** Fases **0 ✅ · 1 ✅ · 1.5 ✅ (§24) · 2 ✅ (§25, inclui suspensão + hardening) · 3 (hardening de código) ✅** (§25.6: rate limiting nos endpoints públicos + revogação/rotação do link de aprovação). O sistema já está **pronto pra abrir pra clientes** no que depende de código.
 >
@@ -157,9 +157,10 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 > 2. **PIX recorrente** (opcional): Stripe só faz PIX avulso; recorrente nativo = provedor BR (Asaas/Pagar.me/Mercado Pago) — a construir se quiser não depender de cartão.
 >
 > **PRÓXIMO — CÓDIGO (opcional, pequeno):**
-> - Botão **revogar link** também para **status** (`statustoken`) e **NPS** (`npstoken`) — mesmo padrão do de aprovação (§25.6), ~2 min cada.
+> - ~~Botão **revogar link** para **status** e **NPS**~~ — **FEITO (§28.2).**
 > - **"Reprovado" de verdade** no portal de aprovações (hoje "Rejeitar" entra como ajuste com texto "REJEITADO:", §26.3).
 > - Visão de **entregas/posts por marco** no `MarcoDetalhe` do cliente (§24.4).
+> - **Robustez (§28):** ligar `/api/health` num monitor de uptime; testar o restore do backup.
 >
 > **Nome do produto:** dono decidiu **MANTER "Soma10 Approval"**. Domínios livres se um dia revender white-label: `regencia.app`/`orquestre.app`/`batuta.studio`/`pauta.studio`.
 >
@@ -659,3 +660,34 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Libs:** `logCliente.ts`, `rateLimit.ts`, `stripe.ts`, `suspensao.ts`.
 - **Componentes:** `LogsCliente.tsx`. `Rentabilidade.tsx` (MRR de módulos + em risco), `PostComposer.tsx` (4:5).
 - **Rotas:** `/api/logs-cliente`, `/api/stripe/{cobrar,webhook}`. Campos: `Cliente.inadimplente/suspensoDesde/stripeCustomerId/stripeSubscriptionId/assinaturaStatus`. Chaves Redis: `log:{id}`/`logs:cliente(:{id})`, `rl:{...}`.
+
+## 28. Robustez — Visão A (observabilidade + revogar links + rede de segurança de testes) (2026-07-08)
+
+> **Track "SaaS robusto".** Dono escolheu a **Visão A — Agência robusta** (o sistema é da própria agência, que opera e cobra os seus clientes; NÃO é white-label multi-agência). Foco desta janela: fundação de robustez que faltava. Push direto na main (caminho B); portão de testes valida antes do deploy.
+
+### 28.1 Observabilidade caseira (sem dependência externa)
+- **`lib/erros.ts`** — `capturarErro(escopo, err, ctx?)`: grava `erro:{id}` (TTL 14d) + `LPUSH erros:log` (cap 200) + **alerta admins** (`notificarAdmins('geral', ...)`) no máx. 1x/30min por escopo (`erro_alerta:{escopo}` SET NX, anti-flood). NUNCA lança (observabilidade não derruba fluxo). `listarErros(limite)` p/ o painel.
+- **`/api/health`** (público, leve) — ping do Redis; 200 se up, 503 se down. Para monitor de uptime externo (UptimeRobot/BetterStack) alertar queda.
+- **`/api/sistema`** (admin) — status de cada integração (redis/blob/auth/anthropic/meta/smtp/cron/stripe/push/ideogram/whatsapp), últimos erros e o backup mais recente (`list({ prefix: 'backups/' })`).
+- **`SaudeSistema.tsx`** + aba **Config → Saúde do sistema** (`abaConfig='sistema'`): selo essenciais no ar/faltando, grid de integrações (verde/vermelho/cinza), último backup, lista de erros recentes, botão Atualizar.
+- **Captura ligada em 5 fluxos críticos** (só somam `capturarErro` no catch; resposta HTTP inalterada): `cron/publicar` (corpo extraído p/ `publicarAgendados()` + try de topo), `cron/backup`, `cron/automacoes`, `stripe/webhook` (catch de processamento; a validação de assinatura 400 fica de fora — é probe), `decision` (corpo extraído p/ `decidir(req)` + try de topo).
+
+### 28.2 Revogar link também para status e NPS (fecha §25.6)
+- `/api/status` POST e `/api/nps` POST aceitam **`rotacionar`**: `del` do token atual (`statustoken`/`npstoken`) + zera `statusToken`/`npsToken` antes de gerar novo — mesmo padrão do `aprovacao-link`. Link antigo para de funcionar na hora.
+- UI: botão **"Revogar status"** na ficha do cliente (`dashboard/page.tsx`, `revogarLinkStatus`) ao lado de "Status público"; botão **"Revogar"** no NPS (`DashboardVendas.tsx`, `revogarLinkNps`) ao lado de "Gerar link". (Restava só isto do §25.6; agora os 3 links públicos têm revogação.)
+
+### 28.3 Rede de segurança — testes de fumaça + PORTÃO de deploy
+- Dep dev **`vitest`**. `vitest.config.ts` (include `tests/**/*.test.ts`, alias `@/`). Scripts: `test`/`test:watch`; **`build` = `vitest run && next build`** → **um teste vermelho BARRA o build da Vercel** (deploy não sobe; site fica na versão boa). Provado: exit 1 na falha, 0 no verde.
+- **23 testes** cobrindo as regras onde bug silencioso dói mais (funções puras, determinísticas): **cobrança** (`lib/modulos.ts` — núcleo grátis, add-on só ativo, soma mensal, valor custom vs padrão, caso "R$0 explícito") e **permissões** (`permissoesCatalogo.podeNivel`/`normalizaNivel` + `permissoesGranular.podeAba/AcaoGranular` — hierarquia override-usuário > config-papel > padrão, admin/financeiro, retrocompat boolean).
+- **Como estender:** novo `tests/*.test.ts` de função pura. Evitar teste que bata em Redis/rede/tempo/random (travaria deploy à toa).
+
+### 28.4 PRÓXIMO (o que ainda move robustez)
+- **Ação do dono:** plugar `/api/health` num monitor de uptime; setar Stripe (`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`) e ver a integração ficar verde na tela Saúde do sistema.
+- **Backlog de código (acabamento, não robustez):** **"reprovado de verdade"** no portal (§26.3) e **entregas/posts por marco** no `MarcoDetalhe` do cliente (§24.4).
+- **Testar o restore do backup** (backup que não se testa não é backup) — próximo passo de confiabilidade.
+
+### 28.5 Arquivos/rotas novos desta janela
+- **Libs:** `erros.ts`. **Config:** `vitest.config.ts`, `tests/{modulos,permissoes,permissoesGranular}.test.ts`.
+- **Componentes:** `SaudeSistema.tsx`. **Rotas:** `/api/health`, `/api/sistema`.
+- **Chaves Redis:** `erro:{id}`, `erros:log` (lista), `erro_alerta:{escopo}` (dedupe TTL). `package.json`: dep `vitest` + scripts `test`/`build` com portão.
+- **Nota de handoff:** os 4 arquivos novos do bloco de observabilidade (`erros.ts`/health/sistema/`SaudeSistema.tsx`) já existiam **untracked** de uma sessão anterior interrompida e foram **reescritos** nesta (conteúdo anterior não recuperável pelo git; versão atual completa e testada).

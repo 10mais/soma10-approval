@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redis, Post, Cliente } from '@/lib/redis'
 import { processarPublicacao } from '@/lib/publicar'
 import { notificarEquipe } from '@/lib/notificacoes'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -34,7 +35,16 @@ export async function GET(req: NextRequest) {
     const auth = req.headers.get('authorization')
     if (auth !== `Bearer ${secret}`) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
+  try {
+    return await publicarAgendados()
+  } catch (e) {
+    await capturarErro('cron/publicar', e)
+    return NextResponse.json({ error: 'falha no cron de publicação' }, { status: 500 })
+  }
+}
 
+// Corpo do cron isolado para captura de erros de topo (observabilidade).
+async function publicarAgendados(): Promise<NextResponse> {
   const agora = Date.now()
 
   // Mantém os tokens do Instagram sempre válidos (renova no máx. 1x/dia)

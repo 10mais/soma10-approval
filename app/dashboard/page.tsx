@@ -11,6 +11,7 @@ import ConectarRedesModal from '../components/ConectarRedesModal'
 import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
+import SaudeSistema from '../components/SaudeSistema'
 import AvatarCliente from '../components/AvatarCliente'
 import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 
@@ -443,7 +444,7 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
-  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes'>('geral')
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema'>('geral')
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
     if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
@@ -1144,6 +1145,17 @@ function Dashboard() {
       navigator.clipboard?.writeText(link).catch(() => {})
       window.open(link, '_blank')
     } else toast('Não foi possível gerar o link de status.', 'erro')
+  }
+
+  // Revoga o link de status atual (para de funcionar) e gera um novo.
+  async function revogarLinkStatus(clienteId: string) {
+    if (!(await confirmar('Revogar o link de status atual? O link que você já enviou vai PARAR de funcionar e um novo será gerado no lugar.', { titulo: 'Revogar link de status', okLabel: 'Revogar e gerar novo', perigo: true }))) return
+    const r = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, rotacionar: true }) }).then(x => x.json()).catch(() => null)
+    if (r?.token) {
+      const link = `${window.location.origin}/status/${r.token}`
+      navigator.clipboard?.writeText(link).catch(() => {})
+      toast('Link de status antigo revogado. Novo link gerado e copiado.', 'sucesso')
+    } else toast('Não foi possível revogar o link de status.', 'erro')
   }
 
   // Link ÚNICO de aprovação do cliente (todos os materiais aguardando aprovação)
@@ -3731,6 +3743,10 @@ function Dashboard() {
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
                                   Status público
                                 </button>
+                                <button onClick={() => revogarLinkStatus(c.id)} title="Revoga o link de status atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: '#b91c1c', borderColor: '#fecaca' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
+                                  Revogar status
+                                </button>
                                 <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: '#111', border: '1px solid #111', color: '#fff' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   Link de aprovação
@@ -4375,7 +4391,7 @@ function Dashboard() {
 
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #eee' }}>
-              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões']] as const).map(([k, l]) => (
+              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid #111' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: '#e5e5e5', margin: '0 6px' }} />
@@ -4406,6 +4422,14 @@ function Dashboard() {
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Permissões detalhadas</h3>
               <PermissoesGranular />
+            </div>
+            )}
+
+            {abaConfig === 'sistema' && (
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Saúde do sistema</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>O que está no ar: banco, integrações, backup e erros recentes.</p>
+              <SaudeSistema />
             </div>
             )}
 
