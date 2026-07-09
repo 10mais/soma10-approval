@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
+    "@sparticuz/chromium": "^147.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@upstash/redis": "^1.38.0",
     "@vercel/blob": "^2.4.0",
@@ -24,6 +25,7 @@
     "next-auth": "^4.24.14",
     "nodemailer": "^6.9.13",
     "otplib": "^13.4.1",
+    "puppeteer-core": "^24.43.1",
     "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",

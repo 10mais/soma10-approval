@@ -64,6 +64,28 @@ export default function SaudeSistema() {
   // Interruptor global do 2FA
   const [g2fa, setG2fa] = useState<boolean | null>(null)
   const [g2faBusy, setG2faBusy] = useState(false)
+  // Fase 0 — prova do motor de render (Chrome headless)
+  const [renderBusy, setRenderBusy] = useState(false)
+  const [renderImg, setRenderImg] = useState('')
+  const [renderInfo, setRenderInfo] = useState<string | null>(null)
+  const [renderErro, setRenderErro] = useState<string | null>(null)
+
+  async function testarRender() {
+    setRenderBusy(true); setRenderErro(null); setRenderImg(''); setRenderInfo(null)
+    try {
+      const r = await fetch('/api/studio/render-teste').then(x => x.json())
+      if (r?.ok && r.imagemBase64) {
+        setRenderImg(`data:image/png;base64,${r.imagemBase64}`)
+        setRenderInfo(`Motor: ${r.motor} · ${r.ms}ms · ${(r.bytes / 1024).toFixed(0)} KB`)
+      } else {
+        setRenderErro(r?.error || 'Falha ao renderizar.')
+      }
+    } catch {
+      setRenderErro('Não foi possível chamar o teste de render.')
+    } finally {
+      setRenderBusy(false)
+    }
+  }
 
   useEffect(() => { fetch('/api/seguranca').then(r => r.json()).then(d => { if (d && !d.error) setG2fa(!!d.doisFatores) }).catch(() => {}) }, [])
   async function alternar2FAGlobal(v: boolean) {
@@ -172,6 +194,22 @@ export default function SaudeSistema() {
           <code style={{ fontSize: 12, background: '#f4f4f5', padding: '7px 10px', borderRadius: 8, color: '#333' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
           <button onClick={copiarHealth} style={{ padding: '7px 12px', background: '#f2f2f2', color: '#333', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
         </div>
+      </div>
+
+      {/* Motor de criativos (novo) — prova do render Chrome headless (Fase 0) */}
+      <div>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#333' }}>Motor de criativos (novo)</h4>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#999' }}>Teste do render de alta qualidade (Chrome headless). Gera uma imagem de exemplo 1080×1350 — se ela aparecer nítida, com margem e sem cortes, o motor novo funciona neste ambiente.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={testarRender} disabled={renderBusy} style={{ padding: '8px 16px', background: renderBusy ? '#eee' : '#111', color: renderBusy ? '#aaa' : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: renderBusy ? 'default' : 'pointer' }}>
+            {renderBusy ? 'Renderizando…' : 'Testar render'}
+          </button>
+          {renderInfo && <span style={{ fontSize: 11.5, color: '#2a9d5c', fontWeight: 700 }}>{renderInfo}</span>}
+          {renderErro && <span style={{ fontSize: 11.5, color: '#e11', fontWeight: 700 }}>{renderErro}</span>}
+        </div>
+        {renderImg && (
+          <img src={renderImg} alt="Teste de render" style={{ marginTop: 12, width: 260, height: 'auto', borderRadius: 12, border: '1px solid #eee', display: 'block' }} />
+        )}
       </div>
 
       {/* Segurança de acesso — interruptor GLOBAL do 2FA */}
