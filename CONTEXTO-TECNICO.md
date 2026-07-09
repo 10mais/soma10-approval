@@ -148,7 +148,14 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 ## 12. Pendências / próximos passos
 
-> ⚠️ **ESTADO MAIS RECENTE (2026-07-08): LEIA §28 → §27 → §26 → §25 PRIMEIRO.** §28 (**Robustez — Visão A**: observabilidade `lib/erros.ts` + tela Config→Saúde do sistema, revogar link status/NPS, **rede de segurança de testes com portão no build**). Antes: §24 (**Fase 1.5** — visões cliente dos add-ons), §25 (**Fase 2 billing** + suspensão + hardening + **§25.5 Stripe scaffold** + **§25.6 rate limiting + rotação do link de aprovação**), §26 (**aprovação CONSOLIDADA** "Solicitar ajustes" + EM AJUSTE), §27 (**log de solicitações 30d, fix Planner, Calendário, prévia 4:5**).
+> ⚠️ **ESTADO MAIS RECENTE (2026-07-08, fim de sessão longa): LEIA §35 → §34 → §33 → §32 → §31 → §30 → §29 → §28 PRIMEIRO.** Resumo da sessão:
+> - **Robustez (Visão A):** observabilidade nos **7 crons** + `/api/publicar` (`lib/erros.ts`, tela **Config → Saúde do sistema**), **rede de testes com PORTÃO no build** (`build = "vitest run && next build"` → teste vermelho barra o deploy; **35 testes**), **DR — restaurar backup** (§31), **auditoria** (quem fez o quê, §31) e **monitoramento** (`/api/health`, §28/§31).
+> - **Ajustes de UI (§29, §32):** Documento (barra flutuante, A−/A+, atribuir cliente), Tarefas (vincular doc/mapa), **Mapa Mental** (atribuir cliente, **auto-organizar sem sobreposição** medindo a altura real, colapsar ramo com −/+, Enter em 2 tempos, sem nós vazios, **Ctrl+Z**).
+> - **Segurança (§33–§35):** **2FA por e-mail E app** (§33/§33.4) com **INTERRUPTOR GLOBAL** (§33.5); **anti-força-bruta** no login (§35); **piso de senha ≥8**; **LGPD** exportar/apagar dados do cliente (§34).
+>
+> 🔴 **CRÍTICO — NÃO LIGAR o 2FA global até a Meta aprovar o app.** O interruptor `config:doisFatoresGlobal` está **DESLIGADO por padrão** (`lib/seguranca.ts`); com ele off, o login NÃO pede código (protege o login de teste do App Review). Ligar só depois da aprovação, em **Config → Saúde do sistema → "Segurança de acesso"**. Ver [[app-review-meta]].
+>
+> 📝 **Nota de infra:** a fila de build da Vercel travou ~15 min à tarde (deploys em INITIALIZING sem logs) — incidente de plataforma, não do código; destravou sozinha. O portão de testes segue valendo.
 >
 > **TRACK: abrir o sistema para clientes externos + monetização modular.** Fases **0 ✅ · 1 ✅ · 1.5 ✅ (§24) · 2 ✅ (§25, inclui suspensão + hardening) · 3 (hardening de código) ✅** (§25.6: rate limiting nos endpoints públicos + revogação/rotação do link de aprovação). O sistema já está **pronto pra abrir pra clientes** no que depende de código.
 >
