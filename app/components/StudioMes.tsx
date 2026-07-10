@@ -5,6 +5,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
 import { atrasada, emRisco } from '@/lib/entregas'
+import ProducaoBoard from './ProducaoBoard'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -111,7 +112,55 @@ function CampoLabel({ children }: { children: ReactNode }) {
   return <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{children}</span>
 }
 
-export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true, podeGerarIA = true, podeEnviarCliente = true }: {
+// Régua do pipeline IA-first da pauta:
+// DNA DA MARCA > BRIEFING > COPY > CRIATIVO > APROVAÇÃO > POSTAGEM.
+// Mostra onde a pauta está e qual é o próximo passo.
+function PipelinePauta({ p }: { p: Pauta }) {
+  const temCriativo = (p.imagens || []).length > 0
+  // falha_publicacao já passou pela aprovação — o problema é na POSTAGEM.
+  const aprovado = ['aprovado', 'agendado', 'publicando', 'publicado', 'falha_publicacao'].includes(p.status)
+  const passos: { label: string; ok: boolean; alerta?: boolean; meio?: boolean }[] = [
+    { label: 'DNA da marca', ok: true }, // vem do cadastro do cliente (Marca)
+    { label: 'Briefing', ok: !!(p.briefing || '').trim() },
+    { label: 'Copy', ok: !!(p.legenda || '').trim() },
+    { label: 'Criativo', ok: temCriativo },
+    {
+      label: p.status === 'aguardando_aprovacao' ? 'No cliente' : p.status === 'corrigir' ? 'Ajuste pedido' : p.status === 'reprovado' ? 'Reprovado' : 'Aprovação',
+      ok: aprovado, alerta: p.status === 'corrigir' || p.status === 'reprovado', meio: p.status === 'aguardando_aprovacao',
+    },
+    {
+      label: p.status === 'publicado' ? 'Publicado' : p.status === 'falha_publicacao' ? 'Falha na publicação' : (p.status === 'agendado' || p.status === 'publicando') ? 'Agendado' : 'Postagem',
+      ok: p.status === 'publicado', alerta: p.status === 'falha_publicacao', meio: p.status === 'agendado' || p.status === 'publicando',
+    },
+  ]
+  // Passo "atual" = o primeiro não-concluído. Se ele está em alerta (ajuste/falha)
+  // ou no meio (no cliente/agendado), a cor própria dele prevalece — e os passos
+  // seguintes ficam cinza (nada de destacar "Postagem" com a bola no cliente).
+  const atualIdx = passos.findIndex(s => !s.ok)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '10px 12px', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 12 }}>
+      {passos.map((s, i) => {
+        const cor = s.alerta ? '#b91c1c' : s.ok ? '#16a34a' : s.meio ? '#a16207' : i === atualIdx ? '#111' : '#c2c2c6'
+        const bg = s.alerta ? '#fee2e2' : s.ok ? '#dcfce7' : s.meio ? '#fef3c7' : i === atualIdx ? '#ffcb3a33' : 'transparent'
+        return (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, background: bg, color: cor, fontSize: 11, fontWeight: i === atualIdx || s.alerta ? 800 : 700, whiteSpace: 'nowrap' }}>
+              {s.ok ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              ) : (
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: cor, display: 'inline-block' }} />
+              )}
+              {s.label}
+            </span>
+            {i < passos.length - 1 && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d8d8db" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true, podeGerarIA = true, podeEnviarCliente = true, postsGlobais, usuariosEquipe, meuEmail }: {
   clientes: Cliente[]
   clienteFixo?: string
   onAbrirComposer?: (pauta: Pauta) => void
@@ -119,6 +168,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   podeExcluir?: boolean
   podeGerarIA?: boolean
   podeEnviarCliente?: boolean
+  // Visão "Hoje na produção" (tela de abertura): todas as pautas de todos os clientes
+  postsGlobais?: any[]
+  usuariosEquipe?: { nome: string; email: string }[]
+  meuEmail?: string
 }) {
   const [planos, setPlanos] = useState<Plano[]>([])
   // Seleção persistida (ao atualizar a página, permanece no mesmo lugar).
@@ -592,6 +645,23 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     setPlanoSel(ps[0]?.id || '') // planos vêm do mais recente ao mais antigo
   }
 
+  // Abre uma pauta clicada na visão "Hoje na produção": seleciona cliente + mês
+  // e expande a pauta — tudo dentro do Studio, sem trocar de aba.
+  // Post avulso (sem plano/mês, criado direto no Planner): só abre no editor se
+  // ainda estiver em produção — post já encaminhado (agendado/no cliente) NÃO
+  // pode cair no composer, que sem a data agendada desagendaria ao salvar.
+  function abrirPautaDoBoard(p: any) {
+    if (!p.planoId) {
+      const emProducao = ['rascunho', 'corrigir', 'reprovado'].includes(p.status)
+      if (emProducao && onAbrirComposer) onAbrirComposer(p)
+      else toast('Post avulso já encaminhado — gerencie pelo Planner.', 'info')
+      return
+    }
+    setClienteSel(p.clienteId)
+    setPlanoSel(p.planoId)
+    setAbertos(new Set([p.id]))
+  }
+
   return (
     <div className="st-root">
       <style>{`
@@ -623,6 +693,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#999' }}>A IA opera a fábrica; você rege a orquestra. Clique numa linha para abrir e editar tudo.</p>
         </div>
+        {!clienteFixo && clienteSel && (
+          <button className="st-btn" onClick={() => { setClienteSel(''); setPlanoSel('') }} title="Voltar para a visão geral de todos os clientes"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            Hoje na produção
+          </button>
+        )}
         {!clienteFixo && (
           <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
             style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 200, background: '#fff', cursor: 'pointer' }}>
@@ -703,28 +780,41 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
       {!planoSel ? (
-        <div className="st-card" style={{ textAlign: 'center', padding: '56px 24px' }}>
-          {(!clienteSel && !clienteFixo) ? (
-            <>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#fff4cf,#ffe79a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="#a9781a"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-              </div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.02em' }}>Com qual cliente vamos trabalhar hoje?</h3>
-              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Escolha um cliente para abrir o Studio do mês.</p>
-              <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
-                style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, minWidth: 280, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                <option value="">Escolher cliente…</option>
-                {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-              {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum plano ainda — clique em “+ Novo plano” para começar.</p>}
-            </>
-          ) : (
-            <>
-              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#111' }}>Escolha o mês</h3>
-              <p style={{ margin: 0, fontSize: 13, color: '#999' }}>Selecione um mês acima, ou clique em “+ Novo plano” para começar.</p>
-            </>
-          )}
-        </div>
+        (!clienteSel && !clienteFixo && (postsGlobais || []).length > 0) ? (
+          /* Tela de ABERTURA: visão "Hoje na produção" — todos os clientes numa
+             lista só (atrasados primeiro, quem está com a bola). Clicar numa
+             pauta abre ela aqui mesmo, no cliente e mês certos. */
+          <ProducaoBoard
+            clientes={(clientes as any[]).filter(c => c.tipo !== 'interno')}
+            posts={postsGlobais as any}
+            usuarios={usuariosEquipe}
+            meuEmail={meuEmail}
+            onAbrirPauta={abrirPautaDoBoard}
+          />
+        ) : (
+          <div className="st-card" style={{ textAlign: 'center', padding: '56px 24px' }}>
+            {(!clienteSel && !clienteFixo) ? (
+              <>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#fff4cf,#ffe79a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#a9781a"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                </div>
+                <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.02em' }}>Com qual cliente vamos trabalhar hoje?</h3>
+                <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Escolha um cliente para abrir o Studio do mês.</p>
+                <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
+                  style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, minWidth: 280, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <option value="">Escolher cliente…</option>
+                  {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum plano ainda — clique em “+ Novo plano” para começar.</p>}
+              </>
+            ) : (
+              <>
+                <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#111' }}>Escolha o mês</h3>
+                <p style={{ margin: 0, fontSize: 13, color: '#999' }}>Selecione um mês acima, ou clique em “+ Novo plano” para começar.</p>
+              </>
+            )}
+          </div>
+        )
       ) : carregando ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>Carregando pautas...</div>
       ) : pautas.length === 0 ? (
@@ -801,6 +891,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   {/* Painel expandido — edição completa (formato/data viram controles bonitos) */}
                   {aberto && (
                     <div className="st-detail" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', padding: '2px 20px 22px 45px' }}>
+                      {/* Régua do pipeline: onde a pauta está e o próximo passo */}
+                      <div style={{ flexBasis: '100%' }}><PipelinePauta p={p} /></div>
                       <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
                         <div><CampoLabel>Copy (legenda)</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>

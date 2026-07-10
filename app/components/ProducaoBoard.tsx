@@ -3,16 +3,16 @@ import { useMemo, useState } from 'react'
 import AvatarCliente from './AvatarCliente'
 import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
 
-// Painel de PRODUÇÃO transversal — todas as pautas de TODOS os clientes numa
+// Visão de PRODUÇÃO transversal — todas as pautas de TODOS os clientes numa
 // tela: o que está atrasado, o que vence em breve, o que está travado (e em quê),
-// quem é o responsável. Resolve o "ninguém sabe o que falta" sem abrir cliente
-// por cliente no Studio. Clique numa linha leva ao Studio já no cliente certo.
+// quem é o responsável. Renderizada DENTRO do Studio (é a tela de abertura —
+// não é uma aba separada). Clique numa linha abre a pauta no próprio Studio.
 
 type Cliente = { id: string; nome: string; squad?: string[] }
 type Post = {
   id: string; clienteId: string; clienteNome: string; imagens?: string[]; legenda?: string
   briefing?: string; status: string; etapa?: string; dataAgendada?: string
-  aguardandoDesde?: string; criadoPor?: string; thumbnail?: string
+  aguardandoDesde?: string; criadoPor?: string; thumbnail?: string; planoId?: string
 }
 type Usuario = { nome: string; email: string }
 
@@ -35,12 +35,12 @@ function travadoEmQue(p: Post): { label: string; cor: string; bg: string; bola: 
 
 type Filtro = 'todos' | 'atrasados' | 'risco' | 'cliente' | 'equipe'
 
-export default function ProducaoBoard({ clientes, posts, usuarios, meuEmail, onAbrirCliente }: {
+export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail, onAbrirPauta }: {
   clientes: Cliente[]
   posts: Post[]
-  usuarios: Usuario[]
+  usuarios?: Usuario[]
   meuEmail?: string
-  onAbrirCliente: (clienteId: string) => void
+  onAbrirPauta: (post: Post) => void
 }) {
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [clienteSel, setClienteSel] = useState('')
@@ -103,8 +103,8 @@ export default function ProducaoBoard({ clientes, posts, usuarios, meuEmail, onA
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Produção</h2>
-        <span style={{ fontSize: 12.5, color: '#999' }}>todas as pautas de todos os clientes — quem está com a bola e o que vence</span>
+        <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Hoje na produção</h3>
+        <span style={{ fontSize: 12.5, color: '#999' }}>todos os clientes — quem está com a bola e o que vence. Clique numa pauta para abrir.</span>
       </div>
 
       {/* Resumo + filtros */}
@@ -146,7 +146,7 @@ export default function ProducaoBoard({ clientes, posts, usuarios, meuEmail, onA
             const capa = p.thumbnail || (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u))
             const resp = responsavel(p)
             return (
-              <div key={p.id} onClick={() => onAbrirCliente(p.clienteId)}
+              <div key={p.id} onClick={() => onAbrirPauta(p)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: '1px solid #f4f4f5', cursor: 'pointer', background: atras ? '#fffafa' : undefined }}>
                 {capa
                   ? <img src={capa} alt="" style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#f0f0f0' }} />
@@ -170,7 +170,7 @@ export default function ProducaoBoard({ clientes, posts, usuarios, meuEmail, onA
           })}
         </div>
       )}
-      <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: '#bbb' }}>Clique numa pauta para abrir o Studio no cliente. Posts publicados saem desta lista.</p>
+      <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: '#bbb' }}>Posts publicados saem desta lista.</p>
     </div>
   )
 }
