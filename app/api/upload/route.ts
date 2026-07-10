@@ -11,6 +11,8 @@ const TIPOS_PERMITIDOS = [
   'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/ogg',
+  // Fontes da marca (motor de criativos) — o componente envia o MIME canônico pela extensão
+  'font/ttf', 'font/otf', 'font/woff', 'font/woff2',
 ]
 // Limite generoso — o upload vai direto do navegador para o Blob, sem passar pelo servidor.
 const TAMANHO_MAX = 500 * 1024 * 1024 // 500 MB por arquivo

@@ -179,6 +179,11 @@ export type Cliente = {
   // Squad do cliente: e-mails dos colaboradores responsáveis por atendê-lo.
   // Usado como responsável padrão sugerido ao criar tarefas do cliente.
   squad?: string[]
+  // Fontes da marca (arquivos .ttf/.otf/.woff2 no Blob) — o motor de criativos
+  // embute via @font-face para a arte sair na TIPOGRAFIA real do cliente.
+  fontes?: FonteMarca[]
+  // "Vibe" visual da marca — guia o motor de criativos (layout, fundo, tom).
+  style?: EstiloMarca
   // Módulos contratados (plano modular): { moduloKey: { ativo, valor, desde } }.
   // Núcleo (entregas/aprovacoes/solicitar) é sempre liberado; add-ons por aqui.
   modulos?: Record<string, { ativo?: boolean; valor?: number; desde?: string }>
@@ -230,6 +235,21 @@ export type AssetMarca = {
   nome?: string
   criadoEm?: string
 }
+
+// Fonte da marca (arquivo no Blob). `papel` diz onde usar: 'titulo' (display,
+// headlines) ou 'texto' (corpo). O motor de criativos embute via @font-face.
+export type FonteMarca = {
+  id: string
+  nome: string // nome da família (ex.: "Montserrat")
+  url: string
+  papel?: 'titulo' | 'texto'
+  peso?: number // 400 | 600 | 700...
+  italico?: boolean
+  criadoEm?: string
+}
+
+// "Vibe" visual da marca — atalho de direção de arte para o motor de criativos.
+export type EstiloMarca = 'minimalista' | 'premium' | 'energetico' | 'clean' | 'elegante' | 'moderno' | 'classico' | 'divertido'
 
 // Permissoes do portal do cliente. Cada flag controla um acesso/acao.
 // Ausente (undefined) = liberado, para nao alterar clientes ja existentes.
@@ -509,6 +529,18 @@ export type Post = {
     fundoUrl?: string
     logoUrl?: string
     handle?: string
+    // Brief rico (motor novo) — campos de copy de anúncio de verdade
+    objetivo?: string // ver lib/criativoObjetivos.ts (venda|lead|institucional|...)
+    cta?: string // chamada para ação curta (ex.: "Agende agora")
+    oferta?: string // texto da oferta/promoção (ex.: "20% OFF até sexta")
+    preco?: string // preço em destaque (ex.: "R$ 97/mês")
+    dataEvento?: string // data por extenso na arte (ex.: "12 de agosto")
+    horaEvento?: string
+    localEvento?: string
+    legal?: string // letras miúdas (condições, CRM/CRO, etc.)
+    whatsapp?: string // número/link exibido na arte
+    // HTML autocontido gerado pelo motor novo (Claude desenha) — re-render determinístico
+    html?: string
   }
 }
 

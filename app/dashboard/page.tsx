@@ -39,6 +39,7 @@ const CargaEquipe = dynamic(() => import('../components/CargaEquipe'), { ssr: fa
 const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensalEditor'), { ssr: false })
 const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
 const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuais'), { ssr: false })
+const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
@@ -2650,6 +2651,13 @@ function Dashboard() {
             {verComoClienteId && (
               <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
                 <ReferenciasVisuais clienteId={verComoClienteId} />
+              </div>
+            )}
+
+            {/* Tipografia e vibe da marca — alimenta o motor de criativos */}
+            {verComoClienteId && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+                <FontesMarca clienteId={verComoClienteId} />
               </div>
             )}
 

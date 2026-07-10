@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { isViewAsClient } from '@/lib/modoCliente'
 import { confirmar } from '@/lib/toast'
 import ReferenciasVisuais from '../../../components/ReferenciasVisuais'
+import FontesMarca from '../../../components/FontesMarca'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -179,6 +180,13 @@ export default function MarcaPage() {
       {ehEquipe && (
         <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
           <ReferenciasVisuais clienteId={clienteId as string} />
+        </div>
+      )}
+
+      {/* Tipografia e vibe da marca — alimenta o motor de criativos (só equipe) */}
+      {ehEquipe && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+          <FontesMarca clienteId={clienteId as string} />
         </div>
       )}
 
