@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
+import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -147,6 +148,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [refHeadline, setRefHeadline] = useState('') // headline fixa (seguida à risca)
   const [modalEnviando, setModalEnviando] = useState(false)
   const [modalProg, setModalProg] = useState<number | null>(null)
+  // Brief rico do motor novo (IA designer): objetivo + campos de anúncio
+  const [briefObj, setBriefObj] = useState('')
+  const [briefVals, setBriefVals] = useState<Record<string, string>>({})
   const rid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   // Editor de arte (Nível 1)
   const [editorPost, setEditorPost] = useState<Pauta | null>(null)
@@ -319,6 +323,36 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     }
   }
 
+  // MOTOR NOVO (IA designer) — o Claude DESENHA o criativo em HTML com a
+  // identidade real da marca (fontes/cores/logo/elementos) e o servidor
+  // rasteriza via Chrome headless. Brief rico entra na direção de arte.
+  async function gerarCriativoHtml(p: Pauta, opts?: { fundoUrl?: string; semFoto?: boolean; headline?: string }) {
+    setGerarModal(null)
+    setGerandoCriativo(p.id)
+    try {
+      const brief: Record<string, string> = { objetivo: briefObj }
+      for (const [k, v] of Object.entries(briefVals)) { if (v.trim()) brief[k] = v.trim() }
+      const r = await fetch('/api/studio/gerar-criativo-html', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id, fundoUrl: opts?.fundoUrl, semFoto: opts?.semFoto, headline: opts?.headline, brief }),
+      }).then(x => x.json()).catch(() => null)
+      if (!r || r.error || !r.imagemBase64) { toast(r?.error || 'Falha ao gerar o criativo.', 'erro'); return }
+      const blob = await upload(`criativos/${p.id}-${Date.now()}.png`, base64ParaFile(r.imagemBase64, `criativo-${p.id}.png`), {
+        access: 'public', handleUploadUrl: '/api/upload', contentType: 'image/png', clientPayload: 'image/png',
+      })
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, imagens: [blob.url, ...(p.imagens || [])], criativoGerado: true, criativoData: r.criativoData, formato: p.formato || 'feed' }),
+      })
+      toast('Criativo desenhado pela IA com a identidade da marca!', 'sucesso')
+      carregarPautas(planoSel)
+    } catch (e: any) {
+      toast(`Falha ao gerar o criativo: ${e?.message || 'erro'}`, 'erro')
+    } finally {
+      setGerandoCriativo(null)
+    }
+  }
+
   // Remove SÓ o criativo (imagem/arte) da pauta — a pauta continua existindo.
   async function removerCriativo(p: Pauta) {
     if (!(await confirmar('Remover o criativo desta pauta? A pauta continua — só a arte/imagem é apagada.', { titulo: 'Remover criativo', okLabel: 'Remover', cancelLabel: 'Cancelar', perigo: true }))) return
@@ -334,6 +368,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   async function abrirGerarModal(p: Pauta) {
     setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
     setRefHeadline((p.textoImagem || p.briefing || '').trim())
+    // Prefill do brief rico (se a pauta já tem receita salva)
+    const cd = p.criativoData || {}
+    setBriefObj(cd.objetivo || '')
+    setBriefVals({
+      cta: cd.cta || '', oferta: cd.oferta || '', preco: cd.preco || '', dataEvento: cd.dataEvento || '',
+      horaEvento: cd.horaEvento || '', localEvento: cd.localEvento || '', legal: cd.legal || '', whatsapp: cd.whatsapp || '',
+    })
     // Descobre se a foto realista (Ideogram) está ligada — mostra/oculta o botão.
     fetch('/api/studio/gerar-foto-ia').then(r => r.json()).then(d => setIdeogramOn(!!d?.configurado)).catch(() => setIdeogramOn(false))
     try {
@@ -426,6 +467,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // fundo e o texto vira camadas editáveis, sem risco de "sumir" ao re-renderizar.
   function abrirEditor(p: Pauta) {
     if (!p.criativoData) { toast('Gere a arte primeiro para poder editar.', 'info'); return }
+    // Criativo do motor novo (IA designer): ajuste pelo brief + regenerar (refino visual = próxima fase).
+    if (p.criativoData?.template === 'html') {
+      toast('Criativo do IA designer: ajuste o brief e gere de novo para alterar.', 'info')
+      abrirGerarModal(p)
+      return
+    }
     const capa = (p.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (p.imagens || [])[0] || ''
     const cd = p.criativoData || {}
     const ehFoto = cd.template === 'livre' || cd.template === 'foto' || !!cd.fundoUrl
@@ -999,6 +1046,31 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>A IA usa <strong>exatamente</strong> essa frase como título da arte (seguida à risca).</p>
               </div>
 
+              {/* Brief do anúncio (motor novo) — objetivo + campos que entram na arte */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Objetivo do post</label>
+                <select value={briefObj} onChange={e => setBriefObj(e.target.value)}
+                  style={{ width: '100%', padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', background: '#fff' }}>
+                  <option value="">Automático (a IA decide pelo briefing)</option>
+                  {OBJETIVOS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+                {(() => {
+                  const def = objetivoDef(briefObj)
+                  const campos = def?.campos?.length ? def.campos : []
+                  if (!campos.length) return def ? <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>{def.dica}</p> : null
+                  const rotulo: Record<string, string> = { cta: 'Chamada (CTA)', oferta: 'Oferta', preco: 'Preço', dataEvento: 'Data', horaEvento: 'Hora', localEvento: 'Local', legal: 'Texto legal', whatsapp: 'WhatsApp' }
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginTop: 8 }}>
+                      {campos.map(c => (
+                        <input key={c} value={briefVals[c] || ''} onChange={e => setBriefVals(v => ({ ...v, [c]: e.target.value }))}
+                          placeholder={rotulo[c] || c}
+                          style={{ padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+
               <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Imagem de referência</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 10 }}>
                 <button onClick={() => setRefSel('sem')} style={{ aspectRatio: '1/1', borderRadius: 12, border: refSel === 'sem' ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: '#fafafa', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600 }}>
@@ -1019,13 +1091,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               {modalCarregando && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>Carregando ativos…</p>}
               {!modalCarregando && modalAssets.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#bbb' }}>Nenhum ativo da marca ainda. Use “Nova imagem” ou gere sem imagem.</p>}
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-                <button className="st-btn st-cta" onClick={() => gerarCriativo(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
+                <button className="st-btn st-cta" onClick={() => gerarCriativoHtml(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-                  Gerar arte
+                  Gerar arte (IA designer)
                 </button>
                 <button onClick={() => setGerarModal(null)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               </div>
+              <button className="st-btn" onClick={() => gerarCriativo(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
+                style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
+                Modo clássico (templates)
+              </button>
               {ideogramOn && (
                 <button className="st-btn" onClick={() => gerarFotoIA(p)} disabled={modalEnviando}
                   style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
