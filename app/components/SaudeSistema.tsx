@@ -61,6 +61,10 @@ export default function SaudeSistema() {
   const [selPath, setSelPath] = useState('') // backup gerenciado escolhido (primário)
   const [conf, setConf] = useState('')
   const [restaurando, setRestaurando] = useState(false)
+  // Ensaio de DR: simulação (não grava) + restore escopado por cliente
+  const [simulando, setSimulando] = useState(false)
+  const [simRes, setSimRes] = useState<{ contagens: Record<string, number>; clientesNoBackup?: { id: string; nome: string }[] } | null>(null)
+  const [escopoCliente, setEscopoCliente] = useState('') // '' = restaurar tudo
   // Interruptor global do 2FA
   const [g2fa, setG2fa] = useState<boolean | null>(null)
   const [g2faBusy, setG2faBusy] = useState(false)
@@ -116,21 +120,38 @@ export default function SaudeSistema() {
       try {
         const j = JSON.parse(String(reader.result))
         if (!j?._meta) { toast('Este arquivo não parece um backup válido.', 'erro'); return }
-        setBkp(j); setSelPath(''); setConf('')
+        setBkp(j); setSelPath(''); setConf(''); setSimRes(null); setEscopoCliente('')
       } catch { toast('Não foi possível ler o arquivo.', 'erro') }
     }
     reader.readAsText(f)
   }
 
+  // Ensaio de DR: valida o backup inteiro e mostra o que SERIA restaurado — sem gravar nada.
+  async function simularRestore() {
+    const temFonte = !!selPath || !!bkp
+    if (!temFonte || simulando) return
+    setSimulando(true); setSimRes(null); setEscopoCliente('')
+    const body = selPath ? { pathname: selPath, simular: true } : { dados: bkp, simular: true }
+    const r = await fetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
+    setSimulando(false)
+    if (r?.ok) { setSimRes({ contagens: r.contagens || {}, clientesNoBackup: r.clientesNoBackup }); toast('Simulação concluída — nada foi gravado.', 'sucesso') }
+    else toast(r?.error || 'Falha na simulação.', 'erro')
+  }
+
   async function restaurar() {
     const temFonte = !!selPath || !!bkp
     if (!temFonte || conf !== 'RESTAURAR' || restaurando) return
-    if (!(await confirmar('Restaurar este backup? Os registros do backup vão SOBRESCREVER os atuais. Não apaga o que foi criado depois, mas não dá para desfazer o que for sobrescrito.', { titulo: 'Restaurar backup', okLabel: 'Restaurar agora', perigo: true }))) return
+    const nomeEscopo = escopoCliente ? (simRes?.clientesNoBackup?.find(c => c.id === escopoCliente)?.nome || escopoCliente) : ''
+    const aviso = escopoCliente
+      ? `Restaurar SÓ o cliente "${nomeEscopo}" deste backup? Os registros dele (cadastro, posts, tarefas, marcos, planos) voltam à versão do backup. O resto do sistema não é tocado.`
+      : 'Restaurar este backup COMPLETO? Os registros do backup vão SOBRESCREVER os atuais. Não apaga o que foi criado depois, mas não dá para desfazer o que for sobrescrito.'
+    if (!(await confirmar(aviso, { titulo: escopoCliente ? 'Restaurar 1 cliente' : 'Restaurar backup', okLabel: 'Restaurar agora', perigo: true }))) return
     setRestaurando(true)
-    const body = selPath ? { pathname: selPath, confirmar: 'RESTAURAR' } : { dados: bkp, confirmar: 'RESTAURAR' }
+    const fonte = selPath ? { pathname: selPath } : { dados: bkp }
+    const body = { ...fonte, confirmar: 'RESTAURAR', ...(escopoCliente ? { clienteId: escopoCliente } : {}) }
     const r = await fetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
     setRestaurando(false)
-    if (r?.ok) { toast('Backup restaurado com sucesso.', 'sucesso'); setBkp(null); setSelPath(''); setConf(''); carregar() }
+    if (r?.ok) { toast(escopoCliente ? `Cliente "${nomeEscopo}" restaurado do backup.` : 'Backup restaurado com sucesso.', 'sucesso'); setBkp(null); setSelPath(''); setConf(''); setSimRes(null); setEscopoCliente(''); carregar() }
     else toast(r?.error || 'Falha ao restaurar.', 'erro')
   }
 
@@ -289,7 +310,7 @@ export default function SaudeSistema() {
 
         {/* Primário: backup gerenciado (lido no servidor, sem limite de tamanho) */}
         <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Backup gerenciado (diário)</label>
-        <select value={selPath} onChange={e => { setSelPath(e.target.value); setBkp(null); setConf('') }} style={{ width: '100%', maxWidth: 320, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}>
+        <select value={selPath} onChange={e => { setSelPath(e.target.value); setBkp(null); setConf(''); setSimRes(null); setEscopoCliente('') }} style={{ width: '100%', maxWidth: 320, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}>
           <option value="">Escolher um backup…</option>
           {(dados.backups || []).map(b => <option key={b.pathname} value={b.pathname}>{b.pathname.replace('backups/', '').replace('.json', '')} · {formatarKB(b.tamanho)}</option>)}
         </select>
@@ -302,6 +323,31 @@ export default function SaudeSistema() {
             {cont.clientes ?? 0} clientes · {cont.usuarios ?? 0} usuários · {cont.posts ?? 0} posts · {cont.tarefas ?? 0} tarefas · {cont.marcos ?? 0} marcos
           </div>
         )}
+        {/* Ensaio de DR — simula (nada é gravado) e permite restringir a 1 cliente */}
+        {(bkp || selPath) && (
+          <div style={{ marginTop: 6, marginBottom: 10 }}>
+            <button onClick={simularRestore} disabled={simulando} style={{ padding: '8px 14px', background: '#fff', color: '#7a4a4a', border: '1.5px solid #e0c0c0', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: simulando ? 'wait' : 'pointer' }}>
+              {simulando ? 'Simulando…' : 'Simular restauração (não grava nada)'}
+            </button>
+            {simRes && (
+              <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, border: '1px solid #e0c0c0', background: '#fff', fontSize: 12, color: '#555' }}>
+                <div style={{ fontWeight: 800, color: '#333', marginBottom: 4 }}>O que este backup restauraria:</div>
+                {Object.entries(simRes.contagens).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k.replace('crm:', 'crm ')}`).join(' · ') || 'nada (backup vazio)'}
+                {!!simRes.clientesNoBackup?.length && (
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Escopo da restauração</label>
+                    <select value={escopoCliente} onChange={e => { setEscopoCliente(e.target.value); setConf('') }} style={{ width: '100%', maxWidth: 320, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
+                      <option value="">Tudo (restauração completa)</option>
+                      {simRes.clientesNoBackup.map(c => <option key={c.id} value={c.id}>Só o cliente: {c.nome}</option>)}
+                    </select>
+                    {escopoCliente && <p style={{ margin: '5px 0 0', fontSize: 11, color: '#a15656' }}>Volta só este cliente (cadastro, posts, tarefas, marcos, planos) à versão do backup. Nada mais é tocado.</p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {(bkp || selPath) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
             <span style={{ fontSize: 12, color: '#555' }}>Para confirmar, digite <b>RESTAURAR</b>:</span>

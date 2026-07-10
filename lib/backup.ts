@@ -111,21 +111,38 @@ export async function salvarBackup(): Promise<{ pathname: string; tamanho: numbe
 // reescreve cada entidade do backup e a re-indexa, mas NUNCA apaga/flush nada que
 // exista hoje. Assim, no pior caso sobrescreve registros atuais com a versão do
 // backup (comportamento esperado de DR), sem risco de zerar o banco.
+// Opções:
+//  - simular: percorre e valida o backup inteiro e devolve o relatório do que
+//    SERIA restaurado, sem gravar nada (ensaio de DR sem risco).
+//  - clienteId: restaura SÓ as entidades daquele cliente (recupera um cliente
+//    apagado sem tocar no resto; usuários do portal dele inclusos).
 // Limitação conhecida: índices derivados não exportados (ex.: cliente:{id}:posts,
 // plano:{id}:pautas, notificacoes) não são reconstruídos aqui — o de posts por
 // cliente é lazy (reconstrói sozinho); 'agendados' é reconstruído dos posts.
-export async function restaurarBackup(dados: any): Promise<{ contagens: Record<string, number> }> {
+export type OpcoesRestore = { simular?: boolean; clienteId?: string }
+export type ResultadoRestore = {
+  contagens: Record<string, number>
+  simulado: boolean
+  clientesNoBackup?: { id: string; nome: string }[] // devolvido na simulação (p/ escolher o escopo)
+}
+export async function restaurarBackup(dados: any, opts: OpcoesRestore = {}): Promise<ResultadoRestore> {
   if (!dados || typeof dados !== 'object' || !dados._meta) throw new Error('arquivo de backup inválido (sem _meta)')
   const contagens: Record<string, number> = {}
+  const simular = !!opts.simular
+  const escopo = (opts.clienteId || '').trim()
 
   async function restaurarColecao(itens: any, setKey: string, prefixo: string, extra?: (o: any) => Promise<void>) {
     if (!Array.isArray(itens)) return
     let n = 0
     for (const o of itens) {
       if (!o || !o.id) continue
-      await redis.set(`${prefixo}${o.id}`, o)
-      await redis.sadd(setKey, o.id)
-      if (extra) await extra(o)
+      // Escopo por cliente: o próprio registro do cliente OU entidades com clienteId dele.
+      if (escopo && !(setKey === 'clientes' ? o.id === escopo : o.clienteId === escopo)) continue
+      if (!simular) {
+        await redis.set(`${prefixo}${o.id}`, o)
+        await redis.sadd(setKey, o.id)
+        if (extra) await extra(o)
+      }
       n++
     }
     contagens[setKey] = n
@@ -149,17 +166,22 @@ export async function restaurarBackup(dados: any): Promise<{ contagens: Record<s
   await restaurarColecao(dados.documentos, 'documentos', 'documento:')
   await restaurarColecao(dados.mapas, 'mapas', 'mapa:')
 
+  // Config e área pessoal são globais — só entram no restore COMPLETO (sem escopo).
   let nc = 0
-  if (dados.config && typeof dados.config === 'object') {
-    for (const [k, v] of Object.entries(dados.config)) { if (v != null) { await redis.set(k, v); nc++ } }
+  if (!escopo && dados.config && typeof dados.config === 'object') {
+    for (const [k, v] of Object.entries(dados.config)) { if (v != null) { if (!simular) await redis.set(k, v); nc++ } }
   }
   contagens['config'] = nc
 
   let np = 0
-  if (dados.personal && typeof dados.personal === 'object') {
-    for (const [email, v] of Object.entries(dados.personal)) { if (v != null) { await redis.set(`personal:${email}`, v); np++ } }
+  if (!escopo && dados.personal && typeof dados.personal === 'object') {
+    for (const [email, v] of Object.entries(dados.personal)) { if (v != null) { if (!simular) await redis.set(`personal:${email}`, v); np++ } }
   }
   contagens['personal'] = np
 
-  return { contagens }
+  const clientesNoBackup = simular && Array.isArray(dados.clientes)
+    ? dados.clientes.filter((c: any) => c?.id).map((c: any) => ({ id: c.id, nome: c.nome || c.id }))
+    : undefined
+
+  return { contagens, simulado: simular, clientesNoBackup }
 }

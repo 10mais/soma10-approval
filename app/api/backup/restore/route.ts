@@ -10,19 +10,24 @@ export const runtime = 'nodejs'
 export const maxDuration = 300
 
 // Restauração de backup (recuperação de desastre) — SOMENTE ADMIN, com dupla
-// trava (exige o texto "RESTAURAR"). Dois modos:
+// trava (exige o texto "RESTAURAR"). Dois modos de fonte:
 //  - { pathname } : lê o backup gerenciado do Blob no SERVIDOR (sem limite de
 //    corpo — caminho recomendado para bancos grandes).
 //  - { dados }    : backup enviado pelo cliente (arquivo baixado; sujeito ao
 //    limite de ~4,5MB da Vercel).
-// UPSERT (nunca apaga; ver lib/backup.restaurarBackup). Registra na auditoria.
+// Opções:
+//  - { simular: true } : ensaio de DR — valida o backup e devolve o relatório do
+//    que SERIA restaurado + a lista de clientes do arquivo. NÃO grava nada
+//    (dispensa a confirmação).
+//  - { clienteId }     : restaura SÓ aquele cliente (recupera cliente apagado).
+// UPSERT (nunca apaga; ver lib/backup.restaurarBackup). Restore real é auditado.
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
-  const { dados, pathname, confirmar } = await req.json().catch(() => ({} as any))
-  if (confirmar !== 'RESTAURAR') {
+  const { dados, pathname, confirmar, simular, clienteId } = await req.json().catch(() => ({} as any))
+  if (!simular && confirmar !== 'RESTAURAR') {
     return NextResponse.json({ error: 'confirmação inválida — digite RESTAURAR' }, { status: 400 })
   }
 
@@ -45,9 +50,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'arquivo de backup inválido' }, { status: 400 })
     }
 
-    const r = await restaurarBackup(payload)
-    const ator = session.user?.name || session.user?.email || 'admin'
-    await registrarAuditoria({ ator, acao: 'backup_restaurado', alvo: origem, detalhe: `Contagens: ${JSON.stringify(r.contagens)}` })
+    const r = await restaurarBackup(payload, { simular: !!simular, clienteId: clienteId || undefined })
+    if (!r.simulado) {
+      const ator = session.user?.name || session.user?.email || 'admin'
+      const alvo = clienteId ? `${origem} (só cliente ${clienteId})` : origem
+      await registrarAuditoria({ ator, acao: 'backup_restaurado', alvo, detalhe: `Contagens: ${JSON.stringify(r.contagens)}` })
+    }
     return NextResponse.json({ ok: true, ...r })
   } catch (e: any) {
     await capturarErro('backup/restore', e)
