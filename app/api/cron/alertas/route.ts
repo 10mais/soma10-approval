@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Post, Cliente } from '@/lib/redis'
-import { notificar, notificarEquipe, notificarAdmins } from '@/lib/notificacoes'
+import { notificar, notificarEquipe, notificarAdmins, notificarDono } from '@/lib/notificacoes'
 import { cronAutorizado } from '@/lib/cronAuth'
 import { capturarErro } from '@/lib/erros'
+import { atrasada, diasDeAtraso } from '@/lib/entregas'
 
 export const runtime = 'nodejs'
 
@@ -62,6 +63,28 @@ async function rodarAlertas(): Promise<NextResponse> {
     aprovacoes++
   }
 
+  // ---- 1b) Entrega ATRASADA (dataAgendada passou e o post nao foi entregue) ----
+  // Avisa quem PRODUZ (criador da pauta + squad do cliente); dedupe 1x/dia.
+  let entregas = 0
+  for (const p of posts) {
+    if (!atrasada(p, agora)) continue
+    const chave = `entrega_atraso:${p.id}`
+    if (await redis.get(chave)) continue
+
+    const dias = diasDeAtraso(p, agora)
+    const quando = dias === 0 ? 'hoje' : `ha ${dias} dia(s)`
+    const msg = `${p.clienteNome}: a entrega de um post venceu ${quando} e ele ainda esta "${p.status}". Resolva no Studio.`
+    await notificarDono(p.criadoPor, 'entrega_atrasada', 'Entrega atrasada', msg, p.id)
+    const cli = await getCliente(p.clienteId)
+    for (const email of (cli?.squad || [])) {
+      if (email && email !== p.criadoPor) await notificar(email, 'entrega_atrasada', 'Entrega atrasada', msg, p.id)
+    }
+
+    await redis.set(chave, '1')
+    await redis.expire(chave, 86400) // re-cobra 1x/dia enquanto atrasado
+    entregas++
+  }
+
   // ---- 2) Renovacao de contrato (30 dias) ----
   const cliIds = await redis.smembers('clientes')
   const clientes = cliIds.length > 0 ? ((await redis.mget<(Cliente | null)[]>(...cliIds.map(id => `cliente:${id}`))).filter(Boolean) as Cliente[]) : []
@@ -83,5 +106,5 @@ async function rodarAlertas(): Promise<NextResponse> {
     renovacoes++
   }
 
-  return NextResponse.json({ ok: true, aprovacoes, renovacoes, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
+  return NextResponse.json({ ok: true, aprovacoes, entregas, renovacoes, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
 }

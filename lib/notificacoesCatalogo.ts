@@ -16,6 +16,7 @@ export const NOTIF_TIPOS: { tipo: string; label: string; categoria: string; obri
   { tipo: 'tarefa_prazo_proximo', label: 'Prazo de tarefa próximo', categoria: 'Tarefas' },
   { tipo: 'tarefa_vencida', label: 'Tarefa vencida', categoria: 'Tarefas' },
   { tipo: 'aprovacao_atrasada', label: 'Aprovação atrasada (SLA)', categoria: 'Operação' },
+  { tipo: 'entrega_atrasada', label: 'Entrega de post atrasada', categoria: 'Operação' },
   { tipo: 'contrato_renovacao', label: 'Renovação de contrato próxima', categoria: 'Operação' },
   { tipo: 'briefing_solicitado', label: 'Cliente solicitou briefing', categoria: 'Operação' },
   { tipo: 'candidatura', label: 'Nova candidatura (Trabalhe Conosco)', categoria: 'Operação' },

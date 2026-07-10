@@ -4,6 +4,7 @@ import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
+import { atrasada, emRisco } from '@/lib/entregas'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -771,7 +772,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <span style={{ width: 6, height: 6, borderRadius: 2, background: fmt.cor }} />{fmt.label}
                         </span>
                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
-                        <span style={{ fontSize: 11.5, color: '#9a9a9a', whiteSpace: 'nowrap' }}>{dataFmt}</span>
+                        <span style={{ fontSize: 11.5, color: atrasada(p) ? '#b91c1c' : '#9a9a9a', fontWeight: atrasada(p) ? 800 : undefined, whiteSpace: 'nowrap' }}>{dataFmt}</span>
+                        {atrasada(p) && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#fee2e2', color: '#b91c1c', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Atrasado</span>
+                        )}
+                        {!atrasada(p) && emRisco(p) && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Vence em breve</span>
+                        )}
                       </div>
                     </div>
                     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 7, flexShrink: 0 }}>

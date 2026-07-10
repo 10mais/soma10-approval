@@ -297,6 +297,7 @@ export type TipoNotificacao =
   | 'tarefa_vencida'
   | 'mensagem_privada'
   | 'aprovacao_atrasada'
+  | 'entrega_atrasada'
   | 'contrato_renovacao'
   | 'briefing_solicitado'
   | 'candidatura'

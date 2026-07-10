@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCliente from './AvatarCliente'
+import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }
 type Post = { id: string; clienteId: string; clienteNome: string; status: string; dataAgendada?: string; criadoEm: string; atualizadoEm?: string; etapa?: string; erroPublicacao?: string; imagens: string[] }
@@ -66,7 +67,12 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
     .sort((a, b) => new Date(a.dataFim!).getTime() - new Date(b.dataFim!).getTime())
     .slice(0, 6), [marcos])
   const postsNoCliente = useMemo(() => posts.filter(p => p.status === 'aguardando_aprovacao'), [posts])
-  const temSemana = tarefasSemana.length > 0 || marcosSemana.length > 0 || postsNoCliente.length > 0
+  // Entregas: posts com data vencida sem entrega + posts vencendo em ≤2 dias parados.
+  const entregasAtrasadas = useMemo(() => posts.filter(p => atrasada(p))
+    .sort((a, b) => new Date(a.dataAgendada!).getTime() - new Date(b.dataAgendada!).getTime()).slice(0, 8), [posts])
+  const entregasEmRisco = useMemo(() => posts.filter(p => !atrasada(p) && emRisco(p))
+    .sort((a, b) => new Date(a.dataAgendada!).getTime() - new Date(b.dataAgendada!).getTime()).slice(0, 6), [posts])
+  const temSemana = tarefasSemana.length > 0 || marcosSemana.length > 0 || postsNoCliente.length > 0 || entregasAtrasadas.length > 0 || entregasEmRisco.length > 0
 
   // Andamento do Playbook: progresso geral dos marcos ativos.
   const pbTotal = useMemo(() => marcos.filter(m => m.status !== 'cancelado').length, [marcos])
@@ -157,11 +163,30 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
         <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Ações da semana</h3>
           {!temSemana && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nada vencendo nos próximos 7 dias. Tudo em dia.</p>}
+          {entregasAtrasadas.length > 0 && (
+            <button onClick={() => onIr?.('studio')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c' }}>{entregasAtrasadas.length} entrega(s) ATRASADA(s) — data venceu sem post entregue</span>
+            </button>
+          )}
           {postsNoCliente.length > 0 && (
             <button onClick={() => onIr?.('planner')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>{postsNoCliente.length} post(s) aguardando aprovação do cliente</span>
             </button>
           )}
+          {entregasAtrasadas.map(p => (
+            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · post de {dataCurta(p.dataAgendada)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c', flexShrink: 0 }}>{diasDeAtraso(p) === 0 ? 'venceu hoje' : `há ${diasDeAtraso(p)}d`}</span>
+            </div>
+          ))}
+          {entregasEmRisco.map(p => (
+            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#92400e', background: '#fef3c7', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · vence {dataCurta(p.dataAgendada)} e ainda está &quot;{p.status === 'rascunho' ? 'rascunho' : 'em ajuste'}&quot;</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#a16207', flexShrink: 0 }}>{dataCurta(p.dataAgendada)}</span>
+            </div>
+          ))}
           {tarefasSemana.map(t => { const atras = emDias(t.prazo) < 0; return (
             <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
