@@ -7,6 +7,7 @@ import { listarAuditoria } from '@/lib/auditoria'
 import { stripeConfigurado } from '@/lib/stripe'
 import { pushConfigurado } from '@/lib/webpush'
 import { ideogramConfigurado } from '@/lib/ideogram'
+import { nanoBananaConfigurado } from '@/lib/nanoBanana'
 import { whatsappConfigurado } from '@/lib/whatsapp'
 import { list } from '@vercel/blob'
 
@@ -49,7 +50,8 @@ export async function GET(_req: NextRequest) {
     { chave: 'cron', label: 'Proteção de crons (CRON_SECRET)', ligado: !!env.CRON_SECRET },
     { chave: 'stripe', label: 'Cobrança (Stripe)', ligado: stripeConfigurado(), obs: env.STRIPE_WEBHOOK_SECRET ? undefined : 'falta STRIPE_WEBHOOK_SECRET' },
     { chave: 'push', label: 'Notificações push (VAPID)', ligado: pushConfigurado() },
-    { chave: 'ideogram', label: 'Foto realista por IA (Ideogram)', ligado: ideogramConfigurado() },
+    { chave: 'nanobanana', label: 'Foto realista por IA (Nano Banana 2)', ligado: nanoBananaConfigurado() },
+    { chave: 'ideogram', label: 'Foto realista por IA (Ideogram — fallback)', ligado: ideogramConfigurado() },
     { chave: 'whatsapp', label: 'WhatsApp oficial (Cloud API)', ligado: whatsappConfigurado() },
   ]
 

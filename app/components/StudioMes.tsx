@@ -190,8 +190,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [criandoLinha, setCriandoLinha] = useState(false)
   const [abertos, setAbertos] = useState<Set<string>>(new Set()) // linhas expandidas
   const [gerandoCriativo, setGerandoCriativo] = useState<string | null>(null)
-  const [gerandoFoto, setGerandoFoto] = useState<string | null>(null) // Ideogram (foto realista)
-  const [ideogramOn, setIdeogramOn] = useState(false)
+  const [gerandoFoto, setGerandoFoto] = useState<string | null>(null) // foto realista por IA
+  const [ideogramOn, setIdeogramOn] = useState(false) // algum motor de foto ligado
+  const [motorFoto, setMotorFoto] = useState<string | null>(null) // 'nano-banana' | 'ideogram'
   const [linkModal, setLinkModal] = useState<{ url: string; cliente: string } | null>(null) // compartilhar link de aprovação
   const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
   // Modal "Gerar arte" — escolher imagem de referência
@@ -429,8 +430,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       cta: cd.cta || '', oferta: cd.oferta || '', preco: cd.preco || '', dataEvento: cd.dataEvento || '',
       horaEvento: cd.horaEvento || '', localEvento: cd.localEvento || '', legal: cd.legal || '', whatsapp: cd.whatsapp || '',
     })
-    // Descobre se a foto realista (Ideogram) está ligada — mostra/oculta o botão.
-    fetch('/api/studio/gerar-foto-ia').then(r => r.json()).then(d => setIdeogramOn(!!d?.configurado)).catch(() => setIdeogramOn(false))
+    // Descobre se a foto realista está ligada e qual motor (Nano Banana/Ideogram).
+    fetch('/api/studio/gerar-foto-ia').then(r => r.json()).then(d => { setIdeogramOn(!!d?.configurado); setMotorFoto(d?.motor || null) }).catch(() => { setIdeogramOn(false); setMotorFoto(null) })
     try {
       const c = await fetch(`/api/clientes?id=${p.clienteId}`).then(x => x.json())
       const assets = Array.isArray(c?.assetsMarca) ? c.assetsMarca : []
@@ -1206,10 +1207,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <button className="st-btn" onClick={() => gerarFotoIA(p)} disabled={modalEnviando}
                   style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
-                  Foto realista (IA) — Ideogram
+                  Foto realista (IA) — {motorFoto === 'nano-banana' ? 'Nano Banana' : 'Ideogram'}
                 </button>
               )}
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb', textAlign: 'center' }}>{ideogramOn ? 'Arte de marca (template) ou foto realista gerada por IA.' : 'Foto realista por IA disponível ao configurar o Ideogram.'}</p>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb', textAlign: 'center' }}>{ideogramOn ? (motorFoto === 'nano-banana' ? 'A foto usa as FOTOS REAIS da marca como referência (Nano Banana).' : 'Arte de marca (template) ou foto realista gerada por IA.') : 'Foto realista por IA disponível ao configurar GEMINI_API_KEY (Nano Banana).'}</p>
             </div>
           </div>
         )
