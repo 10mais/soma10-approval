@@ -40,6 +40,7 @@ const RelatorioMensalEditor = dynamic(() => import('../components/RelatorioMensa
 const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr: false })
 const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuais'), { ssr: false })
 const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
+const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
@@ -175,6 +176,7 @@ const ICONE_ABA: Record<string, string> = {
   tarefas: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   esteira: 'M3 4h7v7H3zM14 13h7v7h-7zM10 7.5h4a3 3 0 0 1 3 3V13M14 16.5H7a3 3 0 0 1-3-3V11',
   studio: 'M3 3h18v18H3zM3 9h18M9 9v12M3 15h6',
+  agenda: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 16l2 2 4-4',
   carga: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   playbook: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5z',
   campanhas: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6',
@@ -396,7 +398,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -904,7 +906,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
@@ -1967,7 +1969,7 @@ function Dashboard() {
             <>
               {([
                 { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
+                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => !g.grupo || podeGrupo(g.grupo)).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -3203,6 +3205,15 @@ function Dashboard() {
             setEditandoPostId(pauta.id)
             setAba('novo-post')
           }} />
+        )}
+
+        {/* Agenda (clínicas/serviços) — grupo Produção */}
+        {aba === 'agenda' && role !== 'cliente' && (
+          <Agenda
+            usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email }))}
+            meuEmail={(session?.user as any)?.email || ''}
+            podeEditar={podeNivelDash('producao', 'editar')}
+          />
         )}
 
         {aba === 'aprovacoes' && (

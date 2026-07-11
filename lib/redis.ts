@@ -196,6 +196,24 @@ export type Cliente = {
   assinaturaStatus?: string // active | past_due | canceled | ...
 }
 
+// Agendamento (módulo Agenda — clínicas/serviços). Chaves: `agendamento:{id}`,
+// set `agendamentos`. Status flui: agendado -> confirmado -> atendido | faltou | cancelado.
+export type AgendamentoStatus = 'agendado' | 'confirmado' | 'atendido' | 'faltou' | 'cancelado'
+export type Agendamento = {
+  id: string
+  pacienteNome: string
+  pacienteTelefone?: string
+  profissionalEmail: string
+  profissionalNome: string
+  servico?: string
+  dataInicio: string // ISO
+  duracaoMin: number
+  status: AgendamentoStatus
+  observacoes?: string
+  criadoEm: string
+  criadoPor?: string
+}
+
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.
 export type NpsResposta = {
   id: string
