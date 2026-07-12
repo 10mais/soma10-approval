@@ -910,8 +910,10 @@ function Dashboard() {
   useEffect(() => {
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
-    if (g && !podeGrupo(g)) setAba('home')
-  }, [role, aba, permPapel])
+    if (g && !podeGrupo(g)) { setAba('home'); return }
+    // Camada granular: aba desligada para o papel/usuário também bloqueia o acesso direto
+    if (ABAS_PERM.some(a => a.key === aba) && !podeAbaDash(aba)) setAba('home')
+  }, [role, aba, permPapel, permGranular])
   // Config por papel (matriz na tela Colaboradores): salva o nível alterado
   function setPermPapelNivel(papel: 'gerente' | 'usuario', novoPerm: any) {
     setPermPapel(p => ({ ...p, [papel]: novoPerm }))

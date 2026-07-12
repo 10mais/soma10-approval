@@ -10,6 +10,8 @@ export type AcaoPerm = 'publicar' | 'enviar_cliente' | 'gerar_ia' | 'aprovar' | 
 export const ABAS_PERM: { key: string; label: string; categoria: string }[] = [
   { key: 'studio', label: 'Studio', categoria: 'Produção' },
   { key: 'tarefas', label: 'Tarefas', categoria: 'Produção' },
+  { key: 'agenda', label: 'Agenda', categoria: 'Produção' },
+  { key: 'planner', label: 'Planner', categoria: 'Produção' },
   { key: 'carga', label: 'Carga da equipe', categoria: 'Produção' },
   { key: 'agentes', label: 'Agentes de IA', categoria: 'Produção' },
   { key: 'documentos', label: 'Documentos', categoria: 'Produção' },

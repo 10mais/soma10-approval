@@ -29,17 +29,21 @@
 5. Redeploy após salvar as envs
 
 ## 3. Primeiro acesso — ~2 min
-1. `POST https://{cliente}.soma10.com.br/api/setup` com JSON `{ "nome", "email", "senha", "nomeEmpresa" }`
+1. `POST https://{cliente}.soma10.com.br/api/setup` com JSON `{ "nome", "email", "senha", "nomeEmpresa", "perfil" }`
    (ou via console do navegador na página de login):
 ```js
-fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:'Dono',email:'dono@cliente.com',senha:'TROQUE-8+chars',nomeEmpresa:'Nome da Empresa'})}).then(r=>r.json()).then(console.log)
+fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:'Dono',email:'dono@cliente.com',senha:'TROQUE-8+chars',nomeEmpresa:'Nome da Empresa',perfil:'clinica'})}).then(r=>r.json()).then(console.log)
 ```
-2. A rota **só funciona com o banco vazio** — depois do 1º admin ela tranca (403).
-3. Logar → **Minha Conta**: trocar a senha → **Config → Geral**: logo/cores da empresa.
+2. **`perfil` (opcional) pré-configura a instância inteira** — permissões por papel, telas da equipe e funil de CRM. `GET /api/setup` lista os disponíveis:
+   - **`clinica`** — CRM (funil de pacientes: Lead → Contato → Avaliação agendada → Compareceu → Orçamento → Fechou/Não fechou) + Agenda. Equipe sem Estratégia/Studio/Planner. *(Norah, Phenoma — toda clínica nasce igual)*
+   - **`gestao`** — CRM + Financeiro (admin) + Projetos (Playbook/Tarefas/Modelos/Documentos). Equipe sem Studio/Planner/Agenda/Campanhas. *(Sua Dupla Cidadania)*
+   - Sem `perfil` = padrão da agência (tudo ligado). Perfil desconhecido = 400 (evita typo silencioso).
+3. A rota **só funciona com o banco vazio** — depois do 1º admin ela tranca (403).
+4. Logar → **Minha Conta**: trocar a senha → **Config → Geral**: logo/cores da empresa.
 
-## 4. Liberar módulos conforme contratação — ~5 min
+## 4. Ajustar módulos (se precisar) — ~2 min
 - O **admin** (dono da empresa) vê tudo.
-- Para a equipe do cliente: **Config → Permissões por papel** (telas + ações) — desmarcar as telas dos módulos não contratados para `gerente`/`usuario`.
+- O `perfil` do passo 3 já deixa as permissões da equipe no ponto; ajustes finos em **Config → Permissões por papel** (telas + ações) para `gerente`/`usuario`.
 - Módulos que dependem de credencial (IA, publicação social, Stripe) já ficam no-op sem a env — não precisa esconder.
 
 ## 5. Pós-provisionamento (checklist)

@@ -859,3 +859,8 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Docs:** `INSTANCIAS.md`. **Deps:** `puppeteer-core`, `@sparticuz/chromium`. **Testes:** 35 → **68**.
 - **Campos redis:** `Cliente.fontes/style`; `Post.criativoData` (brief rico + html); `Agendamento`/set `agendamentos`; `TipoNotificacao 'entrega_atrasada'`.
 - **Envs:** `GEMINI_API_KEY` ✅ · `CRON_SECRET` ✅ · `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` ✅ · opcionais: `GEMINI_IMAGE_MODEL`, `RENDER_HTML_ENDPOINT`, `RENDER_HTML_TOKEN`, `LOCAL_CHROME_PATH`.
+
+### 36.6 Perfis de instância no /api/setup (2026-07-12)
+- **Prioridades revisadas pelo dono:** 1º Norah · 2º Sua Dupla Cidadania · 3º **Clínica Phenoma (cliente NOVO, clínica = clone da Norah)**. Deny/Sicredi **BLOQUEADO** (aguarda permissões do banco, dependência do cliente).
+- **`/api/setup` ganhou `perfil` opcional** (`clinica` | `gestao`) — semeia numa tacada `config:permissoesPapel` + `config:permissoesGranular` + funil de CRM (`crm:pipelines`/`crm:estagios`). `clinica`: funil de pacientes (Lead→Contato→Avaliação agendada→Compareceu→Orçamento→Fechou/Não fechou), equipe sem Estratégia/Studio/Planner. `gestao`: Projetos (estratégia) ligado, sem social/Agenda. GET lista os perfis; perfil inválido = 400. Preset é aplicado ANTES de criar o admin (falha não tranca a rota).
+- **Arquivos:** `lib/perfisInstanciaCatalogo.ts` (client-safe) + `lib/perfisInstancia.ts` (applier). `ABAS_PERM` ganhou **agenda** e **planner** (antes não dava pra escondê-las por papel). Guard de acesso direto por sessionStorage no dashboard agora checa também a camada granular (antes só grupo). Testes 68 → **77**. `INSTANCIAS.md` passo 3 documenta os perfis.
