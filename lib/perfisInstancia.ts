@@ -31,5 +31,12 @@ export async function aplicarPerfilInstancia(chave?: string | null): Promise<Per
     })))
   }
 
+  if (def.playbook) {
+    await redis.set('crm:playbookQualificacao', {
+      roteiro: def.playbook.roteiro,
+      cadencia: def.playbook.cadencia.map(p => ({ id: uuid(), ...p })),
+    })
+  }
+
   return def.chave
 }

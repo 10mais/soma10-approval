@@ -79,6 +79,20 @@ describe('catálogo de perfis', () => {
     }
   })
 
+  it('perfil clínica semeia playbook de clínica com cadência válida', () => {
+    const pb = perfilDef('clinica')!.playbook!
+    expect(pb.roteiro).toMatch(/DÉCADA/)
+    expect(pb.cadencia.length).toBeGreaterThanOrEqual(3)
+    for (const p of pb.cadencia) {
+      expect(['whatsapp', 'ligacao', 'email']).toContain(p.canal)
+      expect(typeof p.dia).toBe('number')
+      expect(p.titulo.length).toBeGreaterThan(0)
+      expect(p.script.length).toBeGreaterThan(0)
+    }
+    // gestão não semeia playbook (usa o padrão de agência)
+    expect(perfilDef('gestao')!.playbook).toBeUndefined()
+  })
+
   it('funil da clínica espelha a referência (Agendamentos, Compareceu=ganho, Não compareceu=perdido)', () => {
     const pipe = perfilDef('clinica')!.pipeline!
     expect(pipe.nome).toBe('Agendamentos')

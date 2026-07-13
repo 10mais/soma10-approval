@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { PLAYBOOK_CLINICA } from '@/lib/playbookClinica'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +12,11 @@ const CHAVE = 'crm:playbookQualificacao'
 
 export type CadenciaPasso = { id: string; dia: number; canal: 'whatsapp' | 'ligacao' | 'email'; titulo: string; script: string }
 export type PlaybookQualificacao = { roteiro: string; cadencia: CadenciaPasso[] }
+
+// Padrão da instância clínica: playbook de clínica em vez do de marketing/agência.
+function padraoClinica(): PlaybookQualificacao {
+  return { roteiro: PLAYBOOK_CLINICA.roteiro, cadencia: PLAYBOOK_CLINICA.cadencia.map(p => ({ id: uuid(), ...p })) }
+}
 
 function padrao(): PlaybookQualificacao {
   return {
@@ -34,7 +41,7 @@ function padrao(): PlaybookQualificacao {
 async function carregar(): Promise<PlaybookQualificacao> {
   const t = await redis.get<PlaybookQualificacao>(CHAVE)
   if (t && Array.isArray(t.cadencia)) return t
-  const novo = padrao()
+  const novo = (await getPerfilInstancia()) === 'clinica' ? padraoClinica() : padrao()
   await redis.set(CHAVE, novo)
   return novo
 }

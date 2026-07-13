@@ -7,6 +7,7 @@
 
 import { PermissoesPapel } from './permissoesCatalogo'
 import { PermGranularPapel } from './permissoesGranular'
+import { PLAYBOOK_CLINICA, PlaybookSeed } from './playbookClinica'
 
 export type PerfilInstancia = 'clinica' | 'gestao'
 
@@ -21,6 +22,8 @@ export type DefPerfil = {
   // Semeia crm:pipelines + crm:estagios (se ausente, o seed padrão "Comercial"
   // do garantirSetupCrm acontece lazy no primeiro acesso ao CRM)
   pipeline?: { nome: string; estagios: { nome: string; ganho?: boolean; perdido?: boolean }[] }
+  // Semeia crm:playbookQualificacao (roteiro + cadência). Ausente = padrão de agência.
+  playbook?: PlaybookSeed
 }
 
 // Telas de social media/marketing que um cliente de gestão não contratou.
@@ -72,6 +75,7 @@ export const PERFIS: DefPerfil[] = [
         { nome: 'Não compareceu', perdido: true },
       ],
     },
+    playbook: PLAYBOOK_CLINICA,
   },
   {
     chave: 'gestao',
