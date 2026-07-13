@@ -211,9 +211,34 @@ export type Agendamento = {
   duracaoMin: number
   status: AgendamentoStatus
   observacoes?: string
+  queixaPrincipal?: string // motivo da consulta relatado pelo paciente (clínicas)
   registroAtendimento?: string // evolução/prontuário simples escrito ao atender (dado de saúde — só no banco isolado da clínica)
   criadoEm: string
   criadoPor?: string
+}
+
+// Reunião interna (Pessoas e Cultura): pauta antes, ata depois, decisões que
+// viram Tarefas. Chaves: `reuniao:{id}`, set `reunioes`.
+export type ReuniaoDecisao = {
+  id: string
+  texto: string
+  responsavelEmail?: string
+  responsavelNome?: string
+  prazo?: string // ISO date
+  tarefaId?: string // preenchido quando a decisão vira tarefa
+}
+export type Reuniao = {
+  id: string
+  titulo: string
+  data: string // ISO — quando a reunião acontece(u)
+  participantes?: string
+  pauta?: string // o que será discutido (antes da reunião)
+  ata?: string // registro do que foi discutido/decidido
+  decisoes?: ReuniaoDecisao[]
+  status: 'agendada' | 'realizada'
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm?: string
 }
 
 // Lista de espera da Agenda (clínicas): quem quer horário mas ainda não tem.
@@ -386,6 +411,8 @@ export type Marco = {
 export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
 export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video' | 'briefing' | 'copy' | 'campanha'
+  // Tipos do perfil clínica (catálogo em GestaoTarefas TIPOS_CLINICA)
+  | 'confirmacao_agenda' | 'retorno_paciente' | 'followup_orcamento' | 'compras_estoque' | 'administrativo' | 'financeiro_clinica' | 'reuniao_interna'
 export type Tarefa = {
   id: string
   titulo: string

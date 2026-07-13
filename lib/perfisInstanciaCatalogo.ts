@@ -34,6 +34,7 @@ export const ABAS_OCULTAS_CLINICA: string[] = [
   'playbook', 'campanhas', 'modelos', 'automacoes', // módulo Estratégia inteiro
   'conversao', // Conversão & Retenção
   'candidaturas', 'recrutamento', // Pessoas e Cultura (Trabalhe Conosco)
+  'solicitacoes', // Solicitações do cliente (conceito de agência)
 ]
 
 export const PERFIS: DefPerfil[] = [

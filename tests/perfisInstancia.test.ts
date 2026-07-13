@@ -70,7 +70,7 @@ describe('catálogo de perfis', () => {
   it('modo clínica esconde exatamente o que o dono pediu (2026-07-13), sem duplicatas', () => {
     // Studio, Planner, Mapas, Estratégia inteira, Conversão&Retenção, Candidaturas, Trabalhe Conosco
     expect([...ABAS_OCULTAS_CLINICA].sort()).toEqual(
-      ['automacoes', 'campanhas', 'candidaturas', 'conversao', 'mapas', 'modelos', 'planner', 'playbook', 'recrutamento', 'studio'].sort()
+      ['automacoes', 'campanhas', 'candidaturas', 'conversao', 'mapas', 'modelos', 'planner', 'playbook', 'recrutamento', 'solicitacoes', 'studio'].sort()
     )
     expect(new Set(ABAS_OCULTAS_CLINICA).size).toBe(ABAS_OCULTAS_CLINICA.length)
     // Agenda, CRM e Tarefas NUNCA podem entrar nesta lista (são o produto da clínica)

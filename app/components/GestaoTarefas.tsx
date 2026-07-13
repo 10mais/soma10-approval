@@ -38,10 +38,26 @@ const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
   { key: 'video', label: 'Video', cor: '#b91c1c', icone: 'M5 3l14 9-14 9V3z' },
 ]
 
+// Tipos do dia a dia de uma CLÍNICA (perfil clinica troca o catálogo de agência por este)
+const TIPOS_CLINICA: { key: string; label: string; cor: string; icone: string }[] = [
+  { key: 'confirmacao_agenda', label: 'Confirmação de agenda', cor: '#1d4ed8', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+  { key: 'retorno_paciente', label: 'Retorno pós-atendimento', cor: '#059669', icone: 'M3 12a9 9 0 1 0 9-9M3 12l4-4M3 12l4 4' },
+  { key: 'followup_orcamento', label: 'Follow-up de orçamento', cor: '#d97706', icone: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
+  { key: 'compras_estoque', label: 'Compras / Estoque', cor: '#7c3aed', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
+  { key: 'administrativo', label: 'Administrativo', cor: '#0d9488', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
+  { key: 'financeiro_clinica', label: 'Financeiro', cor: '#0891b2', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
+  { key: 'reuniao_interna', label: 'Reunião', cor: '#4f46e5', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+]
+
 // Tipos personalizados criados pela equipe (persistidos no servidor). Mantidos em
 // modulo para que os badges dos cards (que usam tipoInfo) resolvam tipos custom.
 let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] = []
-function todosTipos() { return [...TIPOS, ...TIPOS_CUSTOM] }
+// Perfil da instância (setado pelo GestaoTarefas via prop) — decide o catálogo dos selects
+let PERFIL_CLINICA_TAREFAS = false
+function tiposBase() { return PERFIL_CLINICA_TAREFAS ? TIPOS_CLINICA : TIPOS }
+// Resolver de badge inclui os DOIS catálogos: tarefas antigas mantêm o rótulo mesmo trocando o perfil
+function todosTipos() { return [...TIPOS, ...TIPOS_CLINICA, ...TIPOS_CUSTOM] }
 function tipoInfo(key?: string) { return todosTipos().find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 function fmtRelogio(ms: number) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60; const mm = String(m).padStart(2, '0'), ss = String(seg).padStart(2, '0'); return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}` }
 // Definition of Done — checklist padrão por tipo de tarefa
@@ -253,7 +269,9 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean }) {
+export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean }) {
+  // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
+  PERFIL_CLINICA_TAREFAS = perfilClinica
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [excluidas, setExcluidas] = useState<Tarefa[]>([])
   const [view, setView] = useState<'kanban' | 'lista'>('kanban')
@@ -397,7 +415,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             </select>
             <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os tipos</option>
-              {[...TIPOS, ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
             </select>
             {(filtroCliente || filtroResponsavel || filtroTipo || busca) && (
               <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setBusca('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
@@ -1106,7 +1124,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 <div style={{ position: 'relative' }}>
                   <select value={form.tipo} onChange={e => { if (e.target.value === '__novo__') { setCriandoTipo(true) } else { setForm(f => ({ ...f, tipo: e.target.value })) } }}
                     style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff', appearance: 'none', boxSizing: 'border-box' }}>
-                    {[...TIPOS, ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     <option value="__novo__">+ Criar novo tipo...</option>
                   </select>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"

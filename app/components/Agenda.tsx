@@ -12,8 +12,11 @@ type Ag = {
   id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string
   profissionalEmail: string; profissionalNome: string; servico?: string
   dataInicio: string; duracaoMin: number; status: string; observacoes?: string
+  queixaPrincipal?: string
   registroAtendimento?: string
 }
+// Tipos de atendimento da clínica (dropdown fixo — pedido do dono)
+const SERVICOS_CLINICA = ['Consulta', 'Revisão', 'Procedimento']
 type Espera = { id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string; servico?: string; observacoes?: string; criadoEm: string }
 
 const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
@@ -72,6 +75,18 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
     const m = contatos.find(c => normaliza(c.nome) === normaliza(nome))
     setModal(x => ({ ...x, pacienteNome: nome, contatoId: m?.id, pacienteTelefone: (x?.pacienteTelefone || m?.telefone || '') || undefined }))
   }
+  // Agendamento iniciado no CRM ("Agendar" no negócio/contato): pré-preenche o modal
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('agenda_prefill')
+      if (!raw) return
+      sessionStorage.removeItem('agenda_prefill')
+      const p = JSON.parse(raw)
+      const base = new Date(); base.setHours(9, 0, 0, 0); base.setDate(base.getDate() + 1)
+      setModal({ pacienteNome: p.pacienteNome || '', pacienteTelefone: p.pacienteTelefone || undefined, contatoId: p.contatoId || undefined, profissionalEmail: usuarios.find(u => u.email === meuEmail)?.email || usuarios[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const semana = inicioDaSemana(ref)
   const fimSemana = new Date(semana); fimSemana.setDate(fimSemana.getDate() + 7)
@@ -341,8 +356,16 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               <div style={{ display: 'flex', gap: 8 }}>
                 <input value={modal.pacienteTelefone || ''} onChange={e => setModal(m => ({ ...m, pacienteTelefone: e.target.value }))} placeholder="Telefone/WhatsApp"
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
-                <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder="Serviço"
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                {perfilClinica ? (
+                  <select value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="">Tipo de atendimento...</option>
+                    {SERVICOS_CLINICA.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                ) : (
+                  <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder="Serviço"
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                )}
                 <datalist id="agenda-servicos">{servicos.map(s => <option key={s} value={s} />)}</datalist>
               </div>
               <select value={modal.profissionalEmail || ''} onChange={e => setModal(m => ({ ...m, profissionalEmail: e.target.value }))}
@@ -354,7 +377,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
                 <select value={modal.duracaoMin || 30} onChange={e => setModal(m => ({ ...m, duracaoMin: Number(e.target.value) }))}
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                  {[15, 30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                  {(perfilClinica ? [30, 45, 60, 90, 120, 150, 180, 210, 240] : [15, 30, 45, 60, 90, 120]).map(d => (
+                    <option key={d} value={d}>{d < 60 ? `${d} min` : `${Math.floor(d / 60)}h${d % 60 ? ` ${d % 60}min` : ''}`}</option>
+                  ))}
                 </select>
               </div>
               {modal.id && (
@@ -366,6 +391,10 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                     </button>
                   ))}
                 </div>
+              )}
+              {perfilClinica && (
+                <input value={modal.queixaPrincipal || ''} onChange={e => setModal(m => ({ ...m, queixaPrincipal: e.target.value }))} placeholder="Queixa principal (motivo da consulta)"
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
               )}
               <textarea value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder="Observações" rows={2}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
