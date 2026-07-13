@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
@@ -560,6 +560,10 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [excluindo, setExcluindo] = useState(false)
   const [arrastando, setArrastando] = useState(false)
+  // Mesclar duplicados: exige exatamente 2 selecionados
+  const [mesclarAberto, setMesclarAberto] = useState(false)
+  const [principalId, setPrincipalId] = useState('')
+  const [mesclando, setMesclando] = useState(false)
   // Arrastar arquivo CSV sobre a lista = importar contatos em massa
   function onDrop(e: React.DragEvent) {
     e.preventDefault(); setArrastando(false)
@@ -601,6 +605,25 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
     else toast('Falha ao excluir.', 'erro')
   }
 
+  // Contatos selecionados (para mesclar) + pontuação de "completude" p/ sugerir o principal
+  const selecionados = contatos.filter(c => sel.has(c.id))
+  const completude = (c?: Contato) => [c?.telefone, c?.email, c?.empresa, c?.areaAtuacao, (c as any)?.nascimento, (c as any)?.historico?.length].filter(Boolean).length
+  function abrirMesclar() {
+    if (selecionados.length !== 2) return
+    const [a, b] = selecionados
+    setPrincipalId(completude(a) >= completude(b) ? a.id : b.id) // sugere o mais completo
+    setMesclarAberto(true)
+  }
+  async function mesclar() {
+    const secundarioId = selecionados.map(c => c.id).find(i => i !== principalId)
+    if (!principalId || !secundarioId) return
+    setMesclando(true)
+    const r = await fetch('/api/crm/contatos/mesclar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ principalId, secundarioId }) }).then(x => x.json()).catch(() => null)
+    setMesclando(false)
+    if (r?.ok) { toast('Contatos mesclados.', 'sucesso'); setMesclarAberto(false); setSel(new Set()); onRecarregar() }
+    else toast(r?.error || 'Falha ao mesclar.', 'erro')
+  }
+
   if (contatos.length === 0) return dz(
     <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
       <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p>
@@ -609,11 +632,41 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   )
 
   const barraSel = sel.size > 0 && (
+    <>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#111', color: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{sel.size} selecionado(s)</span>
+      {podeExcluir && sel.size === 2 && <button onClick={abrirMesclar} style={{ padding: '7px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Mesclar duplicados</button>}
       {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? 'Excluindo...' : 'Excluir selecionados'}</button>}
       <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: '#ddd', border: '1px solid #555', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Limpar seleção</button>
     </div>
+    {mesclarAberto && selecionados.length === 2 && (
+      <div onClick={() => setMesclarAberto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', padding: 22 }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 16.5, color: '#111' }}>Mesclar contatos</h3>
+          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Escolha qual registro fica como principal. O outro será removido e seus dados (telefone, histórico, negócios, agendamentos e conversas) vão para o principal.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {selecionados.map(c => {
+              const marcado = principalId === c.id
+              return (
+                <button key={c.id} onClick={() => setPrincipalId(c.id)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10, border: `1.5px solid ${marcado ? '#2563eb' : '#e6e6e6'}`, background: marcado ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
+                  <span style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${marcado ? '#2563eb' : '#ccc'}`, background: marcado ? '#2563eb' : '#fff', flexShrink: 0, boxShadow: marcado ? 'inset 0 0 0 2px #fff' : 'none' }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#111' }}>{c.nome}</span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[c.telefone, c.email, empresaLabel(c) !== '—' ? empresaLabel(c) : ''].filter(Boolean).join(' · ') || 'sem outros dados'}</span>
+                  </span>
+                  {marcado && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#2563eb', flexShrink: 0 }}>PRINCIPAL</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+            <button onClick={() => setMesclarAberto(false)} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={mesclar} disabled={mesclando} style={{ padding: '10px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: mesclando ? 'wait' : 'pointer' }}>{mesclando ? 'Mesclando…' : 'Mesclar'}</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 
   const toggleVista = (
@@ -1700,6 +1753,35 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
 
   const conversaSel = conversas.find(c => c.id === sel)
 
+  // Modelos de mensagem (respostas rápidas) — compartilhados pela equipe
+  const [templates, setTemplates] = useState<{ id: string; titulo: string; texto: string }[]>([])
+  const [modelosAberto, setModelosAberto] = useState(false)
+  const [templForm, setTemplForm] = useState<{ titulo: string; texto: string } | null>(null)
+  const carregarTemplates = useCallback(() => {
+    fetch('/api/crm/msg-templates').then(r => r.json()).then(d => { if (Array.isArray(d?.templates)) setTemplates(d.templates) }).catch(() => {})
+  }, [])
+  useEffect(() => { carregarTemplates() }, [carregarTemplates])
+  function resolverPlaceholders(txt: string): string {
+    const nome = (conversaSel ? nomeDe(conversaSel) : '').trim()
+    const primeiro = nome.split(/\s+/)[0] || ''
+    return txt.replace(/\{nome\}/gi, nome).replace(/\{primeiro\}/gi, primeiro)
+  }
+  function inserirModelo(t: { texto: string }) {
+    setTexto(prev => (prev.trim() ? prev.replace(/\s*$/, '') + '\n' : '') + resolverPlaceholders(t.texto))
+    setModelosAberto(false)
+  }
+  async function salvarTemplate() {
+    if (!templForm || !templForm.titulo.trim() || !templForm.texto.trim()) { toast('Informe título e texto do modelo.', 'erro'); return }
+    const r = await fetch('/api/crm/msg-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templForm) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { setTemplates(r.templates || []); setTemplForm(null); toast('Modelo salvo.', 'sucesso') }
+    else toast(r?.error || 'Falha ao salvar o modelo.', 'erro')
+  }
+  async function removerTemplate(id: string) {
+    if (!(await confirmar('Remover este modelo?', { titulo: 'Modelos de mensagem', okLabel: 'Remover', perigo: true }))) return
+    const r = await fetch('/api/crm/msg-templates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) setTemplates(r.templates || [])
+  }
+
   // Abrir uma conversa específica (vindo do CRM "WhatsApp" da oportunidade)
   useEffect(() => {
     if (!abrirTel) return
@@ -1824,7 +1906,39 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                   </div>
                 ))}
             </div>
-            <div style={{ borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+              {/* Popover de modelos de mensagem */}
+              {modelosAberto && (
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Modelos de mensagem</span>
+                    <span style={{ flex: 1 }} />
+                    {!templForm && <button onClick={() => setTemplForm({ titulo: '', texto: '' })} style={{ padding: '4px 10px', background: '#f4f4f5', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#333' }}>+ Novo</button>}
+                    <button onClick={() => { setModelosAberto(false); setTemplForm(null) }} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: '#999' }}>×</button>
+                  </div>
+                  {templForm && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 9, padding: 9, marginBottom: 8 }}>
+                      <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Confirmar consulta)" style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+                      <textarea value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: '#f0f0f0', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
+                        <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+                      </div>
+                    </div>
+                  )}
+                  {templates.length === 0 && !templForm && <p style={{ margin: '4px 2px', fontSize: 12, color: '#aaa' }}>Nenhum modelo ainda. Crie respostas rápidas para agilizar o atendimento.</p>}
+                  {templates.map(t => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 4px', borderTop: '1px solid #f5f5f5' }}>
+                      <button onClick={() => inserirModelo(t)} title="Inserir no compositor" style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#111' }}>{t.titulo}</span>
+                        <span style={{ display: 'block', fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.texto}</span>
+                      </button>
+                      <button onClick={() => removerTemplate(t.id)} title="Remover" style={{ background: 'transparent', border: 'none', color: '#c0392b', fontSize: 13, cursor: 'pointer', padding: '2px 5px', flexShrink: 0 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setModelosAberto(v => !v)} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? '#111' : '#f4f4f5', color: modelosAberto ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
               <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
                 placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
               <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
