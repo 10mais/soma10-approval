@@ -92,6 +92,12 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       toast('Envie um arquivo .csv (nome; telefone; e-mail; …).', 'erro'); return
     }
     const txt = await file.text()
+    // Barra arquivo binário (Excel .xlsx/.zip/.pdf) lido como texto — vira lixo (assinatura "PK", bytes de controle, caractere de substituição).
+    const amostra = txt.slice(0, 4000)
+    if (/^PK\x03\x04/.test(txt) || /%PDF-/.test(txt.slice(0, 8)) || /[\x00-\x08\x0E-\x1F]/.test(amostra) || (amostra.match(/�/g) || []).length > 3) {
+      toast('Isso parece um Excel/arquivo binário (.xlsx), não um CSV. No Excel ou Google Sheets use "Salvar como / Baixar como CSV (UTF-8)" e importe o .csv gerado.', 'erro')
+      return
+    }
     const brutas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
     if (!brutas.length) { toast('Arquivo vazio.', 'erro'); return }
     const sep = (brutas[0].match(/;/g) || []).length >= (brutas[0].match(/,/g) || []).length ? ';' : ','
@@ -581,6 +587,9 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   const todos = contatos.length > 0 && sel.size === contatos.length
   const toggleTodos = () => setSel(todos ? new Set() : new Set(contatos.map(c => c.id)))
   const empresaLabel = (c: Contato) => c.profissionalAutonomo ? 'Autônomo' : (c.empresa || '—')
+  // Limpeza de importação quebrada: nomes-lixo de arquivo binário importado como CSV.
+  const quebrados = contatos.filter(c => pareceQuebrado(c.nome))
+  const selecionarQuebrados = () => setSel(new Set(quebrados.map(c => c.id)))
 
   async function excluirSelecionados() {
     if (sel.size === 0) return
@@ -608,10 +617,18 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   )
 
   const toggleVista = (
-    <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, marginBottom: 12, width: 'fit-content' }}>
-      {([['lista', 'Lista'], ['cards', 'Cards']] as const).map(([v, l]) => (
-        <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
-      ))}
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, width: 'fit-content' }}>
+        {([['lista', 'Lista'], ['cards', 'Cards']] as const).map(([v, l]) => (
+          <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+        ))}
+      </div>
+      {podeExcluir && quebrados.length > 0 && (
+        <button onClick={selecionarQuebrados} title="Seleciona os contatos com nome corrompido (importação de arquivo binário) para você conferir e excluir"
+          style={{ padding: '6px 13px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          Selecionar {quebrados.length} quebrado(s)
+        </button>
+      )}
     </div>
   )
 
@@ -701,6 +718,21 @@ const TIPOS_INTER: { key: string; label: string; cor: string }[] = [
   { key: 'campanha', label: 'Campanha', cor: '#c026d3' }, { key: 'outro', label: 'Outro', cor: '#9ca3af' },
 ]
 const interInfo = (k: string) => TIPOS_INTER.find(t => t.key === k) || TIPOS_INTER[0]
+// Detecta nome "quebrado": lixo de um arquivo binário (.xlsx/.zip) importado como
+// CSV. Serve para SELECIONAR esses contatos e apagar em massa com segurança
+// (o usuário confere antes). Heurística: caractere de substituição, bytes de
+// controle, assinatura ZIP "PK", ou alta proporção de caracteres estranhos.
+function pareceQuebrado(nome: string): boolean {
+  const s = (nome || '')
+  if (!s.trim()) return true
+  if (/�/.test(s)) return true                       // caractere de substituição (encoding quebrado)
+  if (/[\x00-\x08\x0E-\x1F]/.test(s)) return true          // bytes de controle
+  if (/PK[\x03\x04]/.test(s) || /\[Content_Types\]|xl\/(worksheets|metadata)/.test(s)) return true // assinatura de .xlsx/zip
+  // Sem flag 'u' (alvo TS < es6): À-ÿ cobre letras acentuadas do pt-BR (Latin-1).
+  const estranhos = (s.match(/[^a-zA-Z0-9À-ÿ\s.,'’&@()+/#º°ª-]/g) || []).length
+  return estranhos / s.length > 0.3
+}
+
 // "há X dias/meses" — usado no indicador de última interação
 function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
   if (!iso) return null
@@ -1568,6 +1600,7 @@ const CANAL_CFG: Record<CanalMsg, {
   historico: (id: string) => Promise<any>
   enviar: (id: string, texto: string) => Promise<any>
   vincular: (id: string, contatoId: string) => Promise<any>
+  buscar?: (q: string) => Promise<{ tel: string; snippet: string }[]>
   norm: (c: any) => MsgConversa
   subId: (c: MsgConversa | undefined, id: string) => string
   matchContato: (c: MsgConversa, contatos: Contato[]) => string | undefined
@@ -1578,6 +1611,7 @@ const CANAL_CFG: Record<CanalMsg, {
     aviso: 'WhatsApp ainda não conectado. Conecte pelo QR em Configurações → Integrações → WhatsApp (mantém o número atual). As conversas aparecem aqui assim que parear.',
     listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
+    buscar: q => fetch(`/api/crm/mensagens?busca=${encodeURIComponent(q)}`).then(r => r.json()).then(d => Array.isArray(d?.matches) ? d.matches : []).catch(() => []),
     enviar: (id, texto) => fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, texto }) }).then(x => x.json()).catch(() => null),
     vincular: (id, contatoId) => fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, contatoId }) }).catch(() => {}),
     norm: c => ({ ...c, id: c.telefone }),
@@ -1678,11 +1712,28 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrirTel, canal])
 
-  // Busca de conversas: por nome/telefone e pela última mensagem
+  // Busca de conversas: por nome/telefone/última mensagem (instantâneo, no cliente)
+  // + busca full-text no histórico inteiro (no servidor, com debounce).
   const [busca, setBusca] = useState('')
   const buscaLc = busca.trim().toLowerCase()
+  const [matchesTexto, setMatchesTexto] = useState<Record<string, string>>({}) // tel -> trecho
+  const [buscandoTexto, setBuscandoTexto] = useState(false)
+  useEffect(() => {
+    const q = busca.trim()
+    if (!cfg.buscar || q.length < 2) { setMatchesTexto({}); setBuscandoTexto(false); return }
+    setBuscandoTexto(true)
+    let vivo = true
+    const t = setTimeout(async () => {
+      const ms = await cfg.buscar!(q)
+      if (!vivo) return
+      const mapa: Record<string, string> = {}
+      ms.forEach(m => { mapa[m.tel] = m.snippet })
+      setMatchesTexto(mapa); setBuscandoTexto(false)
+    }, 350)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [busca, canal])
   const conversasFiltradas = buscaLc
-    ? conversas.filter(c => `${nomeDe(c)} ${c.telefone || ''} ${c.ultimaMsg || ''}`.toLowerCase().includes(buscaLc))
+    ? conversas.filter(c => `${nomeDe(c)} ${c.telefone || ''} ${c.ultimaMsg || ''}`.toLowerCase().includes(buscaLc) || !!matchesTexto[c.id])
     : conversas
 
   return (
@@ -1720,12 +1771,15 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
         {/* Lista de conversas */}
         <div style={{ width: 280, borderRight: '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou mensagem..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou dentro da conversa..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+            {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: '#bbb' }}>Procurando no histórico das conversas…</p>}
           </div>
           {carregando ? <p style={{ padding: 16, color: '#aaa', fontSize: 13 }}>Carregando...</p>
             : conversas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nenhuma conversa ainda.</p>
-            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nada encontrado para “{busca}”.</p>
-            : conversasFiltradas.map(c => (
+            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>{buscandoTexto ? 'Procurando…' : `Nada encontrado para “${busca}”.`}</p>
+            : conversasFiltradas.map(c => {
+              const trecho = matchesTexto[c.id]
+              return (
               <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -1733,10 +1787,13 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                     <span style={{ fontWeight: 700, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
                     {!!c.naoLidas && <span style={{ background: cfg.cor, color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
                   </span>
-                  <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>
+                  {trecho
+                    ? <span style={{ fontSize: 11, color: '#a16207', background: '#fef9c3', borderRadius: 5, padding: '1px 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trecho}</span>
+                    : <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>}
                 </span>
               </button>
-            ))}
+              )
+            })}
         </div>
         {/* Conversa */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>

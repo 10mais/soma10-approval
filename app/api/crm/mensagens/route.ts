@@ -20,6 +20,30 @@ export async function GET(req: NextRequest) {
 
   const tel = (req.nextUrl.searchParams.get('tel') || '').replace(/\D/g, '')
 
+  // Busca full-text DENTRO das conversas (não só na última mensagem): varre o
+  // histórico de cada conversa e devolve as que casam + um trecho de contexto.
+  const busca = (req.nextUrl.searchParams.get('busca') || '').trim().toLowerCase()
+  if (busca) {
+    if (busca.length < 2) return NextResponse.json({ matches: [] })
+    const tels = await redis.smembers('wa:conversas')
+    const historicos = tels.length ? await Promise.all(tels.map(t => redis.lrange(`wa:msgs:${t}`, 0, -1))) : []
+    const matches: { tel: string; snippet: string }[] = []
+    tels.forEach((t, i) => {
+      for (const m of historicos[i]) {
+        let texto = ''
+        try { const o = typeof m === 'string' ? JSON.parse(m) : m; texto = o?.texto || '' } catch { texto = '' }
+        const pos = texto.toLowerCase().indexOf(busca)
+        if (pos >= 0) {
+          const ini = Math.max(0, pos - 25)
+          const fim = pos + busca.length + 25
+          matches.push({ tel: t, snippet: (ini > 0 ? '…' : '') + texto.slice(ini, fim) + (fim < texto.length ? '…' : '') })
+          break // primeira ocorrência por conversa basta
+        }
+      }
+    })
+    return NextResponse.json({ matches: matches.slice(0, 60) })
+  }
+
   // Histórico de uma conversa (e marca como lida)
   if (tel) {
     const raw = await redis.lrange(`wa:msgs:${tel}`, 0, -1)
