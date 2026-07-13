@@ -1,6 +1,7 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { frequenciaPaciente } from '@/lib/agenda'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -25,6 +26,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
+  // Atendimentos (clínica) — só para calcular a frequência dos pacientes na lista
+  const [agendamentos, setAgendamentos] = useState<{ contatoId?: string; status: string; dataInicio: string }[]>([])
   const [carregando, setCarregando] = useState(true)
   const [novoModal, setNovoModal] = useState(false)
   const [aberto, setAberto] = useState<Negocio | null>(null)
@@ -119,6 +122,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       setEmpresas(Array.isArray(emp) ? emp : [])
       const pls = Array.isArray(pl) ? pl : []
       setPipelines(pls)
+      // Frequência dos pacientes: carrega os atendimentos (clínica) para a lista
+      if (perfilClinica) fetch('/api/agenda').then(r => r.json()).then(d => { if (Array.isArray(d?.agendamentos)) setAgendamentos(d.agendamentos) }).catch(() => {})
       setPipelineSel(prev => (prev && pls.some((p: any) => p.id === prev)) ? prev : (pls[0]?.id || ''))
       setCarregando(false)
     }).catch(() => setCarregando(false))
@@ -194,7 +199,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
       ) : vista === 'pacientes' ? (
-        <ContatosLista contatos={contatos.filter(c => c.tipo === 'paciente')} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica onImportar={podeEditar ? (f => importarCSV(f, 'paciente')) : undefined} />
+        <ContatosLista contatos={contatos.filter(c => c.tipo === 'paciente')} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica agendamentos={agendamentos} mostrarFrequencia onImportar={podeEditar ? (f => importarCSV(f, 'paciente')) : undefined} />
       ) : vista === 'contatos' ? (
         <ContatosLista contatos={perfilClinica ? contatos.filter(c => c.tipo !== 'paciente') : contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
       ) : vista === 'empresas' ? (
@@ -555,8 +560,24 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
   )
 }
 
-function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void }) {
+function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = [], mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string }[]; mostrarFrequencia?: boolean }) {
   const [vista, setVista] = useState<'lista' | 'cards'>('lista')
+  // Datas dos atendimentos CONCLUÍDOS por contato — base da coluna Frequência
+  const datasAtendidas = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const a of agendamentos) {
+      if (a.status !== 'atendido' || !a.contatoId) continue
+      const arr = m.get(a.contatoId); arr ? arr.push(a.dataInicio) : m.set(a.contatoId, [a.dataInicio])
+    }
+    return m
+  }, [agendamentos])
+  // Rótulo curto de frequência para a célula da lista
+  function labelFreq(id: string): { txt: string; forte: boolean } {
+    const f = frequenciaPaciente(datasAtendidas.get(id) || [])
+    if (f.total === 0) return { txt: '—', forte: false }
+    if (f.total === 1) return { txt: '1 atend.', forte: false }
+    return { txt: `${f.total}× · a cada ~${f.mediaDias}d`, forte: true }
+  }
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [excluindo, setExcluindo] = useState(false)
   const [arrastando, setArrastando] = useState(false)
@@ -731,6 +752,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
               <th style={th}>Telefone</th>
               {!perfilClinica && <th style={th}>E-mail</th>}
               {perfilClinica && <th style={th}>Última interação</th>}
+              {mostrarFrequencia && <th style={th}>Frequência</th>}
               <th style={{ ...th, textAlign: 'center' }}>Neg.</th>
             </tr>
           </thead>
@@ -748,6 +770,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
                   <td style={td}>{c.telefone || '—'}</td>
                   {!perfilClinica && <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</td>}
                   {perfilClinica && <td style={td}>{ult ? <span style={{ fontSize: 12, fontWeight: 700, color: ult.frio ? '#b91c1c' : '#666' }}>{ult.txt}{ult.frio ? ' · reabordar' : ''}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>}
+                  {mostrarFrequencia && (() => { const fq = labelFreq(c.id); return <td style={td}><span style={{ fontSize: 12, fontWeight: fq.forte ? 700 : 500, color: fq.forte ? '#166534' : '#ccc' }}>{fq.txt}</span></td> })()}
                   <td style={{ ...td, textAlign: 'center' }}>{nNeg > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>
                 </tr>
               )
@@ -957,6 +980,8 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
     ...interacoes.map(i => ({ id: i.id, data: i.data, kind: 'toque' as const, i })),
     ...(historico || []).map(h => ({ id: h.id, data: h.dataInicio, kind: 'agenda' as const, h })),
   ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+  // Frequência: a partir dos atendimentos CONCLUÍDOS do paciente
+  const freq = frequenciaPaciente((historico || []).filter(h => h.status === 'atendido').map(h => h.dataInicio))
 
   async function salvar() {
     if (!f.nome.trim()) return
@@ -1027,7 +1052,14 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           {perfilClinica && contato?.id && (
             <div>
-              <label style={labelStyle}>Histórico e nutrição</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Histórico e nutrição</label>
+                {freq.total > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '3px 10px' }}>
+                    {freq.total} atendimento{freq.total > 1 ? 's' : ''}{freq.mediaDias != null ? ` · a cada ~${freq.mediaDias} dias` : ''}
+                  </span>
+                )}
+              </div>
               {/* Quick-add de toque (nota/ligação/whatsapp/reabordagem…) */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
                 <select value={novoToque.tipo} onChange={e => setNovoToque(t => ({ ...t, tipo: e.target.value }))} style={{ padding: '9px 8px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>

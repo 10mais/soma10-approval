@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio, domingoDePascoa, feriadosBR, feriadoDoDia, ehProfissionalAgenda } from '@/lib/agenda'
+import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio, domingoDePascoa, feriadosBR, feriadoDoDia, ehProfissionalAgenda, frequenciaPaciente } from '@/lib/agenda'
 
 // Conflito de horário da Agenda. Guarda contra: encaixe silencioso em cima de
 // outro paciente e falso conflito entre profissionais diferentes/cancelados.
@@ -147,6 +147,25 @@ describe('bloqueioNoDia (expansão p/ a grade)', () => {
   it('recorrente some depois da data-limite', () => {
     const b: Bloqueio = { id: 'b', profissionalEmail: 'x', recorrente: true, diasSemana: [1], horaInicio: '12:00', horaFim: '13:00', ate: '2026-07-06', criadoEm: '' }
     expect(bloqueioNoDia(b, diaLocal(2026, 7, 13))).toBeNull()
+  })
+})
+
+// Frequência do paciente: intervalo médio entre atendimentos concluídos.
+describe('frequenciaPaciente', () => {
+  it('sem atendimentos', () => {
+    expect(frequenciaPaciente([])).toEqual({ total: 0, mediaDias: null, ultima: null })
+  })
+  it('um atendimento não tem média', () => {
+    const r = frequenciaPaciente(['2026-07-01T10:00:00.000Z'])
+    expect(r.total).toBe(1); expect(r.mediaDias).toBeNull(); expect(r.ultima?.slice(0, 10)).toBe('2026-07-01')
+  })
+  it('média dos intervalos em dias + último', () => {
+    const r = frequenciaPaciente(['2026-06-01T10:00:00.000Z', '2026-06-11T10:00:00.000Z', '2026-07-01T10:00:00.000Z'])
+    expect(r.total).toBe(3); expect(r.mediaDias).toBe(15); expect(r.ultima?.slice(0, 10)).toBe('2026-07-01') // gaps 10 e 20 -> 15
+  })
+  it('ignora datas inválidas e ordena antes de medir', () => {
+    const r = frequenciaPaciente(['2026-07-01T10:00:00.000Z', 'lixo', '2026-06-01T10:00:00.000Z'])
+    expect(r.total).toBe(2); expect(r.mediaDias).toBe(30)
   })
 })
 

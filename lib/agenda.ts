@@ -140,6 +140,19 @@ export function acharBloqueioConflitante(
   return null
 }
 
+// Frequência de um paciente a partir das datas (ISO) dos atendimentos CONCLUÍDOS:
+// total de vezes, intervalo médio em dias entre visitas e a data do último.
+// Base do indicador "vem a cada ~X dias" na lista/ficha do paciente.
+export function frequenciaPaciente(datasAtendidas: string[]): { total: number; mediaDias: number | null; ultima: string | null } {
+  const ts = datasAtendidas.map(d => new Date(d).getTime()).filter(t => !isNaN(t)).sort((a, b) => a - b)
+  if (!ts.length) return { total: 0, mediaDias: null, ultima: null }
+  const ultima = new Date(ts[ts.length - 1]).toISOString()
+  if (ts.length < 2) return { total: ts.length, mediaDias: null, ultima }
+  let soma = 0
+  for (let i = 1; i < ts.length; i++) soma += (ts[i] - ts[i - 1]) / 86400000
+  return { total: ts.length, mediaDias: Math.round(soma / (ts.length - 1)), ultima }
+}
+
 // Quem aparece como PROFISSIONAL agendável na Agenda (recebe pacientes):
 //  - recebeAgenda === true  -> sim (opção explícita do cadastro)
 //  - recebeAgenda === false -> não (gestão/comercial; usa a agenda mas não é agendável)
