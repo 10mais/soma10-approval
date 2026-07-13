@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem } from '@/lib/whatsapp'
+import { salvarMensagem, textoMensagemEvolution } from '@/lib/whatsapp'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
 
-// GET — verificação do webhook pela Meta (hub.challenge). Configure a mesma
-// string em WHATSAPP_VERIFY_TOKEN e no painel da Meta.
+// GET — verificação do webhook. Serve a Meta (hub.challenge) E o Evolution
+// (que só faz um GET simples). Configure a mesma string em WHATSAPP_VERIFY_TOKEN.
 export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams
   const mode = p.get('hub.mode')
@@ -15,13 +15,48 @@ export async function GET(req: NextRequest) {
   if (mode === 'subscribe' && token && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     return new NextResponse(challenge || '', { status: 200 })
   }
+  if (!mode) return NextResponse.json({ ok: true }) // ping do Evolution/health
   return new NextResponse('forbidden', { status: 403 })
 }
 
-// POST — eventos da Meta (mensagens recebidas). Armazena a conversa e avisa a equipe.
+// Recebe UMA mensagem do Evolution (messages.upsert) e grava. Ignora as próprias
+// (fromMe) e mensagens de grupo. Devolve true se gravou algo.
+async function processarEvolution(body: any): Promise<boolean> {
+  // Opcional: exige ?token= igual ao WHATSAPP_VERIFY_TOKEN quando este existir.
+  if (body?.event && !String(body.event).includes('messages.upsert')) return false
+  const eventos = Array.isArray(body?.data) ? body.data : [body?.data].filter(Boolean)
+  let gravou = false
+  for (const d of eventos) {
+    const jid: string = d?.key?.remoteJid || ''
+    if (d?.key?.fromMe) continue // mensagem enviada por nós
+    if (jid.endsWith('@g.us')) continue // grupo — fora do CRM 1:1
+    const tel = jid.split('@')[0]
+    if (!tel) continue
+    const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
+    const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
+    await salvarMensagem(tel, { id: d?.key?.id || uuid(), de: 'cliente', texto, em }, { nome: d?.pushName })
+    await notificarEquipe('geral', `WhatsApp: ${d?.pushName || tel}`, texto.slice(0, 120)).catch(() => {})
+    gravou = true
+  }
+  return gravou
+}
+
+// POST — eventos de WhatsApp. Detecta o formato: Evolution (event/data) ou Meta (entry/changes).
 export async function POST(req: NextRequest) {
   try {
+    // Se WHATSAPP_VERIFY_TOKEN existe, aceita o token por header apikey ou query ?token=
+    const token = process.env.WHATSAPP_VERIFY_TOKEN
+    if (token && process.env.EVOLUTION_API_URL) {
+      const passado = req.headers.get('apikey') || req.nextUrl.searchParams.get('token')
+      // só bloqueia se um token foi enviado e está errado; Evolution nem sempre manda
+      if (passado && passado !== token) return NextResponse.json({ ok: false }, { status: 401 })
+    }
     const body = await req.json()
+
+    // Formato Evolution
+    if (body?.event || body?.instance) { await processarEvolution(body); return NextResponse.json({ ok: true }) }
+
+    // Formato Meta Cloud API
     for (const entry of (body.entry || [])) {
       for (const change of (entry.changes || [])) {
         const value = change.value || {}
@@ -35,6 +70,6 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-  } catch { /* nunca falhar o webhook — a Meta reentrega em erro */ }
+  } catch { /* nunca falhar o webhook — reentrega em erro */ }
   return NextResponse.json({ ok: true })
 }
