@@ -77,24 +77,19 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url)
   }
+  // Abre a PRÉVIA de importação (não importa direto): lê o arquivo em linhas/colunas
+  // e deixa o usuário conferir e mapear as colunas antes de confirmar.
+  const [importar, setImportar] = useState<{ linhas: string[][]; tipo?: string } | null>(null)
   async function importarCSV(file: File, tipo?: string) {
     if (!/\.csv$/i.test(file.name) && file.type && !/csv|excel|spreadsheet|text/.test(file.type)) {
       toast('Envie um arquivo .csv (nome; telefone; e-mail; …).', 'erro'); return
     }
     const txt = await file.text()
-    const linhas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
-    if (!linhas.length) return
-    const sep = (linhas[0].match(/;/g) || []).length >= (linhas[0].match(/,/g) || []).length ? ';' : ','
-    let inicio = 0
-    if (/nome/i.test(linhas[0]) && /(email|telefone|empresa)/i.test(linhas[0])) inicio = 1 // pula cabeçalho
-    const lote = linhas.slice(inicio).map(l => {
-      const cols = l.split(sep).map(s => s.trim().replace(/^"|"$/g, ''))
-      return { nome: cols[0] || '', telefone: cols[1] || '', email: cols[2] || '', empresa: cols[3] || '', cargo: cols[4] || '', ...(tipo ? { tipo } : {}) }
-    }).filter(c => c.nome)
-    if (!lote.length) { toast('Nenhum contato válido encontrado no arquivo.', 'erro'); return }
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { toast(`${r.criados} contato(s) importado(s).`, 'sucesso'); carregar() }
-    else toast('Falha ao importar.', 'erro')
+    const brutas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
+    if (!brutas.length) { toast('Arquivo vazio.', 'erro'); return }
+    const sep = (brutas[0].match(/;/g) || []).length >= (brutas[0].match(/,/g) || []).length ? ';' : ','
+    const linhas = brutas.map(l => l.split(sep).map(s => s.trim().replace(/^"|"$/g, '')))
+    setImportar({ linhas, tipo })
   }
 
   function carregar() {
@@ -250,6 +245,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
       {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
@@ -709,6 +705,131 @@ function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
   return { txt: `há ${meses} ${meses === 1 ? 'mês' : 'meses'}`, frio }
 }
 
+// Importação em massa com PRÉVIA e mapeamento de colunas — o usuário confere
+// antes de gravar, então dado errado não entra. Formato esperado é só um palpite;
+// as colunas são remapeáveis.
+function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImportado }: {
+  linhas: string[][]; tipo?: string; perfilClinica: boolean; onClose: () => void; onImportado: () => void
+}) {
+  const CAMPOS: { k: string; label: string; req?: boolean }[] = perfilClinica
+    ? [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'nascimento', label: 'Nascimento' }, { k: 'etiquetas', label: 'Etiquetas' }]
+    : [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'empresa', label: 'Empresa' }, { k: 'cargo', label: 'Cargo' }]
+  const nCols = Math.max(...linhas.map(l => l.length), 0)
+  const cabDetectado = /nome/i.test((linhas[0] || []).join(' ')) && /(email|telefone|empresa|nascimento|celular|whats)/i.test((linhas[0] || []).join(' '))
+  const [cab, setCab] = useState(cabDetectado)
+  const [map, setMap] = useState<Record<string, number>>({})
+  const [salvando, setSalvando] = useState(false)
+
+  const PATS: Record<string, RegExp> = {
+    nome: /nome|paciente|cliente/i, telefone: /tel|whats|fone|celular/i, email: /mail/i,
+    nascimento: /nasc|aniver/i, etiquetas: /etiq|tag/i, empresa: /empresa|clinica|company/i, cargo: /cargo|fun[cç]/i,
+  }
+  useEffect(() => {
+    const m: Record<string, number> = {}
+    CAMPOS.forEach((c, i) => {
+      let idx = -1
+      if (cab && linhas[0]) idx = linhas[0].findIndex(h => PATS[c.k]?.test(h))
+      if (idx < 0) idx = i < nCols ? i : -1 // posição como palpite
+      m[c.k] = idx
+    })
+    setMap(m)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cab])
+
+  const dados = cab ? linhas.slice(1) : linhas
+  const val = (row: string[], k: string) => (map[k] >= 0 ? (row[map[k]] || '') : '')
+  function normData(s: string): string {
+    const br = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/)
+    if (br) { const [, d, mo, y] = br; const yy = y.length === 2 ? '20' + y : y; return `${yy}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}` }
+    const iso = s.match(/^\d{4}-\d{2}-\d{2}/)
+    return iso ? s.slice(0, 10) : ''
+  }
+  function montarLote() {
+    return dados.map(row => {
+      const o: any = tipo ? { tipo } : {}
+      for (const c of CAMPOS) {
+        const v = val(row, c.k)
+        if (!v) continue
+        if (c.k === 'nascimento') { const nd = normData(v); if (nd) o.nascimento = nd }
+        else if (c.k === 'etiquetas') o.etiquetas = v.split(/[;,|]/).map(x => x.trim()).filter(Boolean)
+        else o[c.k] = v
+      }
+      return o
+    }).filter(o => (o.nome || '').trim())
+  }
+  const validos = montarLote()
+
+  async function importar() {
+    if (map.nome === undefined || map.nome < 0) { toast('Escolha qual coluna é o Nome.', 'erro'); return }
+    if (!validos.length) { toast('Nenhuma linha com nome preenchido.', 'erro'); return }
+    setSalvando(true)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos }) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { toast(`${r.criados} ${perfilClinica ? 'paciente(s)/contato(s)' : 'contato(s)'} importado(s).`, 'sucesso'); onImportado() }
+    else toast(r?.error || 'Falha ao importar.', 'erro')
+  }
+
+  const colOpts = Array.from({ length: nCols }, (_, i) => i)
+  const th: React.CSSProperties = { textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#888', textTransform: 'uppercase', padding: '6px 8px', whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { fontSize: 12, color: '#333', padding: '6px 8px', borderTop: '1px solid #f2f2f2', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Importar {perfilClinica ? 'pacientes/contatos' : 'contatos'} — confira antes</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888' }}>
+          Formato sugerido (separado por ; ou vírgula): <b>{CAMPOS.map(c => c.label).join(' · ')}</b>. Se a ordem do seu arquivo for outra, ajuste o mapa abaixo — a prévia mostra como vai ficar.
+        </p>
+
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: '#333', fontWeight: 600, marginBottom: 14 }}>
+          <input type="checkbox" checked={cab} onChange={e => setCab(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+          A primeira linha é cabeçalho (ignorar na importação)
+        </label>
+
+        {/* Mapa de colunas */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginBottom: 16 }}>
+          {CAMPOS.map(c => (
+            <div key={c.k}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: c.req ? '#b45309' : '#888', marginBottom: 4 }}>{c.label}{c.req ? ' *' : ''}</label>
+              <select value={map[c.k] ?? -1} onChange={e => setMap(m => ({ ...m, [c.k]: Number(e.target.value) }))} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px', borderRadius: 8, border: `1.5px solid ${c.req && (map[c.k] ?? -1) < 0 ? '#fca5a5' : '#e0e0e0'}`, fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                <option value={-1}>—</option>
+                {colOpts.map(i => <option key={i} value={i}>{cab && linhas[0]?.[i] ? linhas[0][i] : `Coluna ${i + 1}`}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+
+        {/* Prévia */}
+        <div style={{ border: '1px solid #eee', borderRadius: 10, overflowX: 'auto', marginBottom: 8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>{CAMPOS.map(c => <th key={c.k} style={th}>{c.label}</th>)}</tr></thead>
+            <tbody>
+              {dados.slice(0, 6).map((row, ri) => (
+                <tr key={ri}>
+                  {CAMPOS.map(c => {
+                    const v = val(row, c.k)
+                    const show = c.k === 'nascimento' ? (normData(v) || (v ? `? ${v}` : '')) : v
+                    return <td key={c.k} style={{ ...td, color: c.k === 'nome' && !v ? '#dc2626' : '#333' }}>{show || <span style={{ color: '#ccc' }}>—</span>}</td>
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ margin: '0 0 16px', fontSize: 12, color: '#888' }}>
+          {validos.length} de {dados.length} linha(s) serão importadas{dados.length > validos.length ? ` (${dados.length - validos.length} sem nome serão ignoradas)` : ''}
+          {perfilClinica && tipo ? ` · entram como ${tipo === 'paciente' ? 'Paciente' : 'Lead'}` : ''}.
+        </p>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 10, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={importar} disabled={salvando || !validos.length} style={{ padding: '10px 18px', background: validos.length ? '#111' : '#f0f0f0', color: validos.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: validos.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando…' : `Importar ${validos.length}`}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilClinica = false, tipoPadrao = 'paciente', onAgendar }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; perfilClinica?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
@@ -779,17 +900,25 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
               <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>
             </div>
           )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
-            <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-            Profissional Autônomo (sem empresa)
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
-            <div><label style={labelStyle}>Área de atuação</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder="Ex: Odontologia, Advocacia..." style={inputStyle} /></div>
-            <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
-            <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
-          </div>
+          {perfilClinica ? (
+            // Clínica: sem empresa/área/cargo/autônomo — paciente/lead é pessoa física
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+            </div>
+          ) : (<>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+              <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              Profissional Autônomo (sem empresa)
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div><label style={labelStyle}>Área de atuação</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder="Ex: Odontologia, Advocacia..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+            </div>
+          </>)}
           {perfilClinica && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
               <div><label style={labelStyle}>Etiquetas (separadas por vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: botox, avaliação, VIP" style={inputStyle} /></div>
