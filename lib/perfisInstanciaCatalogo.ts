@@ -20,8 +20,9 @@ export type DefPerfil = {
   // Semeia config:permissoesGranular (telas off por papel; default = ligado)
   permissoesGranular?: PermGranularPapel
   // Semeia crm:pipelines + crm:estagios (se ausente, o seed padrão "Comercial"
-  // do garantirSetupCrm acontece lazy no primeiro acesso ao CRM)
-  pipeline?: { nome: string; estagios: { nome: string; ganho?: boolean; perdido?: boolean }[] }
+  // do garantirSetupCrm acontece lazy no primeiro acesso ao CRM). Aceita VÁRIOS
+  // funis — ex.: clínica tem "Agendamentos" (consulta paga) + "Tratamentos" (venda na cadeira).
+  pipelines?: { nome: string; estagios: { nome: string; ganho?: boolean; perdido?: boolean }[] }[]
   // Semeia crm:playbookQualificacao (roteiro + cadência). Ausente = padrão de agência.
   playbook?: PlaybookSeed
 }
@@ -63,18 +64,34 @@ export const PERFIS: DefPerfil[] = [
       gerente: { abas: { ...ABAS_SOCIAL_OFF, conversao: false } },
       usuario: { abas: { ...ABAS_SOCIAL_OFF, conversao: false } },
     },
-    // Funil espelhado no sistema de referência da Norah (kanban "Agendamentos")
-    pipeline: {
-      nome: 'Agendamentos',
-      estagios: [
-        { nome: 'Lead novo' },
-        { nome: 'Em conversa' },
-        { nome: 'Em agendamento' },
-        { nome: 'Consulta paga' },
-        { nome: 'Compareceu', ganho: true },
-        { nome: 'Não compareceu', perdido: true },
-      ],
-    },
+    // Dois estágios de venda da clínica:
+    // 1) Agendamentos — a consulta só é agendada mediante pagamento antecipado
+    //    (filtra curiosos, aumenta comparecimento). Ganho = compareceu.
+    // 2) Tratamentos — a "venda na cadeira": valor do plano só é conhecido após
+    //    a avaliação da profissional; a equipe abre a oportunidade e preenche o R$.
+    pipelines: [
+      {
+        nome: 'Agendamentos',
+        estagios: [
+          { nome: 'Lead novo' },
+          { nome: 'Em conversa' },
+          { nome: 'Em agendamento' },
+          { nome: 'Consulta paga' },
+          { nome: 'Compareceu', ganho: true },
+          { nome: 'Não compareceu', perdido: true },
+        ],
+      },
+      {
+        nome: 'Tratamentos',
+        estagios: [
+          { nome: 'Avaliação feita' },
+          { nome: 'Proposta apresentada' },
+          { nome: 'Em negociação' },
+          { nome: 'Fechou', ganho: true },
+          { nome: 'Não fechou', perdido: true },
+        ],
+      },
+    ],
     playbook: PLAYBOOK_CLINICA,
   },
   {

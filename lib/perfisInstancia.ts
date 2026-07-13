@@ -22,13 +22,13 @@ export async function aplicarPerfilInstancia(chave?: string | null): Promise<Per
   if (def.permissoesPapel) await redis.set('config:permissoesPapel', def.permissoesPapel)
   if (def.permissoesGranular) await redis.set('config:permissoesGranular', def.permissoesGranular)
 
-  if (def.pipeline) {
-    const pipelineId = uuid()
-    await redis.set(PIPES_KEY, [{ id: pipelineId, nome: def.pipeline.nome, ordem: 0 }])
-    await redis.set(ESTAGIOS_KEY, def.pipeline.estagios.map((e, i) => ({
-      id: uuid(), nome: e.nome, ordem: i, pipelineId,
+  if (def.pipelines?.length) {
+    const pipes = def.pipelines.map((p, pi) => ({ id: uuid(), nome: p.nome, ordem: pi }))
+    await redis.set(PIPES_KEY, pipes)
+    await redis.set(ESTAGIOS_KEY, def.pipelines.flatMap((p, pi) => p.estagios.map((e, i) => ({
+      id: uuid(), nome: e.nome, ordem: i, pipelineId: pipes[pi].id,
       ...(e.ganho ? { ganho: true } : {}), ...(e.perdido ? { perdido: true } : {}),
-    })))
+    }))))
   }
 
   if (def.playbook) {

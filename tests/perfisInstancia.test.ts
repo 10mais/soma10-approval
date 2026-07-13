@@ -58,12 +58,14 @@ describe('catálogo de perfis', () => {
     }
   })
 
-  it('funil semeado tem exatamente 1 ganho e 1 perdido', () => {
+  it('cada funil semeado tem exatamente 1 ganho e 1 perdido', () => {
     for (const p of PERFIS) {
-      if (!p.pipeline) continue
-      expect(p.pipeline.estagios.filter(e => e.ganho).length, `perfil ${p.chave}`).toBe(1)
-      expect(p.pipeline.estagios.filter(e => e.perdido).length, `perfil ${p.chave}`).toBe(1)
-      expect(p.pipeline.estagios.length).toBeGreaterThanOrEqual(3)
+      if (!p.pipelines) continue
+      for (const pipe of p.pipelines) {
+        expect(pipe.estagios.filter(e => e.ganho).length, `perfil ${p.chave} / ${pipe.nome}`).toBe(1)
+        expect(pipe.estagios.filter(e => e.perdido).length, `perfil ${p.chave} / ${pipe.nome}`).toBe(1)
+        expect(pipe.estagios.length).toBeGreaterThanOrEqual(3)
+      }
     }
   })
 
@@ -93,12 +95,16 @@ describe('catálogo de perfis', () => {
     expect(perfilDef('gestao')!.playbook).toBeUndefined()
   })
 
-  it('funil da clínica espelha a referência (Agendamentos, Compareceu=ganho, Não compareceu=perdido)', () => {
-    const pipe = perfilDef('clinica')!.pipeline!
-    expect(pipe.nome).toBe('Agendamentos')
-    expect(pipe.estagios.map(e => e.nome)).toEqual(['Lead novo', 'Em conversa', 'Em agendamento', 'Consulta paga', 'Compareceu', 'Não compareceu'])
-    expect(pipe.estagios.find(e => e.ganho)?.nome).toBe('Compareceu')
-    expect(pipe.estagios.find(e => e.perdido)?.nome).toBe('Não compareceu')
+  it('clínica tem os 2 funis de venda: Agendamentos (consulta paga) + Tratamentos (venda na cadeira)', () => {
+    const pipes = perfilDef('clinica')!.pipelines!
+    expect(pipes.map(p => p.nome)).toEqual(['Agendamentos', 'Tratamentos'])
+    const agend = pipes.find(p => p.nome === 'Agendamentos')!
+    expect(agend.estagios.map(e => e.nome)).toEqual(['Lead novo', 'Em conversa', 'Em agendamento', 'Consulta paga', 'Compareceu', 'Não compareceu'])
+    expect(agend.estagios.find(e => e.ganho)?.nome).toBe('Compareceu')
+    const trat = pipes.find(p => p.nome === 'Tratamentos')!
+    expect(trat.estagios.map(e => e.nome)).toEqual(['Avaliação feita', 'Proposta apresentada', 'Em negociação', 'Fechou', 'Não fechou'])
+    expect(trat.estagios.find(e => e.ganho)?.nome).toBe('Fechou')
+    expect(trat.estagios.find(e => e.perdido)?.nome).toBe('Não fechou')
   })
 })
 
