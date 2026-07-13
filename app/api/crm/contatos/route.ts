@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmContato, CrmEmpresa } from '@/lib/redis'
+import { redis, CrmContato, CrmEmpresa, ContatoInteracao } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
@@ -96,6 +96,27 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const contato = await redis.get<CrmContato>(`contato:${id}`)
   if (!contato) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+
+  // Ação: registrar um toque de nutrição (nota/ligação/whatsapp/reabordagem...)
+  if (updates.novaInteracao) {
+    const d = updates.novaInteracao
+    const texto = String(d.texto || '').trim()
+    if (!texto) return NextResponse.json({ error: 'texto da interação obrigatório' }, { status: 400 })
+    const dataToque = d.data && !isNaN(new Date(d.data).getTime()) ? new Date(d.data).toISOString() : new Date().toISOString()
+    const inter: ContatoInteracao = { id: uuid(), tipo: d.tipo || 'nota', texto: texto.slice(0, 1000), autor: session.user?.name || '', data: dataToque, criadoEm: new Date().toISOString() }
+    const historico = [...(contato.historico || []), inter]
+    const atualizado: CrmContato = { ...contato, historico, ultimoContato: [contato.ultimoContato, dataToque].filter(Boolean).sort().pop(), atualizadoEm: new Date().toISOString() }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+  // Ação: remover um toque
+  if (updates.removerInteracao) {
+    const historico = (contato.historico || []).filter(h => h.id !== updates.removerInteracao)
+    const atualizado: CrmContato = { ...contato, historico, atualizadoEm: new Date().toISOString() }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+
   const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'etiquetas', 'ativo']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]

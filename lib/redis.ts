@@ -644,9 +644,23 @@ export type CrmContato = {
   etiquetas?: string[]
   ativo?: boolean // ausente = ativo
   observacoes?: string
+  historico?: ContatoInteracao[] // linha do tempo de nutrição (toques ao longo do ano)
+  ultimoContato?: string // ISO — data do último toque (interação manual OU agendamento) p/ reabordagem
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
+}
+
+// Toque de relacionamento registrado no paciente/contato (nutrição da base).
+// Diferente do histórico de atendimentos (que vem da Agenda): aqui é o registro
+// manual de contatos ao longo do tempo para reabordagens e ações.
+export type ContatoInteracao = {
+  id: string
+  tipo: 'nota' | 'ligacao' | 'whatsapp' | 'email' | 'retorno' | 'reabordagem' | 'campanha' | 'outro'
+  texto: string
+  autor: string
+  data: string // ISO — quando o toque aconteceu
+  criadoEm: string
 }
 
 export type CrmAtividade = {

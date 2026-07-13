@@ -26,6 +26,13 @@ async function carregarContatos(): Promise<CrmContato[]> {
   return (await redis.mget<(CrmContato | null)[]>(...ids.map(i => `contato:${i}`))).filter(Boolean) as CrmContato[]
 }
 
+// Toque na base: agendar/atender conta como "último contato" (nutrição/reabordagem).
+async function carimbarUltimoContato(contatoId?: string): Promise<void> {
+  if (!contatoId) return
+  const c = await redis.get<CrmContato>(`contato:${contatoId}`)
+  if (c) await redis.set(`contato:${contatoId}`, { ...c, ultimoContato: new Date().toISOString() })
+}
+
 // No perfil clínica, amarra o agendamento a um contato: casa pelo nome (normalizado)
 // ou cria um paciente novo com nome/telefone. Fora do perfil, só respeita contatoId explícito.
 async function vincularContato(ag: Agendamento, contatoIdExplicito: string | undefined, autor: string): Promise<void> {
@@ -119,6 +126,7 @@ export async function POST(req: NextRequest) {
   }
 
   await vincularContato(novo, b.contatoId, session.user?.name || session.user?.email || '')
+  await carimbarUltimoContato(novo.contatoId)
   await redis.set(`agendamento:${novo.id}`, novo)
   await redis.sadd('agendamentos', novo.id)
   return NextResponse.json({ ok: true, agendamento: novo })
@@ -163,8 +171,8 @@ export async function PUT(req: NextRequest) {
   // dono: "pacientes são quem já fizeram procedimentos conosco".
   if (atualizado.status === 'atendido' && atual.status !== 'atendido' && atualizado.contatoId) {
     const contato = await redis.get<CrmContato>(`contato:${atualizado.contatoId}`)
-    if (contato && contato.tipo !== 'paciente') {
-      await redis.set(`contato:${contato.id}`, { ...contato, tipo: 'paciente', atualizadoEm: new Date().toISOString() })
+    if (contato) {
+      await redis.set(`contato:${contato.id}`, { ...contato, ...(contato.tipo !== 'paciente' ? { tipo: 'paciente' } : {}), ultimoContato: new Date().toISOString(), atualizadoEm: new Date().toISOString() })
     }
   }
 
