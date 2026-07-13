@@ -42,6 +42,13 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     try { sessionStorage.setItem('agenda_prefill', JSON.stringify(prefill)) } catch {}
     onIrAgenda?.()
   }
+  // Abrir a conversa de WhatsApp interna (aba Mensagens) de um telefone
+  const [abrirConversaTel, setAbrirConversaTel] = useState('')
+  function abrirWhatsAppInterno(telefone: string) {
+    setAberto(null); setContatoModal(null)
+    setAbrirConversaTel(telefone)
+    setVista('mensagens')
+  }
 
   // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
   // em Ganho/Perdido). Só rola quando o card está perto da borda; no meio, não rola.
@@ -187,7 +194,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} />
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
@@ -245,7 +252,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       )}
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={perfilClinica ? abrirWhatsAppInterno : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
@@ -1244,7 +1251,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, onAgendar }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string) => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -1376,22 +1383,28 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               {contato.telefone && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>{contato.telefone}</p>}
             </div>
             {contato.telefone && (
-              <a href={`https://wa.me/${(contato.telefone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>WhatsApp</a>
+              onAbrirWhatsApp
+                ? <button onClick={() => onAbrirWhatsApp(contato.telefone!)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+                : <a href={`https://wa.me/${(contato.telefone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>WhatsApp</a>
             )}
           </div>
         )}
 
-        {/* Qualificação */}
+        {/* Qualificação — clínica só tem Observações; agência tem a ficha B2B */}
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 14 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-            <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Segmento</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Faturamento estimado</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Instagram / site</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
-          </div>
-          <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Possíveis soluções</label><textarea value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          {perfilClinica ? (
+            <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          ) : (<>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Segmento</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Faturamento estimado</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Instagram / site</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
+            </div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Possíveis soluções</label><textarea value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          </>)}
         </div>
 
         {/* Timeline */}
@@ -1416,8 +1429,13 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           ))}
         </div>
 
-        {/* Concretizar venda (Ganho -> Cliente) */}
-        {neg.clienteId ? (
+        {/* Clínica: ganhar = AGENDAR CONSULTA (abre a agenda). Agência: passagem de bastão -> cliente. */}
+        {perfilClinica ? (
+          <button onClick={() => onAgendar?.({ pacienteNome: contato?.nome || neg.titulo, pacienteTelefone: contato?.telefone, contatoId: contato?.id })}
+            style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+            Agendar consulta
+          </button>
+        ) : neg.clienteId ? (
           <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
         ) : (
           <button onClick={() => setConverter(true)} style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
@@ -1430,7 +1448,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
         </div>
       </div>
-      {converter && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
+      {converter && !perfilClinica && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
     </div>
   )
 }
@@ -1580,7 +1598,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void }) {
+function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abrirTel = '', onAbriuTel }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -1648,6 +1666,25 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou }: { 
 
   const conversaSel = conversas.find(c => c.id === sel)
 
+  // Abrir uma conversa específica (vindo do CRM "WhatsApp" da oportunidade)
+  useEffect(() => {
+    if (!abrirTel) return
+    const tel = abrirTel.replace(/\D/g, '')
+    if (!tel) { onAbriuTel?.(); return }
+    if (canal !== 'whatsapp') { setCanal('whatsapp'); return }
+    setConversas(cs => cs.some(c => c.id === tel) ? cs : [{ telefone: tel, id: tel } as any, ...cs])
+    abrir(tel)
+    onAbriuTel?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirTel, canal])
+
+  // Busca de conversas: por nome/telefone e pela última mensagem
+  const [busca, setBusca] = useState('')
+  const buscaLc = busca.trim().toLowerCase()
+  const conversasFiltradas = buscaLc
+    ? conversas.filter(c => `${nomeDe(c)} ${c.telefone || ''} ${c.ultimaMsg || ''}`.toLowerCase().includes(buscaLc))
+    : conversas
+
   return (
     <div>
       {/* Seletor de canal (Instagram oculto no perfil clínica) */}
@@ -1681,10 +1718,14 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou }: { 
       )}
       <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
         {/* Lista de conversas */}
-        <div style={{ width: 280, borderRight: '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0 }}>
+        <div style={{ width: 280, borderRight: '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou mensagem..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+          </div>
           {carregando ? <p style={{ padding: 16, color: '#aaa', fontSize: 13 }}>Carregando...</p>
             : conversas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nenhuma conversa ainda.</p>
-            : conversas.map(c => (
+            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nada encontrado para “{busca}”.</p>
+            : conversasFiltradas.map(c => (
               <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>

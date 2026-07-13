@@ -30,6 +30,9 @@ const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
   { key: 'cancelado', label: 'Cancelado', cor: '#9ca3af', bg: '#f4f4f5' },
 ]
 const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[0]
+// Rótulos de clínica: "aguardando confirmação" = aguardando pagamento; "confirmado" = pago
+const LABEL_CLINICA: Record<string, string> = { agendado: 'Aguardando confirmação', confirmado: 'Confirmado (pago)' }
+const labelSt = (key: string, label: string, clinica: boolean) => (clinica && LABEL_CLINICA[key]) || label
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 function inicioDaSemana(d: Date): Date {
@@ -242,7 +245,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           <span style={{ fontSize: detalhe ? 13 : 11.5, fontWeight: 600, color: '#333', textDecoration: a.status === 'cancelado' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{a.pacienteNome}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 7px' }}>{st.label}</span>
+          <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 7px' }}>{labelSt(st.key, st.label, perfilClinica)}</span>
           {a.servico && <span style={{ fontSize: detalhe ? 11.5 : 10.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.servico}</span>}
           {!profFiltro && <span style={{ fontSize: 10.5, color: '#bbb' }}>· {(a.profissionalNome || '').split(' ')[0]}</span>}
         </div>
@@ -417,7 +420,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   style={{ position: 'absolute', top, height: altura, left: `calc(${(col / cols) * 100}% + 3px)`, width: `calc(${100 / cols}% - 6px)`, background: cancelado ? '#f4f4f5' : `${cor}18`, borderLeft: `3px solid ${cor}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: 'pointer', opacity: cancelado ? 0.6 : 1, boxSizing: 'border-box' }}>
                   <div style={{ fontSize: 10.5, fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hora(a.dataInicio)} {a.pacienteNome}</div>
                   {altura > SLOT_H && <div style={{ fontSize: 9.5, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.servico, (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>}
-                  {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{st.label}</div>}
+                  {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{labelSt(st.key, st.label, perfilClinica)}</div>}
                 </div>
               )
             })}
@@ -472,14 +475,17 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   ))}
                 </select>
               </div>
-              {modal.id && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {STATUS.map(s => (
-                    <button key={s.key} onClick={() => setModal(m => ({ ...m, status: s.key }))}
-                      style={{ padding: '6px 12px', borderRadius: 999, border: modal.status === s.key ? `1.5px solid ${s.cor}` : '1px solid #e6e6e6', background: modal.status === s.key ? s.bg : '#fff', color: modal.status === s.key ? s.cor : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
-                      {s.label}
-                    </button>
-                  ))}
+              {(modal.id || perfilClinica) && (
+                <div>
+                  {perfilClinica && !modal.id && <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Situação (confirmado = pagamento recebido)</label>}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {(modal.id ? STATUS : STATUS.filter(s => s.key === 'agendado' || s.key === 'confirmado')).map(s => (
+                      <button key={s.key} onClick={() => setModal(m => ({ ...m, status: s.key }))}
+                        style={{ padding: '6px 12px', borderRadius: 999, border: modal.status === s.key ? `1.5px solid ${s.cor}` : '1px solid #e6e6e6', background: modal.status === s.key ? s.bg : '#fff', color: modal.status === s.key ? s.cor : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                        {labelSt(s.key, s.label, perfilClinica)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {perfilClinica && (

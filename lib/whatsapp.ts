@@ -14,7 +14,7 @@ import { redis } from './redis'
 // Sem NENHUM dos dois, o envio é no-op (scaffold seguro antes de configurar).
 
 export type WaMensagem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
-export type WaConversa = { telefone: string; nome?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+export type WaConversa = { telefone: string; nome?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
 
 export function evolutionConfigurado(): boolean {
   return !!(process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY && process.env.EVOLUTION_INSTANCE)
@@ -34,6 +34,21 @@ export function normalizarUrlEvolution(u?: string): string {
   const s = (u || '').trim().replace(/\/+$/, '')
   if (!s) return ''
   return /^https?:\/\//i.test(s) ? s : `https://${s}`
+}
+
+// Busca a URL da foto de perfil do contato no WhatsApp (Evolution). Best-effort.
+export async function fotoPerfilEvolution(numero: string): Promise<string | null> {
+  if (!evolutionConfigurado()) return null
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${process.env.EVOLUTION_INSTANCE}`, {
+      method: 'POST',
+      headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: (numero || '').replace(/\D/g, '') }),
+    })
+    const d = await r.json().catch(() => ({} as any))
+    return d?.profilePictureUrl || null
+  } catch { return null }
 }
 
 // Extrai o texto de um payload de mensagem do Evolution (messages.upsert).
