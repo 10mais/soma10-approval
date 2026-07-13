@@ -55,7 +55,13 @@ export async function POST(req: NextRequest) {
   const autor = session.user?.name || ''
   const novo = (d: any): CrmContato => {
     const agora = new Date().toISOString()
-    return { id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+    return {
+      id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+      ...(d.tipo ? { tipo: d.tipo } : {}),
+      ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
+      ...(Array.isArray(d.etiquetas) ? { etiquetas: d.etiquetas.map((e: any) => String(e).trim()).filter(Boolean).slice(0, 20) } : {}),
+      ...(d.ativo === false ? { ativo: false } : {}),
+    }
   }
 
   // Criação em LOTE (adicionar vários / importar)
@@ -90,7 +96,7 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const contato = await redis.get<CrmContato>(`contato:${id}`)
   if (!contato) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'etiquetas', 'ativo']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra

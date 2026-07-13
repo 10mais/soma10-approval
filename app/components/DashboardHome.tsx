@@ -35,11 +35,20 @@ function temSocialMedia(c: Cliente): boolean {
   return (c.entregaveis || []).includes('social_media')
 }
 
-export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
+type AgLite = { id: string; pacienteNome: string; pacienteTelefone?: string; dataInicio: string; status: string; servico?: string; profissionalNome: string }
+type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string; nascimento?: string; ativo?: boolean }
+
+// Ícone WhatsApp (SVG — sem emoji, regra do produto)
+const IconWhats = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2.1c0 .2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.3-.1.6.2.3.8 1.4 1.8 2.2 1.2 1.1 2.3 1.4 2.6 1.6.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.6.3 0 .2 0 .8-.2 1.4Z"/></svg>
+)
+
+export default function DashboardHome({ clientes, posts, onVerCliente, onIr, perfilClinica = false }: {
   clientes: Cliente[]
   posts: Post[]
   onVerCliente: (id: string) => void
   onIr?: (aba: string) => void
+  perfilClinica?: boolean
 }) {
   const agora = new Date()
   const mesAtual = agora.getMonth()
@@ -50,9 +59,20 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   useEffect(() => {
-    fetch('/api/playbook').then(r => r.json()).then(d => { if (Array.isArray(d)) setMarcos(d) }).catch(() => {})
+    if (!perfilClinica) fetch('/api/playbook').then(r => r.json()).then(d => { if (Array.isArray(d)) setMarcos(d) }).catch(() => {})
     fetch('/api/tarefas').then(r => r.json()).then(d => { if (Array.isArray(d)) setTarefas(d) }).catch(() => {})
-  }, [])
+  }, [perfilClinica])
+
+  // Home clínica: agenda das próximas 24h + aniversariantes do mês
+  const [ags24, setAgs24] = useState<AgLite[]>([])
+  const [contatos, setContatos] = useState<ContatoLite[]>([])
+  useEffect(() => {
+    if (!perfilClinica) return
+    const de = new Date(); const ate = new Date(de.getTime() + 24 * 3600 * 1000)
+    fetch(`/api/agenda?de=${de.toISOString()}&ate=${ate.toISOString()}`).then(r => r.json())
+      .then(d => { if (Array.isArray(d?.agendamentos)) setAgs24(d.agendamentos) }).catch(() => {})
+    fetch('/api/crm/contatos').then(r => r.json()).then(d => { if (Array.isArray(d)) setContatos(d) }).catch(() => {})
+  }, [perfilClinica])
 
   const emDias = (iso?: string) => iso ? (new Date(iso).getTime() - agora.getTime()) / 86400000 : Infinity
   const dataCurta = (iso?: string) => { if (!iso) return ''; const d = new Date(iso); return isNaN(d.getTime()) ? '' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}` }
@@ -119,12 +139,103 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr }: {
     [...clientesSM].sort((a, b) => (contagemPorCliente[a.id] || 0) - (contagemPorCliente[b.id] || 0))
   , [clientesSM, contagemPorCliente])
 
+  // ---- Home clínica (perfilClinica): agenda, confirmações, pacientes, aniversariantes ----
+  const ehHoje = (iso: string) => { const d = new Date(iso); return d.toDateString() === agora.toDateString() }
+  const agsHoje = useMemo(() => ags24.filter(a => ehHoje(a.dataInicio) && a.status !== 'cancelado'), [ags24])
+  const aguardandoConfirmacao = useMemo(() => agsHoje.filter(a => a.status === 'agendado'), [agsHoje])
+  const pacientesAtivos = useMemo(() => contatos.filter(c => (!c.tipo || c.tipo === 'paciente') && c.ativo !== false), [contatos])
+  const aniversariantes = useMemo(() => contatos
+    .filter(c => c.ativo !== false && c.nascimento && Number(c.nascimento.slice(5, 7)) === mesAtual + 1)
+    .sort((a, b) => Number(a.nascimento!.slice(8, 10)) - Number(b.nascimento!.slice(8, 10))), [contatos, mesAtual])
+  const linkZap = (tel?: string) => tel ? `https://wa.me/${tel.replace(/\D/g, '')}` : ''
+
   // Risco de atraso: meta do mês (postsMensais) ainda não coberta por publicado+agendado
   const clientesEmRisco = useMemo(() => agora.getDate() < 5 ? [] : clientesSM.filter(c => {
     const meta = Number(c.postsMensais) || META_MIN
     return (contagemPorCliente[c.id] || 0) < meta && (contagemPorCliente[c.id] || 0) >= 8
   }), [clientesSM, contagemPorCliente])
   const temAlertas = falhasPendentes > 0 || clientesSemBrand > 0 || clientesSemEntregaveis > 0 || clientesEmRisco.length > 0 || clientesOrdenados.some(c => (contagemPorCliente[c.id] || 0) < 8)
+
+  if (perfilClinica) {
+    return (
+      <div>
+        <h2 style={{ margin: '0 0 16px', fontSize: 20, color: '#111' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
+
+        {/* Atalhos */}
+        {onIr && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+            {[{ aba: 'agenda', label: 'Agenda' }, { aba: 'crm', label: 'CRM' }, { aba: 'tarefas', label: 'Tarefas' }].map(a => (
+              <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#333', border: '1px solid #ececec', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                {a.label}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* KPIs da clínica */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
+          {[
+            { label: 'Atendimentos hoje', valor: agsHoje.length, cor: '#111' },
+            { label: 'Aguardando confirmação', valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? '#a16207' : '#16a34a' },
+            { label: 'Pacientes ativos', valor: pacientesAtivos.length, cor: '#1d4ed8' },
+            { label: 'Aniversariantes do mês', valor: aniversariantes.length, cor: '#7c3aed' },
+          ].map(kpi => (
+            <div key={kpi.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#888' }}>{kpi.label}</p>
+              <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: kpi.cor }}>{kpi.valor}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 20 }}>
+          {/* Próximas 24h */}
+          <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Agendamentos das próximas 24h</h3>
+              {onIr && <button onClick={() => onIr('agenda')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir agenda</button>}
+            </div>
+            {ags24.filter(a => a.status !== 'cancelado').length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum agendamento nas próximas 24 horas.</p>}
+            {ags24.filter(a => a.status !== 'cancelado').slice(0, 10).map(a => (
+              <div key={a.id} onClick={() => onIr?.('agenda')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#111', flexShrink: 0 }}>{ehHoje(a.dataInicio) ? '' : 'amanhã '}{new Date(a.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}{a.servico ? ` · ${a.servico}` : ''}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'confirmado' ? '#166534' : '#a16207', flexShrink: 0 }}>{a.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Aniversariantes do mês */}
+          <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+            {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum aniversariante este mês (preencha o nascimento no cadastro do paciente).</p>}
+            {aniversariantes.slice(0, 12).map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
+                <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                {c.telefone && (
+                  <a href={linkZap(c.telefone)} target="_blank" rel="noreferrer" title="Chamar no WhatsApp" style={{ display: 'inline-flex', alignItems: 'center' }}><IconWhats /></a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tarefas da semana */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Tarefas da semana</h3>
+          {tarefasSemana.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nada vencendo nos próximos 7 dias.</p>}
+          {tarefasSemana.map(t => { const atras = emDias(t.prazo) < 0; return (
+            <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? '#b91c1c' : '#a16207', flexShrink: 0 }}>{atras ? 'atrasada' : dataCurta(t.prazo)}</span>
+            </div>
+          ) })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

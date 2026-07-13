@@ -574,6 +574,9 @@ function Dashboard() {
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [permPapel, setPermPapel] = useState<Record<string, Record<string, boolean>>>({})
   const [permGranular, setPermGranular] = useState<any>({})
+  // Perfil da instância (clinica/gestao/null=agência) — adapta home, CRM e Agenda
+  const [perfilInstancia, setPerfilInstancia] = useState<string | null>(null)
+  const perfilClinica = perfilInstancia === 'clinica'
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
   const [perfilAberto, setPerfilAberto] = useState(false)
@@ -688,6 +691,9 @@ function Dashboard() {
     if (role === 'admin' || role === 'gerente' || role === 'usuario') {
       fetches.push(fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {}))
       fetches.push(fetch('/api/permissoes-granular').then(r => r.json()).then(d => { if (d && !d.error) setPermGranular(d) }).catch(() => {}))
+    }
+    if (role !== 'cliente') {
+      fetches.push(fetch('/api/perfil-instancia').then(r => r.json()).then(d => { if (d && !d.error) setPerfilInstancia(d.perfil || null) }).catch(() => {}))
     }
     if (role === 'admin') {
       fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
@@ -3187,7 +3193,7 @@ function Dashboard() {
 
         {/* PAINEL HOME */}
         {aba === 'home' && (
-          <DashboardHome clientes={clientes as any} posts={posts as any} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
+          <DashboardHome clientes={clientes as any} posts={posts as any} perfilClinica={perfilClinica} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
         )}
 
         {/* CLIENTES */}
@@ -3214,6 +3220,7 @@ function Dashboard() {
           <Agenda
             usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email }))}
             meuEmail={(session?.user as any)?.email || ''}
+            perfilClinica={perfilClinica}
             podeEditar={podeNivelDash('producao', 'editar')}
           />
         )}
@@ -3369,7 +3376,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (
@@ -4469,6 +4476,22 @@ function Dashboard() {
             )}
 
             {abaConfig === 'geral' && (<>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Perfil da instância</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Adapta o sistema ao tipo de negócio: painel inicial, cadastro de pacientes e vínculo da Agenda. Instâncias criadas com perfil no setup já vêm definidas.</p>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select value={perfilInstancia || ''} onChange={async e => {
+                  const novo = e.target.value || ''
+                  const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
+                  if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null) }
+                }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+                  <option value="">Agência (padrão)</option>
+                  <option value="clinica">Clínica</option>
+                  <option value="gestao">Gestão</option>
+                </select>
+                <span style={{ fontSize: 11.5, color: '#aaa' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
+              </div>
+            </div>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Aparência</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Escolha como o painel é exibido para você neste navegador.</p>

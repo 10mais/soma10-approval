@@ -203,6 +203,7 @@ export type Agendamento = {
   id: string
   pacienteNome: string
   pacienteTelefone?: string
+  contatoId?: string // vínculo com o cadastro do paciente (CrmContato) — perfil clínica
   profissionalEmail: string
   profissionalNome: string
   servico?: string
@@ -583,6 +584,9 @@ export type CrmEmpresa = {
   atualizadoEm: string
 }
 
+// Tipo do contato (perfil clínica trata 'paciente' como cadastro de pacientes).
+export type CrmContatoTipo = 'paciente' | 'profissional' | 'fornecedor' | 'lead' | 'outro'
+
 export type CrmContato = {
   id: string
   nome: string
@@ -593,6 +597,10 @@ export type CrmContato = {
   profissionalAutonomo?: boolean // PF sem empresa (autônomo) — dispensa vínculo com Empresa
   areaAtuacao?: string // área/segmento de atuação do contato
   cargo?: string
+  tipo?: CrmContatoTipo // ausente = contato comum (compatível com a base existente)
+  nascimento?: string // YYYY-MM-DD — aniversariantes do mês (clínicas)
+  etiquetas?: string[]
+  ativo?: boolean // ausente = ativo
   observacoes?: string
   criadoPor: string
   criadoEm: string

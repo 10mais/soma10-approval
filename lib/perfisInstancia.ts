@@ -7,10 +7,18 @@ import { perfilDef, PerfilInstancia } from './perfisInstanciaCatalogo'
 // Catálogo (client-safe) em ./perfisInstanciaCatalogo. Retorna a chave aplicada
 // ou null quando nenhum perfil foi pedido (instância nasce no padrão da agência).
 
+// Perfil gravado na instância — o app lê isso pra adaptar telas/comportamento
+// (ex.: home clínica, rótulo Pacientes, vínculo agenda↔contato).
+export async function getPerfilInstancia(): Promise<PerfilInstancia | null> {
+  const p = await redis.get<string>('config:perfilInstancia')
+  return perfilDef(p)?.chave || null
+}
+
 export async function aplicarPerfilInstancia(chave?: string | null): Promise<PerfilInstancia | null> {
   const def = perfilDef(chave)
   if (!def) return null
 
+  await redis.set('config:perfilInstancia', def.chave)
   if (def.permissoesPapel) await redis.set('config:permissoesPapel', def.permissoesPapel)
   if (def.permissoesGranular) await redis.set('config:permissoesGranular', def.permissoesGranular)
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sobrepoe, acharConflito, ocupaAgenda } from '@/lib/agenda'
+import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome } from '@/lib/agenda'
 
 // Conflito de horário da Agenda. Guarda contra: encaixe silencioso em cima de
 // outro paciente e falso conflito entre profissionais diferentes/cancelados.
@@ -50,5 +50,31 @@ describe('ocupaAgenda', () => {
     expect(ocupaAgenda('faltou')).toBe(false)
     expect(ocupaAgenda('cancelado')).toBe(false)
     expect(ocupaAgenda(undefined)).toBe(true) // default seguro
+  })
+})
+
+// Vínculo agenda↔paciente (perfil clínica): o match por nome decide entre ligar a
+// um cadastro existente ou criar paciente novo — errar aqui duplica pacientes.
+describe('acharContatoPorNome (vínculo com o cadastro)', () => {
+  const contatos = [
+    { id: '1', nome: 'Maria José da Silva' },
+    { id: '2', nome: 'João Pedro' },
+  ]
+
+  it('casa ignorando caixa, espaços extras e acentos', () => {
+    expect(acharContatoPorNome(contatos, 'maria jose da silva')?.id).toBe('1')
+    expect(acharContatoPorNome(contatos, '  MARIA JOSÉ  DA SILVA ')?.id).toBe('1')
+    expect(acharContatoPorNome(contatos, 'Joao Pedro')?.id).toBe('2')
+  })
+
+  it('não casa nome diferente nem parcial', () => {
+    expect(acharContatoPorNome(contatos, 'Maria José')).toBeNull()
+    expect(acharContatoPorNome(contatos, 'Pedro')).toBeNull()
+    expect(acharContatoPorNome(contatos, '')).toBeNull()
+  })
+
+  it('normalizaNome padroniza acentos/espaços/caixa', () => {
+    expect(normalizaNome('  Á RVORE   grande ')).toBe('a rvore grande')
+    expect(normalizaNome('')).toBe('')
   })
 })

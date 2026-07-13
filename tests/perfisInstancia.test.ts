@@ -66,6 +66,14 @@ describe('catálogo de perfis', () => {
       expect(p.pipeline.estagios.length).toBeGreaterThanOrEqual(3)
     }
   })
+
+  it('funil da clínica espelha a referência (Agendamentos, Compareceu=ganho, Não compareceu=perdido)', () => {
+    const pipe = perfilDef('clinica')!.pipeline!
+    expect(pipe.nome).toBe('Agendamentos')
+    expect(pipe.estagios.map(e => e.nome)).toEqual(['Lead novo', 'Em conversa', 'Em agendamento', 'Consulta paga', 'Compareceu', 'Não compareceu'])
+    expect(pipe.estagios.find(e => e.ganho)?.nome).toBe('Compareceu')
+    expect(pipe.estagios.find(e => e.perdido)?.nome).toBe('Não compareceu')
+  })
 })
 
 describe('perfil clinica — comportamento esperado nas duas camadas', () => {

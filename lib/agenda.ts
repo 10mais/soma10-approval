@@ -38,3 +38,16 @@ export function acharConflito<T extends Compromisso>(novo: Compromisso, existent
   }
   return null
 }
+
+// Vínculo agenda↔paciente (perfil clínica): casa o nome digitado com um contato
+// existente. Comparação por nome normalizado (trim/caixa/acentos) — evita criar
+// "Maria" e "maria " como pacientes diferentes.
+export function normalizaNome(s: string): string {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+export function acharContatoPorNome<T extends { nome: string }>(contatos: T[], nome: string): T | null {
+  const alvo = normalizaNome(nome)
+  if (!alvo) return null
+  return contatos.find(c => normalizaNome(c.nome) === alvo) || null
+}

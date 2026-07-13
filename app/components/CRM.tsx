@@ -4,7 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; etiquetas?: string[]; ativo?: boolean }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
@@ -19,7 +19,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -117,7 +117,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const estagiosDoPipeline = (pid: string) => estagios.filter(e => (e.pipelineId || padraoId) === pid)
   const negociosDoPipeline = (pid: string) => negocios.filter(n => (n.pipelineId || padraoId) === pid)
   // Origens conhecidas (dropdown editável): padrões + as já usadas nos negócios
-  const origensConhecidas = Array.from(new Set(['Indicação', 'Instagram', 'Tráfego pago', 'Tráfego orgânico', 'Prospecção ativa', 'Site', 'Evento', ...negocios.map(n => (n.origem || '').trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'pt'))
+  const origensConhecidas = Array.from(new Set(['Indicação', 'Instagram', 'Ex-paciente', 'Tráfego pago', 'Tráfego orgânico', 'Prospecção ativa', 'Site', 'Google', 'Evento', ...negocios.map(n => (n.origem || '').trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'pt'))
 
   return (
     <div>
@@ -127,7 +127,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
+          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', perfilClinica ? 'Pacientes' : 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
@@ -230,7 +230,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
       {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
@@ -259,6 +259,11 @@ function PainelVendas({ negocios, estagios, usuarios }: { negocios: Negocio[]; e
   const porVendedor = Object.values(abertos.reduce((acc: any, n) => {
     const k = n.donoNome || '—'; acc[k] = acc[k] || { nome: k, qtd: 0, valor: 0 }; acc[k].qtd++; acc[k].valor += Number(n.valor) || 0; return acc
   }, {})).sort((a: any, b: any) => b.valor - a.valor)
+  // De onde vêm os negócios (todas as situações — mede o canal, não o resultado)
+  const porOrigem = (Object.values(negocios.reduce((acc: any, n) => {
+    const k = (n.origem || '').trim(); if (!k) return acc
+    acc[k] = acc[k] || { nome: k, qtd: 0 }; acc[k].qtd++; return acc
+  }, {})) as { nome: string; qtd: number }[]).sort((a, b) => b.qtd - a.qtd).slice(0, 8)
 
   const Card = ({ titulo, valor, sub, cor }: { titulo: string; valor: string; sub?: string; cor?: string }) => (
     <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -293,6 +298,19 @@ function PainelVendas({ negocios, estagios, usuarios }: { negocios: Negocio[]; e
             </div>
           )
         })}
+      </div>
+
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Origem dos negócios</span>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+        {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum negócio com origem preenchida ainda.</p> : porOrigem.map(o => (
+          <div key={o.nome} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: '#444', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
+            <div style={{ flex: 1, height: 18, background: '#f4f4f4', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ width: `${(o.qtd / porOrigem[0].qtd) * 100}%`, height: '100%', background: '#111', minWidth: 6, borderRadius: 6 }} />
+            </div>
+            <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, fontWeight: 800, color: '#111', flexShrink: 0 }}>{o.qtd}</span>
+          </div>
+        ))}
       </div>
 
       <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Pipeline por vendedor</span>
@@ -616,14 +634,30 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   )
 }
 
-function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '' })
+const STATUS_AG: Record<string, { label: string; cor: string }> = {
+  agendado: { label: 'Agendado', cor: '#1d4ed8' }, confirmado: { label: 'Confirmado', cor: '#166534' },
+  atendido: { label: 'Atendido', cor: '#374151' }, faltou: { label: 'Faltou', cor: '#b91c1c' }, cancelado: { label: 'Cancelado', cor: '#9ca3af' },
+}
+
+function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilClinica = false }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; perfilClinica?: boolean }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? 'paciente' : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
+  // Histórico de atendimentos do paciente (perfil clínica, só ao editar)
+  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string }[] | null>(null)
+  useEffect(() => {
+    if (!perfilClinica || !contato?.id) return
+    fetch(`/api/agenda?contatoId=${contato.id}`).then(r => r.json())
+      .then(d => setHistorico(Array.isArray(d?.agendamentos) ? d.agendamentos : []))
+      .catch(() => setHistorico([]))
+  }, [perfilClinica, contato?.id])
+
   async function salvar() {
     if (!f.nome.trim()) return
     setSalvando(true)
-    if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...f }) }).catch(() => {})
-    else await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) }).catch(() => {})
+    const { etiquetasTxt, ...resto } = f
+    const corpo = { ...resto, etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
+    if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...corpo }) }).catch(() => {})
+    else await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).catch(() => {})
     setSalvando(false); onSalvo()
   }
   async function excluir() {
@@ -634,9 +668,19 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { cont
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{contato ? 'Editar contato' : 'Novo contato'}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{contato ? (perfilClinica ? 'Editar paciente' : 'Editar contato') : (perfilClinica ? 'Novo paciente' : 'Novo contato')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          {perfilClinica && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Tipo</label>
+                <select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                  <option value="paciente">Paciente</option><option value="lead">Lead</option><option value="profissional">Profissional</option><option value="fornecedor">Fornecedor</option><option value="outro">Outro</option>
+                </select>
+              </div>
+              <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>
+            </div>
+          )}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
             <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
             Profissional Autônomo (sem empresa)
@@ -648,7 +692,39 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false }: { cont
             <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
             <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
           </div>
+          {perfilClinica && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
+              <div><label style={labelStyle}>Etiquetas (separadas por vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: botox, avaliação, VIP" style={inputStyle} /></div>
+              {contato && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600, paddingBottom: 10 }}>
+                  <input type="checkbox" checked={f.ativo} onChange={e => setF({ ...f, ativo: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  Ativo
+                </label>
+              )}
+            </div>
+          )}
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          {perfilClinica && contato?.id && (
+            <div>
+              <label style={labelStyle}>Histórico de atendimentos</label>
+              {historico === null ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Carregando...</p>
+                : historico.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhum agendamento deste paciente ainda.</p>
+                : (
+                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 180, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
+                    {historico.map(h => {
+                      const st = STATUS_AG[h.status] || STATUS_AG.agendado
+                      return (
+                        <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(h.dataInicio).toLocaleDateString('pt-BR')} {new Date(h.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.servico || '—'} · {(h.profissionalNome || '').split(' ')[0]}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: st.cor, flexShrink: 0 }}>{st.label}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>

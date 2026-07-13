@@ -7,8 +7,9 @@ import { toast, confirmar } from '@/lib/toast'
 // detecção de conflito de horário (o servidor recusa; a UI oferece encaixe).
 
 type Usuario = { nome: string; email: string }
+type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string }
 type Ag = {
-  id: string; pacienteNome: string; pacienteTelefone?: string
+  id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string
   profissionalEmail: string; profissionalNome: string; servico?: string
   dataInicio: string; duracaoMin: number; status: string; observacoes?: string
 }
@@ -34,10 +35,11 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-export default function Agenda({ usuarios, meuEmail, podeEditar = true }: {
+export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilClinica = false }: {
   usuarios: Usuario[]
   meuEmail?: string
   podeEditar?: boolean
+  perfilClinica?: boolean
 }) {
   const [ref, setRef] = useState(() => new Date())
   const [visao, setVisao] = useState<'semana' | 'dia'>('semana')
@@ -47,6 +49,17 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true }: {
   const [carregando, setCarregando] = useState(true)
   const [modal, setModal] = useState<Partial<Ag> | null>(null) // sem id = novo
   const [salvando, setSalvando] = useState(false)
+  // Perfil clínica: cadastro de pacientes alimenta o campo de nome (datalist)
+  const [contatos, setContatos] = useState<ContatoLite[]>([])
+  useEffect(() => {
+    if (!perfilClinica) return
+    fetch('/api/crm/contatos').then(r => r.json()).then(d => { if (Array.isArray(d)) setContatos(d) }).catch(() => {})
+  }, [perfilClinica])
+  const normaliza = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
+  function aoDigitarPaciente(nome: string) {
+    const m = contatos.find(c => normaliza(c.nome) === normaliza(nome))
+    setModal(x => ({ ...x, pacienteNome: nome, contatoId: m?.id, pacienteTelefone: (x?.pacienteTelefone || m?.telefone || '') || undefined }))
+  }
 
   const semana = inicioDaSemana(ref)
   const fimSemana = new Date(semana); fimSemana.setDate(fimSemana.getDate() + 7)
@@ -186,8 +199,18 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true }: {
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{modal.id ? 'Editar agendamento' : 'Novo agendamento'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <input value={modal.pacienteNome || ''} onChange={e => setModal(m => ({ ...m, pacienteNome: e.target.value }))} placeholder="Nome do paciente/cliente *"
+              <input list={perfilClinica ? 'agenda-pacientes' : undefined} value={modal.pacienteNome || ''} onChange={e => perfilClinica ? aoDigitarPaciente(e.target.value) : setModal(m => ({ ...m, pacienteNome: e.target.value }))} placeholder="Nome do paciente/cliente *"
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13.5, fontFamily: 'inherit' }} />
+              {perfilClinica && (
+                <>
+                  <datalist id="agenda-pacientes">{contatos.filter(c => !c.tipo || c.tipo === 'paciente' || c.tipo === 'lead').map(c => <option key={c.id} value={c.nome} />)}</datalist>
+                  {(modal.pacienteNome || '').trim() && (
+                    modal.contatoId
+                      ? <p style={{ margin: '-4px 0 0', fontSize: 11, color: '#166534' }}>Paciente do cadastro — o atendimento entra no histórico dele.</p>
+                      : <p style={{ margin: '-4px 0 0', fontSize: 11, color: '#888' }}>Paciente novo — será cadastrado automaticamente ao salvar.</p>
+                  )}
+                </>
+              )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input value={modal.pacienteTelefone || ''} onChange={e => setModal(m => ({ ...m, pacienteTelefone: e.target.value }))} placeholder="Telefone/WhatsApp"
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />

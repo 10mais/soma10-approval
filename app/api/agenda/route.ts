@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Agendamento } from '@/lib/redis'
+import { redis, Agendamento, CrmContato } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { acharConflito } from '@/lib/agenda'
+import { acharConflito, acharContatoPorNome } from '@/lib/agenda'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
 
 // Módulo Agenda (clínicas/serviços): CRUD de agendamentos com detecção de
 // conflito de horário por profissional. Equipe apenas (cliente não acessa).
+// Perfil clínica: todo paciente agendado vira/liga a um contato (cadastro).
 
 async function carregarTodos(): Promise<Agendamento[]> {
   const ids = await redis.smembers('agendamentos')
@@ -18,13 +20,47 @@ async function carregarTodos(): Promise<Agendamento[]> {
   return regs.filter(Boolean) as Agendamento[]
 }
 
+async function carregarContatos(): Promise<CrmContato[]> {
+  const ids = await redis.smembers('crm:contatos')
+  if (!ids.length) return []
+  return (await redis.mget<(CrmContato | null)[]>(...ids.map(i => `contato:${i}`))).filter(Boolean) as CrmContato[]
+}
+
+// No perfil clínica, amarra o agendamento a um contato: casa pelo nome (normalizado)
+// ou cria um paciente novo com nome/telefone. Fora do perfil, só respeita contatoId explícito.
+async function vincularContato(ag: Agendamento, contatoIdExplicito: string | undefined, autor: string): Promise<void> {
+  if (contatoIdExplicito) { ag.contatoId = String(contatoIdExplicito); return }
+  if ((await getPerfilInstancia()) !== 'clinica') return
+  const contatos = await carregarContatos()
+  const match = acharContatoPorNome(contatos, ag.pacienteNome)
+  if (match) {
+    ag.contatoId = match.id
+    if (!ag.pacienteTelefone && match.telefone) ag.pacienteTelefone = match.telefone
+    return
+  }
+  const agora = new Date().toISOString()
+  const contato: CrmContato = { id: uuid(), nome: ag.pacienteNome, telefone: ag.pacienteTelefone || '', tipo: 'paciente', criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+  await redis.set(`contato:${contato.id}`, contato)
+  await redis.sadd('crm:contatos', contato.id)
+  ag.contatoId = contato.id
+}
+
 // GET ?de=ISO&ate=ISO — lista agendamentos do período (padrão: semana atual).
+// GET ?contatoId=x — histórico completo do paciente (mais recentes primeiro).
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const url = new URL(req.url)
+  const contatoId = url.searchParams.get('contatoId')
+  if (contatoId) {
+    const doContato = (await carregarTodos())
+      .filter(a => a.contatoId === contatoId)
+      .sort((a, b) => new Date(b.dataInicio).getTime() - new Date(a.dataInicio).getTime())
+    return NextResponse.json({ agendamentos: doContato })
+  }
+
   const de = url.searchParams.get('de')
   const ate = url.searchParams.get('ate')
   const todos = await carregarTodos()
@@ -81,6 +117,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  await vincularContato(novo, b.contatoId, session.user?.name || session.user?.email || '')
   await redis.set(`agendamento:${novo.id}`, novo)
   await redis.sadd('agendamentos', novo.id)
   return NextResponse.json({ ok: true, agendamento: novo })
@@ -99,11 +136,16 @@ export async function PUT(req: NextRequest) {
   const atual = await redis.get<Agendamento>(`agendamento:${b.id}`)
   if (!atual) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  const campos = ['pacienteNome', 'pacienteTelefone', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes']
+  const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes']
   const atualizado: Agendamento = { ...atual }
   for (const c of campos) { if (c in b) (atualizado as any)[c] = b[c] }
   atualizado.duracaoMin = Math.min(600, Math.max(5, Number(atualizado.duracaoMin) || 30))
   if (isNaN(new Date(atualizado.dataInicio).getTime())) return NextResponse.json({ error: 'data inválida' }, { status: 400 })
+  // Renomeou o paciente sem apontar contato? Refaz o vínculo (casa ou cria cadastro).
+  if (!atualizado.contatoId || (b.pacienteNome && b.pacienteNome !== atual.pacienteNome && !('contatoId' in b))) {
+    atualizado.contatoId = undefined
+    await vincularContato(atualizado, undefined, session.user?.name || session.user?.email || '')
+  }
 
   const mudouHorario = atualizado.dataInicio !== atual.dataInicio || atualizado.duracaoMin !== atual.duracaoMin || atualizado.profissionalEmail !== atual.profissionalEmail
   if (mudouHorario && !b.forcar) {
