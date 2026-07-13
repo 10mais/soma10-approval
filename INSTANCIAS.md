@@ -21,7 +21,8 @@
 | `NEXTAUTH_URL` | `https://{cliente}.soma10.com.br` |
 | `APPROVAL_BASE_URL` | idem |
 | `CRON_SECRET` | **novo** (aleatório) |
-| `BLOB_READ_WRITE_TOKEN` | criar um **Blob store próprio** (Storage → Create → Blob) e conectar ao projeto |
+| `BLOB_READ_WRITE_TOKEN` | criar um **Blob store próprio** (Storage → Create → Blob) e conectar ao projeto. ⚠️ **O Blob novo da Vercel NÃO gera essa env sozinho** — abra o store → aba **`.env.local`** do Quickstart, copie o valor `BLOB_READ_WRITE_TOKEN` e **crie a env na mão** nas Environment Variables do projeto |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | ao conectar o Upstash Redis (Marketplace) ao projeto, use **prefixo de env `KV`** — senão sai como `STORAGE_*` e o app não acha |
 | `ANTHROPIC_API_KEY` | só se o cliente contratou módulos de IA |
 | Meta/Instagram/Stripe/Ideogram/GEMINI/SMTP | **NÃO setar** salvo contratado — as integrações ficam cinza na Saúde do sistema e os recursos somem/no-op |
 
