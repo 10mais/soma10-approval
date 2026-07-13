@@ -148,7 +148,7 @@ Config (chaves simples): `config:agencia`, `config:automacoes`, `config:anthropi
 
 ## 12. Pendências / próximos passos
 
-> ⚠️ **ESTADO MAIS RECENTE (2026-07-11): LEIA §36 PRIMEIRO** — motor de criativos NOVO (Claude desenha HTML + Chrome headless + Nano Banana 2), Studio numa superfície só, SLA de entrega, módulo Agenda e o **TRACK CLIENTES EXTERNOS** (5 clientes, prazos 12-25/07, instância por cliente via `INSTANCIAS.md`). Histórico de robustez/segurança: §35 → §28.
+> ⚠️ **ESTADO MAIS RECENTE (2026-07-13): LEIA §37 PRIMEIRO** — **SOMA10 CLÍNICAS entregue** (perfil `clinica`: paciente, agenda proporcional, 2 funis, reuniões, playbook DÉCADA) + **NORAH no ar** (1ª instância externa) + **WhatsApp integrado por conector Evolution** (número antigo via QR, inbox no CRM). Antes disso: §36 (motor de criativos + track clientes externos). Histórico de robustez/segurança: §35 → §28.
 >
 > *(Bloco abaixo = estado de 2026-07-08, mantido como histórico:)*
 > - **Robustez (Visão A):** observabilidade nos **7 crons** + `/api/publicar` (`lib/erros.ts`, tela **Config → Saúde do sistema**), **rede de testes com PORTÃO no build** (`build = "vitest run && next build"` → teste vermelho barra o deploy; **35 testes**), **DR — restaurar backup** (§31), **auditoria** (quem fez o quê, §31) e **monitoramento** (`/api/health`, §28/§31).
@@ -869,3 +869,49 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Prioridades revisadas pelo dono:** 1º Norah · 2º Sua Dupla Cidadania · 3º **Clínica Phenoma (cliente NOVO, clínica = clone da Norah)**. Deny/Sicredi **BLOQUEADO** (aguarda permissões do banco, dependência do cliente).
 - **`/api/setup` ganhou `perfil` opcional** (`clinica` | `gestao`) — semeia numa tacada `config:permissoesPapel` + `config:permissoesGranular` + funil de CRM (`crm:pipelines`/`crm:estagios`). `clinica`: funil de pacientes (Lead→Contato→Avaliação agendada→Compareceu→Orçamento→Fechou/Não fechou), equipe sem Estratégia/Studio/Planner. `gestao`: Projetos (estratégia) ligado, sem social/Agenda. GET lista os perfis; perfil inválido = 400. Preset é aplicado ANTES de criar o admin (falha não tranca a rota).
 - **Arquivos:** `lib/perfisInstanciaCatalogo.ts` (client-safe) + `lib/perfisInstancia.ts` (applier). `ABAS_PERM` ganhou **agenda** e **planner** (antes não dava pra escondê-las por papel). Guard de acesso direto por sessionStorage no dashboard agora checa também a camada granular (antes só grupo). Testes 68 → **77**. `INSTANCIAS.md` passo 3 documenta os perfis.
+
+## 37. Evolução 2026-07-13 — SOMA10 CLÍNICAS entregue + Norah no ar + WhatsApp Evolution
+
+> Sessão longa. **Tudo na `main`** (push por implementação; portão de testes 68 → **91**). Onde diverge de seções antigas, vale o que está aqui. Docs irmãos atualizados: `CLINICAS-PLANO.md`, `WHATSAPP-CLINICA.md`, `INSTANCIAS.md`. Memória: `[[clientes-instancias]]`.
+
+### 37.1 Norah — 1ª instância externa PROVISIONADA E NO AR
+- Projeto Vercel `soma10-norah` (prj_XCmj9SdTzP9kW3FkmJQxw2Ylvnuu, team 10mais), Redis Upstash `soma10-norah` (Marketplace, gru1, PAYG, **prefixo de env `KV`**), Blob privado `soma10-norah-blob` (gru1), domínio **`norah.soma10.com.br`** (CNAME no **Cloudflare** — o DNS da soma10.com.br é Cloudflare, NÃO registro.br). 1º admin via `/api/setup` com `perfil:'clinica'`.
+- **Blob novo da Vercel NÃO gera `BLOB_READ_WRITE_TOKEN` automático** — copiar da aba `.env.local` do store e criar a env na mão (pegadinha, ver INSTANCIAS.md).
+- Prioridades do dono: 1º Norah (feito) · 2º Sua Dupla Cidadania (`perfil:'gestao'`, a provisionar) · 3º Clínica Phenoma (`perfil:'clinica'`, clone). Deny/Sicredi BLOQUEADO (aguarda permissões).
+
+### 37.2 Perfil da instância (fundação do "sistema por tipo de negócio")
+- `config:perfilInstancia` (`clinica`|`gestao`|ausente=agência). `/api/perfil-instancia` GET (equipe) / PUT admin (`{reaplicarSementes}` reinstala permissões+funis+playbook). Seletor em **Config → Geral**. Setup grava; instâncias antigas ajustam no seletor. Marca é sempre **Soma10** (decisão do dono — SEM white-label; não propor login/manifest com marca do cliente).
+- `lib/perfisInstanciaCatalogo.ts` (client-safe: `PERFIS`, `ABAS_OCULTAS_CLINICA`, `pipelines[]`, `playbook`) + `lib/perfisInstancia.ts` (applier). **Modo clínica esconde de TODOS (admin incluso)**: Studio, Planner, Mapas, Estratégia inteira, Conversão&Retenção, Candidaturas, Trabalhe Conosco, Solicitações do cliente. `/trabalhe-conosco` e `POST /candidaturas` = 404 na clínica.
+
+### 37.3 CRM de clínica
+- **Pacientes × Contatos separados** (sem Empresas): `CrmContato.tipo` (paciente/lead/…), `nascimento`, `etiquetas`, `ativo`, `historico[]` (nutrição) e `ultimoContato`. Atendimento concluído **promove lead→paciente**. Lista de Pacientes tem coluna "Última interação" (vermelho + "reabordar" >90d) e **importação arrastando .csv com prévia + mapeamento de colunas** (`ImportarContatosModal`).
+- **Histórico de nutrição** no cadastro do paciente: timeline unificada (toques manuais `ContatoInteracao` via `/api/crm/contatos` PUT `novaInteracao`/`removerInteracao` + atendimentos da Agenda), quick-add.
+- **2 funis de venda** (seed do perfil, `pipelines[]`): **Agendamentos** (consulta só agenda mediante pagamento; ganho=Compareceu) + **Tratamentos** (a "venda na cadeira": Avaliação feita→Proposta→Negociação→Fechou/Não fechou; valor preenchido pós-consulta, SEM automação).
+- **Oportunidade (NovoNegocioModal + NegocioModal)** no perfil clínica: "Nova oportunidade" sem Qualificação de agência (só Observações); **"Concretizar venda" vira "Agendar consulta"** (abre a Agenda via `agenda_prefill`); **sem passagem de bastão** (ConversaoModal não roda). Botão **WhatsApp do contato abre a conversa INTERNA** (aba Mensagens) em vez do wa.me.
+- Playbook de qualificação = **Método DÉCADA** (`lib/playbookClinica.ts` `PLAYBOOK_CLINICA`, semeado; `/api/crm/playbook` padrão perfil-aware). ⚠️ só extraí a ESTRUTURA do doc do dono (Google bloqueou literal) — dono refina o texto na aba Playbook.
+
+### 37.4 Agenda de clínica
+- **Vínculo agenda↔paciente** (`Agendamento.contatoId`; casa por nome normalizado `acharContatoPorNome` ou **auto-cadastra paciente**). `GET /api/agenda?contatoId=` = histórico. Campos: `queixaPrincipal`, `registroAtendimento` (prontuário — dado de saúde, banco isolado).
+- **Visão DIA proporcional** (novo): expediente 7h-21h, altura ∝ duração (30min=1x), sobreposição em colunas, clique em horário vazio cria. **Cor por profissional** (`Usuario.corAgenda`). **Só profissionais com `Usuario.areaSaude`** aparecem no seletor (fallback: todos se ninguém tiver). Visão Semana/Dia(lista)/**Mês** + **lista de espera** (`/api/agenda/espera`) + duração 30min-4h + serviço dropdown (Consulta/Revisão/Procedimento).
+- Ao agendar: **"Aguardando confirmação"** (=aguarda pagamento) / **"Confirmado (pago)"** (rótulos de clínica p/ agendado/confirmado).
+- **FALTA (próximo — task aberta):** bloqueios/compromissos da profissional (pontuais e recorrentes) + grade proporcional também na Semana.
+
+### 37.5 Colaboradores, Tarefas, Reuniões, Visualizar como
+- `Usuario.areaSaude` (quem atende/entra na Agenda) + `corAgenda`; form clínica com esses campos; papel **Vendas → "Comercial"** (sem SDR/Closer); "Cliente" oculto na clínica.
+- **Tipos de tarefa** de clínica (`TIPOS_CLINICA`: confirmação de agenda, retorno, follow-up de orçamento, compras/estoque, administrativo, financeiro, reunião).
+- **NOVO módulo Reuniões internas** (Pessoas e Cultura, todos os perfis): `Reuniao` (pauta→ata→decisões), `/api/reunioes`, **decisão vira Tarefa**. `Reunioes.tsx`.
+- **"Visualizar como"**: admin prevê a visão de um PAPEL (Gerente/Usuário) via `roleView` — nav+permissões refletem o papel, capacidades reais não mudam, banner + reset; no perfil clínica o dropdown NÃO lista clientes.
+- **Saúde do sistema** perfil-aware: em instância de cliente, essenciais = Redis/Blob/Auth (IA/Meta viram cinza, não "faltando").
+
+### 37.6 WhatsApp integrado — conector Evolution (mantém número antigo)
+- **Decisão:** NÃO usar Cloud API oficial (migraria o número). Conector estilo WhatsApp Web via **Evolution API** (QR, Baileys). **Runbook: `WHATSAPP-CLINICA.md`.** Host do dono no **Railway** (template Douglas Rubim: Evolution+Postgres+Redis). Norah pareada; URL `evolution-api-production-a6ad.up.railway.app`, instância `norah`.
+- `lib/whatsapp.ts`: `enviarWhatsApp` prioriza Evolution (`POST {url}/message/sendText/{instance}`, header `apikey`; **`normalizarUrlEvolution` prefixa https://** — a env pode vir sem protocolo); `textoMensagemEvolution`, `fotoPerfilEvolution`. `/api/whatsapp/webhook` detecta formato Evolution vs Meta (ignora fromMe/grupos; busca foto de perfil na 1ª msg). **Tela de conexão dentro do Soma10** (Config → Integrações → WhatsApp): `WhatsAppConexao.tsx` + `/api/whatsapp/conexao` (status/connect→QR/logout; **registra o webhook sozinho**) — parear/re-parear sem abrir o Railway.
+- **Inbox no CRM** (aba Mensagens, `MensagensInbox` já existia): envia/recebe pelo Evolution, **busca** (nome/tel/última msg), **foto+nome** do contato. Instagram Direto oculto na clínica (bloqueado no App Review Meta).
+- Envs por instância: `EVOLUTION_API_URL`, `EVOLUTION_INSTANCE`, `EVOLUTION_API_KEY`, `WHATSAPP_VERIFY_TOKEN` (opcional). Sem elas = no-op.
+
+### 37.7 Pendências (próxima sessão)
+- **Agenda:** bloqueios/compromissos da profissional (pontuais + recorrentes) + grade proporcional na Semana.
+- **WhatsApp:** busca full-text nas mensagens antigas (hoje só última msg).
+- **Instagram Direct rico** (anexos/busca/abas): BLOQUEADO no App Review Meta (dono: Business Verification) — ver `[[app-review-meta]]`.
+- **Provisionar** Sua Dupla Cidadania (`gestao`) e Phenoma (`clinica`).
+- **Dono:** validar qualidade do texto do playbook (aba Playbook); preencher `areaSaude` de Jéssica/Vanessa em Colaboradores (senão a Agenda mostra todos).

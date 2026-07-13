@@ -1,5 +1,10 @@
 # WhatsApp da clínica — conector "WhatsApp Web" (Evolution API)
 
+> ✅ **NO AR NA NORAH (2026-07-13).** Host Evolution no Railway (template Douglas Rubim),
+> instância `norah` pareada (Baileys/QR), envio+recebimento pelo Soma10, inbox no CRM,
+> tela de conexão em Config → Integrações → WhatsApp. Código: §37.6 do CONTEXTO-TECNICO.
+> Este runbook fica como referência p/ novas instâncias (cada clínica = 1 host + 1 QR).
+>
 > Objetivo: caixa de entrada de WhatsApp **dentro do Soma10 usando o MESMO número
 > antigo da clínica**, sem migrar para a Cloud API oficial (que tiraria o número
 > do celular). Abordagem = conector estilo WhatsApp Web (pareia por QR Code).
@@ -48,10 +53,12 @@ Assim que o dono tiver URL/KEY/instância, eu ligo o Soma10 (já há scaffold em
   gravar em `wa:conversa:{tel}` / `wa:msgs:{tel}` (chaves já existem) e notificar a equipe.
 - **Inbox no CRM** (aba Mensagens): lista de conversas + thread + enviar. (a construir)
 
-## Estado atual do código (2026-07-13)
-- Scaffold existente: `lib/whatsapp.ts` (Graph/Cloud API, no-op sem cred), `/api/whatsapp/webhook`
-  (GET verificação + POST recebe), chaves Redis `wa:conversas`/`wa:conversa:{tel}`/`wa:msgs:{tel}`.
-- **Falta:** trocar o transporte para Evolution + inbox no CRM. Bloqueado por: dono provisionar o host.
+## Estado atual do código (2026-07-13) — ✅ FEITO
+- `lib/whatsapp.ts`: transporte Evolution (`enviarWhatsApp` prioriza Evolution; `normalizarUrlEvolution`
+  aceita URL sem https://; `textoMensagemEvolution`, `fotoPerfilEvolution`). `/api/whatsapp/webhook`
+  detecta Evolution vs Meta. `/api/whatsapp/conexao` (status/QR/logout + registra webhook). `WhatsAppConexao.tsx`.
+- **Inbox no CRM** (aba Mensagens): envia/recebe/busca/foto+nome.
+- **Falta (opcional):** busca full-text nas mensagens antigas; envio de mídia/anexos pelo inbox.
 
 ## Alternativa zero-risco (se um dia quiser desligar o conector)
 `wa.me` "clicar e conversar" com mensagem pré-preenchida (já usado nos aniversariantes).
