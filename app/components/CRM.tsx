@@ -145,7 +145,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           ))}
         </div>
         {vista === 'funil' && podeEditar && (
-          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo negócio</button>
+          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica ? 'Nova oportunidade' : 'Novo negócio'}</button>
         )}
         {(vista === 'contatos' || vista === 'pacientes') && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -187,7 +187,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} />
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
@@ -244,7 +244,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
@@ -1103,7 +1103,7 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   )
 }
 
-function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; onClose: () => void; onSalvo: () => void }) {
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
@@ -1118,17 +1118,20 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   const contatosFiltrados = buscaLc
     ? (contatos || []).filter(c => c.nome.toLowerCase().includes(buscaLc) || (c.empresa || '').toLowerCase().includes(buscaLc))
     : (contatos || [])
-  // #2 — empresa obrigatoria na criacao da oportunidade, exceto profissional autonomo (alem do contato)
-  const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && (!!f.empresa.trim() || f.profissionalAutonomo)
+  // Validação: clínica exige só o contato (pessoa física); agência exige empresa também.
+  const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && (perfilClinica || !!f.empresa.trim() || f.profissionalAutonomo)
 
   async function salvar() {
-    if (!valido) { toast('Preencha o contato e a empresa (ou marque Profissional Autônomo).', 'erro'); return }
+    if (!valido) { toast(perfilClinica ? 'Escolha ou informe o contato.' : 'Preencha o contato e a empresa (ou marque Profissional Autônomo).', 'erro'); return }
     setSalvando(true)
     // Define o contato: usa o existente ou cria um novo. O nome do contato é o nome da oportunidade.
     let idContato = contatoId
     let nomeNegocio = contatoSel?.nome || ''
     if (modoContato === 'novo') {
-      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.contatoNome, telefone: f.contatoTelefone, empresa: f.profissionalAutonomo ? '' : f.empresa, profissionalAutonomo: f.profissionalAutonomo }) }).then(r => r.json()).catch(() => null)
+      const corpo: any = { nome: f.contatoNome, telefone: f.contatoTelefone }
+      if (perfilClinica) corpo.tipo = 'lead'
+      else { corpo.empresa = f.profissionalAutonomo ? '' : f.empresa; corpo.profissionalAutonomo = f.profissionalAutonomo }
+      const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(r => r.json()).catch(() => null)
       idContato = c?.contato?.id || ''
       nomeNegocio = f.contatoNome.trim()
     }
@@ -1146,7 +1149,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo negócio</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{perfilClinica ? 'Nova oportunidade' : 'Novo negócio'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* #5 — contato obrigatorio: existente ou novo */}
           <div>
@@ -1183,7 +1186,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
               )
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder="Nome do responsável" style={inputStyle} />
+                <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder={perfilClinica ? 'Nome do paciente / lead' : 'Nome do responsável'} style={inputStyle} />
                 <input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="WhatsApp / telefone" style={inputStyle} />
               </div>
             )}
@@ -1198,7 +1201,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Vendedor responsável</label>
+            <div><label style={labelStyle}>{perfilClinica ? 'Responsável' : 'Vendedor responsável'}</label>
               <select value={f.dono} onChange={e => setF({ ...f, dono: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Eu</option>
                 {equipe.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
@@ -1211,25 +1214,29 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
             <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
           </div>
 
-          <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
-            <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-            Profissional Autônomo (sem empresa)
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
-            <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Faturamento estimado</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Instagram / site</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder="@empresa ou site" style={inputStyle} /></div>
-          </div>
-          <div><label style={labelStyle}>Principais dores / desafios</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          {perfilClinica ? (
+            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          ) : (<>
+            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+              <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              Profissional Autônomo (sem empresa)
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Faturamento estimado</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Instagram / site</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder="@empresa ou site" style={inputStyle} /></div>
+            </div>
+            <div><label style={labelStyle}>Principais dores / desafios</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          </>)}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : 'Criar negócio'}</button>
+          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : (perfilClinica ? 'Criar oportunidade' : 'Criar negócio')}</button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
@@ -1573,7 +1580,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false }: { contatos: Contato[]; perfilClinica?: boolean }) {
+function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -1616,6 +1623,18 @@ function MensagensInbox({ contatos, perfilClinica = false }: { contatos: Contato
     if (!sel) return
     await cfg.vincular(sel, contatoId)
     carregarConversas()
+  }
+  // Cria um contato novo com os dados da conversa e já vincula (direto do inbox).
+  async function criarEContatoVincular() {
+    if (!sel) return
+    const nomeSugerido = (conversaSel?.nome || '').trim() || (canal === 'whatsapp' ? `+${sel}` : (conversaSel?.username ? `@${conversaSel.username}` : sel))
+    const nome = (typeof window !== 'undefined' ? window.prompt('Nome do contato/paciente:', nomeSugerido) : nomeSugerido)
+    if (nome === null) return // cancelou
+    const corpo: any = { nome: (nome || nomeSugerido).trim(), telefone: canal === 'whatsapp' ? sel : '' }
+    if (perfilClinica) corpo.tipo = 'lead'
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
+    if (r?.contato?.id) { await cfg.vincular(sel, r.contato.id); onContatosMudou?.(); carregarConversas(); toast('Contato criado e vinculado.', 'sucesso') }
+    else toast('Não foi possível criar o contato.', 'erro')
   }
 
   // Troca de canal (e carga inicial): reseta a seleção e recarrega
@@ -1691,9 +1710,10 @@ function MensagensInbox({ contatos, perfilClinica = false }: { contatos: Contato
                   <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
                 </div>
               </div>
-              <select value={conversaSel?.contatoId || ''} onChange={e => vincular(e.target.value)} title="Vincular a um contato do CRM"
+              <select value={conversaSel?.contatoId || ''} onChange={e => { if (e.target.value === '__novo') { criarEContatoVincular(); e.target.value = conversaSel?.contatoId || '' } else vincular(e.target.value) }} title="Vincular a um contato do CRM"
                 style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', maxWidth: 180 }}>
                 <option value="">Vincular contato...</option>
+                <option value="__novo">＋ Criar contato novo</option>
                 {contatos.map(ct => <option key={ct.id} value={ct.id}>{ct.nome}</option>)}
               </select>
             </div>
