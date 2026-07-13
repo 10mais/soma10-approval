@@ -28,6 +28,14 @@ export function whatsappConfigurado(): boolean {
 
 const soDigitos = (t: string) => (t || '').replace(/\D/g, '')
 
+// Normaliza a URL do Evolution: aceita com ou sem https:// (o fetch exige protocolo)
+// e remove a barra final. Ex.: "xxx.up.railway.app/" -> "https://xxx.up.railway.app".
+export function normalizarUrlEvolution(u?: string): string {
+  const s = (u || '').trim().replace(/\/+$/, '')
+  if (!s) return ''
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`
+}
+
 // Extrai o texto de um payload de mensagem do Evolution (messages.upsert).
 // Cobre texto simples, extendedText e legenda de mídia; mídia sem legenda vira rótulo.
 export function textoMensagemEvolution(message: any): string {
@@ -69,7 +77,7 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
   // A) Evolution API
   if (evolutionConfigurado()) {
     try {
-      const base = (process.env.EVOLUTION_API_URL || '').replace(/\/$/, '')
+      const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
       const r = await fetch(`${base}/message/sendText/${process.env.EVOLUTION_INSTANCE}`, {
         method: 'POST',
         headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },

@@ -499,6 +499,9 @@ function Dashboard() {
   useEffect(() => { setPostPreviewSlide(0); setPostLegendaExpandida(false) }, [postPreview])
   const [verComoClienteId, setVerComoClienteIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_clienteId') || '' : ''))
   const setVerComoClienteId = (id: string) => { setVerComoClienteIdRaw(id); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_clienteId', id) }
+  // "Visualizar como" um PAPEL (admin prevê a visão de um colaborador gerente/usuário)
+  const [verComoPapel, setVerComoPapelRaw] = useState<'' | 'gerente' | 'usuario'>(() => (typeof window !== 'undefined' ? (sessionStorage.getItem('soma10_verComoPapel') as any) || '' : ''))
+  const setVerComoPapel = (p: '' | 'gerente' | 'usuario') => { setVerComoPapelRaw(p); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_verComoPapel', p) }
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clientesAberto, setClientesAberto] = useState(false)
   const [composerPrefill, setComposerPrefill] = useState<any>(null)
@@ -824,15 +827,19 @@ function Dashboard() {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
 
+  // Preview de papel (só admin): a NAV e as permissões passam a refletir o papel
+  // escolhido; as capacidades reais do admin continuam (é só uma prévia visual).
+  const previewPapel = role === 'admin' && !!verComoPapel
+  const roleView = previewPapel ? verComoPapel : role
   // Permissões por papel/usuário com 3 níveis (Ver/Editar/Excluir). Admin=tudo, Financeiro só admin.
-  const minhasPermissoes = (session?.user as any)?.permissoes || {}
+  const minhasPermissoes = previewPapel ? undefined : ((session?.user as any)?.permissoes || {})
   const podeNivelDash = (grupo: string, nivel: 'ver' | 'editar' | 'excluir' = 'ver') =>
-    podeNivel(role, grupo as any, nivel, minhasPermissoes, permPapel as any)
+    podeNivel(roleView, grupo as any, nivel, minhasPermissoes, permPapel as any)
   const podeGrupo = (grupo: string) => podeNivelDash(grupo, 'ver')
   // Permissões DETALHADAS (por aba + por ação) — camada adicional ao módulo.
-  const minhaGranular = (session?.user as any)?.permissoesGranular
-  const podeAbaDash = (aba: string) => podeAbaGranular(role, aba, minhaGranular, permGranular)
-  const podeAcaoDash = (acao: any) => podeAcaoGranular(role, acao, minhaGranular, permGranular)
+  const minhaGranular = previewPapel ? undefined : (session?.user as any)?.permissoesGranular
+  const podeAbaDash = (aba: string) => podeAbaGranular(roleView, aba, minhaGranular, permGranular)
+  const podeAcaoDash = (acao: any) => podeAcaoGranular(roleView, acao, minhaGranular, permGranular)
 
   // Matriz de níveis reutilizável. contexto 'usuario' edita o override do usuário;
   // 'papel' edita a config do papel (permPapel).
@@ -1792,21 +1799,25 @@ function Dashboard() {
           </div>
 
           {role === 'admin' && !mobile && (
-            <select onChange={e => {
+            <select value={verComoPapel ? `papel:${verComoPapel}` : ''} onChange={e => {
               const v = e.target.value
-              if (!v) return
-              if (v === '_reset') { setVerComoClienteId(''); e.target.value = ''; return }
-              // Visualizar como (somente leitura): ativa o modo cliente e abre o portal
-              if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); e.target.value = ''; return }
-              const u = usuarios.find((x: any) => x.email === v)
-              if (u && (u as any).clienteId) { setViewAsClient(true); router.push(`/cliente/${(u as any).clienteId}`) }
-              e.target.value = ''
-            }} defaultValue="" style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #e0e0e0', background: '#fff', color: '#444', fontSize: 11, cursor: 'pointer' }}>
+              if (v === '_reset') { setVerComoClienteId(''); setVerComoPapel(''); return }
+              // Prever a visão de um PAPEL (colaborador) — só muda a navegação, não as capacidades
+              if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
+              // Visualizar como CLIENTE (somente leitura): abre o portal
+              if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); return }
+            }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? '#ffc00f' : '#e0e0e0'}`, background: verComoPapel ? '#fffbeb' : '#fff', color: '#444', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
-              <option value="_reset">Voltar a minha visao</option>
-              <optgroup label="Clientes (visualizar)">
-                {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
+              {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
+              <optgroup label="Colaboradores (papel)">
+                <option value="papel:gerente">Como Gerente</option>
+                <option value="papel:usuario">Como Usuário</option>
               </optgroup>
+              {!perfilClinica && clientes.length > 0 && (
+                <optgroup label="Clientes (visualizar)">
+                  {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
+                </optgroup>
+              )}
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
@@ -2008,11 +2019,11 @@ function Dashboard() {
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
-              {(role === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
+              {(roleView === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
                 <>
                   <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
                   {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
-                  {role === 'admin' && (<>
+                  {roleView === 'admin' && (<>
                     <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
                     <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
                     <NavBtn chave="reunioes" label="Reuniões internas" fontSize={13} />
@@ -2020,7 +2031,7 @@ function Dashboard() {
                     <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
                   </>)}
                   {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
-                  {role === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
+                  {roleView === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
                 </>
               ) : (
                 <>
@@ -2031,7 +2042,7 @@ function Dashboard() {
                       <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                     </nav>
                   </>)}
-                  {role === 'admin' && (<>
+                  {roleView === 'admin' && (<>
                     {/* Pessoas e Cultura (inclui Carga da equipe) */}
                     <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                     <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
@@ -2043,7 +2054,7 @@ function Dashboard() {
                       <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
                     </nav>
                   </>)}
-                  {(role === 'admin' || podeGrupo('clientes')) && (<>
+                  {(roleView === 'admin' || podeGrupo('clientes')) && (<>
                     {/* Configurações — por último */}
                     <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
                     <button onClick={() => setConfigAberto(v => !v)} style={{
@@ -2055,7 +2066,7 @@ function Dashboard() {
                     </button>
                     {configAberto && (
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {role === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
+                      {roleView === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
                       {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
                     </nav>
                     )}
@@ -2111,6 +2122,15 @@ function Dashboard() {
 
         {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
         <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
+
+        {/* Faixa: admin visualizando como um papel (colaborador) */}
+        {previewPapel && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>Visualizando como <b>{verComoPapel === 'gerente' ? 'Gerente' : 'Usuário'}</b> — você vê o menu que esse papel enxerga. Suas permissões reais não mudam.</span>
+            <span style={{ flex: 1 }} />
+            <button onClick={() => setVerComoPapel('')} style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Voltar à minha visão</button>
+          </div>
+        )}
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (

@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { textoMensagemEvolution } from '@/lib/whatsapp'
+import { textoMensagemEvolution, normalizarUrlEvolution } from '@/lib/whatsapp'
+
+// Bug real (2026-07-13): URL do Evolution colada sem https:// quebrava o fetch
+// ('Failed to parse URL') — recebia mensagens mas não enviava.
+describe('normalizarUrlEvolution', () => {
+  it('prefixa https:// quando falta protocolo', () => {
+    expect(normalizarUrlEvolution('evolution-api-production-a6ad.up.railway.app')).toBe('https://evolution-api-production-a6ad.up.railway.app')
+  })
+  it('mantém protocolo existente e remove barra final', () => {
+    expect(normalizarUrlEvolution('https://x.up.railway.app/')).toBe('https://x.up.railway.app')
+    expect(normalizarUrlEvolution('http://localhost:8080')).toBe('http://localhost:8080')
+  })
+  it('vazio devolve vazio', () => {
+    expect(normalizarUrlEvolution('')).toBe('')
+    expect(normalizarUrlEvolution(undefined)).toBe('')
+  })
+})
 
 // Extração do texto de uma mensagem recebida do Evolution (messages.upsert).
 // Errar aqui = mensagem do paciente entrar vazia ou como rótulo errado no CRM.

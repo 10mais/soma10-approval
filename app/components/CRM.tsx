@@ -187,7 +187,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} />
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
@@ -1573,8 +1573,13 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos }: { contatos: Contato[] }) {
-  const [canal, setCanal] = useState<CanalMsg>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_canal') as CanalMsg)) || 'whatsapp')
+function MensagensInbox({ contatos, perfilClinica = false }: { contatos: Contato[]; perfilClinica?: boolean }) {
+  // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
+  const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
+  const [canal, setCanal] = useState<CanalMsg>(() => {
+    const salvo = (typeof window !== 'undefined' && (sessionStorage.getItem('crm_canal') as CanalMsg)) || 'whatsapp'
+    return CANAIS.includes(salvo) ? salvo : 'whatsapp'
+  })
   const cfg = CANAL_CFG[canal]
   const [conversas, setConversas] = useState<MsgConversa[]>([])
   const [configurado, setConfigurado] = useState(true)
@@ -1626,14 +1631,16 @@ function MensagensInbox({ contatos }: { contatos: Contato[] }) {
 
   return (
     <div>
-      {/* Seletor de canal */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        {(['whatsapp', 'instagram'] as CanalMsg[]).map(c => (
-          <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : '#e5e5e5'}`, background: canal === c ? CANAL_CFG[c].cor : '#fff', color: canal === c ? '#fff' : '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-            {c === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
-          </button>
-        ))}
-      </div>
+      {/* Seletor de canal (Instagram oculto no perfil clínica) */}
+      {CANAIS.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {CANAIS.map(c => (
+            <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : '#e5e5e5'}`, background: canal === c ? CANAL_CFG[c].cor : '#fff', color: canal === c ? '#fff' : '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+              {c === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
+            </button>
+          ))}
+        </div>
+      )}
       {cfg.conectarUrl && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {contas.length > 0 && (

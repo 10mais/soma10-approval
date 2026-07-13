@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { evolutionConfigurado } from '@/lib/whatsapp'
+import { evolutionConfigurado, normalizarUrlEvolution } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 // GET: estado da conexão. POST: conectar (devolve QR) / desconectar / registrar webhook.
 // O host do Evolution fica sempre no Railway; aqui só falamos com ele pela API.
 
-const base = () => (process.env.EVOLUTION_API_URL || '').replace(/\/$/, '')
+const base = () => normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
 const inst = () => process.env.EVOLUTION_INSTANCE || ''
 const headers = () => ({ apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' })
 
