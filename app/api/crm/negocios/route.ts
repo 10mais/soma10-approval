@@ -6,6 +6,7 @@ import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { garantirSetupCrm } from '@/lib/crmPipelines'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
 
 export const runtime = 'nodejs'
 
@@ -70,8 +71,12 @@ export async function POST(req: NextRequest) {
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
   // #5 — toda oportunidade precisa estar atribuida a um contato
   if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
-  // #2 — empresa obrigatoria (exceto profissional autonomo)
-  if (!b.profissionalAutonomo && !String(b.empresa || '').trim()) return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
+  // #2 — empresa obrigatoria (exceto profissional autonomo). Regra de AGÊNCIA: no
+  // perfil clínica não existe "empresa" (são pacientes), então não se exige.
+  const perfil = await getPerfilInstancia()
+  if (perfil !== 'clinica' && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
+    return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
+  }
 
   const { estagios: ests } = await garantirSetupCrm()
   const estagioId = b.estagioId || (ests.find(e => (b.pipelineId ? (e.pipelineId === b.pipelineId) : true) && !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''
