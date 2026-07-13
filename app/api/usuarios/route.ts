@@ -22,13 +22,13 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { nome, email, senha, role, cargo, funcaoVendas, permissoes, permissoesGranular, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos } = await req.json()
+  const { nome, email, senha, role, cargo, funcaoVendas, areaSaude, corAgenda, permissoes, permissoesGranular, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos } = await req.json()
   const jaExiste = await redis.get(`usuario:${email}`)
   if (jaExiste) return NextResponse.json({ error: 'email já cadastrado' }, { status: 400 })
   if (!senha || String(senha).length < 8) return NextResponse.json({ error: 'A senha deve ter pelo menos 8 caracteres.' }, { status: 400 })
 
   const hash = await bcrypt.hash(senha, 10)
-  const usuario: Usuario = { id: uuid(), nome, email, senha: hash, role, cargo: cargo || '', custoHora: Number(custoHora) || 0, salarioFixo: Number(salarioFixo) || 0, valorPorProjeto: Number(valorPorProjeto) || 0, qtdProjetos: Number(qtdProjetos) || 0, salarioVariavel: (Number(valorPorProjeto) || 0) * (Number(qtdProjetos) || 0), ...(role === 'cliente' && clienteId ? { clienteId } : {}), ...(role === 'vendas' && funcaoVendas ? { funcaoVendas } : {}), ...((role === 'gerente' || role === 'usuario') && permissoes ? { permissoes } : {}), ...((role === 'gerente' || role === 'usuario') && permissoesGranular ? { permissoesGranular } : {}), criadoEm: new Date().toISOString() }
+  const usuario: Usuario = { id: uuid(), nome, email, senha: hash, role, cargo: cargo || '', custoHora: Number(custoHora) || 0, salarioFixo: Number(salarioFixo) || 0, valorPorProjeto: Number(valorPorProjeto) || 0, qtdProjetos: Number(qtdProjetos) || 0, salarioVariavel: (Number(valorPorProjeto) || 0) * (Number(qtdProjetos) || 0), ...(role === 'cliente' && clienteId ? { clienteId } : {}), ...(role === 'vendas' && funcaoVendas ? { funcaoVendas } : {}), ...(areaSaude ? { areaSaude } : {}), ...(corAgenda ? { corAgenda } : {}), ...((role === 'gerente' || role === 'usuario') && permissoes ? { permissoes } : {}), ...((role === 'gerente' || role === 'usuario') && permissoesGranular ? { permissoesGranular } : {}), criadoEm: new Date().toISOString() }
 
   await redis.set(`usuario:${email}`, usuario)
   await redis.sadd('usuarios', email)
@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { email, nome, role, novaSenha, cargo, funcaoVendas, permissoes, permissoesGranular, foto, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos, resetar2FA } = await req.json()
+  const { email, nome, role, novaSenha, cargo, funcaoVendas, areaSaude, corAgenda, permissoes, permissoesGranular, foto, clienteId, custoHora, salarioFixo, valorPorProjeto, qtdProjetos, resetar2FA } = await req.json()
   const usuario = await redis.get<Usuario>(`usuario:${email}`)
   if (!usuario) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
@@ -56,6 +56,8 @@ export async function PUT(req: NextRequest) {
   if (role) usuario.role = role
   if (cargo !== undefined) usuario.cargo = cargo
   if (funcaoVendas !== undefined) usuario.funcaoVendas = funcaoVendas || undefined
+  if (areaSaude !== undefined) usuario.areaSaude = areaSaude || undefined
+  if (corAgenda !== undefined) usuario.corAgenda = corAgenda || undefined
   if (permissoes !== undefined) usuario.permissoes = permissoes || undefined
   if (permissoesGranular !== undefined) usuario.permissoesGranular = permissoesGranular || undefined
   if (foto !== undefined) usuario.foto = foto

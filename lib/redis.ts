@@ -17,6 +17,8 @@ export type Usuario = {
   role: Role
   cargo?: string
   funcaoVendas?: 'sdr' | 'closer' // sub-funcao do papel 'vendas' (SDR/BDR ou Closer)
+  areaSaude?: string // clínicas: área de atuação (estética/dermato/nutrição…). Só quem tem entra na Agenda.
+  corAgenda?: string // clínicas: cor do profissional na Agenda (hex)
   // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
   // Cada módulo aceita boolean (formato antigo) ou { ver, editar, excluir } (novo, 3 níveis).
   permissoes?: Record<'producao' | 'estrategia' | 'crm' | 'clientes', boolean | { ver?: boolean; editar?: boolean; excluir?: boolean }> | Partial<Record<string, any>>

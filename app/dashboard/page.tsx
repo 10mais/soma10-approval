@@ -1645,7 +1645,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', permissoes: (u as any).permissoes, permissoesGranular: (u as any).permissoesGranular, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', areaSaude: (u as any).areaSaude || '', corAgenda: (u as any).corAgenda || '', permissoes: (u as any).permissoes, permissoesGranular: (u as any).permissoesGranular, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1653,7 +1653,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -4138,8 +4138,18 @@ function Dashboard() {
                     <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   </div>
-                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)"
+                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                  {perfilClinica && novoUsuario.role !== 'vendas' && (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética, Dermato) — quem atende paciente e entra na Agenda"
+                        style={{ flex: 1, minWidth: 220, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                      <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
+                        Cor na agenda
+                        <input type="color" value={(novoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setNovoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 34, height: 30, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                      </label>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Custo/hora (R$)</label>
@@ -4180,10 +4190,10 @@ function Dashboard() {
                       <option value="gerente">Gerente</option>
                       <option value="usuario">Usuário</option>
                       <option value="admin">Admin</option>
-                      <option value="vendas">Vendas</option>
-                      <option value="cliente">Cliente</option>
+                      <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
+                      {!perfilClinica && <option value="cliente">Cliente</option>}
                     </select>
-                    {novoUsuario.role === 'vendas' && (
+                    {novoUsuario.role === 'vendas' && !perfilClinica && (
                       <select value={(novoUsuario as any).funcaoVendas || ''} onChange={e => setNovoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
                         <option value="">Função...</option>
@@ -4276,10 +4286,10 @@ function Dashboard() {
                           <option value="gerente">Gerente</option>
                           <option value="usuario">Usuário</option>
                           <option value="admin">Admin</option>
-                          <option value="vendas">Vendas</option>
-                          <option value="cliente">Cliente</option>
+                          <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
+                          {!perfilClinica && <option value="cliente">Cliente</option>}
                         </select>
-                        {edicaoUsuario.role === 'vendas' && (
+                        {edicaoUsuario.role === 'vendas' && !perfilClinica && (
                           <select value={(edicaoUsuario as any).funcaoVendas || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                             <option value="">Função...</option>
@@ -4287,7 +4297,7 @@ function Dashboard() {
                             <option value="closer">Closer</option>
                           </select>
                         )}
-                        {edicaoUsuario.role === 'cliente' && (
+                        {edicaoUsuario.role === 'cliente' && !perfilClinica && (
                           <select value={(edicaoUsuario as any).clienteId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, clienteId: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                             <option value="">Vincular a qual cliente?</option>
@@ -4303,6 +4313,16 @@ function Dashboard() {
                           </button>
                         </div>
                       </div>
+                      {perfilClinica && edicaoUsuario.role !== 'vendas' && (
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input value={(edicaoUsuario as any).areaSaude || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética) — entra na Agenda"
+                            style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', fontWeight: 600 }}>
+                            Cor
+                            <input type="color" value={(edicaoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setEdicaoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 32, height: 28, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                          </label>
+                        </div>
+                      )}
                       {renderPermissoes(edicaoUsuario.role, (edicaoUsuario as any).permissoes, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoes: p } as any)))}
                       {renderGranular(edicaoUsuario.role, (edicaoUsuario as any).permissoesGranular, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoesGranular: p } as any)))}
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
