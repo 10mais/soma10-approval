@@ -26,6 +26,16 @@ export type DefPerfil = {
 // Telas de social media/marketing que um cliente de gestão não contratou.
 const ABAS_SOCIAL_OFF = { studio: false, planner: false, agentes: false, mapas: false }
 
+// Abas que o modo clínica esconde de TODOS os papéis, admin incluso (decisão do
+// dono 2026-07-13: "isso para clínicas não precisa"). Diferente das permissões
+// (que o admin sempre atravessa), esta lista é aplicada direto na navegação.
+export const ABAS_OCULTAS_CLINICA: string[] = [
+  'studio', 'planner', 'mapas',
+  'playbook', 'campanhas', 'modelos', 'automacoes', // módulo Estratégia inteiro
+  'conversao', // Conversão & Retenção
+  'candidaturas', 'recrutamento', // Pessoas e Cultura (Trabalhe Conosco)
+]
+
 export const PERFIS: DefPerfil[] = [
   {
     chave: 'clinica',
@@ -46,8 +56,8 @@ export const PERFIS: DefPerfil[] = [
       },
     },
     permissoesGranular: {
-      gerente: { abas: { ...ABAS_SOCIAL_OFF } },
-      usuario: { abas: { ...ABAS_SOCIAL_OFF } },
+      gerente: { abas: { ...ABAS_SOCIAL_OFF, conversao: false } },
+      usuario: { abas: { ...ABAS_SOCIAL_OFF, conversao: false } },
     },
     // Funil espelhado no sistema de referência da Norah (kanban "Agendamentos")
     pipeline: {

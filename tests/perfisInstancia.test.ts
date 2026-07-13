@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PERFIS, perfilDef } from '@/lib/perfisInstanciaCatalogo'
+import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA } from '@/lib/perfisInstanciaCatalogo'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 import { GRUPOS, NIVEIS, podeNivel } from '@/lib/permissoesCatalogo'
 import { podeAbaGranular } from '@/lib/permissoesGranular'
@@ -64,6 +64,18 @@ describe('catálogo de perfis', () => {
       expect(p.pipeline.estagios.filter(e => e.ganho).length, `perfil ${p.chave}`).toBe(1)
       expect(p.pipeline.estagios.filter(e => e.perdido).length, `perfil ${p.chave}`).toBe(1)
       expect(p.pipeline.estagios.length).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('modo clínica esconde exatamente o que o dono pediu (2026-07-13), sem duplicatas', () => {
+    // Studio, Planner, Mapas, Estratégia inteira, Conversão&Retenção, Candidaturas, Trabalhe Conosco
+    expect([...ABAS_OCULTAS_CLINICA].sort()).toEqual(
+      ['automacoes', 'campanhas', 'candidaturas', 'conversao', 'mapas', 'modelos', 'planner', 'playbook', 'recrutamento', 'studio'].sort()
+    )
+    expect(new Set(ABAS_OCULTAS_CLINICA).size).toBe(ABAS_OCULTAS_CLINICA.length)
+    // Agenda, CRM e Tarefas NUNCA podem entrar nesta lista (são o produto da clínica)
+    for (const essencial of ['agenda', 'crm', 'tarefas', 'home']) {
+      expect(ABAS_OCULTAS_CLINICA).not.toContain(essencial)
     }
   })
 

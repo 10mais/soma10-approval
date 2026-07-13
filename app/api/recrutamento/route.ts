@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { redis, ConfigAgencia } from '@/lib/redis'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
 
 export const runtime = 'nodejs'
 
 // Leitura PUBLICA dos campos de exibicao da pagina "Trabalhe conosco".
 // (A pagina e publica, sem sessao — por isso nao usa /api/config, que exige login.)
 export async function GET() {
+  // Instância clínica não tem página de recrutamento (decisão do dono)
+  if ((await getPerfilInstancia()) === 'clinica') {
+    return NextResponse.json({ desabilitado: true }, { status: 404 })
+  }
   const c = (await redis.get<ConfigAgencia>('config:agencia')) || ({} as ConfigAgencia)
   return NextResponse.json({
     logo: c.recrutamentoLogo || c.logo || '',

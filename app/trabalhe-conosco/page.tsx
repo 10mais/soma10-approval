@@ -8,7 +8,8 @@ type RecrutCfg = { logo: string; titulo: string; subtitulo: string; descricao: s
 
 export default function TrabalheConoscoPage() {
   const [cfg, setCfg] = useState<RecrutCfg>({ logo: '', titulo: 'Trabalhe conosco', subtitulo: 'Preencha seus dados e anexe seu currículo. Vamos adorar conhecer você.', descricao: '', mensagemFinalTitulo: 'Candidatura enviada!', mensagemFinal: 'Recebemos seus dados. Se o seu perfil corresponder a uma vaga, nossa equipe entrará em contato.', nomeAgencia: 'Grupo 10+', vagas: [] })
-  useEffect(() => { fetch('/api/recrutamento').then(r => r.json()).then(d => { if (d && !d.error) setCfg(d) }).catch(() => {}) }, [])
+  const [desabilitado, setDesabilitado] = useState(false)
+  useEffect(() => { fetch('/api/recrutamento').then(r => r.json()).then(d => { if (d?.desabilitado) setDesabilitado(true); else if (d && !d.error) setCfg(d) }).catch(() => {}) }, [])
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', vaga: '', mensagem: '' })
   const [curriculo, setCurriculo] = useState<{ url: string; nome: string } | null>(null)
   const [enviandoCv, setEnviandoCv] = useState(false)
@@ -45,6 +46,17 @@ export default function TrabalheConoscoPage() {
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }
   const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+
+  if (desabilitado) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f4f4f4', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', maxWidth: 420 }}>
+          <h1 style={{ margin: '0 0 8px', fontSize: 18, color: '#111' }}>Página não disponível</h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: '#888' }}>Esta instância não possui página de recrutamento.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f4f4f4', fontFamily: 'Inter, system-ui, sans-serif', padding: '40px 16px' }}>
