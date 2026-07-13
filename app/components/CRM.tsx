@@ -127,14 +127,15 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const negociosDoPipeline = (pid: string) => negocios.filter(n => (n.pipelineId || padraoId) === pid)
   // Origens conhecidas (dropdown editável): padrões + as já usadas nos negócios
   const origensConhecidas = Array.from(new Set(['Indicação', 'Instagram', 'Ex-paciente', 'Tráfego pago', 'Tráfego orgânico', 'Prospecção ativa', 'Site', 'Google', 'Evento', ...negocios.map(n => (n.origem || '').trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'pt'))
+  // Legenda por aba (perfil-aware). Fica FORA da linha das abas para não deslocá-las.
+  const subtitulo = perfilClinica
+    ? (({ painel: 'Visão geral dos agendamentos e da captação de pacientes.', funil: 'Arraste os pacientes entre as etapas do agendamento.', pacientes: 'Pacientes que já passaram por atendimento.', contatos: 'Leads e contatos ainda não atendidos.', mensagens: 'Conversas com pacientes e leads.', playbook: 'Roteiro de atendimento e cadência de mensagens.' } as Record<string, string>)[vista] || '')
+    : (vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.')
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>CRM</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
+        <h2 style={{ margin: 0, fontSize: 18, color: '#111', flexShrink: 0 }}>CRM</h2>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
           {((perfilClinica
             ? [['painel', 'Painel'], ['funil', 'Funil'], ['pacientes', 'Pacientes'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
@@ -151,7 +152,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             <button onClick={exportarCSV} style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
             <label style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               Importar CSV
-              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0]); e.target.value = '' }} />
+              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0], vista === 'pacientes' ? 'paciente' : (perfilClinica ? 'lead' : undefined)); e.target.value = '' }} />
             </label>
             {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
             {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
@@ -161,6 +162,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
         )}
       </div>
+      {subtitulo && <p style={{ margin: '0 0 16px', fontSize: 13, color: '#999' }}>{subtitulo}</p>}
 
       {/* Seletor de pipeline (funil e painel) */}
       {(vista === 'funil' || vista === 'painel') && pipelines.length > 0 && (
@@ -177,7 +179,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       )}
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
-        <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} />
+        <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
       ) : vista === 'pacientes' ? (
         <ContatosLista contatos={contatos.filter(c => c.tipo === 'paciente')} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica onImportar={podeEditar ? (f => importarCSV(f, 'paciente')) : undefined} />
       ) : vista === 'contatos' ? (
@@ -257,7 +259,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
 
-function PainelVendas({ negocios, estagios, usuarios }: { negocios: Negocio[]; estagios: Estagio[]; usuarios: any[] }) {
+function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: { negocios: Negocio[]; estagios: Estagio[]; usuarios: any[]; perfilClinica?: boolean }) {
   const agora = new Date(), m = agora.getMonth(), y = agora.getFullYear()
   const noMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === m && d.getFullYear() === y }
   const abertos = negocios.filter(n => n.status === 'aberto')
@@ -328,7 +330,7 @@ function PainelVendas({ negocios, estagios, usuarios }: { negocios: Negocio[]; e
         ))}
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Pipeline por vendedor</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Pipeline por responsável' : 'Pipeline por vendedor'}</span>
       <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
         {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Sem negócios em aberto.</p> : porVendedor.map((v: any) => (
           <div key={v.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
