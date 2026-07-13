@@ -60,7 +60,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   perfilClinica?: boolean
 }) {
   const [ref, setRef] = useState(() => new Date())
-  const [visao, setVisao] = useState<'mes' | 'semana' | 'dia'>('semana')
+  const [visao, setVisao] = useState<'mes' | 'semana' | 'dia' | 'lista'>('semana')
   const [profFiltro, setProfFiltro] = useState('')
   const [ags, setAgs] = useState<Ag[]>([])
   const [servicos, setServicos] = useState<string[]>([])
@@ -294,7 +294,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
 
   const tituloPeriodo = visao === 'mes'
     ? ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : visao === 'semana'
+    : (visao === 'semana' || visao === 'lista')
     ? `${semana.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${new Date(fimSemana.getTime() - 1).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
     : ref.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
 
@@ -370,16 +370,16 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Agenda</h2>
         <div style={{ display: 'inline-flex', gap: 2, background: '#f4f4f5', borderRadius: 10, padding: 3 }}>
-          {(['mes', 'semana', 'dia'] as const).map(v => (
+          {(['mes', 'semana', 'dia', 'lista'] as const).map(v => (
             <button key={v} onClick={() => setVisao(v)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: visao === v ? '#fff' : 'transparent', fontWeight: visao === v ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: '#333', boxShadow: visao === v ? '0 1px 4px rgba(0,0,0,.1)' : 'none' }}>
-              {v === 'mes' ? 'Mês' : v === 'semana' ? 'Semana' : 'Dia'}
+              {v === 'mes' ? 'Mês' : v === 'semana' ? 'Semana' : v === 'dia' ? 'Dia' : 'Lista'}
             </button>
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={() => mover(visao === 'semana' ? -7 : -1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>‹</button>
+          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? -7 : -1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>‹</button>
           <button onClick={() => setRef(new Date())} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#333' }}>Hoje</button>
-          <button onClick={() => mover(visao === 'semana' ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>›</button>
+          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>›</button>
         </div>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#555', textTransform: 'capitalize' }}>{tituloPeriodo}</span>
         {visao === 'dia' && feriadoDe(ref) && (
@@ -502,11 +502,49 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
             )
           })}
         </div>
-      ) : (
+      ) : visao === 'dia' ? (
         // Visão DIA proporcional: expediente inteiro com altura ∝ duração
         <div style={{ display: 'flex', background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', maxWidth: 820 }}>
           <EixoHoras />
           <LanesDia dia={ref} />
+        </div>
+      ) : (
+        // Visão LISTA: agendamentos da semana em ordem cronológica, agrupados por dia
+        <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', maxWidth: 760 }}>
+          {(() => {
+            const dias = Array.from({ length: 7 }, (_, i) => { const d = new Date(semana); d.setDate(d.getDate() + i); return d })
+              .map(d => ({ d, lista: doDia(d).sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime()), feriado: feriadoDe(d) }))
+              .filter(x => x.lista.length > 0 || x.feriado)
+            if (!dias.length) return <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#aaa', fontSize: 13 }}>Nenhum agendamento nesta semana.</p>
+            return dias.map(({ d, lista, feriado }) => {
+              const hoje = new Date().toDateString() === d.toDateString()
+              return (
+                <div key={d.toISOString()}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: hoje ? '#fffdf2' : '#fafafa', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f4f4f4', position: 'sticky', top: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : '#333', textTransform: 'capitalize' }}>{d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                    {feriado && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#be185d', background: '#fdf2f8', borderRadius: 999, padding: '2px 8px' }}>{feriado}</span>}
+                    <span style={{ flex: 1 }} />
+                    {lista.length > 0 && <span style={{ fontSize: 11, color: '#bbb' }}>{lista.length}</span>}
+                  </div>
+                  {lista.map(a => {
+                    const st = stInfo(a.status), cor = corProf(a.profissionalEmail), cancelado = a.status === 'cancelado'
+                    return (
+                      <div key={a.id} onClick={() => setModal({ ...a, dataInicio: toLocalInput(new Date(a.dataInicio)) })}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderTop: '1px solid #f6f6f6', cursor: 'pointer', opacity: cancelado ? 0.55 : 1 }}>
+                        <span style={{ width: 42, fontSize: 13, fontWeight: 800, color: '#111', flexShrink: 0 }}>{hora(a.dataInicio)}</span>
+                        <span style={{ width: 3, alignSelf: 'stretch', background: cor, borderRadius: 2, flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#222', textDecoration: cancelado ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}</div>
+                          <div style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[a.servico, `${a.duracaoMin}min`, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{labelSt(st.key, st.label, perfilClinica)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })
+          })()}
         </div>
       )}
 
