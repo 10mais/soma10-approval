@@ -405,10 +405,12 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <span style={{ position: 'absolute', left: 10, color: '#bbb', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
               <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
             </div>
-            <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
-              <option value="">Todos os clientes</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            {!perfilClinica && (
+              <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
+                <option value="">Todos os clientes</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            )}
             <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os responsaveis</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
@@ -882,7 +884,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
   async function salvar() {
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
-    if (form.clienteId && !form.marcoId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
+    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
@@ -1154,7 +1156,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 </div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS ? '1fr' : '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsavel</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1176,6 +1178,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   </select>
                 </div>
               </div>
+              {!PERFIL_CLINICA_TAREFAS && (
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1192,7 +1195,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   </select>
                 </div>
               </div>
+              )}
             </div>
+            {!PERFIL_CLINICA_TAREFAS && (
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook *</label>
@@ -1223,6 +1228,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   </div>
                 )}
             </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Prazo</label>

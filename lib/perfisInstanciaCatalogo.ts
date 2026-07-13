@@ -39,6 +39,7 @@ export const ABAS_OCULTAS_CLINICA: string[] = [
   'conversao', // Conversão & Retenção
   'candidaturas', 'recrutamento', // Pessoas e Cultura (Trabalhe Conosco)
   'solicitacoes', // Solicitações do cliente (conceito de agência)
+  'clientes', // gestão de clientes B2B (agência/assessoria) — clínica usa Pacientes no CRM
 ]
 
 export const PERFIS: DefPerfil[] = [
