@@ -1653,7 +1653,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', recebeAgenda: (edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude, permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -3248,7 +3248,7 @@ function Dashboard() {
         {/* Agenda (clínicas/serviços) — grupo Produção */}
         {aba === 'agenda' && role !== 'cliente' && (
           <Agenda
-            usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email, areaSaude: u.areaSaude, corAgenda: u.corAgenda, role: u.role }))}
+            usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email, areaSaude: u.areaSaude, corAgenda: u.corAgenda, recebeAgenda: u.recebeAgenda, role: u.role }))}
             meuEmail={(session?.user as any)?.email || ''}
             perfilClinica={perfilClinica}
             podeEditar={podeNivelDash('producao', 'editar')}
@@ -4141,13 +4141,29 @@ function Dashboard() {
                   <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   {perfilClinica && novoUsuario.role !== 'vendas' && (
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética, Dermato) — quem atende paciente e entra na Agenda"
-                        style={{ flex: 1, minWidth: 220, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                      <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
-                        Cor na agenda
-                        <input type="color" value={(novoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setNovoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 34, height: 30, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
-                      </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#555' }}>Disponibilidade de agenda</span>
+                        <div style={{ display: 'inline-flex', gap: 3, background: '#eee', borderRadius: 9, padding: 3 }}>
+                          {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
+                            const ativo = ((novoUsuario as any).recebeAgenda ?? true) === v
+                            return (
+                              <button key={String(v)} type="button" onClick={() => setNovoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
+                                style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? '#fff' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? '#111' : '#888', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      {((novoUsuario as any).recebeAgenda ?? true) && (
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética, Dermato)"
+                            style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
+                            Cor na agenda
+                            <input type="color" value={(novoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setNovoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 34, height: 30, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -4314,13 +4330,29 @@ function Dashboard() {
                         </div>
                       </div>
                       {perfilClinica && edicaoUsuario.role !== 'vendas' && (
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <input value={(edicaoUsuario as any).areaSaude || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética) — entra na Agenda"
-                            style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', fontWeight: 600 }}>
-                            Cor
-                            <input type="color" value={(edicaoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setEdicaoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 32, height: 28, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
-                          </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Disponibilidade de agenda</span>
+                            <div style={{ display: 'inline-flex', gap: 3, background: '#eee', borderRadius: 9, padding: 3 }}>
+                              {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
+                                const ativo = ((edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude) === v
+                                return (
+                                  <button key={String(v)} type="button" onClick={() => setEdicaoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
+                                    style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? '#fff' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? '#111' : '#888', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          {((edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude) && (
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <input value={(edicaoUsuario as any).areaSaude || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética)"
+                                style={{ flex: 1, minWidth: 180, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                              <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', fontWeight: 600 }}>
+                                Cor
+                                <input type="color" value={(edicaoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setEdicaoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 32, height: 28, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                              </label>
+                            </div>
+                          )}
                         </div>
                       )}
                       {renderPermissoes(edicaoUsuario.role, (edicaoUsuario as any).permissoes, (p: any) => setEdicaoUsuario(x => ({ ...x, permissoes: p } as any)))}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio } from '@/lib/agenda'
+import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio, domingoDePascoa, feriadosBR, feriadoDoDia, ehProfissionalAgenda } from '@/lib/agenda'
 
 // Conflito de horário da Agenda. Guarda contra: encaixe silencioso em cima de
 // outro paciente e falso conflito entre profissionais diferentes/cancelados.
@@ -147,5 +147,44 @@ describe('bloqueioNoDia (expansão p/ a grade)', () => {
   it('recorrente some depois da data-limite', () => {
     const b: Bloqueio = { id: 'b', profissionalEmail: 'x', recorrente: true, diasSemana: [1], horaInicio: '12:00', horaFim: '13:00', ate: '2026-07-06', criadoEm: '' }
     expect(bloqueioNoDia(b, diaLocal(2026, 7, 13))).toBeNull()
+  })
+})
+
+// Disponibilidade de agenda: decide quem aparece como profissional agendável.
+// Errar aqui faz a gestão receber pacientes ou some a profissional do seletor.
+describe('ehProfissionalAgenda', () => {
+  it('opção explícita manda sobre a área', () => {
+    expect(ehProfissionalAgenda({ recebeAgenda: true })).toBe(true)
+    expect(ehProfissionalAgenda({ recebeAgenda: false, areaSaude: 'Estética' })).toBe(false) // Não vence área preenchida
+  })
+  it('sem opção, infere pela área (retrocompat)', () => {
+    expect(ehProfissionalAgenda({ areaSaude: 'Dermato' })).toBe(true)
+    expect(ehProfissionalAgenda({})).toBe(false)
+    expect(ehProfissionalAgenda({ areaSaude: '' })).toBe(false)
+  })
+})
+
+// Feriados nacionais: marcar o dia certo na agenda. Móveis dependem da Páscoa —
+// errar o cômputo desloca Carnaval/Sexta Santa/Corpus Christi.
+describe('feriados BR', () => {
+  it('Páscoa de 2026 é 05/04 (móveis derivam dela)', () => {
+    const p = domingoDePascoa(2026)
+    expect([p.getMonth() + 1, p.getDate()]).toEqual([4, 5])
+  })
+  it('mapa do ano tem fixos e móveis nas datas corretas (2026)', () => {
+    const f = feriadosBR(2026)
+    expect(f['2026-01-01']).toBe('Confraternização Universal')
+    expect(f['2026-12-25']).toBe('Natal')
+    expect(f['2026-02-17']).toBe('Carnaval')       // terça = Páscoa−47
+    expect(f['2026-04-03']).toBe('Sexta-feira Santa') // Páscoa−2
+    expect(f['2026-06-04']).toBe('Corpus Christi')    // Páscoa+60
+  })
+  it('feriadoDoDia usa e popula o cache por ano', () => {
+    const cache: Record<number, Record<string, string>> = {}
+    const dia = (() => { const x = new Date(); x.setFullYear(2026, 11, 25); x.setHours(0, 0, 0, 0); return x })()
+    expect(feriadoDoDia(dia, cache)).toBe('Natal')
+    expect(cache[2026]?.['2026-12-25']).toBe('Natal')
+    const naoFeriado = (() => { const x = new Date(); x.setFullYear(2026, 6, 13); x.setHours(0, 0, 0, 0); return x })()
+    expect(feriadoDoDia(naoFeriado, cache)).toBeNull()
   })
 })

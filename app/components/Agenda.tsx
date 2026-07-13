@@ -1,16 +1,17 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { Bloqueio, bloqueioNoDia } from '@/lib/agenda'
+import { Bloqueio, bloqueioNoDia, feriadoDoDia, ehProfissionalAgenda } from '@/lib/agenda'
 
 // Módulo Agenda (clínicas/serviços): semana e dia, agendamento por profissional,
 // status que flui (agendado -> confirmado -> atendido | faltou | cancelado) e
 // detecção de conflito de horário (o servidor recusa; a UI oferece encaixe).
 
-type Usuario = { nome: string; email: string; areaSaude?: string; corAgenda?: string; role?: string }
+type Usuario = { nome: string; email: string; areaSaude?: string; corAgenda?: string; recebeAgenda?: boolean; role?: string }
 const CORES_PROF = ['#7c3aed', '#1d4ed8', '#16a34a', '#d97706', '#db2777', '#0891b2', '#9333ea', '#ea580c']
-// Grade proporcional do dia: expediente 7h–21h, cada 30 min = SLOT_H px de altura
-const DIA_INICIO_H = 7, DIA_FIM_H = 21, SLOT_H = 30
+// Grade proporcional do dia: expediente 7h–21h, cada 30 min = SLOT_H px de altura.
+// SLOT_H=20 -> dia inteiro (14h) em ~560px, cabe numa tela sem rolar.
+const DIA_INICIO_H = 7, DIA_FIM_H = 21, SLOT_H = 20
 type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string }
 type Ag = {
   id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string
@@ -132,8 +133,8 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   // atende ficam fora da agenda. Se ninguém tiver área ainda, cai p/ todos (não trava).
   const profissionais = useMemo(() => {
     if (!perfilClinica) return usuarios
-    const comArea = usuarios.filter(u => u.areaSaude)
-    return comArea.length ? comArea : usuarios.filter(u => u.role !== 'vendas')
+    const pros = usuarios.filter(ehProfissionalAgenda)
+    return pros.length ? pros : usuarios.filter(u => u.role !== 'vendas')
   }, [usuarios, perfilClinica])
   const corProf = useCallback((email: string) => {
     const u = usuarios.find(x => x.email === email)
@@ -141,6 +142,10 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
     const i = profissionais.findIndex(x => x.email === email)
     return CORES_PROF[(i >= 0 ? i : 0) % CORES_PROF.length]
   }, [usuarios, profissionais])
+
+  // Feriados nacionais (marcados, não bloqueiam). Cache de mapas por ano.
+  const feriadoCache = useMemo(() => ({} as Record<number, Record<string, string>>), [])
+  const feriadoDe = useCallback((d: Date) => feriadoDoDia(d, feriadoCache), [feriadoCache])
 
   const visiveis = useMemo(() => profFiltro ? ags.filter(a => a.profissionalEmail === profFiltro) : ags, [ags, profFiltro])
   const doDia = (d: Date) => visiveis.filter(a => { const t = new Date(a.dataInicio); return t.getDate() === d.getDate() && t.getMonth() === d.getMonth() && t.getFullYear() === d.getFullYear() })
@@ -377,6 +382,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           <button onClick={() => mover(visao === 'semana' ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>›</button>
         </div>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#555', textTransform: 'capitalize' }}>{tituloPeriodo}</span>
+        {visao === 'dia' && feriadoDe(ref) && (
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#be185d', background: '#fdf2f8', border: '1px solid #f9d7e6', borderRadius: 999, padding: '3px 10px' }}>Feriado · {feriadoDe(ref)}</span>
+        )}
         <span style={{ flex: 1 }} />
         <select value={profFiltro} onChange={e => setProfFiltro(e.target.value)}
           style={{ padding: '8px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
@@ -451,14 +459,16 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               const dia = new Date(inicioMes); dia.setDate(dia.getDate() + i)
               const foraDoMes = dia.getMonth() !== ref.getMonth()
               const hoje = new Date().toDateString() === dia.toDateString()
+              const feriado = feriadoDe(dia)
               const lista = doDia(dia).filter(a => a.status !== 'cancelado')
               return (
                 <div key={i} onClick={() => { setRef(new Date(dia)); setVisao('dia') }}
-                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : foraDoMes ? '#fcfcfc' : '#fafafa', border: `1px solid ${hoje ? '#f3e3ac' : '#f0f0f0'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
+                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : foraDoMes ? '#fcfcfc' : '#fafafa', border: `1px solid ${hoje ? '#f3e3ac' : feriado ? '#f9d7e6' : '#f0f0f0'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 4 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : '#111' }}>{dia.getDate()}</span>
                     {lista.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: '#111', borderRadius: 999, padding: '1px 6px', marginLeft: 'auto' }}>{lista.length}</span>}
                   </div>
+                  {feriado && <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: '#be185d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={feriado}>{feriado}</p>}
                   {lista.slice(0, 3).map(a => (
                     <p key={a.id} style={{ margin: '0 0 2px', fontSize: 10.5, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {hora(a.dataInicio)} {a.pacienteNome.split(' ')[0]}
@@ -477,14 +487,15 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           {Array.from({ length: 7 }, (_, i) => {
             const dia = new Date(semana); dia.setDate(dia.getDate() + i)
             const hoje = new Date().toDateString() === dia.toDateString()
+            const feriado = feriadoDe(dia)
             const qtd = doDia(dia).length
             return (
               <div key={i} style={{ flex: 1, minWidth: 120, display: 'flex', flexDirection: 'column' }}>
-                <div onClick={() => { setRef(dia); setVisao('dia') }}
-                  style={{ height: HEADER_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer', background: hoje ? '#fffdf2' : '#fafafa', borderBottom: '1px solid #f0f0f0', borderLeft: '1px solid #f0f0f0' }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: hoje ? '#a9781a' : '#888' }}>{DIAS[dia.getDay()]}</span>
+                <div onClick={() => { setRef(dia); setVisao('dia') }} title={feriado || undefined}
+                  style={{ height: HEADER_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer', background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : '#fafafa', borderBottom: '1px solid #f0f0f0', borderLeft: '1px solid #f0f0f0' }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: hoje ? '#a9781a' : feriado ? '#be185d' : '#888' }}>{DIAS[dia.getDay()]}</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{dia.getDate()}</span>
-                  {qtd > 0 && <span style={{ fontSize: 10, color: '#bbb' }}>· {qtd}</span>}
+                  {feriado ? <span style={{ fontSize: 11, color: '#be185d' }}>•</span> : qtd > 0 && <span style={{ fontSize: 10, color: '#bbb' }}>· {qtd}</span>}
                 </div>
                 <LanesDia dia={dia} compact />
               </div>

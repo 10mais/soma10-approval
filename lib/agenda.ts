@@ -140,6 +140,68 @@ export function acharBloqueioConflitante(
   return null
 }
 
+// Quem aparece como PROFISSIONAL agendável na Agenda (recebe pacientes):
+//  - recebeAgenda === true  -> sim (opção explícita do cadastro)
+//  - recebeAgenda === false -> não (gestão/comercial; usa a agenda mas não é agendável)
+//  - recebeAgenda ausente   -> infere pela área de atendimento (compat com o cadastro antigo)
+export function ehProfissionalAgenda(u: { recebeAgenda?: boolean; areaSaude?: string }): boolean {
+  if (typeof u.recebeAgenda === 'boolean') return u.recebeAgenda
+  return !!u.areaSaude
+}
+
+// ---------------------------------------------------------------------------
+// Feriados nacionais brasileiros (fixos + móveis a partir da Páscoa). Marcados na
+// agenda (não bloqueiam — a clínica pode atender num feriado se quiser).
+
+// Domingo de Páscoa (algoritmo de Meeus/Butcher, calendário gregoriano).
+export function domingoDePascoa(ano: number): Date {
+  const a = ano % 19
+  const b = Math.floor(ano / 100), c = ano % 100
+  const d = Math.floor(b / 4), e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4), k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const mes = Math.floor((h + l - 7 * m + 114) / 31)
+  const dia = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(ano, mes - 1, dia)
+}
+
+const ymdLocal = (d: Date) => { const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
+const somaDias = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
+
+// Mapa "YYYY-MM-DD" -> nome do feriado nacional para o ano dado.
+export function feriadosBR(ano: number): Record<string, string> {
+  const pascoa = domingoDePascoa(ano)
+  const fixos: [number, number, string][] = [
+    [1, 1, 'Confraternização Universal'],
+    [4, 21, 'Tiradentes'],
+    [5, 1, 'Dia do Trabalho'],
+    [9, 7, 'Independência'],
+    [10, 12, 'Nossa Senhora Aparecida'],
+    [11, 2, 'Finados'],
+    [11, 15, 'Proclamação da República'],
+    [12, 25, 'Natal'],
+  ]
+  const mapa: Record<string, string> = {}
+  for (const [mes, dia, nome] of fixos) mapa[ymdLocal(new Date(ano, mes - 1, dia))] = nome
+  mapa[ymdLocal(somaDias(pascoa, -48))] = 'Carnaval'
+  mapa[ymdLocal(somaDias(pascoa, -47))] = 'Carnaval'
+  mapa[ymdLocal(somaDias(pascoa, -2))] = 'Sexta-feira Santa'
+  mapa[ymdLocal(somaDias(pascoa, 60))] = 'Corpus Christi'
+  return mapa
+}
+
+// Nome do feriado de um dia local, ou null. Aceita um cache de mapas por ano.
+export function feriadoDoDia(dia: Date, cache?: Record<number, Record<string, string>>): string | null {
+  const ano = dia.getFullYear()
+  const mapa = cache?.[ano] || feriadosBR(ano)
+  if (cache && !cache[ano]) cache[ano] = mapa
+  return mapa[ymdLocal(dia)] || null
+}
+
 // Expande um bloqueio no intervalo absoluto [inicio, fim) que ele ocupa num DIA
 // LOCAL (Date à meia-noite local do browser) — para desenhar na grade. null se
 // não incide nesse dia.
