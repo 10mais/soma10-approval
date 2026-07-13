@@ -42,6 +42,7 @@ const PlaybookBotao = dynamic(() => import('../components/BrandPlaybook'), { ssr
 const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuais'), { ssr: false })
 const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
 const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
@@ -179,6 +180,7 @@ const ICONE_ABA: Record<string, string> = {
   studio: 'M3 3h18v18H3zM3 9h18M9 9v12M3 15h6',
   agenda: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 16l2 2 4-4',
   carga: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  reunioes: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 15l2 2 4-4',
   playbook: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5z',
   campanhas: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6',
   modelos: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
@@ -399,7 +401,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -2012,6 +2014,7 @@ function Dashboard() {
                   {role === 'admin' && (<>
                     <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
                     <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                    <NavBtn chave="reunioes" label="Reuniões internas" fontSize={13} />
                     <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
                     <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
                   </>)}
@@ -2034,6 +2037,7 @@ function Dashboard() {
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
                       <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                      <NavBtn chave="reunioes" label="Reuniões internas" fontSize={13} />
                       <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
                       <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
                     </nav>
@@ -3230,6 +3234,11 @@ function Dashboard() {
           />
         )}
 
+        {/* Reuniões internas — Pessoas e Cultura (admin) */}
+        {aba === 'reunioes' && role === 'admin' && (
+          <Reunioes usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email }))} podeEditar />
+        )}
+
         {aba === 'aprovacoes' && (
           <AprovacoesCli posts={verComoClienteId ? posts.filter(p => p.clienteId === verComoClienteId) : posts} clientes={clientes} onAtualizado={() => fetch('/api/posts').then(r => r.json()).then(setPosts)} />
         )}
@@ -3373,7 +3382,7 @@ function Dashboard() {
         )}
 
         {aba === 'tarefas' && (
-          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
+          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} perfilClinica={perfilClinica} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
         )}
 
         {aba === 'campanhas' && (
@@ -3381,7 +3390,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} onIrAgenda={() => setAba('agenda' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (

@@ -4,7 +4,8 @@ import { toast, confirmar } from '@/lib/toast'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; etiquetas?: string[]; ativo?: boolean }
+type Interacao = { id: string; tipo: string; texto: string; autor: string; data: string; criadoEm: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; ultimoContato?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
@@ -19,7 +20,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, onIrAgenda }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; onIrAgenda?: () => void }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -29,8 +30,18 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
+  const [vista, setVista] = useState<'painel' | 'funil' | 'pacientes' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
   useEffect(() => { try { sessionStorage.setItem('crm_vista', vista) } catch {} }, [vista])
+  // Perfil clínica: sem Empresas; 'pacientes' só existe nele (guarda o sessionStorage antigo)
+  useEffect(() => {
+    if (perfilClinica && vista === 'empresas') setVista('funil')
+    if (!perfilClinica && vista === 'pacientes') setVista('contatos')
+  }, [perfilClinica, vista])
+  // "Agendar" a partir do CRM: guarda o pré-preenchimento e navega pra Agenda
+  function agendarNoCrm(prefill: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) {
+    try { sessionStorage.setItem('agenda_prefill', JSON.stringify(prefill)) } catch {}
+    onIrAgenda?.()
+  }
 
   // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
   // em Ganho/Perdido). Só rola quando o card está perto da borda; no meio, não rola.
@@ -66,7 +77,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(url)
   }
-  async function importarCSV(file: File) {
+  async function importarCSV(file: File, tipo?: string) {
+    if (!/\.csv$/i.test(file.name) && file.type && !/csv|excel|spreadsheet|text/.test(file.type)) {
+      toast('Envie um arquivo .csv (nome; telefone; e-mail; …).', 'erro'); return
+    }
     const txt = await file.text()
     const linhas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
     if (!linhas.length) return
@@ -75,7 +89,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     if (/nome/i.test(linhas[0]) && /(email|telefone|empresa)/i.test(linhas[0])) inicio = 1 // pula cabeçalho
     const lote = linhas.slice(inicio).map(l => {
       const cols = l.split(sep).map(s => s.trim().replace(/^"|"$/g, ''))
-      return { nome: cols[0] || '', telefone: cols[1] || '', email: cols[2] || '', empresa: cols[3] || '', cargo: cols[4] || '' }
+      return { nome: cols[0] || '', telefone: cols[1] || '', email: cols[2] || '', empresa: cols[3] || '', cargo: cols[4] || '', ...(tipo ? { tipo } : {}) }
     }).filter(c => c.nome)
     if (!lote.length) { toast('Nenhum contato válido encontrado no arquivo.', 'erro'); return }
     const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
@@ -127,14 +141,17 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>{vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {([['painel', 'Painel'], ['funil', 'Funil'], ['contatos', perfilClinica ? 'Pacientes' : 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']] as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
+          {((perfilClinica
+            ? [['painel', 'Painel'], ['funil', 'Funil'], ['pacientes', 'Pacientes'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
+            : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
+          ) as ['painel' | 'funil' | 'pacientes' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
         {vista === 'funil' && podeEditar && (
           <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo negócio</button>
         )}
-        {vista === 'contatos' && (
+        {(vista === 'contatos' || vista === 'pacientes') && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={exportarCSV} style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
             <label style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
@@ -166,8 +183,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} />
+      ) : vista === 'pacientes' ? (
+        <ContatosLista contatos={contatos.filter(c => c.tipo === 'paciente')} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica onImportar={podeEditar ? (f => importarCSV(f, 'paciente')) : undefined} />
       ) : vista === 'contatos' ? (
-        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} />
+        <ContatosLista contatos={perfilClinica ? contatos.filter(c => c.tipo !== 'paciente') : contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
@@ -229,8 +248,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       )}
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
       {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
@@ -525,10 +544,33 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
   )
 }
 
-function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void }) {
+function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void }) {
   const [vista, setVista] = useState<'lista' | 'cards'>('lista')
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [excluindo, setExcluindo] = useState(false)
+  const [arrastando, setArrastando] = useState(false)
+  // Arrastar arquivo CSV sobre a lista = importar contatos em massa
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault(); setArrastando(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f && onImportar) onImportar(f)
+  }
+  // Envolve o conteúdo com a área de "soltar arquivo" (dropzone) e a sobreposição
+  const dz = (children: React.ReactNode) => (
+    <div
+      onDragOver={onImportar ? (e => { e.preventDefault(); if (!arrastando) setArrastando(true) }) : undefined}
+      onDragLeave={onImportar ? (() => setArrastando(false)) : undefined}
+      onDrop={onImportar ? onDrop : undefined}
+      style={{ position: 'relative' }}
+    >
+      {children}
+      {arrastando && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,192,15,0.12)', border: '2px dashed #ffc00f', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#a16207' }}>Solte o arquivo .csv para importar em massa</span>
+        </div>
+      )}
+    </div>
+  )
 
   const toggle = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const todos = contatos.length > 0 && sel.size === contatos.length
@@ -545,7 +587,12 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
     else toast('Falha ao excluir.', 'erro')
   }
 
-  if (contatos.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p></div>
+  if (contatos.length === 0) return dz(
+    <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p>
+      {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#bbb' }}>Arraste um arquivo .csv aqui para importar em massa.</p>}
+    </div>
+  )
 
   const barraSel = sel.size > 0 && (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#111', color: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
@@ -564,7 +611,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   )
 
   if (vista === 'cards') {
-    return (
+    return dz(
       <div>
         {toggleVista}
         {barraSel}
@@ -594,7 +641,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
   // Vista LISTA (tabela) com seleção
   const th: React.CSSProperties = { textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', whiteSpace: 'nowrap' }
   const td: React.CSSProperties = { fontSize: 13, color: '#333', padding: '10px 12px', borderTop: '1px solid #f2f2f2' }
-  return (
+  return dz(
     <div>
       {toggleVista}
       {barraSel}
@@ -607,7 +654,8 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
               <th style={th}>Empresa</th>
               <th style={th}>Área de atuação</th>
               <th style={th}>Telefone</th>
-              <th style={th}>E-mail</th>
+              {!perfilClinica && <th style={th}>E-mail</th>}
+              {perfilClinica && <th style={th}>Última interação</th>}
               <th style={{ ...th, textAlign: 'center' }}>Neg.</th>
             </tr>
           </thead>
@@ -615,6 +663,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
             {contatos.map(c => {
               const nNeg = negocios.filter(n => n.contatoId === c.id).length
               const marcado = sel.has(c.id)
+              const ult = haQuanto(c.ultimoContato)
               return (
                 <tr key={c.id} style={{ background: marcado ? '#fffbeb' : '#fff', cursor: 'pointer' }} onClick={() => onAbrir(c)}>
                   <td style={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={marcado} onChange={() => toggle(c.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} /></td>
@@ -622,7 +671,8 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
                   <td style={td}>{empresaLabel(c)}</td>
                   <td style={{ ...td, color: c.areaAtuacao ? '#7c3aed' : '#bbb' }}>{c.areaAtuacao || '—'}</td>
                   <td style={td}>{c.telefone || '—'}</td>
-                  <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</td>
+                  {!perfilClinica && <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</td>}
+                  {perfilClinica && <td style={td}>{ult ? <span style={{ fontSize: 12, fontWeight: 700, color: ult.frio ? '#b91c1c' : '#666' }}>{ult.txt}{ult.frio ? ' · reabordar' : ''}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>}
                   <td style={{ ...td, textAlign: 'center' }}>{nNeg > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>
                 </tr>
               )
@@ -638,18 +688,60 @@ const STATUS_AG: Record<string, { label: string; cor: string }> = {
   agendado: { label: 'Agendado', cor: '#1d4ed8' }, confirmado: { label: 'Confirmado', cor: '#166534' },
   atendido: { label: 'Atendido', cor: '#374151' }, faltou: { label: 'Faltou', cor: '#b91c1c' }, cancelado: { label: 'Cancelado', cor: '#9ca3af' },
 }
+// Tipos de toque de nutrição (linha do tempo do paciente/contato)
+const TIPOS_INTER: { key: string; label: string; cor: string }[] = [
+  { key: 'nota', label: 'Nota', cor: '#6b7280' }, { key: 'ligacao', label: 'Ligação', cor: '#1d4ed8' },
+  { key: 'whatsapp', label: 'WhatsApp', cor: '#16a34a' }, { key: 'email', label: 'E-mail', cor: '#7c3aed' },
+  { key: 'retorno', label: 'Retorno', cor: '#0891b2' }, { key: 'reabordagem', label: 'Reabordagem', cor: '#d97706' },
+  { key: 'campanha', label: 'Campanha', cor: '#c026d3' }, { key: 'outro', label: 'Outro', cor: '#9ca3af' },
+]
+const interInfo = (k: string) => TIPOS_INTER.find(t => t.key === k) || TIPOS_INTER[0]
+// "há X dias/meses" — usado no indicador de última interação
+function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
+  if (!iso) return null
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (isNaN(dias)) return null
+  const frio = dias >= 90
+  if (dias <= 0) return { txt: 'hoje', frio: false }
+  if (dias === 1) return { txt: 'ontem', frio: false }
+  if (dias < 30) return { txt: `há ${dias}d`, frio }
+  const meses = Math.floor(dias / 30)
+  return { txt: `há ${meses} ${meses === 1 ? 'mês' : 'meses'}`, frio }
+}
 
-function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilClinica = false }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; perfilClinica?: boolean }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? 'paciente' : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
+function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilClinica = false, tipoPadrao = 'paciente', onAgendar }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; perfilClinica?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
-  // Histórico de atendimentos do paciente (perfil clínica, só ao editar)
-  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string }[] | null>(null)
+  // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
+  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string }[] | null>(null)
   useEffect(() => {
     if (!perfilClinica || !contato?.id) return
     fetch(`/api/agenda?contatoId=${contato.id}`).then(r => r.json())
       .then(d => setHistorico(Array.isArray(d?.agendamentos) ? d.agendamentos : []))
       .catch(() => setHistorico([]))
   }, [perfilClinica, contato?.id])
+  // Linha do tempo de NUTRIÇÃO (toques manuais ao longo do ano) — registra na hora
+  const [interacoes, setInteracoes] = useState<Interacao[]>(contato?.historico || [])
+  const [novoToque, setNovoToque] = useState<{ tipo: string; texto: string }>({ tipo: 'nota', texto: '' })
+  const [registrando, setRegistrando] = useState(false)
+  async function registrarToque() {
+    if (!contato?.id || !novoToque.texto.trim() || registrando) return
+    setRegistrando(true)
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novaInteracao: novoToque }) }).then(x => x.json()).catch(() => null)
+    setRegistrando(false)
+    if (r?.ok) { setInteracoes(r.contato.historico || []); setNovoToque({ tipo: novoToque.tipo, texto: '' }) }
+    else toast(r?.error || 'Falha ao registrar.', 'erro')
+  }
+  async function removerToque(interacaoId: string) {
+    if (!contato?.id) return
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, removerInteracao: interacaoId }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) setInteracoes(r.contato.historico || [])
+  }
+  // Timeline unificada: toques manuais + atendimentos da agenda, mais recentes primeiro
+  const timeline = [
+    ...interacoes.map(i => ({ id: i.id, data: i.data, kind: 'toque' as const, i })),
+    ...(historico || []).map(h => ({ id: h.id, data: h.dataInicio, kind: 'agenda' as const, h })),
+  ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
 
   async function salvar() {
     if (!f.nome.trim()) return
@@ -668,7 +760,13 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{contato ? (perfilClinica ? 'Editar paciente' : 'Editar contato') : (perfilClinica ? 'Novo paciente' : 'Novo contato')}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
+          {perfilClinica && contato && onAgendar && (
+            <button onClick={() => onAgendar({ pacienteNome: contato.nome, pacienteTelefone: contato.telefone, contatoId: contato.id })}
+              style={{ padding: '7px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+          )}
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           {perfilClinica && (
@@ -706,21 +804,41 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           {perfilClinica && contato?.id && (
             <div>
-              <label style={labelStyle}>Histórico de atendimentos</label>
-              {historico === null ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Carregando...</p>
-                : historico.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhum agendamento deste paciente ainda.</p>
+              <label style={labelStyle}>Histórico e nutrição</label>
+              {/* Quick-add de toque (nota/ligação/whatsapp/reabordagem…) */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                <select value={novoToque.tipo} onChange={e => setNovoToque(t => ({ ...t, tipo: e.target.value }))} style={{ padding: '9px 8px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                  {TIPOS_INTER.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+                <input value={novoToque.texto} onChange={e => setNovoToque(t => ({ ...t, texto: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') registrarToque() }}
+                  placeholder="Registrar um contato… (Enter)" style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={registrarToque} disabled={registrando || !novoToque.texto.trim()} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoToque.texto.trim() ? 1 : 0.5, flexShrink: 0 }}>+</button>
+              </div>
+              {timeline.length === 0
+                ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem histórico ainda. Registre contatos para nutrir a base e planejar reabordagens.</p>
                 : (
-                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 180, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
-                    {historico.map(h => {
-                      const st = STATUS_AG[h.status] || STATUS_AG.agendado
-                      return (
-                        <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(h.dataInicio).toLocaleDateString('pt-BR')} {new Date(h.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.servico || '—'} · {(h.profissionalNome || '').split(' ')[0]}</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: st.cor, flexShrink: 0 }}>{st.label}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 220, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
+                    {timeline.map(item => item.kind === 'agenda' ? (
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: '#374151', background: '#e5e7eb', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>AGENDA</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.h.dataInicio).toLocaleDateString('pt-BR')}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.h.servico || '—'} · {(item.h.profissionalNome || '').split(' ')[0]}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{(STATUS_AG[item.h.status] || STATUS_AG.agendado).label}</span>
                         </div>
-                      )
-                    })}
+                        {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#555', background: '#fafafa', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
+                      </div>
+                    ) : (
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: interInfo(item.i.tipo).cor, borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{interInfo(item.i.tipo).label.toUpperCase()}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.i.data).toLocaleDateString('pt-BR')}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.i.texto}</span>
+                          {podeExcluir && <button onClick={() => removerToque(item.i.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                        </div>
+                        {item.i.autor && <p style={{ margin: '2px 0 0 34px', fontSize: 10.5, color: '#aaa' }}>{item.i.autor}</p>}
+                      </div>
+                    ))}
                   </div>
                 )}
             </div>
@@ -988,7 +1106,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, onAgendar }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -1052,6 +1170,11 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           )}
           {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#16a34a', borderRadius: 999, padding: '4px 12px' }}>GANHO</span>}
           {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#b91c1c', borderRadius: 999, padding: '4px 12px' }}>PERDIDO</span>}
+          {perfilClinica && onAgendar && (
+            <button onClick={() => onAgendar({ pacienteNome: contato?.nome || neg.titulo, pacienteTelefone: contato?.telefone, contatoId: contato?.id })}
+              title="Criar um horário na Agenda para este paciente/lead"
+              style={{ fontSize: 12, fontWeight: 800, color: '#111', background: '#ffc00f', borderRadius: 999, padding: '4px 14px', border: 'none', cursor: 'pointer' }}>Agendar na agenda</button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>

@@ -211,6 +211,46 @@ export type Agendamento = {
   duracaoMin: number
   status: AgendamentoStatus
   observacoes?: string
+  queixaPrincipal?: string // motivo da consulta relatado pelo paciente (clínicas)
+  registroAtendimento?: string // evolução/prontuário simples escrito ao atender (dado de saúde — só no banco isolado da clínica)
+  criadoEm: string
+  criadoPor?: string
+}
+
+// Reunião interna (Pessoas e Cultura): pauta antes, ata depois, decisões que
+// viram Tarefas. Chaves: `reuniao:{id}`, set `reunioes`.
+export type ReuniaoDecisao = {
+  id: string
+  texto: string
+  responsavelEmail?: string
+  responsavelNome?: string
+  prazo?: string // ISO date
+  tarefaId?: string // preenchido quando a decisão vira tarefa
+}
+export type Reuniao = {
+  id: string
+  titulo: string
+  data: string // ISO — quando a reunião acontece(u)
+  participantes?: string
+  pauta?: string // o que será discutido (antes da reunião)
+  ata?: string // registro do que foi discutido/decidido
+  decisoes?: ReuniaoDecisao[]
+  status: 'agendada' | 'realizada'
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm?: string
+}
+
+// Lista de espera da Agenda (clínicas): quem quer horário mas ainda não tem.
+// Chaves: `espera:{id}`, set `esperas`. Vira agendamento pelo modal (e sai da lista).
+export type EsperaItem = {
+  id: string
+  pacienteNome: string
+  pacienteTelefone?: string
+  contatoId?: string
+  servico?: string
+  profissionalEmail?: string // preferência (opcional)
+  observacoes?: string
   criadoEm: string
   criadoPor?: string
 }
@@ -371,6 +411,8 @@ export type Marco = {
 export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
 export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video' | 'briefing' | 'copy' | 'campanha'
+  // Tipos do perfil clínica (catálogo em GestaoTarefas TIPOS_CLINICA)
+  | 'confirmacao_agenda' | 'retorno_paciente' | 'followup_orcamento' | 'compras_estoque' | 'administrativo' | 'financeiro_clinica' | 'reuniao_interna'
 export type Tarefa = {
   id: string
   titulo: string
@@ -602,9 +644,23 @@ export type CrmContato = {
   etiquetas?: string[]
   ativo?: boolean // ausente = ativo
   observacoes?: string
+  historico?: ContatoInteracao[] // linha do tempo de nutrição (toques ao longo do ano)
+  ultimoContato?: string // ISO — data do último toque (interação manual OU agendamento) p/ reabordagem
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
+}
+
+// Toque de relacionamento registrado no paciente/contato (nutrição da base).
+// Diferente do histórico de atendimentos (que vem da Agenda): aqui é o registro
+// manual de contatos ao longo do tempo para reabordagens e ações.
+export type ContatoInteracao = {
+  id: string
+  tipo: 'nota' | 'ligacao' | 'whatsapp' | 'email' | 'retorno' | 'reabordagem' | 'campanha' | 'outro'
+  texto: string
+  autor: string
+  data: string // ISO — quando o toque aconteceu
+  criadoEm: string
 }
 
 export type CrmAtividade = {
