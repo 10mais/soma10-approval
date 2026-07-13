@@ -643,7 +643,7 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
   const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? 'paciente' : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (perfil clínica, só ao editar)
-  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string }[] | null>(null)
+  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string }[] | null>(null)
   useEffect(() => {
     if (!perfilClinica || !contato?.id) return
     fetch(`/api/agenda?contatoId=${contato.id}`).then(r => r.json())
@@ -714,10 +714,15 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
                     {historico.map(h => {
                       const st = STATUS_AG[h.status] || STATUS_AG.agendado
                       return (
-                        <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(h.dataInicio).toLocaleDateString('pt-BR')} {new Date(h.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.servico || '—'} · {(h.profissionalNome || '').split(' ')[0]}</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: st.cor, flexShrink: 0 }}>{st.label}</span>
+                        <div key={h.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(h.dataInicio).toLocaleDateString('pt-BR')} {new Date(h.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.servico || '—'} · {(h.profissionalNome || '').split(' ')[0]}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: st.cor, flexShrink: 0 }}>{st.label}</span>
+                          </div>
+                          {h.registroAtendimento && (
+                            <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#555', background: '#fafafa', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{h.registroAtendimento}</p>
+                          )}
                         </div>
                       )
                     })}

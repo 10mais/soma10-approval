@@ -136,7 +136,7 @@ export async function PUT(req: NextRequest) {
   const atual = await redis.get<Agendamento>(`agendamento:${b.id}`)
   if (!atual) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes']
+  const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes', 'registroAtendimento']
   const atualizado: Agendamento = { ...atual }
   for (const c of campos) { if (c in b) (atualizado as any)[c] = b[c] }
   atualizado.duracaoMin = Math.min(600, Math.max(5, Number(atualizado.duracaoMin) || 30))

@@ -211,6 +211,21 @@ export type Agendamento = {
   duracaoMin: number
   status: AgendamentoStatus
   observacoes?: string
+  registroAtendimento?: string // evolução/prontuário simples escrito ao atender (dado de saúde — só no banco isolado da clínica)
+  criadoEm: string
+  criadoPor?: string
+}
+
+// Lista de espera da Agenda (clínicas): quem quer horário mas ainda não tem.
+// Chaves: `espera:{id}`, set `esperas`. Vira agendamento pelo modal (e sai da lista).
+export type EsperaItem = {
+  id: string
+  pacienteNome: string
+  pacienteTelefone?: string
+  contatoId?: string
+  servico?: string
+  profissionalEmail?: string // preferência (opcional)
+  observacoes?: string
   criadoEm: string
   criadoPor?: string
 }
