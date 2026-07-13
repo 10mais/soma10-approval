@@ -55,7 +55,19 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
     if (r?.ok) { setDocs(ds => ds.filter(d => d.id !== id)); if (aberto?.id === id) setAberto(null); toast('Documento excluído.', 'sucesso') }
     else toast(r?.error || 'Falha ao excluir.', 'erro')
   }
-  function fechar() { setAberto(null); carregar() }
+  function fechar() {
+    const d = aberto
+    setAberto(null)
+    // Salve somente se houver conteúdo: documento sem título nem texto (aberto e
+    // fechado sem digitar nada) não é guardado — evita lixo de documentos vazios.
+    if (d && !(d.titulo || '').trim() && !textoDe(d.conteudo || '').trim()) {
+      if (timer.current) clearTimeout(timer.current)
+      fetch(`/api/documentos?id=${d.id}`, { method: 'DELETE' }).catch(() => {})
+      setDocs(ds => ds.filter(x => x.id !== d.id))
+      return
+    }
+    carregar()
+  }
 
   async function compartilhar() {
     if (!aberto) return

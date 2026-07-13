@@ -12,9 +12,10 @@ export type PersonalItem = { id: string; texto: string; feito: boolean }
 export type PersonalNota = { id: string; texto: string; cor?: string }
 // Notepad: documento com título e texto formatado (HTML), estilo ClickUp Notepad.
 export type PersonalNotepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string; fixado?: boolean }
-export type PersonalData = { rascunho: string; notas?: PersonalNota[]; notepads?: PersonalNotepad[]; itens: PersonalItem[]; atualizadoEm?: string }
+// `itens` = microtarefas ativas (pendentes); `arquivadas` = concluídas e arquivadas.
+export type PersonalData = { rascunho: string; notas?: PersonalNota[]; notepads?: PersonalNotepad[]; itens: PersonalItem[]; arquivadas?: PersonalItem[]; atualizadoEm?: string }
 
-const VAZIO: PersonalData = { rascunho: '', notas: [], notepads: [], itens: [] }
+const VAZIO: PersonalData = { rascunho: '', notas: [], notepads: [], itens: [], arquivadas: [] }
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -30,9 +31,11 @@ export async function PUT(req: NextRequest) {
   if (!email) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const body = await req.json()
-  const itens: PersonalItem[] = Array.isArray(body.itens)
-    ? body.itens.map((i: any) => ({ id: String(i.id), texto: String(i.texto || ''), feito: !!i.feito }))
+  const mapItens = (arr: any): PersonalItem[] => Array.isArray(arr)
+    ? arr.map((i: any) => ({ id: String(i.id), texto: String(i.texto || ''), feito: !!i.feito }))
     : []
+  const itens = mapItens(body.itens)
+  const arquivadas = mapItens(body.arquivadas)
   const notas: PersonalNota[] = Array.isArray(body.notas)
     ? body.notas.map((n: any) => ({ id: String(n.id), texto: String(n.texto || ''), cor: n.cor ? String(n.cor) : undefined }))
     : []
@@ -44,6 +47,7 @@ export async function PUT(req: NextRequest) {
     notas,
     notepads,
     itens,
+    arquivadas,
     atualizadoEm: new Date().toISOString(),
   }
   await redis.set(`personal:${email}`, data)

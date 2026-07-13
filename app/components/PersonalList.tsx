@@ -15,6 +15,8 @@ function textoDe(html: string) {
 export default function PersonalList() {
   const [notepads, setNotepads] = useState<Notepad[]>([])
   const [itens, setItens] = useState<Item[]>([])
+  const [arquivadas, setArquivadas] = useState<Item[]>([]) // microtarefas concluídas (arquivadas)
+  const [verArquivadas, setVerArquivadas] = useState(false)
   const [abertoId, setAbertoId] = useState<string | null>(null)
   const [novo, setNovo] = useState('')
   const [carregando, setCarregando] = useState(true)
@@ -35,7 +37,10 @@ export default function PersonalList() {
           }
         }
         setNotepads(nps)
-        setItens(Array.isArray(d.itens) ? d.itens : [])
+        setItens(Array.isArray(d.itens) ? d.itens.filter((i: Item) => !i.feito) : [])
+        // Compat: microtarefas antigas já marcadas como feitas entram no arquivo
+        const jaFeitas = Array.isArray(d.itens) ? d.itens.filter((i: Item) => i.feito) : []
+        setArquivadas([...(Array.isArray(d.arquivadas) ? d.arquivadas : []), ...jaFeitas])
       }
       setCarregando(false); montado.current = true
     }).catch(() => { setCarregando(false); montado.current = true })
@@ -47,12 +52,12 @@ export default function PersonalList() {
     setSalvo('salvando')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
-      fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rascunho: '', notepads, itens }) })
+      fetch('/api/personal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rascunho: '', notepads, itens, arquivadas }) })
         .then(() => { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500) })
         .catch(() => setSalvo('idle'))
     }, 700)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [notepads, itens])
+  }, [notepads, itens, arquivadas])
 
   function addItem() { const t = novo.trim(); if (!t) return; setItens(a => [...a, { id: uuid(), texto: t, feito: false }]); setNovo('') }
   function novaNota() {
@@ -72,7 +77,20 @@ export default function PersonalList() {
   }
 
   const aberto = notepads.find(n => n.id === abertoId)
-  const feitos = itens.filter(i => i.feito).length
+  // Concluir uma microtarefa = finalizar e arquivar (sai da lista ativa).
+  function concluir(id: string) {
+    const it = itens.find(i => i.id === id)
+    if (!it) return
+    setItens(arr => arr.filter(x => x.id !== id))
+    setArquivadas(arr => [{ ...it, feito: true }, ...arr])
+  }
+  function restaurar(id: string) {
+    const it = arquivadas.find(i => i.id === id)
+    if (!it) return
+    setArquivadas(arr => arr.filter(x => x.id !== id))
+    setItens(arr => [...arr, { ...it, feito: false }])
+  }
+  const removerArquivada = (id: string) => setArquivadas(arr => arr.filter(x => x.id !== id))
   // Fixadas primeiro; dentro de cada grupo, editadas mais recentemente no topo.
   const quando = (n: Notepad) => new Date(n.atualizadoEm || n.criadoEm || 0).getTime()
   const ordenadas = [...notepads].sort((a, b) => (a.fixado === b.fixado ? quando(b) - quando(a) : a.fixado ? -1 : 1))
@@ -125,7 +143,7 @@ export default function PersonalList() {
           <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Microtarefas</span>
-              {itens.length > 0 && <span style={{ fontSize: 11.5, color: '#999' }}>{feitos}/{itens.length}</span>}
+              {itens.length > 0 && <span style={{ fontSize: 11.5, color: '#999' }}>{itens.length} pendente{itens.length > 1 ? 's' : ''}</span>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: itens.length ? 12 : 0 }}>
               <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem() }} placeholder="Adicionar microtarefa e Enter..."
@@ -135,13 +153,35 @@ export default function PersonalList() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {itens.map(it => (
                 <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#fafafa', borderRadius: 10 }}>
-                  <input type="checkbox" checked={it.feito} onChange={() => setItens(arr => arr.map(x => x.id === it.id ? { ...x, feito: !x.feito } : x))} style={{ width: 17, height: 17, cursor: 'pointer', flexShrink: 0 }} />
+                  <input type="checkbox" checked={false} onChange={() => concluir(it.id)} title="Concluir e arquivar" style={{ width: 17, height: 17, cursor: 'pointer', flexShrink: 0 }} />
                   <input value={it.texto} onChange={e => setItens(arr => arr.map(x => x.id === it.id ? { ...x, texto: e.target.value } : x))}
-                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit', color: it.feito ? '#aaa' : '#222', textDecoration: it.feito ? 'line-through' : 'none', outline: 'none' }} />
+                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit', color: '#222', outline: 'none' }} />
                   <button onClick={() => setItens(arr => arr.filter(x => x.id !== it.id))} title="Remover" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
                 </div>
               ))}
             </div>
+
+            {/* Concluídas (arquivadas) — some da lista ativa ao marcar; recuperável aqui */}
+            {arquivadas.length > 0 && (
+              <div style={{ marginTop: itens.length ? 14 : 4 }}>
+                <button onClick={() => setVerArquivadas(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#888', padding: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: verArquivadas ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}><path d="M9 6l6 6-6 6" /></svg>
+                  Concluídas ({arquivadas.length})
+                </button>
+                {verArquivadas && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                    {arquivadas.map(it => (
+                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f6f6f6', borderRadius: 10 }}>
+                        <input type="checkbox" checked readOnly onClick={() => restaurar(it.id)} title="Reabrir (voltar para pendentes)" style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 13, color: '#999', textDecoration: 'line-through', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.texto}</span>
+                        <button onClick={() => restaurar(it.id)} title="Reabrir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, padding: '2px 6px' }}>Reabrir</button>
+                        <button onClick={() => removerArquivada(it.id)} title="Remover de vez" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: 2 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
