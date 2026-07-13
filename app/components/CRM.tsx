@@ -1550,7 +1550,7 @@ const CANAL_CFG: Record<CanalMsg, {
 }> = {
   whatsapp: {
     cor: '#16a34a', bolha: '#dcf8c6',
-    aviso: 'WhatsApp ainda não conectado. As conversas aparecem aqui assim que as credenciais (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN) forem adicionadas na Vercel e o webhook configurado na Meta.',
+    aviso: 'WhatsApp ainda não conectado. Conecte pelo QR em Configurações → Integrações → WhatsApp (mantém o número atual). As conversas aparecem aqui assim que parear.',
     listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
     enviar: (id, texto) => fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, texto }) }).then(x => x.json()).catch(() => null),

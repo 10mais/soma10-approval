@@ -43,6 +43,7 @@ const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuai
 const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
 const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
 const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').then(m => ({ default: m.TarefaModal })), { ssr: false })
@@ -4655,6 +4656,11 @@ function Dashboard() {
             </>)}
 
             {abaConfig === 'integracoes' && (<>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>WhatsApp (conexão)</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution (ver WHATSAPP-CLINICA.md); aqui você pareia e vê o status.</p>
+              <WhatsAppConexao />
+            </div>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Integrações</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Status das conexões usadas pelo sistema.</p>
