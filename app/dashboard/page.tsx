@@ -3248,7 +3248,7 @@ function Dashboard() {
         {/* Agenda (clínicas/serviços) — grupo Produção */}
         {aba === 'agenda' && role !== 'cliente' && (
           <Agenda
-            usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email }))}
+            usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email, areaSaude: u.areaSaude, corAgenda: u.corAgenda, role: u.role }))}
             meuEmail={(session?.user as any)?.email || ''}
             perfilClinica={perfilClinica}
             podeEditar={podeNivelDash('producao', 'editar')}

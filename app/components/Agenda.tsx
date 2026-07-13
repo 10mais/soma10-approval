@@ -6,7 +6,10 @@ import { toast, confirmar } from '@/lib/toast'
 // status que flui (agendado -> confirmado -> atendido | faltou | cancelado) e
 // detecção de conflito de horário (o servidor recusa; a UI oferece encaixe).
 
-type Usuario = { nome: string; email: string }
+type Usuario = { nome: string; email: string; areaSaude?: string; corAgenda?: string; role?: string }
+const CORES_PROF = ['#7c3aed', '#1d4ed8', '#16a34a', '#d97706', '#db2777', '#0891b2', '#9333ea', '#ea580c']
+// Grade proporcional do dia: expediente 7h–21h, cada 30 min = SLOT_H px de altura
+const DIA_INICIO_H = 7, DIA_FIM_H = 21, SLOT_H = 30
 type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string }
 type Ag = {
   id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string
@@ -83,7 +86,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       sessionStorage.removeItem('agenda_prefill')
       const p = JSON.parse(raw)
       const base = new Date(); base.setHours(9, 0, 0, 0); base.setDate(base.getDate() + 1)
-      setModal({ pacienteNome: p.pacienteNome || '', pacienteTelefone: p.pacienteTelefone || undefined, contatoId: p.contatoId || undefined, profissionalEmail: usuarios.find(u => u.email === meuEmail)?.email || usuarios[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
+      setModal({ pacienteNome: p.pacienteNome || '', pacienteTelefone: p.pacienteTelefone || undefined, contatoId: p.contatoId || undefined, profissionalEmail: profissionais.find(u => u.email === meuEmail)?.email || profissionais[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -107,8 +110,55 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   }, [deBusca.getTime(), ateBusca.getTime()])
   useEffect(() => { carregar() }, [carregar])
 
+  // Profissionais que atendem (têm área de saúde/estética). Comercial e quem não
+  // atende ficam fora da agenda. Se ninguém tiver área ainda, cai p/ todos (não trava).
+  const profissionais = useMemo(() => {
+    if (!perfilClinica) return usuarios
+    const comArea = usuarios.filter(u => u.areaSaude)
+    return comArea.length ? comArea : usuarios.filter(u => u.role !== 'vendas')
+  }, [usuarios, perfilClinica])
+  const corProf = useCallback((email: string) => {
+    const u = usuarios.find(x => x.email === email)
+    if (u?.corAgenda) return u.corAgenda
+    const i = profissionais.findIndex(x => x.email === email)
+    return CORES_PROF[(i >= 0 ? i : 0) % CORES_PROF.length]
+  }, [usuarios, profissionais])
+
   const visiveis = useMemo(() => profFiltro ? ags.filter(a => a.profissionalEmail === profFiltro) : ags, [ags, profFiltro])
   const doDia = (d: Date) => visiveis.filter(a => { const t = new Date(a.dataInicio); return t.getDate() === d.getDate() && t.getMonth() === d.getMonth() && t.getFullYear() === d.getFullYear() })
+
+  // Layout proporcional do dia: posiciona/dimensiona por horário e resolve
+  // sobreposições em colunas lado a lado (ex.: 2 profissionais no mesmo horário).
+  function layoutDia(lista: Ag[]): { a: Ag; col: number; cols: number }[] {
+    const items = [...lista].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime())
+    const res: { a: Ag; col: number; cols: number }[] = []
+    let grupo: { a: Ag; start: number; end: number; col: number }[] = []
+    let grupoFim = -1
+    const fechar = () => {
+      if (!grupo.length) return
+      const cols = Math.max(...grupo.map(c => c.col + 1))
+      grupo.forEach(c => res.push({ a: c.a, col: c.col, cols }))
+      grupo = []; grupoFim = -1
+    }
+    for (const a of items) {
+      const start = new Date(a.dataInicio).getTime()
+      const end = start + Math.max(15, a.duracaoMin || 30) * 60000
+      if (grupo.length && start >= grupoFim) fechar()
+      const usadas = new Set(grupo.filter(c => c.end > start).map(c => c.col))
+      let col = 0; while (usadas.has(col)) col++
+      grupo.push({ a, start, end, col })
+      grupoFim = Math.max(grupoFim, end)
+    }
+    fechar()
+    return res
+  }
+  // Cria um agendamento num horário clicado da grade (minutos desde 00h do dia).
+  function novoEmMinutos(dia: Date, minutos: number) {
+    if (!podeEditar) return
+    const base = new Date(dia); base.setHours(Math.floor(minutos / 60), minutos % 60, 0, 0)
+    const eu = profissionais.find(u => u.email === meuEmail)
+    setModal({ pacienteNome: '', profissionalEmail: profFiltro || eu?.email || profissionais[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
+  }
 
   function mover(dias: number) {
     const d = new Date(ref)
@@ -120,8 +170,8 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   function novo(dia?: Date) {
     const base = dia ? new Date(dia) : new Date(ref)
     base.setHours(9, 0, 0, 0)
-    const eu = usuarios.find(u => u.email === meuEmail)
-    setModal({ pacienteNome: '', profissionalEmail: eu?.email || usuarios[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
+    const eu = profissionais.find(u => u.email === meuEmail)
+    setModal({ pacienteNome: '', profissionalEmail: eu?.email || profissionais[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
   }
 
   async function salvar(forcar = false) {
@@ -163,9 +213,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
 
   function agendarDaEspera(item: Espera) {
     const base = new Date(ref); base.setHours(9, 0, 0, 0)
-    const eu = usuarios.find(u => u.email === meuEmail)
+    const eu = profissionais.find(u => u.email === meuEmail)
     setEsperaOrigem(item.id)
-    setModal({ pacienteNome: item.pacienteNome, pacienteTelefone: item.pacienteTelefone, contatoId: item.contatoId, servico: item.servico, profissionalEmail: eu?.email || usuarios[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
+    setModal({ pacienteNome: item.pacienteNome, pacienteTelefone: item.pacienteTelefone, contatoId: item.contatoId, servico: item.servico, profissionalEmail: eu?.email || profissionais[0]?.email || '', dataInicio: toLocalInput(base), duracaoMin: 30, status: 'agendado' })
     setEsperaAberta(false)
   }
 
@@ -221,7 +271,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         <select value={profFiltro} onChange={e => setProfFiltro(e.target.value)}
           style={{ padding: '8px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
           <option value="">Todos os profissionais</option>
-          {usuarios.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+          {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
         </select>
         {perfilClinica && (
           <button onClick={() => setEsperaAberta(v => !v)} style={{ padding: '9px 14px', background: esperaAberta ? '#111' : '#fff', color: esperaAberta ? '#fff' : '#333', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
@@ -329,9 +379,49 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           })}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 640 }}>
-          {doDia(ref).length === 0 && <p style={{ color: '#aaa', fontSize: 13, padding: '26px 0', textAlign: 'center', background: '#fafafa', borderRadius: 12 }}>Nenhum agendamento neste dia.</p>}
-          {doDia(ref).map(a => <Cartao key={a.id} a={a} detalhe />)}
+        // Visão DIA proporcional: expediente inteiro com altura ∝ duração
+        <div style={{ display: 'flex', background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', maxWidth: 760 }}>
+          {/* Eixo de horas */}
+          <div style={{ width: 52, flexShrink: 0, borderRight: '1px solid #f0f0f0' }}>
+            {Array.from({ length: DIA_FIM_H - DIA_INICIO_H }, (_, i) => (
+              <div key={i} style={{ height: SLOT_H * 2, position: 'relative' }}>
+                <span style={{ position: 'absolute', top: -7, right: 6, fontSize: 10.5, color: '#aaa', fontWeight: 600 }}>{String(DIA_INICIO_H + i).padStart(2, '0')}:00</span>
+              </div>
+            ))}
+          </div>
+          {/* Lanes */}
+          <div
+            onClick={e => {
+              if (!podeEditar) return
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              const slot = Math.max(0, Math.floor((e.clientY - rect.top) / SLOT_H))
+              novoEmMinutos(ref, DIA_INICIO_H * 60 + slot * 30)
+            }}
+            style={{ position: 'relative', flex: 1, height: (DIA_FIM_H - DIA_INICIO_H) * 2 * SLOT_H, cursor: podeEditar ? 'copy' : 'default' }}>
+            {/* Linhas de hora/meia-hora */}
+            {Array.from({ length: (DIA_FIM_H - DIA_INICIO_H) * 2 + 1 }, (_, i) => (
+              <div key={i} style={{ position: 'absolute', left: 0, right: 0, top: i * SLOT_H, borderTop: `1px ${i % 2 === 0 ? 'solid #eee' : 'dashed #f4f4f4'}` }} />
+            ))}
+            {/* Agendamentos posicionados */}
+            {layoutDia(doDia(ref)).map(({ a, col, cols }) => {
+              const t = new Date(a.dataInicio)
+              const minutos = t.getHours() * 60 + t.getMinutes() - DIA_INICIO_H * 60
+              const top = Math.max(0, (minutos / 30) * SLOT_H)
+              const altura = Math.max(SLOT_H - 2, (Math.max(15, a.duracaoMin || 30) / 30) * SLOT_H - 2)
+              const cor = corProf(a.profissionalEmail)
+              const cancelado = a.status === 'cancelado'
+              const st = stInfo(a.status)
+              return (
+                <div key={a.id} onClick={ev => { ev.stopPropagation(); setModal({ ...a, dataInicio: toLocalInput(new Date(a.dataInicio)) }) }}
+                  title={`${hora(a.dataInicio)} · ${a.pacienteNome} · ${a.profissionalNome}`}
+                  style={{ position: 'absolute', top, height: altura, left: `calc(${(col / cols) * 100}% + 3px)`, width: `calc(${100 / cols}% - 6px)`, background: cancelado ? '#f4f4f5' : `${cor}18`, borderLeft: `3px solid ${cor}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: 'pointer', opacity: cancelado ? 0.6 : 1, boxSizing: 'border-box' }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hora(a.dataInicio)} {a.pacienteNome}</div>
+                  {altura > SLOT_H && <div style={{ fontSize: 9.5, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.servico, (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>}
+                  {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{st.label}</div>}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -370,7 +460,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               </div>
               <select value={modal.profissionalEmail || ''} onChange={e => setModal(m => ({ ...m, profissionalEmail: e.target.value }))}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                {usuarios.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+                {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="datetime-local" value={(modal.dataInicio as string) || ''} onChange={e => setModal(m => ({ ...m, dataInicio: e.target.value }))}
