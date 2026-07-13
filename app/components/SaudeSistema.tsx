@@ -14,7 +14,10 @@ type Dados = {
   ts: string
 }
 
-const ESSENCIAIS = ['redis', 'blob', 'auth', 'anthropic', 'meta']
+// Essenciais dependem do tipo de instância: na agência, IA e Meta são o coração;
+// numa instância de cliente (clinica/gestao) eles são opcionais não contratados.
+const ESSENCIAIS_AGENCIA = ['redis', 'blob', 'auth', 'anthropic', 'meta']
+const ESSENCIAIS_INSTANCIA = ['redis', 'blob', 'auth']
 const ACAO_LABEL: Record<string, string> = {
   cliente_excluido: 'Cliente excluído',
   colaborador_criado: 'Colaborador criado',
@@ -56,6 +59,12 @@ export default function SaudeSistema() {
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erroFetch, setErroFetch] = useState(false)
+  // Régua de essenciais conforme o perfil da instância
+  const [perfilInstancia, setPerfilInstancia] = useState<string | null>(null)
+  useEffect(() => {
+    fetch('/api/perfil-instancia').then(r => r.json()).then(d => { if (d && !d.error) setPerfilInstancia(d.perfil || null) }).catch(() => {})
+  }, [])
+  const ESSENCIAIS = perfilInstancia ? ESSENCIAIS_INSTANCIA : ESSENCIAIS_AGENCIA
   // Restauração de backup (zona de risco)
   const [bkp, setBkp] = useState<any>(null) // backup enviado por arquivo (alternativa)
   const [selPath, setSelPath] = useState('') // backup gerenciado escolhido (primário)
