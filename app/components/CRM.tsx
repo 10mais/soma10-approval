@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
+import { Pacote, usadas, restantes, statusPacote, podeConsumir } from '@/lib/pacotes'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -958,6 +959,29 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
       .then(d => setHistorico(Array.isArray(d?.agendamentos) ? d.agendamentos : []))
       .catch(() => setHistorico([]))
   }, [perfilClinica, contato?.id])
+  // Pacotes de tratamento do paciente (venda de N sessões; consumo por atendimento)
+  const [pacotes, setPacotes] = useState<Pacote[]>([])
+  const [pacoteForm, setPacoteForm] = useState<{ titulo: string; servico: string; totalSessoes: number; valor: string } | null>(null)
+  const [pacoteBusy, setPacoteBusy] = useState(false)
+  const carregarPacotes = useCallback(() => {
+    if (!perfilClinica || !contato?.id) return
+    fetch(`/api/pacotes?contatoId=${contato.id}`).then(r => r.json()).then(d => { if (Array.isArray(d?.pacotes)) setPacotes(d.pacotes) }).catch(() => {})
+  }, [perfilClinica, contato?.id])
+  useEffect(() => { carregarPacotes() }, [carregarPacotes])
+  async function venderPacote() {
+    if (!pacoteForm || !contato?.id || pacoteBusy) return
+    if (!pacoteForm.titulo.trim() || !pacoteForm.totalSessoes) { toast('Informe título e nº de sessões.', 'erro'); return }
+    setPacoteBusy(true)
+    const r = await fetch('/api/pacotes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contatoId: contato.id, pacienteNome: contato.nome, titulo: pacoteForm.titulo, servico: pacoteForm.servico, totalSessoes: pacoteForm.totalSessoes, valor: Number(pacoteForm.valor) || 0 }) }).then(x => x.json()).catch(() => null)
+    setPacoteBusy(false)
+    if (r?.ok) { setPacoteForm(null); carregarPacotes() } else toast(r?.error || 'Falha ao vender pacote.', 'erro')
+  }
+  async function pacoteAcao(id: string, body: any) {
+    const r = await fetch('/api/pacotes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) carregarPacotes(); else toast(r?.error || 'Não foi possível atualizar o pacote.', 'erro')
+  }
+  const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
   // Linha do tempo de NUTRIÇÃO (toques manuais ao longo do ano) — registra na hora
   const [interacoes, setInteracoes] = useState<Interacao[]>(contato?.historico || [])
   const [novoToque, setNovoToque] = useState<{ tipo: string; texto: string }>({ tipo: 'nota', texto: '' })
@@ -1050,6 +1074,65 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
             </div>
           )}
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+
+          {/* Pacotes de tratamento (venda de N sessões; consumo por atendimento) */}
+          {perfilClinica && contato?.id && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Pacotes de tratamento</label>
+                <span style={{ flex: 1 }} />
+                {!pacoteForm && <button type="button" onClick={() => setPacoteForm({ titulo: '', servico: '', totalSessoes: 10, valor: '' })} style={{ padding: '5px 11px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>+ Vender pacote</button>}
+              </div>
+              {pacoteForm && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                  <input value={pacoteForm.titulo} onChange={e => setPacoteForm(p => p && { ...p, titulo: e.target.value })} placeholder="Título (ex.: 10 sessões de Limpeza de Pele)" style={{ ...inputStyle, fontSize: 13 }} />
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <input value={pacoteForm.servico} onChange={e => setPacoteForm(p => p && { ...p, servico: e.target.value })} placeholder="Serviço (opcional)" style={{ ...inputStyle, flex: 2, minWidth: 120, fontSize: 13 }} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#666', fontWeight: 600 }}>
+                      Sessões
+                      <input type="number" min={1} value={pacoteForm.totalSessoes} onChange={e => setPacoteForm(p => p && { ...p, totalSessoes: Math.max(1, Number(e.target.value) || 1) })} style={{ width: 64, padding: '9px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#666', fontWeight: 600 }}>
+                      Valor R$
+                      <input type="number" min={0} step="0.01" value={pacoteForm.valor} onChange={e => setPacoteForm(p => p && { ...p, valor: e.target.value })} placeholder="0,00" style={{ width: 100, padding: '9px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setPacoteForm(null)} style={{ padding: '7px 12px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
+                    <button type="button" onClick={venderPacote} disabled={pacoteBusy} style={{ padding: '7px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: pacoteBusy ? 'wait' : 'pointer' }}>Vender</button>
+                  </div>
+                </div>
+              )}
+              {pacotes.length === 0 && !pacoteForm && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhum pacote. Venda um pacote de sessões e acompanhe o consumo por atendimento.</p>}
+              {pacotes.map(p => {
+                const usa = usadas(p), rest = restantes(p), st = statusPacote(p)
+                const cor = st === 'concluido' ? '#166534' : st === 'cancelado' ? '#9ca3af' : '#1d4ed8'
+                const pct = p.totalSessoes > 0 ? Math.min(100, Math.round((usa / p.totalSessoes) * 100)) : 0
+                return (
+                  <div key={p.id} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 10, marginBottom: 8, opacity: st === 'cancelado' ? 0.6 : 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{p.titulo}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: cor, background: `${cor}18`, borderRadius: 999, padding: '2px 8px' }}>{st === 'concluido' ? 'Concluído' : st === 'cancelado' ? 'Cancelado' : 'Ativo'}</span>
+                      <span style={{ flex: 1 }} />
+                      {p.valor > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>{fmtBRL(p.valor)}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <div style={{ flex: 1, height: 7, background: '#eee', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: cor }} />
+                      </div>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#555', flexShrink: 0 }}>{usa}/{p.totalSessoes} · restam {rest}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      {podeConsumir(p) && <button type="button" onClick={() => pacoteAcao(p.id, { consumirSessao: {} })} style={{ padding: '5px 11px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Registrar sessão</button>}
+                      {usa > 0 && <button type="button" onClick={() => pacoteAcao(p.id, { removerSessao: p.sessoes[p.sessoes.length - 1].id })} style={{ padding: '5px 11px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#555' }}>Desfazer última</button>}
+                      {st !== 'cancelado' && podeExcluir && <button type="button" onClick={() => pacoteAcao(p.id, { cancelar: true })} style={{ padding: '5px 11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#b91c1c' }}>Cancelar</button>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {perfilClinica && contato?.id && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
