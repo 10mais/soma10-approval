@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Agendamento, CrmContato } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { acharConflito, acharContatoPorNome } from '@/lib/agenda'
+import { acharConflito, acharContatoPorNome, acharBloqueioConflitante, Bloqueio } from '@/lib/agenda'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { v4 as uuid } from 'uuid'
 
@@ -24,6 +24,17 @@ async function carregarContatos(): Promise<CrmContato[]> {
   const ids = await redis.smembers('crm:contatos')
   if (!ids.length) return []
   return (await redis.mget<(CrmContato | null)[]>(...ids.map(i => `contato:${i}`))).filter(Boolean) as CrmContato[]
+}
+
+async function carregarBloqueios(): Promise<Bloqueio[]> {
+  const ids = await redis.smembers('bloqueios')
+  if (!ids.length) return []
+  return (await redis.mget<(Bloqueio | null)[]>(...ids.map(i => `bloqueio:${i}`))).filter(Boolean) as Bloqueio[]
+}
+
+// Mensagem de recusa quando o horário cai num bloqueio da profissional.
+function erroBloqueio(prof: string, b: Bloqueio): string {
+  return `${prof} está bloqueada nesse horário${b.titulo ? ` (${b.titulo})` : ''}.`
 }
 
 // Toque na base: agendar/atender conta como "último contato" (nutrição/reabordagem).
@@ -123,6 +134,10 @@ export async function POST(req: NextRequest) {
         conflito: true,
       }, { status: 409 })
     }
+    const bloqueio = acharBloqueioConflitante(novo, await carregarBloqueios())
+    if (bloqueio) {
+      return NextResponse.json({ error: erroBloqueio(novo.profissionalNome, bloqueio), conflito: true }, { status: 409 })
+    }
   }
 
   await vincularContato(novo, b.contatoId, session.user?.name || session.user?.email || '')
@@ -164,6 +179,10 @@ export async function PUT(req: NextRequest) {
         error: `Conflito: ${conflito.profissionalNome} já tem "${conflito.pacienteNome}" nesse horário.`,
         conflito: true,
       }, { status: 409 })
+    }
+    const bloqueio = acharBloqueioConflitante(atualizado, await carregarBloqueios())
+    if (bloqueio) {
+      return NextResponse.json({ error: erroBloqueio(atualizado.profissionalNome, bloqueio), conflito: true }, { status: 409 })
     }
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome } from '@/lib/agenda'
+import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio } from '@/lib/agenda'
 
 // Conflito de horário da Agenda. Guarda contra: encaixe silencioso em cima de
 // outro paciente e falso conflito entre profissionais diferentes/cancelados.
@@ -76,5 +76,76 @@ describe('acharContatoPorNome (vínculo com o cadastro)', () => {
   it('normalizaNome padroniza acentos/espaços/caixa', () => {
     expect(normalizaNome('  Á RVORE   grande ')).toBe('a rvore grande')
     expect(normalizaNome('')).toBe('')
+  })
+})
+
+// Bloqueios/compromissos da profissional: expandir a faixa e recusar marcar por
+// cima. Errar aqui deixa marcar em horário de folga/almoço (ou bloqueia à toa).
+describe('horaParaMin', () => {
+  it('converte HH:MM em minutos e tolera lixo', () => {
+    expect(horaParaMin('12:30')).toBe(750)
+    expect(horaParaMin('00:00')).toBe(0)
+    expect(horaParaMin('23:59')).toBe(1439)
+    expect(horaParaMin(undefined)).toBe(0)
+    expect(horaParaMin('99:99')).toBe(1440) // saturado no teto de um dia
+  })
+})
+
+describe('componentesLocais (fuso da clínica, UTC-3)', () => {
+  it('lê o relógio de parede local de um instante UTC', () => {
+    // 2026-07-13 é segunda. 15:30Z = 12:30 BRT (UTC-3).
+    const c = componentesLocais('2026-07-13T15:30:00.000Z')
+    expect(c).toEqual({ dow: 1, min: 12 * 60 + 30, ymd: '2026-07-13' })
+  })
+  it('vira o dia local quando o UTC já passou da meia-noite mas o BRT não', () => {
+    // 2026-07-14T02:00Z = 2026-07-13 23:00 BRT (ainda segunda).
+    const c = componentesLocais('2026-07-14T02:00:00.000Z')
+    expect(c).toEqual({ dow: 1, min: 23 * 60, ymd: '2026-07-13' })
+  })
+  it('data inválida devolve null', () => {
+    expect(componentesLocais('nada')).toBeNull()
+  })
+})
+
+describe('acharBloqueioConflitante', () => {
+  const almoco: Bloqueio = { id: 'b1', profissionalEmail: 'dra@x.com', recorrente: true, diasSemana: [1, 2, 3, 4, 5], horaInicio: '12:00', horaFim: '13:00', criadoEm: '' }
+  const folga: Bloqueio = { id: 'b2', profissionalEmail: 'dra@x.com', recorrente: false, dataInicio: '2026-07-15T14:00:00.000Z', duracaoMin: 120, criadoEm: '' }
+  const lista = [almoco, folga]
+
+  it('recorrente pega agendamento que cai no almoço (seg 12:30 BRT = 15:30Z)', () => {
+    expect(acharBloqueioConflitante({ profissionalEmail: 'dra@x.com', dataInicio: '2026-07-13T15:30:00.000Z', duracaoMin: 30 }, lista)?.id).toBe('b1')
+  })
+  it('recorrente NÃO pega fora da faixa (seg 14:00 BRT = 17:00Z)', () => {
+    expect(acharBloqueioConflitante({ profissionalEmail: 'dra@x.com', dataInicio: '2026-07-13T17:00:00.000Z', duracaoMin: 30 }, lista)).toBeNull()
+  })
+  it('recorrente NÃO pega em dia fora da recorrência (domingo)', () => {
+    // 2026-07-12 é domingo, 12:30 BRT = 15:30Z
+    expect(acharBloqueioConflitante({ profissionalEmail: 'dra@x.com', dataInicio: '2026-07-12T15:30:00.000Z', duracaoMin: 30 }, lista)).toBeNull()
+  })
+  it('respeita a data-limite (ate)', () => {
+    const comAte: Bloqueio = { ...almoco, ate: '2026-07-10' }
+    expect(acharBloqueioConflitante({ profissionalEmail: 'dra@x.com', dataInicio: '2026-07-13T15:30:00.000Z', duracaoMin: 30 }, [comAte])).toBeNull()
+  })
+  it('pontual pega por sobreposição absoluta e ignora outro profissional', () => {
+    // folga 14:00–16:00Z (11:00–13:00 BRT); 14:00Z (11:00 BRT) cai só na folga, não no almoço (12:00 BRT).
+    expect(acharBloqueioConflitante({ profissionalEmail: 'dra@x.com', dataInicio: '2026-07-15T14:00:00.000Z', duracaoMin: 30 }, lista)?.id).toBe('b2')
+    expect(acharBloqueioConflitante({ profissionalEmail: 'outro@x.com', dataInicio: '2026-07-15T14:00:00.000Z', duracaoMin: 30 }, lista)).toBeNull()
+  })
+})
+
+describe('bloqueioNoDia (expansão p/ a grade)', () => {
+  const diaLocal = (y: number, m: number, d: number) => { const x = new Date(); x.setFullYear(y, m - 1, d); x.setHours(0, 0, 0, 0); return x }
+  it('recorrente incide no dia da semana certo e devolve o intervalo do dia', () => {
+    const b: Bloqueio = { id: 'b', profissionalEmail: 'x', recorrente: true, diasSemana: [1], horaInicio: '12:00', horaFim: '13:00', criadoEm: '' }
+    const seg = diaLocal(2026, 7, 13) // segunda
+    const intr = bloqueioNoDia(b, seg)
+    expect(intr).not.toBeNull()
+    expect(new Date(intr!.inicio).getHours()).toBe(12)
+    expect(new Date(intr!.fim).getHours()).toBe(13)
+    expect(bloqueioNoDia(b, diaLocal(2026, 7, 14))).toBeNull() // terça, fora
+  })
+  it('recorrente some depois da data-limite', () => {
+    const b: Bloqueio = { id: 'b', profissionalEmail: 'x', recorrente: true, diasSemana: [1], horaInicio: '12:00', horaFim: '13:00', ate: '2026-07-06', criadoEm: '' }
+    expect(bloqueioNoDia(b, diaLocal(2026, 7, 13))).toBeNull()
   })
 })
