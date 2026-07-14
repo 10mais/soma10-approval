@@ -762,6 +762,7 @@ export type CrmNegocio = {
   probabilidade?: number
   previsaoFechamento?: string // ISO date
   proximoFollowUp?: string // ISO date — lembrete do próximo contato (cron avisa o dono)
+  queixaPrincipal?: string // clínica: queixa principal relatada pela paciente (espelha o campo da Agenda)
   // Qualificação da oportunidade (quanto mais rico, melhor a venda e o handoff)
   empresa?: string
   segmento?: string

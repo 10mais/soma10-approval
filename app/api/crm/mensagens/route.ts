@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { enviarWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
@@ -91,5 +92,21 @@ export async function PUT(req: NextRequest) {
   if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
   const atual = (await redis.get<WaConversa>(`wa:conversa:${tel}`)) || { telefone: tel }
   await redis.set(`wa:conversa:${tel}`, { ...atual, telefone: tel, ...(contatoId !== undefined ? { contatoId } : {}), ...(nome !== undefined ? { nome } : {}) })
+  return NextResponse.json({ ok: true })
+}
+
+// Exclui a conversa inteira (histórico + metadados + índice). Permissão CRM/excluir.
+// Se o número mandar mensagem de novo, o webhook recria a conversa do zero.
+export async function DELETE(req: NextRequest) {
+  const session = await autorizado()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const tel = (req.nextUrl.searchParams.get('tel') || '').replace(/\D/g, '')
+  if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
+  await redis.del(`wa:msgs:${tel}`)
+  await redis.del(`wa:conversa:${tel}`)
+  await redis.srem('wa:conversas', tel)
   return NextResponse.json({ ok: true })
 }

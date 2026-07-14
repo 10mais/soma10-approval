@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
     descricao: b.descricao || '',
     empresa: b.empresa || '', segmento: b.segmento || '', faturamentoEstimado: b.faturamentoEstimado || '',
     instagram: b.instagram || '', dores: b.dores || '', solucoes: b.solucoes || '',
+    ...(b.queixaPrincipal ? { queixaPrincipal: String(b.queixaPrincipal).slice(0, 300) } : {}),
     handoff: b.handoff || {},
     atividades: [atividade('criacao', 'Negócio criado', autor)],
     criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
@@ -167,7 +168,7 @@ export async function PUT(req: NextRequest) {
     if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 

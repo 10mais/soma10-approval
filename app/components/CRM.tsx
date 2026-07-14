@@ -14,6 +14,7 @@ type Negocio = {
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
+  queixaPrincipal?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
   empresaId?: string
   agendamentos?: { id: string; quando: string; canal: string; titulo: string; nota?: string; feito?: boolean }[]
@@ -1311,7 +1312,7 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
 }
 
 function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; onClose: () => void; onSalvo: () => void }) {
-  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '' })
+  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '' })
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
   const [contatoId, setContatoId] = useState('')
@@ -1346,7 +1347,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes }),
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
@@ -1421,9 +1422,10 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
             <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
           </div>
 
-          {perfilClinica ? (
+          {perfilClinica ? (<>
+            <div><label style={labelStyle}>Queixa principal</label><input value={f.queixaPrincipal} onChange={e => setF({ ...f, queixaPrincipal: e.target.value })} placeholder="O que a paciente relata (ex.: melasma, flacidez, acne...)" style={inputStyle} /></div>
             <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
-          ) : (<>
+          </>) : (<>
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
@@ -1592,9 +1594,10 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
 
         {/* Qualificação — clínica só tem Observações; agência tem a ficha B2B */}
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 14 }}>
-          {perfilClinica ? (
+          {perfilClinica ? (<>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
             <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
-          ) : (<>
+          </>) : (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
@@ -1768,6 +1771,7 @@ const CANAL_CFG: Record<CanalMsg, {
   historico: (id: string) => Promise<any>
   enviar: (id: string, texto: string) => Promise<any>
   vincular: (id: string, contatoId: string) => Promise<any>
+  excluir?: (id: string) => Promise<any>
   buscar?: (q: string) => Promise<{ tel: string; snippet: string }[]>
   norm: (c: any) => MsgConversa
   subId: (c: MsgConversa | undefined, id: string) => string
@@ -1782,6 +1786,7 @@ const CANAL_CFG: Record<CanalMsg, {
     buscar: q => fetch(`/api/crm/mensagens?busca=${encodeURIComponent(q)}`).then(r => r.json()).then(d => Array.isArray(d?.matches) ? d.matches : []).catch(() => []),
     enviar: (id, texto) => fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, texto }) }).then(x => x.json()).catch(() => null),
     vincular: (id, contatoId) => fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, contatoId }) }).catch(() => {}),
+    excluir: id => fetch(`/api/crm/mensagens?tel=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c, id: c.telefone }),
     subId: (_c, id) => `+${id}`,
     matchContato: (c, contatos) => contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.id)?.nome,
@@ -1843,6 +1848,16 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
     if (!sel) return
     await cfg.vincular(sel, contatoId)
     carregarConversas()
+  }
+  // Exclui a conversa aberta (histórico + metadados). O número volta a aparecer
+  // se mandar mensagem de novo (o webhook recria a conversa do zero).
+  async function excluirConversa() {
+    if (!sel || !cfg.excluir) return
+    const quem = conversaSel ? nomeDe(conversaSel) : cfg.subId(conversaSel, sel)
+    if (!(await confirmar(`Excluir a conversa com "${quem}"? Todo o histórico de mensagens será removido. Esta ação não pode ser desfeita.`, { titulo: 'Excluir conversa', okLabel: 'Excluir', perigo: true }))) return
+    const r = await cfg.excluir(sel)
+    if (r?.ok) { toast('Conversa excluída.', 'sucesso'); setSel(''); setMensagens([]); carregarConversas() }
+    else toast(r?.error || 'Não foi possível excluir a conversa.', 'erro')
   }
   // Cria um contato novo com os dados da conversa e já vincula (direto do inbox).
   async function criarEContatoVincular() {
@@ -2011,6 +2026,12 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                 <option value="__novo">＋ Criar contato novo</option>
                 {contatos.map(ct => <option key={ct.id} value={ct.id}>{ct.nome}</option>)}
               </select>
+              {cfg.excluir && (
+                <button onClick={excluirConversa} title="Excluir conversa (remove todo o histórico)"
+                  style={{ background: 'transparent', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  Excluir
+                </button>
+              )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: '#fafafa' }}>
               {mensagens.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
