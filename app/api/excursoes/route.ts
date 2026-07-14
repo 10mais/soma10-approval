@@ -28,6 +28,7 @@ function limparMotoristas(arr: any): MotoristaExcursao[] {
     nome: String(m?.nome || '').trim().slice(0, 80),
     cpf: (m?.cpf || '').toString().slice(0, 20) || undefined,
     cnh: (m?.cnh || '').toString().slice(0, 20) || undefined,
+    email: (m?.email || '').toString().slice(0, 120) || undefined,
   })).filter(m => m.nome).slice(0, 6)
 }
 function limparInclusos(arr: any): string[] {
@@ -35,6 +36,7 @@ function limparInclusos(arr: any): string[] {
   return arr.map((s: any) => String(s).trim().slice(0, 120)).filter(Boolean).slice(0, 40)
 }
 const dataOk = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
+const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
 
 export async function GET(req: NextRequest) {
   const session = await sessaoEquipe()
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
     roteiro: (b.roteiro || '').toString().slice(0, 500) || undefined,
     dataIda,
     dataVolta: dataOk(String(b.dataVolta || '')) ? String(b.dataVolta) : undefined,
+    horaSaida: horaOk(String(b.horaSaida || '')) ? String(b.horaSaida) : undefined,
+    horaRetorno: horaOk(String(b.horaRetorno || '')) ? String(b.horaRetorno) : undefined,
     onibusId: (b.onibusId || '').toString() || undefined,
     motoristas: limparMotoristas(b.motoristas),
     valorPacote: Math.max(0, Number(b.valorPacote) || 0),
@@ -97,6 +101,8 @@ export async function PUT(req: NextRequest) {
   if (b.roteiro !== undefined) e.roteiro = String(b.roteiro).slice(0, 500) || undefined
   if (b.dataIda !== undefined && dataOk(String(b.dataIda))) e.dataIda = String(b.dataIda)
   if (b.dataVolta !== undefined) e.dataVolta = dataOk(String(b.dataVolta)) ? String(b.dataVolta) : undefined
+  if (b.horaSaida !== undefined) e.horaSaida = horaOk(String(b.horaSaida)) ? String(b.horaSaida) : undefined
+  if (b.horaRetorno !== undefined) e.horaRetorno = horaOk(String(b.horaRetorno)) ? String(b.horaRetorno) : undefined
   if (b.onibusId !== undefined) e.onibusId = String(b.onibusId) || undefined
   if (b.motoristas !== undefined) e.motoristas = limparMotoristas(b.motoristas)
   if (b.valorPacote !== undefined) e.valorPacote = Math.max(0, Number(b.valorPacote) || 0)

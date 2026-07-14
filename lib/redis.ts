@@ -278,7 +278,7 @@ export type Onibus = {
 
 // Excursão (uma saída): roteiro, datas, ônibus, motoristas, valor do pacote e
 // inclusos. Chaves: `excursao:{id}`, set `excursoes`. Vagas derivam do layout.
-export type MotoristaExcursao = { nome: string; cpf?: string; cnh?: string }
+export type MotoristaExcursao = { nome: string; cpf?: string; cnh?: string; email?: string } // email = vínculo com o colaborador cadastrado (tipoTurismo=motorista)
 export type StatusExcursao = 'planejada' | 'aberta' | 'realizada' | 'cancelada'
 export type Excursao = {
   id: string
@@ -286,6 +286,8 @@ export type Excursao = {
   roteiro?: string
   dataIda: string      // YYYY-MM-DD
   dataVolta?: string   // YYYY-MM-DD
+  horaSaida?: string   // HH:MM — horário de saída
+  horaRetorno?: string // HH:MM — horário previsto de retorno
   onibusId?: string
   motoristas?: MotoristaExcursao[]
   valorPacote: number
