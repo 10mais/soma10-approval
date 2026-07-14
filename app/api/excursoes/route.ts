@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Excursao, MotoristaExcursao } from '@/lib/redis'
+import { redis, Excursao, MotoristaExcursao, ParadaRoteiro } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { v4 as uuid } from 'uuid'
 
@@ -34,6 +34,18 @@ function limparMotoristas(arr: any): MotoristaExcursao[] {
 function limparInclusos(arr: any): string[] {
   if (!Array.isArray(arr)) return []
   return arr.map((s: any) => String(s).trim().slice(0, 120)).filter(Boolean).slice(0, 40)
+}
+function limparParadas(arr: any): ParadaRoteiro[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((p: any) => ({
+    id: String(p?.id || uuid()),
+    data: dataOk(String(p?.data || '')) ? String(p.data) : '',
+    hora: horaOk(String(p?.hora || '')) ? String(p.hora) : undefined,
+    titulo: String(p?.titulo || '').trim().slice(0, 120),
+    local: (p?.local || '').toString().slice(0, 120) || undefined,
+    tipo: (p?.tipo || '').toString().slice(0, 20) || undefined,
+    observacoes: (p?.observacoes || '').toString().slice(0, 300) || undefined,
+  })).filter(p => p.data && p.titulo).slice(0, 100)
 }
 const dataOk = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
 const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
@@ -76,6 +88,7 @@ export async function POST(req: NextRequest) {
     valorPacote: Math.max(0, Number(b.valorPacote) || 0),
     descontoPadrao: b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined,
     inclusos: limparInclusos(b.inclusos),
+    paradas: limparParadas(b.paradas),
     status: ['planejada', 'aberta', 'realizada', 'cancelada'].includes(b.status) ? b.status : 'aberta',
     observacoes: (b.observacoes || '').toString().slice(0, 800) || undefined,
     criadoPor: session.user?.name || session.user?.email || undefined,
@@ -108,6 +121,7 @@ export async function PUT(req: NextRequest) {
   if (b.valorPacote !== undefined) e.valorPacote = Math.max(0, Number(b.valorPacote) || 0)
   if (b.descontoPadrao !== undefined) e.descontoPadrao = b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined
   if (b.inclusos !== undefined) e.inclusos = limparInclusos(b.inclusos)
+  if (b.paradas !== undefined) e.paradas = limparParadas(b.paradas)
   if (b.status !== undefined && ['planejada', 'aberta', 'realizada', 'cancelada'].includes(b.status)) e.status = b.status
   if (b.observacoes !== undefined) e.observacoes = String(b.observacoes).slice(0, 800) || undefined
   e.atualizadoEm = new Date().toISOString()

@@ -280,6 +280,16 @@ export type Onibus = {
 // inclusos. Chaves: `excursao:{id}`, set `excursoes`. Vagas derivam do layout.
 export type MotoristaExcursao = { nome: string; cpf?: string; cnh?: string; email?: string } // email = vínculo com o colaborador cadastrado (tipoTurismo=motorista)
 export type StatusExcursao = 'planejada' | 'aberta' | 'realizada' | 'cancelada'
+// Parada do itinerário (timeline dia-a-dia da excursão, dentro de dataIda..dataVolta).
+export type ParadaRoteiro = {
+  id: string
+  data: string        // YYYY-MM-DD
+  hora?: string       // HH:MM
+  titulo: string
+  local?: string
+  tipo?: string       // embarque/passeio/refeicao/hospedagem/translado/livre
+  observacoes?: string
+}
 export type Excursao = {
   id: string
   titulo: string
@@ -293,6 +303,7 @@ export type Excursao = {
   valorPacote: number
   descontoPadrao?: number
   inclusos?: string[]
+  paradas?: ParadaRoteiro[]   // itinerário dia-a-dia (timeline)
   status: StatusExcursao
   observacoes?: string
   criadoPor?: string

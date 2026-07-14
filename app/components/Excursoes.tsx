@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { layoutPorId, totalPoltronas } from '@/lib/layoutsOnibus'
+import RoteiroExcursao, { type Parada } from './RoteiroExcursao'
 
 // Excursões (turismo): uma saída com ônibus, motoristas, valor do pacote e inclusos.
 // As reservas (poltronas + passageiros) vivem no módulo Reservas.
@@ -13,7 +14,7 @@ type Excursao = {
   id: string; titulo: string; roteiro?: string; dataIda: string; dataVolta?: string
   horaSaida?: string; horaRetorno?: string
   onibusId?: string; motoristas?: Motorista[]; valorPacote: number; descontoPadrao?: number
-  inclusos?: string[]; status: string; observacoes?: string
+  inclusos?: string[]; paradas?: Parada[]; status: string; observacoes?: string
 }
 type Form = Omit<Excursao, 'id' | 'valorPacote' | 'descontoPadrao'> & { id?: string; valorPacote: string; descontoPadrao: string; inclusoNovo: string }
 
@@ -36,6 +37,7 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
   const [form, setForm] = useState<Form | null>(null)
   const [formInicial, setFormInicial] = useState('')
   const [motoristasCad, setMotoristasCad] = useState<MotoristaCad[]>([])
+  const [roteiroDe, setRoteiroDe] = useState<Excursao | null>(null)
   const [salvando, setSalvando] = useState(false)
 
   const carregar = useCallback(() => {
@@ -123,6 +125,11 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
                     {e.motoristas && e.motoristas.length > 0 && <span>· {e.motoristas.length} motorista(s)</span>}
                   </div>
                   {e.inclusos && e.inclusos.length > 0 && <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>Inclusos: {e.inclusos.join(' · ')}</div>}
+                  {(podeEditar || (e.paradas && e.paradas.length > 0)) && (
+                    <div style={{ marginTop: 8 }}>
+                      <button type="button" onClick={ev => { ev.stopPropagation(); setRoteiroDe(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Roteiro{e.paradas && e.paradas.length ? ` (${e.paradas.length})` : ''}</button>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -204,6 +211,9 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
             </div>
           </div>
         </div>
+      )}
+      {roteiroDe && (
+        <RoteiroExcursao excursao={roteiroDe} podeEditar={podeEditar} onClose={() => setRoteiroDe(null)} onSaved={carregar} />
       )}
     </div>
   )
