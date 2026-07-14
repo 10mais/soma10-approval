@@ -51,6 +51,7 @@ const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: fa
 const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const OnibusModulo = dynamic(() => import('../components/Onibus'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Excursoes = dynamic(() => import('../components/Excursoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -2027,6 +2028,7 @@ function Dashboard() {
               {perfilTurismo && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
+                  <NavBtn chave="excursoes" label="Excursões" />
                   <NavBtn chave="onibus" label="Ônibus" />
                 </nav>
               )}
@@ -3282,7 +3284,10 @@ function Dashboard() {
           />
         )}
 
-        {/* Operação turismo — Ônibus */}
+        {/* Operação turismo — Excursões / Ônibus */}
+        {aba === 'excursoes' && perfilTurismo && role !== 'cliente' && (
+          <Excursoes podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+        )}
         {aba === 'onibus' && perfilTurismo && role !== 'cliente' && (
           <OnibusModulo podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
