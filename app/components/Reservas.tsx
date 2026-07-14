@@ -22,14 +22,18 @@ const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
   'cancelada': { label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
 }
 
-// Grade de um andar: mapa (fileira-coluna) → poltrona, e os limites p/ render.
+// Grade de um andar: poltronas + elementos (amenidades) por (fileira-coluna).
 function gradeAndar(layout: LayoutOnibus, andar: number) {
   const ps = layout.poltronas.filter(p => p.andar === andar)
-  const maxFileira = ps.length ? Math.max(...ps.map(p => p.fileira)) : 0
-  const maxColuna = ps.length ? Math.max(...ps.map(p => p.coluna)) : 0
+  const els = (layout.elementos || []).filter(e => e.andar === andar)
+  const todos = [...ps.map(p => ({ f: p.fileira, c: p.coluna })), ...els.map(e => ({ f: e.fileira, c: e.coluna }))]
+  const maxFileira = todos.length ? Math.max(...todos.map(x => x.f)) : 0
+  const maxColuna = todos.length ? Math.max(...todos.map(x => x.c)) : 0
   const mapa = new Map<string, Poltrona>()
   ps.forEach(p => mapa.set(`${p.fileira}-${p.coluna}`, p))
-  return { maxFileira, maxColuna, mapa }
+  const elMapa = new Map<string, string>()
+  els.forEach(e => elMapa.set(`${e.fileira}-${e.coluna}`, e.label))
+  return { maxFileira, maxColuna, mapa, elMapa }
 }
 
 // Mapa visual de poltronas (por andar). Ocupadas travadas; selecionadas destacadas.
@@ -40,7 +44,7 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
       {andares.map(andar => {
-        const { maxFileira, maxColuna, mapa } = gradeAndar(layout, andar)
+        const { maxFileira, maxColuna, mapa, elMapa } = gradeAndar(layout, andar)
         if (!maxFileira) return null
         return (
           <div key={andar}>
@@ -50,7 +54,11 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
                 <div key={fileira} style={{ display: 'flex', gap: 4 }}>
                   {Array.from({ length: maxColuna }, (_, c) => c + 1).map(coluna => {
                     const p = mapa.get(`${fileira}-${coluna}`)
-                    if (!p) return <span key={coluna} style={{ width: 30, height: 26 }} /> // corredor
+                    if (!p) {
+                      const el = elMapa.get(`${fileira}-${coluna}`)
+                      if (el) return <span key={coluna} title={el} style={{ minWidth: 30, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap' }}>{el}</span>
+                      return <span key={coluna} style={{ width: 30, height: 26 }} /> // corredor
+                    }
                     const ocupada = ocupadas.has(p.numero)
                     const sel = selecionadas.has(p.numero)
                     const cor = ocupada ? { bg: '#e5e7eb', bd: '#d1d5db', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#cbd5e1', tx: '#334155' }

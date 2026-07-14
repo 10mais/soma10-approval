@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation'
 // Página PÚBLICA (sem login): o cliente escolhe sua(s) poltrona(s) pelo link.
 
 type Poltrona = { numero: string; tipo: string; andar: number; fileira: number; coluna: number }
-type Layout = { id: string; nome: string; andares: number; poltronas: Poltrona[] }
+type ElementoLayout = { label: string; andar: number; fileira: number; coluna: number }
+type Layout = { id: string; nome: string; andares: number; poltronas: Poltrona[]; elementos?: ElementoLayout[] }
 type Dados = {
   contratanteNome: string; status: string
   excursao: { titulo: string; dataIda: string; dataVolta?: string } | null
@@ -17,11 +18,15 @@ const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('p
 
 function gradeAndar(layout: Layout, andar: number) {
   const ps = layout.poltronas.filter(p => p.andar === andar)
-  const maxF = ps.length ? Math.max(...ps.map(p => p.fileira)) : 0
-  const maxC = ps.length ? Math.max(...ps.map(p => p.coluna)) : 0
+  const els = (layout.elementos || []).filter(e => e.andar === andar)
+  const todos = [...ps.map(p => ({ f: p.fileira, c: p.coluna })), ...els.map(e => ({ f: e.fileira, c: e.coluna }))]
+  const maxF = todos.length ? Math.max(...todos.map(x => x.f)) : 0
+  const maxC = todos.length ? Math.max(...todos.map(x => x.c)) : 0
   const mapa = new Map<string, Poltrona>()
   ps.forEach(p => mapa.set(`${p.fileira}-${p.coluna}`, p))
-  return { maxF, maxC, mapa }
+  const elMapa = new Map<string, string>()
+  els.forEach(e => elMapa.set(`${e.fileira}-${e.coluna}`, e.label))
+  return { maxF, maxC, mapa, elMapa }
 }
 
 export default function ReservaPublica() {
@@ -101,7 +106,7 @@ export default function ReservaPublica() {
             {/* Mapa */}
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16 }}>
               {Array.from({ length: dados.layout.andares }, (_, a) => a + 1).map(andar => {
-                const { maxF, maxC, mapa } = gradeAndar(dados.layout!, andar)
+                const { maxF, maxC, mapa, elMapa } = gradeAndar(dados.layout!, andar)
                 if (!maxF) return null
                 return (
                   <div key={andar}>
@@ -111,7 +116,11 @@ export default function ReservaPublica() {
                         <div key={fileira} style={{ display: 'flex', gap: 4 }}>
                           {Array.from({ length: maxC }, (_, c) => c + 1).map(coluna => {
                             const p = mapa.get(`${fileira}-${coluna}`)
-                            if (!p) return <span key={coluna} style={{ width: 34, height: 30 }} />
+                            if (!p) {
+                              const el = elMapa.get(`${fileira}-${coluna}`)
+                              if (el) return <span key={coluna} title={el} style={{ minWidth: 34, height: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 6, padding: '0 4px', whiteSpace: 'nowrap' }}>{el}</span>
+                              return <span key={coluna} style={{ width: 34, height: 30 }} />
+                            }
                             const ocupada = ocupadasSet.has(p.numero)
                             const minha = escolhidas.has(p.numero)
                             const cor = ocupada ? { bg: '#e5e7eb', bd: '#d1d5db', tx: '#9ca3af' } : minha ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#94a3b8', tx: '#334155' }

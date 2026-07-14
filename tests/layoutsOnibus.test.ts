@@ -5,13 +5,18 @@ import { LAYOUTS, layoutPorId, totalPoltronas, numerosPoltronas, poltronaExiste 
 // nominal). Números duplicados ou inexistentes quebrariam a unicidade de poltrona.
 
 describe('layouts de ônibus', () => {
-  it('todo preset tem números de poltrona ÚNICOS e sequenciais', () => {
+  it('todo layout tem números ÚNICOS cobrindo 1..total (ordem do croqui é irregular)', () => {
     for (const l of LAYOUTS) {
       const nums = l.poltronas.map(p => p.numero)
       expect(new Set(nums).size, `layout ${l.id}: números duplicados`).toBe(nums.length)
-      // sequencial de 1..total
-      expect(nums).toEqual(Array.from({ length: nums.length }, (_, i) => String(i + 1)))
+      // conjunto = {1..total} (posições seguem o croqui, não são sequenciais por fileira)
+      expect(new Set(nums)).toEqual(new Set(Array.from({ length: nums.length }, (_, i) => String(i + 1))))
     }
+  })
+
+  it('carros da Deny têm os totais dos croquis (2023=40, 2021=43)', () => {
+    expect(totalPoltronas(layoutPorId('carro-2023')!)).toBe(40)
+    expect(totalPoltronas(layoutPorId('carro-2021')!)).toBe(43)
   })
 
   it('cada poltrona tem andar/fileira/coluna válidos e o andar bate com o layout', () => {
@@ -26,7 +31,7 @@ describe('layouts de ônibus', () => {
   })
 
   it('helpers: layoutPorId, total, números e existência', () => {
-    const l = layoutPorId('dd-leito-2x1')!
+    const l = layoutPorId('carro-2023')!
     expect(l).toBeTruthy()
     expect(totalPoltronas(l)).toBe(l.poltronas.length)
     expect(numerosPoltronas(l)).toContain('1')
