@@ -1,4 +1,5 @@
 import { redis } from './redis'
+import { put } from '@vercel/blob'
 
 // Integração WhatsApp — DOIS transportes possíveis (o Evolution tem prioridade):
 //
@@ -13,7 +14,14 @@ import { redis } from './redis'
 //
 // Sem NENHUM dos dois, o envio é no-op (scaffold seguro antes de configurar).
 
-export type WaMensagem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
+export type WaMensagem = {
+  id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string
+  // Mídia recebida (F1 do inbox rico): bytes ficam no Blob; aqui só a referência.
+  tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'
+  midiaUrl?: string
+  mimetype?: string
+  fileName?: string
+}
 export type WaConversa = { telefone: string; nome?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
 
 export function evolutionConfigurado(): boolean {
@@ -66,6 +74,58 @@ export function textoMensagemEvolution(message: any): string {
   if (message.stickerMessage) return '[figurinha]'
   if (message.locationMessage) return '[localização]'
   return ''
+}
+
+// Nó de mídia do payload do Evolution (imagem/vídeo/áudio/documento/figurinha).
+function noMidiaEvolution(message: any): { tipo: NonNullable<WaMensagem['tipo']>; no: any } | null {
+  if (!message) return null
+  if (message.imageMessage) return { tipo: 'imagem', no: message.imageMessage }
+  if (message.videoMessage) return { tipo: 'video', no: message.videoMessage }
+  if (message.audioMessage) return { tipo: 'audio', no: message.audioMessage }
+  if (message.documentMessage) return { tipo: 'documento', no: message.documentMessage }
+  if (message.stickerMessage) return { tipo: 'figurinha', no: message.stickerMessage }
+  return null
+}
+
+const EXT_POR_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+  'video/mp4': 'mp4', 'video/3gpp': '3gp',
+  'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
+  'application/pdf': 'pdf',
+}
+
+// Captura a MÍDIA de uma mensagem recebida e guarda no Blob (URL permanente).
+// 1º tenta o base64 já embutido no webhook (Evolution com "webhook base64" ligado);
+// senão pede os bytes ao Evolution (getBase64FromMediaMessage). Best-effort:
+// qualquer falha devolve só o tipo — a mensagem fica com o rótulo, nada quebra.
+export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem, 'tipo' | 'midiaUrl' | 'mimetype' | 'fileName'> | null> {
+  try {
+    const m = noMidiaEvolution(data?.message)
+    if (!m) return null
+    if (!process.env.BLOB_READ_WRITE_TOKEN) return { tipo: m.tipo }
+    let b64: string = typeof data?.message?.base64 === 'string' ? data.message.base64 : ''
+    let mimetype: string = m.no?.mimetype || ''
+    if (!b64 && evolutionConfigurado() && data?.key?.id) {
+      const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+      const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${process.env.EVOLUTION_INSTANCE}`, {
+        method: 'POST',
+        headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: { key: data.key }, convertToMp4: false }),
+      })
+      const d = await r.json().catch(() => ({} as any))
+      if (typeof d?.base64 === 'string' && d.base64) { b64 = d.base64; mimetype = d?.mimetype || mimetype }
+    }
+    if (!b64) return { tipo: m.tipo }
+    if (b64.length > 34_000_000) return { tipo: m.tipo } // ~25MB binário: grande demais p/ guardar
+    const buf = Buffer.from(b64, 'base64')
+    mimetype = (mimetype || 'application/octet-stream').split(';')[0].trim()
+    const ext = EXT_POR_MIME[mimetype] || ((mimetype.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'bin')
+    const blob = await put(`whatsapp/${Date.now()}-${String(data?.key?.id || 'msg').replace(/[^a-zA-Z0-9]/g, '').slice(-12)}.${ext}`, buf, {
+      access: 'public', contentType: mimetype, token: process.env.BLOB_READ_WRITE_TOKEN,
+    })
+    const nomeOriginal = m.no?.fileName ? String(m.no.fileName).slice(0, 120) : ''
+    return { tipo: m.tipo, midiaUrl: blob.url, mimetype, ...(nomeOriginal ? { fileName: nomeOriginal } : {}) }
+  } catch { return null }
 }
 
 // Salva uma mensagem na conversa (por telefone) e atualiza os metadados/índice.

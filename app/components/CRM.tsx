@@ -1823,7 +1823,19 @@ function AvatarConv({ foto, nome, cor }: { foto?: string; nome: string; cor: str
     </span>
   )
 }
-type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string }
+type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string }
+
+// Torna URLs do texto clicáveis (abre em nova aba), mantendo o resto como está.
+function comLinks(texto: string) {
+  return (texto || '').split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
+    /^https?:\/\//.test(p)
+      ? <a key={i} href={p} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline', wordBreak: 'break-all' }}>{p}</a>
+      : p
+  )
+}
+
+// Rótulos "[imagem]"/"[áudio]"… somem quando a mídia em si é exibida na bolha.
+const ehRotuloMidia = (t: string) => /^\[[^\]]+\]$/.test((t || '').trim())
 type CanalMsg = 'whatsapp' | 'instagram'
 
 // Cada canal abstrai o endpoint, os nomes dos campos e a apresentação. A UI é a mesma.
@@ -2099,12 +2111,36 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: '#fafafa' }}>
               {mensagens.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
-                : mensagens.map(m => (
+                : mensagens.map(m => {
+                  const textoVisivel = m.midiaUrl && ehRotuloMidia(m.texto) ? '' : m.texto
+                  return (
                   <div key={m.id} style={{ alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '78%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {m.texto}
+                    {m.midiaUrl && m.tipo === 'imagem' && (
+                      <a href={m.midiaUrl} target="_blank" rel="noreferrer" title="Abrir/baixar imagem">
+                        <img src={m.midiaUrl} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                      </a>
+                    )}
+                    {m.midiaUrl && m.tipo === 'figurinha' && (
+                      <img src={m.midiaUrl} alt="" style={{ width: 110, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                    )}
+                    {m.midiaUrl && m.tipo === 'video' && (
+                      <video src={m.midiaUrl} controls preload="metadata" style={{ maxWidth: 260, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                    )}
+                    {m.midiaUrl && m.tipo === 'audio' && (
+                      <audio src={m.midiaUrl} controls preload="metadata" style={{ maxWidth: 240, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                    )}
+                    {m.midiaUrl && m.tipo === 'documento' && (
+                      <a href={m.midiaUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6" /></svg>
+                        {m.fileName || 'Baixar documento'}
+                      </a>
+                    )}
+                    {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: '#999' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
+                    {textoVisivel && (!m.tipo || m.midiaUrl) && comLinks(textoVisivel)}
                     <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
-                ))}
+                  )
+                })}
             </div>
             <div style={{ borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
               {/* Popover de modelos de mensagem */}

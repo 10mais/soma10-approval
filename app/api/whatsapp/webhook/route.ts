@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, textoMensagemEvolution, fotoPerfilEvolution, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, WaConversa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
@@ -35,11 +35,13 @@ async function processarEvolution(body: any): Promise<boolean> {
     if (!tel) continue
     const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
+    // Mídia (imagem/vídeo/áudio/documento): baixa e guarda no Blob (best-effort).
+    const midia = await capturarMidiaEvolution(d)
     // Foto do perfil: busca uma vez (quando a conversa ainda não tem), best-effort.
     let foto: string | undefined
     const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
     if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
-    await salvarMensagem(tel, { id: d?.key?.id || uuid(), de: 'cliente', texto, em }, { nome: d?.pushName, ...(foto ? { foto } : {}) } as any)
+    await salvarMensagem(tel, { id: d?.key?.id || uuid(), de: 'cliente', texto, em, ...(midia || {}) }, { nome: d?.pushName, ...(foto ? { foto } : {}) } as any)
     await notificarEquipe('geral', `WhatsApp: ${d?.pushName || tel}`, texto.slice(0, 120)).catch(() => {})
     gravou = true
   }
