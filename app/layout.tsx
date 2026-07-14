@@ -3,6 +3,8 @@ import { Providers } from './providers'
 import PushSetup from './components/PushSetup'
 import AssistenteIA from './components/AssistenteIA'
 import Toaster from './components/Toaster'
+import { getPerfilCache } from '@/lib/cache'
+import { nomeSistema } from '@/lib/perfisInstanciaCatalogo'
 
 // Splash screens do iOS (fundo escuro + logo) por dispositivo — geradas em public/splash.
 const iosSplash = [
@@ -16,12 +18,15 @@ const iosSplash = [
   { dw: 375, dh: 667, r: 2, f: '750x1334' },
 ].map(d => ({ url: `/splash/splash-${d.f}.png`, media: `(device-width: ${d.dw}px) and (device-height: ${d.dh}px) and (-webkit-device-pixel-ratio: ${d.r}) and (orientation: portrait)` }))
 
-export const metadata = {
-  title: 'Soma10 Approval — Grupo 10+',
-  manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Soma10', statusBarStyle: 'black-translucent' as const, startupImage: iosSplash },
-  icons: { apple: '/apple-touch-icon.png' },
-  other: { 'mobile-web-app-capable': 'yes' },
+export async function generateMetadata() {
+  const nome = nomeSistema(await getPerfilCache())
+  return {
+    title: `${nome} — Grupo 10+`,
+    manifest: '/manifest.webmanifest',
+    appleWebApp: { capable: true, title: 'Soma10', statusBarStyle: 'black-translucent' as const, startupImage: iosSplash },
+    icons: { apple: '/apple-touch-icon.png' },
+    other: { 'mobile-web-app-capable': 'yes' },
+  }
 }
 
 export const viewport = { themeColor: '#111111', viewportFit: 'cover' as const, width: 'device-width', initialScale: 1 }

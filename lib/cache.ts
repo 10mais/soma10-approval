@@ -36,3 +36,11 @@ export const getConfigCache = unstable_cache(
   ['config-agencia'],
   { tags: ['config'], revalidate: 300 }
 )
+
+// Perfil da instância cacheado (muda quase nunca). Usado no branding perfil-aware
+// (título do app, manifest, /api/marca). Invalida junto com a tag 'config'.
+export const getPerfilCache = unstable_cache(
+  async (): Promise<string | null> => (await redis.get<string>('config:perfilInstancia')) || null,
+  ['perfil-instancia'],
+  { tags: ['config'], revalidate: 300 }
+)

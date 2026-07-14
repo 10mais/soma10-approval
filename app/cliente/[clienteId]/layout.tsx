@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
 import { temModulo } from '@/lib/modulos'
 import AvatarCliente from '@/app/components/AvatarCliente'
+import SystemName from '@/app/components/SystemName'
 
 // `perm` liga o item a uma flag de permissao do cliente (cliente.permissoes).
 // Ausente/undefined = liberado. Itens sem `perm` (Início) ficam sempre visíveis.
@@ -129,7 +130,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
             <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-            <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>{mobile ? 'Soma10' : 'Soma10 Approval'}</span>
+            <span style={{ fontWeight: 800, color: corTextoHeader, fontSize: 15 }}>{mobile ? 'Soma10' : <SystemName />}</span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: mobile ? 8 : 12 }}>

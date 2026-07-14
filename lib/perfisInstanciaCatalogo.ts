@@ -54,6 +54,7 @@ export const ABAS_OCULTAS_TURISMO: string[] = [
   'solicitacoes', // Solicitações do cliente (agência)
   'clientes', // gestão de clientes B2B de agência — turismo usa Contatos/Empresas do CRM
   'agenda', // agenda clínica (turismo tem calendário de ônibus próprio, F5)
+  'carga', // carga da equipe (métrica de agência de conteúdo; turismo não usa)
 ]
 
 export const PERFIS: DefPerfil[] = [
@@ -175,6 +176,15 @@ export const PERFIS: DefPerfil[] = [
 export function perfilDef(chave?: string | null): DefPerfil | null {
   if (!chave) return null
   return PERFIS.find(p => p.chave === chave) || null
+}
+
+// Nome de exibição do sistema por perfil (branding front-only). Sempre "Soma10";
+// o sufixo varia por linha de produto. Client-safe (sem Redis).
+// clinica → Soma10 Clinic · turismo/gestao → Soma10 App · agência/padrão → Soma10 Agency.
+export function nomeSistema(perfil?: string | null): string {
+  if (perfil === 'clinica') return 'Soma10 Clinic'
+  if (perfil === 'turismo' || perfil === 'gestao') return 'Soma10 App'
+  return 'Soma10 Agency'
 }
 
 // Perfis que NÃO usam "Trabalhe Conosco"/recrutamento (clínica, turismo). Usado

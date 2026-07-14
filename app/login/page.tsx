@@ -2,10 +2,12 @@
 import { useState } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import SystemName from '@/app/components/SystemName'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [verSenha, setVerSenha] = useState(false)
   const [codigo, setCodigo] = useState('')
   const [mostrar2FA, setMostrar2FA] = useState(false)
   const [metodo2FA, setMetodo2FA] = useState<'app' | 'email' | null>(null)
@@ -53,7 +55,7 @@ export default function LoginPage() {
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 16, width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 44, height: 44, objectFit: 'contain' }} />
           </div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Soma10 Approval</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}><SystemName fallback="Soma10" /></h1>
           <p style={{ margin: '6px 0 0', color: '#999', fontSize: 14 }}>Acesso exclusivo para colaboradores</p>
         </div>
 
@@ -72,14 +74,22 @@ export default function LoginPage() {
 
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Senha</label>
-            <input
-              type="password"
-              value={senha}
-              onChange={e => setSenha(e.target.value)}
-              placeholder="••••••••"
-              required
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={verSenha ? 'text' : 'password'}
+                value={senha}
+                onChange={e => setSenha(e.target.value)}
+                placeholder="••••••••"
+                required
+                style={{ width: '100%', padding: '12px 44px 12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+              />
+              <button type="button" onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar senha' : 'Mostrar senha'} aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', padding: 6 }}>
+                {verSenha
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.39-1.61" /><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22" /></svg>
+                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>}
+              </button>
+            </div>
           </div>
 
           {mostrar2FA && (
@@ -123,7 +133,7 @@ export default function LoginPage() {
         </form>
 
         <p style={{ textAlign: 'center', color: '#ccc', fontSize: 12, margin: '24px 0 0' }}>
-          Soma10 Approval · Grupo 10+
+          <SystemName /> · Grupo 10+
         </p>
       </div>
     </div>

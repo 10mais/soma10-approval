@@ -1,9 +1,12 @@
 import type { MetadataRoute } from 'next'
+import { getPerfilCache } from '@/lib/cache'
+import { nomeSistema } from '@/lib/perfisInstanciaCatalogo'
 
 // Manifest do PWA — torna o app instalavel ("Adicionar a tela inicial").
-export default function manifest(): MetadataRoute.Manifest {
+// Nome perfil-aware (Soma10 App/Clinic/Agency); short_name segue "Soma10".
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
   return {
-    name: 'Soma10 Approval',
+    name: nomeSistema(await getPerfilCache()),
     short_name: 'Soma10',
     description: 'Gestão e aprovação de conteúdo — Grupo 10+',
     id: '/',

@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import AvatarCliente from '@/app/components/AvatarCliente'
+import SystemName from '@/app/components/SystemName'
 
 type Status = {
   cliente: { nome: string; logo: string; corPrimaria: string }
@@ -93,7 +94,7 @@ export default function StatusPublico() {
           </div>
         )}
 
-        <p style={{ textAlign: 'center', margin: '22px 0 0', fontSize: 11, color: '#bbb' }}>Soma10 Approval · Grupo 10+</p>
+        <p style={{ textAlign: 'center', margin: '22px 0 0', fontSize: 11, color: '#bbb' }}><SystemName /> · Grupo 10+</p>
       </div>
     </div>
   )
