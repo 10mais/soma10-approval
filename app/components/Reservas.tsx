@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { layoutPorId, LayoutOnibus, Poltrona, totalPoltronas } from '@/lib/layoutsOnibus'
+import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
+import { v4 as uuid } from 'uuid'
 
 // Reservas de excursão + MAPA DE POLTRONAS visual. Jamais duas pessoas na mesma
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
@@ -9,9 +11,8 @@ import { layoutPorId, LayoutOnibus, Poltrona, totalPoltronas } from '@/lib/layou
 type Onibus = { id: string; nome: string; layoutId: string }
 type Excursao = { id: string; titulo: string; dataIda: string; onibusId?: string; valorPacote: number; status: string }
 type Passageiro = { nome: string; cpf?: string; nascimento?: string; poltrona?: string }
-type Reserva = { id: string; excursaoId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string }
-
-type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string }
+type Reserva = { id: string; excursaoId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
+type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string; financeiro?: FinanceiroReserva }
 
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : ''
@@ -78,6 +79,12 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   const [carregando, setCarregando] = useState(true)
   const [form, setForm] = useState<FormReserva | null>(null)
   const [salvando, setSalvando] = useState(false)
+  // Config do gerador de parcelas / lançamento de pagamento (financeiro da reserva)
+  const [parcVezes, setParcVezes] = useState(1)
+  const [parcMetodo, setParcMetodo] = useState<MetodoPagamento>('pix')
+  const [parcVenc, setParcVenc] = useState('')
+  const [pagValor, setPagValor] = useState('')
+  const [pagMetodo, setPagMetodo] = useState<MetodoPagamento>('pix')
 
   const carregarBase = useCallback(() => {
     Promise.all([fetch('/api/excursoes').then(r => r.json()), fetch('/api/onibus').then(r => r.json())]).then(([e, o]) => {
@@ -114,8 +121,22 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     setForm({ contratanteNome: '', passageiros: [], desconto: '' })
   }
   function editarReserva(r: Reserva) {
-    setForm({ id: r.id, contratanteNome: r.contratanteNome, passageiros: r.passageiros.map(p => ({ ...p })), desconto: r.desconto ? String(r.desconto) : '' })
+    setForm({ id: r.id, contratanteNome: r.contratanteNome, passageiros: r.passageiros.map(p => ({ ...p })), desconto: r.desconto ? String(r.desconto) : '', financeiro: r.financeiro })
   }
+  // Financeiro: gerar parcelas e lançar pagamento parcial (abatendo o saldo)
+  function gerarParc() {
+    setForm(f => { if (!f) return f; const venc = parcVenc || new Date().toISOString().slice(0, 10); return { ...f, financeiro: { valorTotal: valorForm, parcelas: gerarParcelas(valorForm, parcVezes, venc, parcMetodo), pagamentos: f.financeiro?.pagamentos || [] } } })
+  }
+  function toggleParcela(id: string) {
+    setForm(f => { if (!f?.financeiro) return f; return { ...f, financeiro: { ...f.financeiro, parcelas: f.financeiro.parcelas.map(p => p.id === id ? { ...p, status: p.status === 'pago' ? 'pendente' : 'pago', pagoEm: p.status === 'pago' ? undefined : new Date().toISOString().slice(0, 10) } : p) } } })
+  }
+  function lancarPagamento() {
+    const v = Number(pagValor) || 0
+    if (v <= 0) { toast('Informe o valor do pagamento.', 'erro'); return }
+    setForm(f => { if (!f) return f; const fin = f.financeiro || { valorTotal: valorForm, parcelas: [], pagamentos: [] }; return { ...f, financeiro: { ...fin, pagamentos: [...fin.pagamentos, { id: uuid(), data: new Date().toISOString().slice(0, 10), valor: v, metodo: pagMetodo }] } } })
+    setPagValor('')
+  }
+  const removerPagamento = (id: string) => setForm(f => f?.financeiro ? ({ ...f, financeiro: { ...f.financeiro, pagamentos: f.financeiro.pagamentos.filter(p => p.id !== id) } }) : f)
   // Clicar numa poltrona no form: adiciona/remove um passageiro naquele assento.
   function togglePoltrona(n: string) {
     setForm(f => {
@@ -136,7 +157,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     if (!form.passageiros.length) { toast('Selecione ao menos uma poltrona.', 'erro'); return }
     if (form.passageiros.some(p => !p.nome.trim())) { toast('Preencha o nome de todos os passageiros.', 'erro'); return }
     setSalvando(true)
-    const corpo: any = { ...form, excursaoId: excursao.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome }
+    const corpo: any = { ...form, excursaoId: excursao.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome, financeiro: form.financeiro ? { ...form.financeiro, valorTotal: valorForm } : undefined }
     const r = await fetch('/api/reservas', { method: form.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(form.id ? 'Reserva atualizada.' : 'Reserva criada.', 'sucesso'); setForm(null); carregarReservas() }
@@ -240,6 +261,65 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 15, fontWeight: 800, color: '#166534' }}>Total: {fmtBRL(valorForm)}</span>
             </div>
+
+            {/* Financeiro (parcelas + pagamento parcial) — só na reserva já salva */}
+            {form.id && (() => {
+              const fin = form.financeiro
+              const pago = fin ? totalPago(fin) : 0
+              const saldo = Math.max(0, valorForm - pago)
+              return (
+                <div style={{ marginTop: 16, borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Financeiro</label>
+                    <span style={{ flex: 1 }} />
+                    <span style={{ fontSize: 12, color: '#666' }}>Pago {fmtBRL(pago)}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: saldo > 0 ? '#b45309' : '#166534' }}>Saldo {fmtBRL(saldo)}</span>
+                  </div>
+                  {/* Gerar parcelas */}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 9, padding: 9 }}>
+                    <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>Parcelar em</span>
+                    <input type="number" min={1} max={36} value={parcVezes} onChange={e => setParcVezes(Math.max(1, Number(e.target.value) || 1))} style={{ ...inputStyle, width: 56 }} />
+                    <span style={{ fontSize: 12, color: '#666' }}>×</span>
+                    <select value={parcMetodo} onChange={e => setParcMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: '#fff' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
+                    <input type="date" value={parcVenc} onChange={e => setParcVenc(e.target.value)} title="1º vencimento" style={{ ...inputStyle, width: 140 }} />
+                    <button type="button" onClick={gerarParc} style={{ padding: '8px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerar</button>
+                  </div>
+                  {fin && fin.parcelas.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                      {fin.parcelas.map(p => (
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '5px 8px', background: p.status === 'pago' ? '#f0fdf4' : '#fff', border: '1px solid #f0f0f0', borderRadius: 8, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={p.status === 'pago'} onChange={() => toggleParcela(p.id)} style={{ width: 15, height: 15 }} />
+                          <span style={{ fontWeight: 700, color: '#333' }}>{p.numero}ª</span>
+                          <span style={{ color: '#666' }}>{fmtBRL(p.valor)}</span>
+                          <span style={{ color: '#999' }}>venc. {fmtData(p.vencimento)}</span>
+                          <span style={{ flex: 1 }} />
+                          {p.status === 'pago' && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#166534' }}>PAGO</span>}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {/* Lançar pagamento avulso (o cliente vai pagando sem valor fixo) */}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>Registrar pagamento</span>
+                    <input type="number" min={0} step="0.01" value={pagValor} onChange={e => setPagValor(e.target.value)} placeholder="R$" style={{ ...inputStyle, width: 100 }} />
+                    <select value={pagMetodo} onChange={e => setPagMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: '#fff' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
+                    <button type="button" onClick={lancarPagamento} style={{ padding: '8px 12px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Lançar</button>
+                  </div>
+                  {fin && fin.pagamentos.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
+                      {fin.pagamentos.map(pg => (
+                        <div key={pg.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555' }}>
+                          <span style={{ fontWeight: 700, color: '#166534' }}>{fmtBRL(pg.valor)}</span>
+                          <span style={{ color: '#999' }}>{fmtData(pg.data)}{pg.metodo ? ` · ${pg.metodo}` : ''}</span>
+                          <span style={{ flex: 1 }} />
+                          <button type="button" onClick={() => removerPagamento(pg.id)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15 }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {form.id && podeExcluir && <button onClick={() => { const r = reservas.find(x => x.id === form.id); if (r) { setForm(null); excluir(r) } }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
