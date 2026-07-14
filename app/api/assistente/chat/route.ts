@@ -10,7 +10,7 @@ import Anthropic from '@anthropic-ai/sdk'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-type ChatMsg = { role: 'user' | 'assistant'; content: string }
+type ChatMsg = { role: 'user' | 'assistant'; content: string; imagens?: string[] }
 
 // Assistente de IA flutuante (chat com o Claude) para a equipe da agencia.
 // Resposta em STREAMING de texto puro: o componente le response.body em deltas.
@@ -28,11 +28,28 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null)
   const entrada: ChatMsg[] = Array.isArray(body?.messages) ? body.messages : []
-  // Sanitiza e limita o historico (ultimas 20 mensagens) para conter custo/abuso
-  const messages = entrada
-    .filter(m => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string' && m.content.trim())
+  // Sanitiza e limita o historico (ultimas 20 mensagens) para conter custo/abuso.
+  // Mensagens do usuario podem trazer PRINTS (imagens ja subidas ao Blob): viram
+  // blocos de imagem por URL para a visao do modelo (ex.: print de conversa).
+  const messages: any[] = entrada
+    .filter(m => (m?.role === 'user' || m?.role === 'assistant') && ((typeof m?.content === 'string' && m.content.trim()) || (m?.role === 'user' && Array.isArray(m?.imagens) && m.imagens.length > 0)))
     .slice(-20)
-    .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }))
+    .map(m => {
+      const texto = typeof m.content === 'string' ? m.content.slice(0, 8000) : ''
+      const urls = (m.role === 'user' && Array.isArray(m.imagens))
+        ? m.imagens.filter((u: any) => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 4)
+        : []
+      if (urls.length) {
+        return {
+          role: 'user' as const,
+          content: [
+            ...urls.map((url: string) => ({ type: 'image' as const, source: { type: 'url' as const, url } })),
+            { type: 'text' as const, text: texto || 'Analise a(s) imagem(ns) anexada(s) e ajude no atendimento.' },
+          ],
+        }
+      }
+      return { role: m.role, content: texto }
+    })
 
   if (!messages.length || messages[messages.length - 1].role !== 'user') {
     return new Response('mensagem do usuario obrigatoria', { status: 400 })

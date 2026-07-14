@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { ehRotaPublica } from '@/lib/rotasPublicas'
+import { comprimirImagemChat } from '@/lib/comprimirImagem'
 
 type Proposta = { id: string; acao: string; params: any; resumo: string; agenteId?: string; agenteNome?: string; estado?: 'pendente' | 'executando' | 'feito' | 'erro' | 'cancelado'; msg?: string }
-type Msg = { role: 'user' | 'assistant'; content: string; propostas?: Proposta[] }
+type Msg = { role: 'user' | 'assistant'; content: string; imagens?: string[]; propostas?: Proposta[] }
 
 const STORAGE_KEY = 'soma10_assistente_conversa'
 
@@ -87,6 +88,26 @@ export default function AssistenteIA() {
   const [carregando, setCarregando] = useState(false)
   const fimRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Prints anexados (ex.: screenshot de conversa) — sobem comprimidos ao Blob e
+  // vão como blocos de imagem para a IA "ler" e ajudar no atendimento.
+  const [pendImgs, setPendImgs] = useState<string[]>([])
+  const [subindoImg, setSubindoImg] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  async function anexarImagens(files: FileList | null) {
+    if (!files || !files.length || subindoImg) return
+    setSubindoImg(true)
+    try {
+      const { upload } = await import('@vercel/blob/client')
+      for (const file of Array.from(files).slice(0, 4 - pendImgs.length)) {
+        if (!file.type.startsWith('image/')) continue
+        const leve = await comprimirImagemChat(file)
+        const blob = await upload(`assistente/${Date.now()}-${leve.name}`, leve, { access: 'public', handleUploadUrl: '/api/upload' })
+        setPendImgs(p => [...p, blob.url].slice(0, 4))
+      }
+    } catch { /* upload falhou — usuário tenta de novo */ }
+    setSubindoImg(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
   // Agentes treinados: quando um é escolhido, a persona dele assume a conversa
   const [agentes, setAgentes] = useState<any[]>([])
   const [agenteId, setAgenteId] = useState('')
@@ -138,9 +159,11 @@ export default function AssistenteIA() {
 
   async function enviar() {
     const texto = input.trim()
-    if (!texto || carregando) return
+    if ((!texto && !pendImgs.length) || carregando || subindoImg) return
     setInput('')
-    const novas: Msg[] = [...msgs, { role: 'user', content: texto }]
+    const imagens = pendImgs
+    setPendImgs([])
+    const novas: Msg[] = [...msgs, { role: 'user', content: texto, ...(imagens.length ? { imagens } : {}) }]
     setMsgs([...novas, { role: 'assistant', content: '' }])
     setCarregando(true)
 
@@ -317,6 +340,15 @@ export default function AssistenteIA() {
                   borderBottomLeftRadius: m.role === 'user' ? 13 : 4,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 }}>
+                  {m.imagens && m.imagens.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: m.content ? 6 : 0 }}>
+                      {m.imagens.map((u, k) => (
+                        <a key={k} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt="" style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.25)' }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   {m.role === 'assistant'
                     ? (m.content
                         ? <div>{renderMarkdown(m.content)}</div>
@@ -351,8 +383,32 @@ export default function AssistenteIA() {
             <div ref={fimRef} />
           </div>
 
+          {/* Prints anexados aguardando envio */}
+          {(pendImgs.length > 0 || subindoImg) && (
+            <div style={{ borderTop: '1px solid #eee', padding: '8px 10px 0', background: '#fff', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {pendImgs.map((u, k) => (
+                <div key={k} style={{ position: 'relative' }}>
+                  <img src={u} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }} />
+                  <button onClick={() => setPendImgs(p => p.filter((_, j) => j !== k))} title="Remover"
+                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#111', color: '#fff', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>×</button>
+                </div>
+              ))}
+              {subindoImg && <span style={{ fontSize: 11.5, color: '#888', fontWeight: 600 }}>Enviando print…</span>}
+            </div>
+          )}
           {/* Entrada */}
-          <div style={{ borderTop: '1px solid #eee', padding: 10, background: '#fff', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div style={{ borderTop: pendImgs.length || subindoImg ? 'none' : '1px solid #eee', padding: 10, background: '#fff', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => anexarImagens(e.target.files)} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={subindoImg || pendImgs.length >= 4}
+              title="Anexar print (a IA lê a imagem)"
+              aria-label="Anexar imagem"
+              style={{ width: 40, height: 40, borderRadius: 11, border: '1px solid #e2e2e2', flexShrink: 0, background: '#fff', color: subindoImg || pendImgs.length >= 4 ? '#ccc' : '#666', cursor: subindoImg || pendImgs.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
             <textarea
               ref={inputRef}
               value={input}
@@ -364,14 +420,14 @@ export default function AssistenteIA() {
             />
             <button
               onClick={enviar}
-              disabled={!input.trim() || carregando}
+              disabled={(!input.trim() && !pendImgs.length) || carregando || subindoImg}
               title="Enviar"
               aria-label="Enviar mensagem"
               style={{
                 width: 40, height: 40, borderRadius: 11, border: 'none', flexShrink: 0,
-                background: !input.trim() || carregando ? '#eee' : '#111',
-                color: !input.trim() || carregando ? '#aaa' : '#ffc00f',
-                cursor: !input.trim() || carregando ? 'not-allowed' : 'pointer',
+                background: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? '#eee' : '#111',
+                color: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? '#aaa' : '#ffc00f',
+                cursor: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
