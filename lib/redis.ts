@@ -258,6 +258,44 @@ export type EsperaItem = {
   criadoPor?: string
 }
 
+// ── Turismo (operadora de excursões) ─────────────────────────────────────────
+// Ônibus da frota. Chaves: `onibus:{id}`, set `onibus`. `layoutId` referencia um
+// preset de poltronas (lib/layoutsOnibus). Amenidades: Starlink/Wi-Fi/ar/banheiro…
+export type Onibus = {
+  id: string
+  nome: string
+  placa?: string
+  layoutId: string
+  amenidades?: string[]
+  ativo?: boolean
+  observacoes?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+// Excursão (uma saída): roteiro, datas, ônibus, motoristas, valor do pacote e
+// inclusos. Chaves: `excursao:{id}`, set `excursoes`. Vagas derivam do layout.
+export type MotoristaExcursao = { nome: string; cpf?: string; cnh?: string }
+export type StatusExcursao = 'planejada' | 'aberta' | 'realizada' | 'cancelada'
+export type Excursao = {
+  id: string
+  titulo: string
+  roteiro?: string
+  dataIda: string      // YYYY-MM-DD
+  dataVolta?: string   // YYYY-MM-DD
+  onibusId?: string
+  motoristas?: MotoristaExcursao[]
+  valorPacote: number
+  descontoPadrao?: number
+  inclusos?: string[]
+  status: StatusExcursao
+  observacoes?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.
 export type NpsResposta = {
   id: string
