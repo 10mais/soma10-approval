@@ -180,8 +180,13 @@ export default function PlannerPage() {
   }
 
   // Planner mostra apenas posts reais (criados no compositor) ou pautas que
-  // chegaram em "pronto". Pautas em andamento na esteira (tem planoId/etapa) ficam de fora.
-  const filtrados = posts.filter(p => (p as any).etapa === 'pronto' || (!(p as any).etapa && !(p as any).planoId))
+  // chegaram em "pronto". Ficam de fora: pautas em andamento na esteira (planoId/etapa),
+  // rascunhos e posts em ajuste (corrigir).
+  const filtrados = posts.filter(p => {
+    const st = (p as any).status
+    if (st === 'rascunho' || st === 'corrigir') return false
+    return (p as any).etapa === 'pronto' || (!(p as any).etapa && !(p as any).planoId)
+  })
     .sort((a, b) => new Date(b.dataAgendada || b.criadoEm).getTime() - new Date(a.dataAgendada || a.criadoEm).getTime())
 
   return (

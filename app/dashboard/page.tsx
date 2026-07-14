@@ -50,6 +50,7 @@ const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuai
 const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
 const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const OnibusModulo = dynamic(() => import('../components/Onibus'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -812,11 +813,19 @@ function Dashboard() {
 
   const role = (session?.user as any)?.role
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
-  // Planner mostra o que NÃO está mais em produção: sem etapa, etapa 'pronto', OU
-  // já saiu da esteira (aprovado/agendado/publicando/publicado/falha). Isso também
-  // "cura" posts antigos que ficaram presos com etapa='aprovacao_criativo'.
-  const PLANNER_STATUS_OK = ['aprovado', 'agendado', 'publicando', 'publicado', 'falha_publicacao']
-  const postsPlanner = posts.filter(p => !(p as any).etapa || (p as any).etapa === 'pronto' || PLANNER_STATUS_OK.includes((p as any).status))
+  // Planner = só o que está confirmado para o calendário. Fica de FORA: rascunho
+  // (interno ou avulso), "em ajuste" (corrigir) e qualquer pauta ainda no pipe de
+  // aprovação (aprovacao_copy/aprovacao_criativo) — inclusive quando reenviada.
+  // Exceção: o que já foi publicado permanece como histórico, mesmo com etapa presa.
+  const JA_PUBLICADO = ['publicando', 'publicado', 'falha_publicacao']
+  const postsPlanner = posts.filter(p => {
+    const st = (p as any).status
+    const et = (p as any).etapa
+    if ((p as any).rascunhoInterno) return false
+    if (st === 'rascunho' || st === 'corrigir') return false
+    if (JA_PUBLICADO.includes(st)) return true
+    return !et || et === 'pronto'
+  })
   const postsView = verComoClienteId ? postsPlanner.filter(p => p.clienteId === verComoClienteId) : postsPlanner
 
   // Cliente logado: trava na visao dele, aba padrao aprovacoes
@@ -932,7 +941,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', onibus: 'crm', excursoes: 'crm', reservas: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -1039,6 +1048,8 @@ function Dashboard() {
       const refDate = analyticsDesde ? new Date(analyticsDesde) : new Date()
       const mes = refDate.getMonth(), ano = refDate.getFullYear()
       const ehDoMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === mes && d.getFullYear() === ano }
+      // Considera "entregue" quem já saiu da produção (etapa 'pronto' ou status pós-esteira)
+      const PLANNER_STATUS_OK = ['aprovado', 'agendado', 'publicando', 'publicado', 'falha_publicacao']
       const entregue = (posts as any[]).filter(p => {
         if (p.clienteId !== analyticsClienteId) return false
         if (p.etapa && p.etapa !== 'pronto' && !PLANNER_STATUS_OK.includes(p.status)) return false
@@ -2012,6 +2023,13 @@ function Dashboard() {
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
+              {/* Operação (turismo) — excursões, ônibus, reservas (adicionadas por brick) */}
+              {perfilTurismo && podeGrupo('crm') && (
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
+                  <NavBtn chave="onibus" label="Ônibus" />
+                </nav>
+              )}
               {/* Comunicação — acima de Estratégia */}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
@@ -3262,6 +3280,11 @@ function Dashboard() {
             perfilClinica={perfilClinica}
             podeEditar={podeNivelDash('producao', 'editar')}
           />
+        )}
+
+        {/* Operação turismo — Ônibus */}
+        {aba === 'onibus' && perfilTurismo && role !== 'cliente' && (
+          <OnibusModulo podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
 
         {/* Reuniões internas — Pessoas e Cultura (admin) */}
