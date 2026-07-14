@@ -1823,7 +1823,7 @@ function AvatarConv({ foto, nome, cor }: { foto?: string; nome: string; cor: str
     </span>
   )
 }
-type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string }
+type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string; editada?: boolean }
 
 // Torna URLs do texto clicáveis (abre em nova aba), mantendo o resto como está.
 function comLinks(texto: string) {
@@ -1864,7 +1864,7 @@ const CANAL_CFG: Record<CanalMsg, {
     vincular: (id, contatoId) => fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, contatoId }) }).catch(() => {}),
     excluir: id => fetch(`/api/crm/mensagens?tel=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c, id: c.telefone }),
-    subId: (_c, id) => `+${id}`,
+    subId: (c, id) => (c as any)?.grupo ? 'Grupo do WhatsApp' : `+${id}`,
     matchContato: (c, contatos) => contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.id)?.nome,
   },
   instagram: {
@@ -1897,6 +1897,9 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [carregando, setCarregando] = useState(true)
+  // Encaminhar (escolhe a conversa destino na lista) e editar mensagem enviada (~15 min)
+  const [encaminhar, setEncaminhar] = useState<MsgItem | null>(null)
+  const [editando, setEditando] = useState<MsgItem | null>(null)
 
   const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id)
 
@@ -1914,11 +1917,36 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
   async function enviar() {
     const t = texto.trim()
     if (!t || !sel || enviando) return
+    // Modo edição: regrava a mensagem enviada (regra dos ~15 min do WhatsApp)
+    if (editando) {
+      setEnviando(true)
+      const r = await fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel, editarMsgId: editando.id, novoTexto: t }) }).then(x => x.json()).catch(() => null)
+      setEnviando(false)
+      if (r?.ok) { toast('Mensagem editada.', 'sucesso'); setEditando(null); setTexto(''); abrir(sel); carregarConversas() }
+      else toast(r?.error || 'Não foi possível editar.', 'erro')
+      return
+    }
     setEnviando(true); setTexto('')
     const r = await cfg.enviar(sel, t)
     setEnviando(false)
     if (!r?.ok) toast(r?.error || 'Não foi possível enviar.', r?.registrado ? 'info' : 'erro')
     abrir(sel); carregarConversas()
+  }
+  // Encaminha a mensagem escolhida para OUTRA conversa (texto ou mídia do Blob)
+  async function encaminharPara(destinoId: string) {
+    if (!encaminhar) return
+    const m = encaminhar
+    setEncaminhar(null)
+    const body: any = { telefone: destinoId }
+    if (m.midiaUrl && m.tipo) {
+      body.midia = { tipo: m.tipo, url: m.midiaUrl, ...(m.mimetype ? { mimetype: m.mimetype } : {}), ...(m.fileName ? { fileName: m.fileName } : {}) }
+      if (m.texto && !ehRotuloMidia(m.texto)) body.texto = m.texto
+    } else {
+      body.texto = m.texto
+    }
+    const r = await fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { toast('Mensagem encaminhada.', 'sucesso'); if (destinoId === sel) abrir(sel); carregarConversas() }
+    else toast(r?.error || 'Não foi possível encaminhar.', 'erro')
   }
   async function vincular(contatoId: string) {
     if (!sel) return
@@ -2068,7 +2096,7 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
             : conversasFiltradas.map(c => {
               const trecho = matchesTexto[c.id]
               return (
-              <button key={c.id} onClick={() => abrir(c.id)} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button key={c.id} onClick={() => encaminhar ? encaminharPara(c.id) : abrir(c.id)} title={encaminhar ? 'Encaminhar para esta conversa' : undefined} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : encaminhar ? '#fffbeb' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -2137,11 +2165,29 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                     )}
                     {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: '#999' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
                     {textoVisivel && (!m.tipo || m.midiaUrl) && comLinks(textoVisivel)}
-                    <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    {canal === 'whatsapp' && (m.texto || m.midiaUrl) && (
+                      <span style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
+                        <button onClick={() => { setEditando(null); setEncaminhar(m) }} title="Encaminhar para outra conversa"
+                          style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Encaminhar</button>
+                        {m.de === 'agente' && !m.tipo && (Date.now() - new Date(m.em).getTime()) < 15 * 60 * 1000 && (
+                          <button onClick={() => { setEncaminhar(null); setEditando(m); setTexto(m.texto) }} title="Editar (até ~15 min após o envio)"
+                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Editar</button>
+                        )}
+                      </span>
+                    )}
                   </div>
                   )
                 })}
             </div>
+            {(encaminhar || editando) && (
+              <div style={{ borderTop: '1px solid #f0f0f0', padding: '7px 12px', background: '#fffbeb', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e', fontWeight: 600 }}>
+                {encaminhar ? 'Encaminhando — clique numa conversa da lista à esquerda para enviar.' : 'Editando mensagem enviada — altere o texto e confirme (vale até ~15 min).'}
+                <span style={{ flex: 1 }} />
+                <button onClick={() => { setEncaminhar(null); if (editando) { setEditando(null); setTexto('') } }}
+                  style={{ background: 'none', border: 'none', color: '#92400e', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>Cancelar</button>
+              </div>
+            )}
             <div style={{ borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
               {/* Popover de modelos de mensagem */}
               {modelosAberto && (

@@ -21,8 +21,13 @@ export type WaMensagem = {
   midiaUrl?: string
   mimetype?: string
   fileName?: string
+  editada?: boolean // mensagem nossa editada depois de enviada (regra dos ~15 min)
 }
-export type WaConversa = { telefone: string; nome?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
+export type WaConversa = {
+  telefone: string; nome?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number
+  jid?: string // remoteJid completo (necessário p/ grupos e edição de mensagem)
+  grupo?: boolean // conversa de GRUPO (@g.us)
+}
 
 export function evolutionConfigurado(): boolean {
   return !!(process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY && process.env.EVOLUTION_INSTANCE)
@@ -56,6 +61,19 @@ export async function fotoPerfilEvolution(numero: string): Promise<string | null
     })
     const d = await r.json().catch(() => ({} as any))
     return d?.profilePictureUrl || null
+  } catch { return null }
+}
+
+// Nome (subject) de um grupo — best-effort, usado ao criar a conversa do grupo.
+export async function nomeGrupoEvolution(jid: string): Promise<string | null> {
+  if (!evolutionConfigurado() || !jid.endsWith('@g.us')) return null
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const r = await fetch(`${base}/group/findGroupInfos/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(jid)}`, {
+      headers: { apikey: process.env.EVOLUTION_API_KEY as string },
+    })
+    const d = await r.json().catch(() => ({} as any))
+    return d?.subject || null
   } catch { return null }
 }
 
@@ -144,8 +162,9 @@ export async function salvarMensagem(telefone: string, msg: WaMensagem, extra?: 
 }
 
 // Envia mensagem de texto. Prioriza o Evolution (número antigo via QR); se não
-// houver, usa a Cloud API; sem nenhum, no-op.
-export async function enviarWhatsApp(telefone: string, texto: string, autor?: string): Promise<{ ok: boolean; erro?: string }> {
+// houver, usa a Cloud API; sem nenhum, no-op. `destinoJid` (opcional) força o
+// destinatário no Evolution — necessário para GRUPOS (@g.us).
+export async function enviarWhatsApp(telefone: string, texto: string, autor?: string, destinoJid?: string): Promise<{ ok: boolean; erro?: string }> {
   const tel = soDigitos(telefone)
   if (!tel) return { ok: false, erro: 'telefone inválido' }
 
@@ -156,7 +175,7 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
       const r = await fetch(`${base}/message/sendText/${process.env.EVOLUTION_INSTANCE}`, {
         method: 'POST',
         headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: tel, text: texto }),
+        body: JSON.stringify({ number: destinoJid || tel, text: texto }),
       })
       const d = await r.json().catch(() => ({} as any))
       if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
@@ -186,4 +205,60 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
   }
 
   return { ok: false, erro: 'WhatsApp não configurado (faltam credenciais)' }
+}
+
+// EDITA uma mensagem já enviada (regra do WhatsApp: só as nossas, ~15 min).
+// A key é reconstruída: id da mensagem + remoteJid da conversa + fromMe.
+export async function editarMensagemWhatsApp(telefone: string, msgId: string, novoTexto: string, jid?: string): Promise<{ ok: boolean; erro?: string }> {
+  if (!evolutionConfigurado()) return { ok: false, erro: 'edição disponível só no conector Evolution' }
+  const tel = soDigitos(telefone)
+  const remoteJid = jid || `${tel}@s.whatsapp.net`
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const r = await fetch(`${base}/chat/updateMessage/${process.env.EVOLUTION_INSTANCE}`, {
+      method: 'POST',
+      headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: remoteJid, key: { remoteJid, fromMe: true, id: msgId }, text: novoTexto }),
+    })
+    const d = await r.json().catch(() => ({} as any))
+    if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
+    return { ok: true }
+  } catch (e: any) { return { ok: false, erro: e?.message || String(e) } }
+}
+
+// Envia MÍDIA (imagem/vídeo/documento por URL; áudio via endpoint próprio).
+// Usado pelo "encaminhar" do inbox — a mídia já está no nosso Blob.
+export async function enviarMidiaWhatsApp(
+  telefone: string,
+  midia: { tipo: NonNullable<WaMensagem['tipo']>; url: string; mimetype?: string; fileName?: string; caption?: string },
+  autor?: string,
+  destinoJid?: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  if (!evolutionConfigurado()) return { ok: false, erro: 'envio de mídia disponível só no conector Evolution' }
+  const tel = soDigitos(telefone)
+  if (!tel) return { ok: false, erro: 'telefone inválido' }
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const headers = { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' }
+    let r: Response
+    if (midia.tipo === 'audio') {
+      r = await fetch(`${base}/message/sendWhatsAppAudio/${process.env.EVOLUTION_INSTANCE}`, {
+        method: 'POST', headers, body: JSON.stringify({ number: destinoJid || tel, audio: midia.url }),
+      })
+    } else {
+      const mediatype = midia.tipo === 'imagem' || midia.tipo === 'figurinha' ? 'image' : midia.tipo === 'video' ? 'video' : 'document'
+      r = await fetch(`${base}/message/sendMedia/${process.env.EVOLUTION_INSTANCE}`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ number: destinoJid || tel, mediatype, media: midia.url, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}), ...(midia.caption ? { caption: midia.caption } : {}) }),
+      })
+    }
+    const d = await r.json().catch(() => ({} as any))
+    if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
+    await salvarMensagem(tel, {
+      id: d?.key?.id || crypto.randomUUID(), de: 'agente', em: new Date().toISOString(), autor,
+      texto: midia.caption || `[${midia.tipo}]`, tipo: midia.tipo === 'figurinha' ? 'imagem' : midia.tipo,
+      midiaUrl: midia.url, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}),
+    })
+    return { ok: true }
+  } catch (e: any) { return { ok: false, erro: e?.message || String(e) } }
 }

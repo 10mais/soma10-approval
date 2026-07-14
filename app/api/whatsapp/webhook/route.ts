@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
@@ -30,19 +30,28 @@ async function processarEvolution(body: any): Promise<boolean> {
   for (const d of eventos) {
     const jid: string = d?.key?.remoteJid || ''
     if (d?.key?.fromMe) continue // mensagem enviada por nós
-    if (jid.endsWith('@g.us')) continue // grupo — fora do CRM 1:1
+    const ehGrupo = jid.endsWith('@g.us')
     const tel = jid.split('@')[0]
     if (!tel) continue
     const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
     // Mídia (imagem/vídeo/áudio/documento): baixa e guarda no Blob (best-effort).
     const midia = await capturarMidiaEvolution(d)
-    // Foto do perfil: busca uma vez (quando a conversa ainda não tem), best-effort.
-    let foto: string | undefined
     const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
-    if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
-    await salvarMensagem(tel, { id: d?.key?.id || uuid(), de: 'cliente', texto, em, ...(midia || {}) }, { nome: d?.pushName, ...(foto ? { foto } : {}) } as any)
-    await notificarEquipe('geral', `WhatsApp: ${d?.pushName || tel}`, texto.slice(0, 120)).catch(() => {})
+    // Grupo: nome da conversa = assunto do grupo (busca uma vez); autor por mensagem.
+    // Individual: foto de perfil (busca uma vez) + nome do contato (pushName).
+    let foto: string | undefined
+    let nomeConversa: string | undefined
+    if (ehGrupo) {
+      nomeConversa = (existente as any)?.grupo && existente?.nome ? existente.nome : ((await nomeGrupoEvolution(jid)) || `Grupo ${tel.slice(-6)}`)
+    } else {
+      if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
+      nomeConversa = d?.pushName
+    }
+    await salvarMensagem(tel,
+      { id: d?.key?.id || uuid(), de: 'cliente', texto, em, ...(ehGrupo && d?.pushName ? { autor: d.pushName } : {}), ...(midia || {}) },
+      { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any)
+    await notificarEquipe('geral', `WhatsApp: ${ehGrupo ? nomeConversa : (d?.pushName || tel)}`, texto.slice(0, 120)).catch(() => {})
     gravou = true
   }
   return gravou

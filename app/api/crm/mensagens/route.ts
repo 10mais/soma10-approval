@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { enviarWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
+import { enviarWhatsApp, enviarMidiaWhatsApp, editarMensagemWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -67,29 +67,71 @@ export async function POST(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { telefone, texto } = await req.json()
-  if (!String(telefone || '').trim() || !String(texto || '').trim()) {
+  const { telefone, texto, midia } = await req.json()
+  const temMidia = midia && typeof midia?.url === 'string' && midia.url
+  if (!String(telefone || '').trim() || (!String(texto || '').trim() && !temMidia)) {
     return NextResponse.json({ error: 'telefone e texto são obrigatórios' }, { status: 400 })
   }
 
+  // Grupo: o destino precisa ser o JID completo (@g.us), não o número.
+  const telDest = String(telefone).replace(/\D/g, '')
+  const conv = await redis.get<WaConversa>(`wa:conversa:${telDest}`)
+  const destinoJid = conv?.grupo && conv?.jid ? conv.jid : undefined
+
   if (!whatsappConfigurado()) {
     // Sem credenciais: registra como rascunho local para não perder o histórico
-    await salvarMensagem(telefone, { id: crypto.randomUUID(), de: 'agente', texto: String(texto), em: new Date().toISOString(), autor: session.user?.name || '' })
+    await salvarMensagem(telefone, { id: crypto.randomUUID(), de: 'agente', texto: String(texto || (temMidia ? `[${midia.tipo || 'mídia'}]` : '')), em: new Date().toISOString(), autor: session.user?.name || '' })
     return NextResponse.json({ ok: false, error: 'WhatsApp ainda não configurado — mensagem registrada localmente, mas não enviada.', registrado: true })
   }
 
-  const r = await enviarWhatsApp(String(telefone), String(texto), session.user?.name || '')
+  // Encaminhar/enviar mídia (URL já no nosso Blob)
+  if (temMidia) {
+    const r = await enviarMidiaWhatsApp(String(telefone), {
+      tipo: midia.tipo || 'documento', url: String(midia.url),
+      ...(midia.mimetype ? { mimetype: String(midia.mimetype) } : {}),
+      ...(midia.fileName ? { fileName: String(midia.fileName) } : {}),
+      ...(String(texto || '').trim() ? { caption: String(texto).trim() } : {}),
+    }, session.user?.name || '', destinoJid)
+    if (!r.ok) return NextResponse.json({ error: r.erro || 'falha ao enviar mídia' }, { status: 502 })
+    return NextResponse.json({ ok: true })
+  }
+
+  const r = await enviarWhatsApp(String(telefone), String(texto), session.user?.name || '', destinoJid)
   if (!r.ok) return NextResponse.json({ error: r.erro || 'falha ao enviar' }, { status: 502 })
   return NextResponse.json({ ok: true })
 }
 
-// Vincula a conversa a um contato (e opcionalmente nome)
+// Vincula a conversa a um contato (e opcionalmente nome). Também EDITA uma
+// mensagem enviada ({ telefone, editarMsgId, novoTexto } — regra do WhatsApp).
 export async function PUT(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { telefone, contatoId, nome } = await req.json()
+  const { telefone, contatoId, nome, editarMsgId, novoTexto } = await req.json()
   const tel = String(telefone || '').replace(/\D/g, '')
   if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
+
+  // Edição de mensagem enviada (só nossas, texto puro, dentro de ~15 min)
+  if (editarMsgId) {
+    const txt = String(novoTexto || '').trim()
+    if (!txt) return NextResponse.json({ error: 'informe o novo texto' }, { status: 400 })
+    const raw = await redis.lrange(`wa:msgs:${tel}`, 0, -1)
+    const idx = raw.findIndex(m => { try { const o = typeof m === 'string' ? JSON.parse(m) : m; return o?.id === editarMsgId } catch { return false } })
+    if (idx < 0) return NextResponse.json({ error: 'mensagem não encontrada' }, { status: 404 })
+    const msg: WaMensagem = typeof raw[idx] === 'string' ? JSON.parse(raw[idx] as string) : raw[idx] as any
+    if (msg.de !== 'agente') return NextResponse.json({ error: 'só é possível editar mensagens enviadas por você' }, { status: 400 })
+    if (msg.tipo) return NextResponse.json({ error: 'mídia não pode ser editada' }, { status: 400 })
+    if (Date.now() - new Date(msg.em).getTime() > 15 * 60 * 1000) {
+      return NextResponse.json({ error: 'o WhatsApp só permite editar até ~15 minutos após o envio' }, { status: 400 })
+    }
+    const conv = await redis.get<WaConversa>(`wa:conversa:${tel}`)
+    const r = await editarMensagemWhatsApp(tel, editarMsgId, txt, conv?.jid)
+    if (!r.ok) return NextResponse.json({ error: r.erro || 'falha ao editar no WhatsApp' }, { status: 502 })
+    const editada: WaMensagem = { ...msg, texto: txt, editada: true }
+    await redis.lset(`wa:msgs:${tel}`, idx, JSON.stringify(editada))
+    if (conv && idx === raw.length - 1) await redis.set(`wa:conversa:${tel}`, { ...conv, ultimaMsg: txt.slice(0, 120) })
+    return NextResponse.json({ ok: true })
+  }
+
   const atual = (await redis.get<WaConversa>(`wa:conversa:${tel}`)) || { telefone: tel }
   await redis.set(`wa:conversa:${tel}`, { ...atual, telefone: tel, ...(contatoId !== undefined ? { contatoId } : {}), ...(nome !== undefined ? { nome } : {}) })
   return NextResponse.json({ ok: true })
