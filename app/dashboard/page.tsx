@@ -52,6 +52,7 @@ const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loadi
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const OnibusModulo = dynamic(() => import('../components/Onibus'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Excursoes = dynamic(() => import('../components/Excursoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -2029,6 +2030,7 @@ function Dashboard() {
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
                   <NavBtn chave="excursoes" label="Excursões" />
+                  <NavBtn chave="reservas" label="Reservas" />
                   <NavBtn chave="onibus" label="Ônibus" />
                 </nav>
               )}
@@ -3287,6 +3289,9 @@ function Dashboard() {
         {/* Operação turismo — Excursões / Ônibus */}
         {aba === 'excursoes' && perfilTurismo && role !== 'cliente' && (
           <Excursoes podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+        )}
+        {aba === 'reservas' && perfilTurismo && role !== 'cliente' && (
+          <Reservas podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} meuEmail={(session?.user as any)?.email || ''} meuNome={session?.user?.name || ''} />
         )}
         {aba === 'onibus' && perfilTurismo && role !== 'cliente' && (
           <OnibusModulo podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />

@@ -1,0 +1,255 @@
+'use client'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast, confirmar } from '@/lib/toast'
+import { layoutPorId, LayoutOnibus, Poltrona, totalPoltronas } from '@/lib/layoutsOnibus'
+
+// Reservas de excursão + MAPA DE POLTRONAS visual. Jamais duas pessoas na mesma
+// poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
+
+type Onibus = { id: string; nome: string; layoutId: string }
+type Excursao = { id: string; titulo: string; dataIda: string; onibusId?: string; valorPacote: number; status: string }
+type Passageiro = { nome: string; cpf?: string; nascimento?: string; poltrona?: string }
+type Reserva = { id: string; excursaoId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string }
+
+type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string }
+
+const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : ''
+const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
+  'pre-reserva': { label: 'Pré-reserva', cor: '#a16207', bg: '#fef9c3' },
+  'confirmada': { label: 'Confirmada', cor: '#166534', bg: '#dcfce7' },
+  'cancelada': { label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
+}
+
+// Grade de um andar: mapa (fileira-coluna) → poltrona, e os limites p/ render.
+function gradeAndar(layout: LayoutOnibus, andar: number) {
+  const ps = layout.poltronas.filter(p => p.andar === andar)
+  const maxFileira = ps.length ? Math.max(...ps.map(p => p.fileira)) : 0
+  const maxColuna = ps.length ? Math.max(...ps.map(p => p.coluna)) : 0
+  const mapa = new Map<string, Poltrona>()
+  ps.forEach(p => mapa.set(`${p.fileira}-${p.coluna}`, p))
+  return { maxFileira, maxColuna, mapa }
+}
+
+// Mapa visual de poltronas (por andar). Ocupadas travadas; selecionadas destacadas.
+function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
+  layout: LayoutOnibus; ocupadas: Set<string>; selecionadas: Set<string>; onToggle?: (n: string) => void; readOnly?: boolean
+}) {
+  const andares = Array.from({ length: layout.andares }, (_, i) => i + 1)
+  return (
+    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+      {andares.map(andar => {
+        const { maxFileira, maxColuna, mapa } = gradeAndar(layout, andar)
+        if (!maxFileira) return null
+        return (
+          <div key={andar}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>{layout.andares > 1 ? (andar === 1 ? 'Inferior' : 'Superior') : 'Poltronas'}</div>
+            <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, background: '#fafafa', border: '1px solid #eee', borderRadius: 10, padding: 8 }}>
+              {Array.from({ length: maxFileira }, (_, f) => f + 1).map(fileira => (
+                <div key={fileira} style={{ display: 'flex', gap: 4 }}>
+                  {Array.from({ length: maxColuna }, (_, c) => c + 1).map(coluna => {
+                    const p = mapa.get(`${fileira}-${coluna}`)
+                    if (!p) return <span key={coluna} style={{ width: 30, height: 26 }} /> // corredor
+                    const ocupada = ocupadas.has(p.numero)
+                    const sel = selecionadas.has(p.numero)
+                    const cor = ocupada ? { bg: '#e5e7eb', bd: '#d1d5db', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#cbd5e1', tx: '#334155' }
+                    return (
+                      <button key={coluna} type="button" title={`Poltrona ${p.numero}${ocupada ? ' (ocupada)' : ''} · ${p.tipo}`}
+                        disabled={readOnly || ocupada}
+                        onClick={() => !ocupada && onToggle?.(p.numero)}
+                        style={{ width: 30, height: 26, borderRadius: 6, border: `1.5px solid ${cor.bd}`, background: cor.bg, color: cor.tx, fontSize: 10, fontWeight: 800, cursor: readOnly || ocupada ? 'default' : 'pointer', padding: 0 }}>{p.numero}</button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function Reservas({ podeEditar = true, podeExcluir = false, meuEmail = '', meuNome = '' }: { podeEditar?: boolean; podeExcluir?: boolean; meuEmail?: string; meuNome?: string }) {
+  const [excursoes, setExcursoes] = useState<Excursao[]>([])
+  const [onibus, setOnibus] = useState<Onibus[]>([])
+  const [reservas, setReservas] = useState<Reserva[]>([])
+  const [excursaoSel, setExcursaoSel] = useState('')
+  const [carregando, setCarregando] = useState(true)
+  const [form, setForm] = useState<FormReserva | null>(null)
+  const [salvando, setSalvando] = useState(false)
+
+  const carregarBase = useCallback(() => {
+    Promise.all([fetch('/api/excursoes').then(r => r.json()), fetch('/api/onibus').then(r => r.json())]).then(([e, o]) => {
+      const exs = Array.isArray(e?.excursoes) ? e.excursoes : []
+      setExcursoes(exs); if (Array.isArray(o?.onibus)) setOnibus(o.onibus)
+      setExcursaoSel(prev => prev || exs[0]?.id || '')
+    }).catch(() => {}).finally(() => setCarregando(false))
+  }, [])
+  useEffect(() => { carregarBase() }, [carregarBase])
+
+  const carregarReservas = useCallback(() => {
+    if (!excursaoSel) { setReservas([]); return }
+    fetch(`/api/reservas?excursaoId=${excursaoSel}`).then(r => r.json()).then(d => { if (Array.isArray(d?.reservas)) setReservas(d.reservas) }).catch(() => {})
+  }, [excursaoSel])
+  useEffect(() => { carregarReservas() }, [carregarReservas])
+
+  const excursao = excursoes.find(e => e.id === excursaoSel)
+  const layout = useMemo(() => { const o = onibus.find(x => x.id === excursao?.onibusId); return o ? layoutPorId(o.layoutId) : null }, [onibus, excursao])
+  // Ocupadas = poltronas das reservas não canceladas (ignorando a que está sendo editada)
+  const ocupadas = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of reservas) {
+      if (r.status === 'cancelada' || (form?.id && r.id === form.id)) continue
+      for (const p of r.passageiros) if (p.poltrona) s.add(p.poltrona)
+    }
+    return s
+  }, [reservas, form])
+  const selecionadas = useMemo(() => new Set((form?.passageiros || []).map(p => p.poltrona).filter(Boolean) as string[]), [form])
+  const vagas = layout ? totalPoltronas(layout) : 0
+  const vendidas = ocupadas.size
+
+  function novaReserva() {
+    if (!excursao) { toast('Selecione uma excursão.', 'erro'); return }
+    setForm({ contratanteNome: '', passageiros: [], desconto: '' })
+  }
+  function editarReserva(r: Reserva) {
+    setForm({ id: r.id, contratanteNome: r.contratanteNome, passageiros: r.passageiros.map(p => ({ ...p })), desconto: r.desconto ? String(r.desconto) : '' })
+  }
+  // Clicar numa poltrona no form: adiciona/remove um passageiro naquele assento.
+  function togglePoltrona(n: string) {
+    setForm(f => {
+      if (!f) return f
+      const existe = f.passageiros.find(p => p.poltrona === n)
+      if (existe) return { ...f, passageiros: f.passageiros.filter(p => p.poltrona !== n) }
+      const nome = f.passageiros.length === 0 ? f.contratanteNome : ''
+      return { ...f, passageiros: [...f.passageiros, { nome, poltrona: n }] }
+    })
+  }
+  const setPax = (i: number, patch: Partial<Passageiro>) => setForm(f => f && ({ ...f, passageiros: f.passageiros.map((p, j) => j === i ? { ...p, ...patch } : p) }))
+
+  const valorForm = excursao ? Math.max(0, (form?.passageiros.length || 0) * (excursao.valorPacote || 0) - (Number(form?.desconto) || 0)) : 0
+
+  async function salvar() {
+    if (!form || !excursao || salvando) return
+    if (!form.contratanteNome.trim()) { toast('Informe o contratante.', 'erro'); return }
+    if (!form.passageiros.length) { toast('Selecione ao menos uma poltrona.', 'erro'); return }
+    if (form.passageiros.some(p => !p.nome.trim())) { toast('Preencha o nome de todos os passageiros.', 'erro'); return }
+    setSalvando(true)
+    const corpo: any = { ...form, excursaoId: excursao.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome }
+    const r = await fetch('/api/reservas', { method: form.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (r?.ok) { toast(form.id ? 'Reserva atualizada.' : 'Reserva criada.', 'sucesso'); setForm(null); carregarReservas() }
+    else toast(r?.error || 'Falha ao salvar a reserva.', 'erro')
+  }
+  async function excluir(r: Reserva) {
+    if (!(await confirmar(`Excluir a reserva de "${r.contratanteNome}"?`, { titulo: 'Excluir reserva', okLabel: 'Excluir', perigo: true }))) return
+    const x = await fetch('/api/reservas', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id }) }).then(y => y.json()).catch(() => null)
+    if (x?.ok) { toast('Reserva excluída.', 'sucesso'); carregarReservas() } else toast('Falha ao excluir.', 'erro')
+  }
+
+  const inputStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Reservas</h2>
+        <select value={excursaoSel} onChange={e => setExcursaoSel(e.target.value)} style={{ ...inputStyle, minWidth: 220, background: '#fff' }}>
+          <option value="">Selecione a excursão...</option>
+          {excursoes.map(e => <option key={e.id} value={e.id}>{e.titulo} · {fmtData(e.dataIda)}</option>)}
+        </select>
+        <span style={{ flex: 1 }} />
+        {podeEditar && excursao && <button onClick={novaReserva} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Reserva</button>}
+      </div>
+
+      {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
+        : !excursao ? <p style={{ color: '#aaa', fontSize: 13 }}>Selecione uma excursão para ver as reservas e o mapa de poltronas.</p>
+        : (
+          <>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
+              {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
+              {!layout && <span style={{ fontSize: 12.5, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '5px 12px' }}>Excursão sem ônibus/layout — defina o ônibus para o mapa de poltronas.</span>}
+            </div>
+
+            {layout && !form && (
+              <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 16, marginBottom: 18 }}>
+                <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={new Set()} readOnly />
+              </div>
+            )}
+
+            {/* Lista de reservas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {reservas.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma reserva nesta excursão.</p>
+                : reservas.map(r => {
+                  const st = stReserva[r.status] || stReserva['pre-reserva']
+                  const poltronas = r.passageiros.map(p => p.poltrona).filter(Boolean).join(', ')
+                  const valor = Math.max(0, r.passageiros.length * (excursao.valorPacote || 0) - (r.desconto || 0))
+                  return (
+                    <div key={r.id} onClick={() => podeEditar && editarReserva(r)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: '11px 14px', cursor: podeEditar ? 'pointer' : 'default', opacity: r.status === 'cancelada' ? 0.6 : 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{r.contratanteNome}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>
+                        <span style={{ flex: 1 }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>{fmtBRL(valor)}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{r.passageiros.length} pax · poltronas {poltronas || '—'}</div>
+                    </div>
+                  )
+                })}
+            </div>
+          </>
+        )}
+
+      {/* Modal criar/editar reserva */}
+      {form && excursao && (
+        <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', margin: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar reserva' : 'Nova reserva'}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{excursao.titulo} · {fmtData(excursao.dataIda)} · {fmtBRL(excursao.valorPacote)}/pessoa</p>
+            <input value={form.contratanteNome} onChange={e => setForm(f => f && ({ ...f, contratanteNome: e.target.value, passageiros: f.passageiros.map((p, i) => i === 0 && !p.nome ? { ...p, nome: e.target.value } : p) }))} placeholder="Contratante (nome) *" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', fontSize: 14, marginBottom: 12 }} />
+
+            {layout ? (
+              <>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Clique nas poltronas livres para escolher</label>
+                <div style={{ marginBottom: 14, overflowX: 'auto' }}>
+                  <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={selecionadas} onToggle={togglePoltrona} />
+                </div>
+              </>
+            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Defina o ônibus da excursão para escolher poltronas.</p>}
+
+            {form.passageiros.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Passageiros ({form.passageiros.length})</label>
+                {form.passageiros.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ width: 34, textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#111', background: '#f1f5f9', borderRadius: 6, padding: '6px 0', flexShrink: 0 }}>{p.poltrona}</span>
+                    <input value={p.nome} onChange={e => setPax(i, { nome: e.target.value })} placeholder="Nome do passageiro" style={{ ...inputStyle, flex: 2, minWidth: 140 }} />
+                    <input value={p.cpf || ''} onChange={e => setPax(i, { cpf: e.target.value })} placeholder="CPF" style={{ ...inputStyle, flex: 1, minWidth: 100 }} />
+                    <input type="date" value={p.nascimento || ''} onChange={e => setPax(i, { nascimento: e.target.value })} title="Nascimento" style={{ ...inputStyle, width: 140 }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
+                Desconto (R$)
+                <input type="number" min={0} step="0.01" value={form.desconto} onChange={e => setForm(f => f && ({ ...f, desconto: e.target.value }))} placeholder="0" style={{ ...inputStyle, width: 100 }} />
+              </label>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#166534' }}>Total: {fmtBRL(valorForm)}</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
+              {form.id && podeExcluir && <button onClick={() => { const r = reservas.find(x => x.id === form.id); if (r) { setForm(null); excluir(r) } }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
+              <span style={{ flex: form.id ? undefined : 1 }} />
+              <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar reserva'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
