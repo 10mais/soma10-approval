@@ -1912,8 +1912,9 @@ function Dashboard() {
           )}
 
           {/* Seletor de visualização por cliente — primeira coisa exibida (equipe).
-              Oculto no turismo: operadora não tem "clientes" de agência (sub-accounts). */}
-          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && <div style={{ marginBottom: 20 }}>
+              Oculto no turismo e na clínica: essas instâncias não têm "clientes"
+              de agência (sub-accounts) — a aba clientes já é oculta nos dois perfis. */}
+          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
