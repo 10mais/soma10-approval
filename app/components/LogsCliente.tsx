@@ -26,7 +26,7 @@ function haQuanto(ts: number): string {
   return `há ${d} dia${d > 1 ? 's' : ''}`
 }
 
-export default function LogsCliente({ clientes = [] }: { clientes?: Cliente[] }) {
+export default function LogsCliente({ clientes = [], onAbrirPost }: { clientes?: Cliente[]; onAbrirPost?: (postId: string) => void }) {
   const [logs, setLogs] = useState<Log[]>([])
   const [carregando, setCarregando] = useState(true)
   const [cliente, setCliente] = useState('')
@@ -77,15 +77,25 @@ export default function LogsCliente({ clientes = [] }: { clientes?: Cliente[] })
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtrados.map(l => {
           const e = ESTILO[l.tipo] || { cor: '#6b7280', bg: '#f3f4f6', label: l.tipo }
+          const abrivel = !!(l.postId && onAbrirPost) // solicitação de conteúdo não tem post
           return (
-            <div key={l.id} style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div key={l.id} onClick={() => abrivel && onAbrirPost!(l.postId!)} title={abrivel ? 'Abrir o post no editor para corrigir e reenviar' : undefined}
+              style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: abrivel ? 'pointer' : 'default' }}>
               <span style={{ flexShrink: 0, marginTop: 2, fontSize: 10.5, fontWeight: 800, color: e.cor, background: e.bg, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{e.label}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: '#111' }}><strong>{l.clienteNome}</strong> · {l.acao}</p>
                 {l.resumo && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>“{l.resumo}”</p>}
                 {l.motivo && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 10px', whiteSpace: 'pre-wrap' }}>{l.motivo}</p>}
               </div>
-              <span style={{ flexShrink: 0, fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                <span style={{ fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
+                {abrivel && (
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Abrir e corrigir
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </span>
+                )}
+              </div>
             </div>
           )
         })}

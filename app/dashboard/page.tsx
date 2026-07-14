@@ -4520,7 +4520,17 @@ function Dashboard() {
         )}
 
         {aba === 'solicitacoes' && role !== 'cliente' && (
-          <LogsCliente clientes={clientes} />
+          <LogsCliente clientes={clientes} onAbrirPost={async (postId: string) => {
+            // Abre o post da solicitação no editor (corrigir → "Enviar para aprovação" reenvia ao cliente).
+            let p = posts.find(x => x.id === postId)
+            if (!p) {
+              // Post fora da janela carregada — consulta a base completa uma vez
+              const todos = await fetch('/api/posts?tudo=1').then(r => r.json()).catch(() => null)
+              if (Array.isArray(todos)) p = todos.find((x: any) => x.id === postId)
+            }
+            if (p) iniciarEdicaoPost(p as any)
+            else toast('Post não encontrado — pode ter sido excluído.', 'erro')
+          }} />
         )}
 
         {/* MEU DIA (equipe) */}
