@@ -36,6 +36,7 @@ const Rentabilidade = dynamic(() => import('../components/Rentabilidade'), { ssr
 const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Agentes = dynamic(() => import('../components/Agentes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Procedimentos = dynamic(() => import('../components/Procedimentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Documentos = dynamic(() => import('../components/Documentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardVendas = dynamic(() => import('../components/DashboardVendas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MapasMentais = dynamic(() => import('../components/MapasMentais'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -190,6 +191,7 @@ const ICONE_ABA: Record<string, string> = {
   esteira: 'M3 4h7v7H3zM14 13h7v7h-7zM10 7.5h4a3 3 0 0 1 3 3V13M14 16.5H7a3 3 0 0 1-3-3V11',
   studio: 'M3 3h18v18H3zM3 9h18M9 9v12M3 15h6',
   agenda: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 16l2 2 4-4',
+  procedimentos: 'M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1zM8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 12h6M9 16h4',
   carga: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   reunioes: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 15l2 2 4-4',
   playbook: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5z',
@@ -412,7 +414,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'onibus' | 'excursoes' | 'reservas' | 'recebiveis'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'onibus' | 'excursoes' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -943,7 +945,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', onibus: 'crm', excursoes: 'crm', reservas: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', onibus: 'crm', excursoes: 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -2034,6 +2036,13 @@ function Dashboard() {
                   <NavBtn chave="excursoes" label="Excursões" />
                   <NavBtn chave="reservas" label="Reservas" />
                   <NavBtn chave="onibus" label="Ônibus" />
+                </nav>
+              )}
+              {/* Clínica — catálogo de procedimentos e métodos (brick do perfil clínica) */}
+              {perfilClinica && podeGrupo('crm') && (
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Clínica</span>}
+                  <NavBtn chave="procedimentos" label="Procedimentos e Métodos" />
                 </nav>
               )}
               {/* Comunicação — acima de Estratégia */}
@@ -3286,6 +3295,11 @@ function Dashboard() {
             perfilClinica={perfilClinica}
             podeEditar={podeNivelDash('producao', 'editar')}
           />
+        )}
+
+        {/* Clínica — catálogo de Procedimentos e Métodos */}
+        {aba === 'procedimentos' && perfilClinica && role !== 'cliente' && (
+          <Procedimentos podeEditar={role === 'admin' || role === 'gerente'} />
         )}
 
         {/* Operação turismo — Excursões / Ônibus */}

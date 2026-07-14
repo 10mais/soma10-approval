@@ -218,6 +218,8 @@ export type Agendamento = {
   observacoes?: string
   queixaPrincipal?: string // motivo da consulta relatado pelo paciente (clínicas)
   registroAtendimento?: string // evolução/prontuário simples escrito ao atender (dado de saúde — só no banco isolado da clínica)
+  procedimentosRealizados?: string[] // clínicas: o que a paciente realizou neste atendimento (nomes do catálogo de procedimentos)
+  valorInvestido?: number // clínicas: quanto a paciente investiu neste atendimento (R$)
   criadoEm: string
   criadoPor?: string
 }
@@ -701,10 +703,23 @@ export type CrmContato = {
   ativo?: boolean // ausente = ativo
   observacoes?: string
   historico?: ContatoInteracao[] // linha do tempo de nutrição (toques ao longo do ano)
+  proximosPassos?: ProximoPasso[] // clínicas: jornada futura do paciente (o que fazer e quando) — cada passo vira Tarefa para a equipe
   ultimoContato?: string // ISO — data do último toque (interação manual OU agendamento) p/ reabordagem
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
+}
+
+// Passo FUTURO da jornada do paciente ("o que fazer e daqui quanto tempo").
+// Criado na ficha do paciente; gera uma Tarefa para a equipe na data (tarefaId).
+export type ProximoPasso = {
+  id: string
+  titulo: string
+  quando: string // YYYY-MM-DD — data prevista
+  nota?: string
+  feito?: boolean
+  tarefaId?: string // tarefa gerada automaticamente para a equipe
+  criadoEm: string
 }
 
 // Toque de relacionamento registrado no paciente/contato (nutrição da base).

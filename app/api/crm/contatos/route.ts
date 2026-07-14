@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmContato, CrmEmpresa, ContatoInteracao } from '@/lib/redis'
+import { redis, CrmContato, CrmEmpresa, ContatoInteracao, ProximoPasso } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
@@ -113,6 +113,53 @@ export async function PUT(req: NextRequest) {
   if (updates.removerInteracao) {
     const historico = (contato.historico || []).filter(h => h.id !== updates.removerInteracao)
     const atualizado: CrmContato = { ...contato, historico, atualizadoEm: new Date().toISOString() }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+
+  // Ação: PRÓXIMO PASSO da jornada (clínica) — "o que fazer e daqui quanto tempo".
+  // Cada passo gera uma Tarefa para a equipe na data (aparece em Tarefas com prazo).
+  if (updates.novoPasso) {
+    const d = updates.novoPasso
+    const titulo = String(d.titulo || '').trim().slice(0, 200)
+    const quando = String(d.quando || '').slice(0, 10)
+    if (!titulo || !/^\d{4}-\d{2}-\d{2}$/.test(quando)) return NextResponse.json({ error: 'informe o que fazer e a data' }, { status: 400 })
+    const agora = new Date().toISOString()
+    const autorEmail = (session.user as any)?.email || ''
+    const autorNome = session.user?.name || ''
+    // Tarefa automática para a equipe (tipo do catálogo de clínica)
+    const tarefa: any = {
+      id: uuid(), titulo: `${titulo} — ${contato.nome}`, descricao: [d.nota, `Jornada do paciente: ${contato.nome}`].filter(Boolean).join('\n'),
+      status: 'a_fazer', prioridade: 'media', tipo: 'retorno_paciente',
+      responsavelEmail: autorEmail, responsavelNome: autorNome,
+      prazo: `${quando}T09:00:00`, criadoPor: autorNome, criadoEm: agora, atualizadoEm: agora,
+    }
+    await redis.set(`tarefa:${tarefa.id}`, tarefa)
+    await redis.sadd('tarefas', tarefa.id)
+    const passo: ProximoPasso = { id: uuid(), titulo, quando, ...(d.nota ? { nota: String(d.nota).slice(0, 500) } : {}), feito: false, tarefaId: tarefa.id, criadoEm: agora }
+    const atualizado: CrmContato = { ...contato, proximosPassos: [...(contato.proximosPassos || []), passo], atualizadoEm: agora }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+  // Concluir/reabrir um passo (sincroniza a tarefa vinculada)
+  if (updates.togglePasso) {
+    const passos = [...(contato.proximosPassos || [])]
+    const p = passos.find(x => x.id === updates.togglePasso)
+    if (!p) return NextResponse.json({ error: 'passo não encontrado' }, { status: 404 })
+    p.feito = !p.feito
+    if (p.tarefaId) {
+      const t = await redis.get<any>(`tarefa:${p.tarefaId}`)
+      if (t) await redis.set(`tarefa:${p.tarefaId}`, { ...t, status: p.feito ? 'concluido' : 'a_fazer', ...(p.feito ? { concluidoEm: new Date().toISOString() } : { concluidoEm: undefined }), atualizadoEm: new Date().toISOString() })
+    }
+    const atualizado: CrmContato = { ...contato, proximosPassos: passos, atualizadoEm: new Date().toISOString() }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+  // Remover um passo (apaga também a tarefa gerada, se ainda existir)
+  if (updates.removerPasso) {
+    const alvo = (contato.proximosPassos || []).find(x => x.id === updates.removerPasso)
+    if (alvo?.tarefaId) { await redis.del(`tarefa:${alvo.tarefaId}`); await redis.srem('tarefas', alvo.tarefaId) }
+    const atualizado: CrmContato = { ...contato, proximosPassos: (contato.proximosPassos || []).filter(x => x.id !== updates.removerPasso), atualizadoEm: new Date().toISOString() }
     await redis.set(`contato:${id}`, atualizado)
     return NextResponse.json({ ok: true, contato: atualizado })
   }

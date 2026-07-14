@@ -19,6 +19,8 @@ type Ag = {
   dataInicio: string; duracaoMin: number; status: string; observacoes?: string
   queixaPrincipal?: string
   registroAtendimento?: string
+  procedimentosRealizados?: string[]
+  valorInvestido?: number
 }
 // Tipos de atendimento da clínica (dropdown fixo — pedido do dono)
 const SERVICOS_CLINICA = ['Consulta', 'Revisão', 'Procedimento']
@@ -64,6 +66,16 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   const [profFiltro, setProfFiltro] = useState('')
   const [ags, setAgs] = useState<Ag[]>([])
   const [servicos, setServicos] = useState<string[]>([])
+  // Catálogo de Procedimentos e Métodos (clínica): alimenta o "tipo de atendimento"
+  // e o pós-atendimento. Vazio = usa a lista básica SERVICOS_CLINICA.
+  const [procedimentos, setProcedimentos] = useState<string[]>([])
+  useEffect(() => {
+    if (!perfilClinica) return
+    fetch('/api/procedimentos').then(r => r.json())
+      .then(d => { if (Array.isArray(d?.procedimentos)) setProcedimentos(d.procedimentos.map((p: any) => p.nome)) })
+      .catch(() => {})
+  }, [perfilClinica])
+  const servicosClinica = procedimentos.length ? procedimentos : SERVICOS_CLINICA
   const [carregando, setCarregando] = useState(true)
   const [modal, setModal] = useState<Partial<Ag> | null>(null) // sem id = novo
   const [salvando, setSalvando] = useState(false)
@@ -573,7 +585,8 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   <select value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
                     <option value="">Tipo de atendimento...</option>
-                    {SERVICOS_CLINICA.map(s => <option key={s} value={s}>{s}</option>)}
+                    {servicosClinica.map(s => <option key={s} value={s}>{s}</option>)}
+                    {modal.servico && !servicosClinica.includes(modal.servico) && <option value={modal.servico}>{modal.servico}</option>}
                   </select>
                 ) : (
                   <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder="Serviço"
@@ -619,7 +632,25 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Registro do atendimento (evolução)</label>
                   <textarea value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder="O que foi feito, orientações, próximos passos..." rows={4}
                     style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-                  <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#aaa' }}>Fica no histórico do paciente. Dado sensível — visível só para a equipe.</p>
+                  {/* Pós-atendimento estruturado: procedimentos realizados (do catálogo) + investimento */}
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', margin: '10px 0 5px' }}>Procedimentos realizados</label>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {Array.from(new Set([...servicosClinica, ...(modal.procedimentosRealizados || [])])).map(p => {
+                      const marcado = (modal.procedimentosRealizados || []).includes(p)
+                      return (
+                        <button key={p} type="button" onClick={() => setModal(m => ({ ...m, procedimentosRealizados: marcado ? (m?.procedimentosRealizados || []).filter(x => x !== p) : [...(m?.procedimentosRealizados || []), p] }))}
+                          style={{ padding: '5px 12px', borderRadius: 999, border: marcado ? '1.5px solid #166534' : '1px solid #e6e6e6', background: marcado ? '#dcfce7' : '#fff', color: marcado ? '#166534' : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                          {p}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#888', flexShrink: 0 }}>Investimento (R$)</label>
+                    <input type="number" min={0} step="0.01" value={modal.valorInvestido ?? ''} onChange={e => setModal(m => ({ ...m, valorInvestido: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="0,00"
+                      style={{ width: 140, padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#aaa' }}>Fica no histórico do paciente. Dado sensível — visível só para a equipe.</p>
                 </div>
               )}
             </div>

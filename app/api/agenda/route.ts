@@ -160,9 +160,16 @@ export async function PUT(req: NextRequest) {
   const atual = await redis.get<Agendamento>(`agendamento:${b.id}`)
   if (!atual) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
-  const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes', 'queixaPrincipal', 'registroAtendimento']
+  const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes', 'queixaPrincipal', 'registroAtendimento', 'procedimentosRealizados', 'valorInvestido']
   const atualizado: Agendamento = { ...atual }
   for (const c of campos) { if (c in b) (atualizado as any)[c] = b[c] }
+  // Pós-atendimento: normaliza procedimentos (lista de nomes) e valor investido
+  if ('procedimentosRealizados' in b) {
+    atualizado.procedimentosRealizados = Array.isArray(b.procedimentosRealizados)
+      ? b.procedimentosRealizados.map((p: any) => String(p).trim().slice(0, 120)).filter(Boolean).slice(0, 30)
+      : undefined
+  }
+  if ('valorInvestido' in b) atualizado.valorInvestido = Math.max(0, Number(b.valorInvestido) || 0) || undefined
   atualizado.duracaoMin = Math.min(600, Math.max(5, Number(atualizado.duracaoMin) || 30))
   if (isNaN(new Date(atualizado.dataInicio).getTime())) return NextResponse.json({ error: 'data inválida' }, { status: 400 })
   // Renomeou o paciente sem apontar contato? Refaz o vínculo (casa ou cria cadastro).

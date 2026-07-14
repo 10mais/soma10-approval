@@ -953,7 +953,7 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
   const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
-  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string }[] | null>(null)
+  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
   useEffect(() => {
     if (!perfilClinica || !contato?.id) return
     fetch(`/api/agenda?contatoId=${contato.id}`).then(r => r.json())
@@ -1000,6 +1000,33 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
     const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, removerInteracao: interacaoId }) }).then(x => x.json()).catch(() => null)
     if (r?.ok) setInteracoes(r.contato.historico || [])
   }
+  // Próximos passos (jornada futura): "o que fazer e daqui quanto tempo".
+  // Cada passo vira uma Tarefa para a equipe na data (o servidor cria/conclui/remove junto).
+  const [passos, setPassos] = useState<{ id: string; titulo: string; quando: string; feito?: boolean }[]>(((contato as any)?.proximosPassos) || [])
+  const [novoPasso, setNovoPasso] = useState({ titulo: '', dias: 30 })
+  const [addPassoBusy, setAddPassoBusy] = useState(false)
+  const diasAte = (ymd: string) => Math.round((new Date(ymd + 'T00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
+  async function addPasso() {
+    if (!contato?.id || !novoPasso.titulo.trim() || addPassoBusy) return
+    const d = new Date(); d.setDate(d.getDate() + Math.max(1, Number(novoPasso.dias) || 1))
+    const quando = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    setAddPassoBusy(true)
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novoPasso: { titulo: novoPasso.titulo, quando } }) }).then(x => x.json()).catch(() => null)
+    setAddPassoBusy(false)
+    if (r?.ok) { setPassos(r.contato.proximosPassos || []); setNovoPasso({ titulo: '', dias: novoPasso.dias }); toast('Passo agendado — tarefa criada para a equipe.', 'sucesso') }
+    else toast(r?.error || 'Falha ao agendar o passo.', 'erro')
+  }
+  async function togglePasso(passoId: string) {
+    if (!contato?.id) return
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, togglePasso: passoId }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) setPassos(r.contato.proximosPassos || [])
+  }
+  async function removerPasso(passoId: string) {
+    if (!contato?.id) return
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, removerPasso: passoId }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) setPassos(r.contato.proximosPassos || [])
+  }
+  const passosOrdenados = [...passos].sort((a, b) => (a.feito ? 1 : 0) - (b.feito ? 1 : 0) || a.quando.localeCompare(b.quando))
   // Timeline unificada: toques manuais + atendimentos da agenda, mais recentes primeiro
   const timeline = [
     ...interacoes.map(i => ({ id: i.id, data: i.data, kind: 'toque' as const, i })),
@@ -1144,6 +1171,38 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
                   </span>
                 )}
               </div>
+              {/* Próximos passos — jornada futura do paciente (cada passo vira tarefa) */}
+              <div style={{ margin: '10px 0 12px', background: '#f8faff', border: '1px solid #e3eaff', borderRadius: 10, padding: 10 }}>
+                <label style={{ ...labelStyle, marginBottom: 6 }}>Próximos passos (jornada)</label>
+                <div style={{ display: 'flex', gap: 6, marginBottom: passosOrdenados.length ? 8 : 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input value={novoPasso.titulo} onChange={e => setNovoPasso(p => ({ ...p, titulo: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') addPasso() }}
+                    placeholder="O que fazer (ex.: Retorno de avaliação)" style={{ ...inputStyle, flex: 1, minWidth: 170 }} />
+                  <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>daqui</span>
+                  <input type="number" min={1} value={novoPasso.dias} onChange={e => setNovoPasso(p => ({ ...p, dias: Number(e.target.value) || 1 }))} style={{ ...inputStyle, width: 62, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>dias</span>
+                  <button onClick={addPasso} disabled={addPassoBusy || !novoPasso.titulo.trim()} style={{ padding: '9px 14px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() ? 1 : 0.5, flexShrink: 0 }}>+</button>
+                </div>
+                {passosOrdenados.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {passosOrdenados.map(p => {
+                      const n = diasAte(p.quando)
+                      const prazoTxt = p.feito ? '' : n > 0 ? `em ${n}d` : n === 0 ? 'hoje' : `atrasado ${-n}d`
+                      return (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px' }}>
+                          <button onClick={() => togglePasso(p.id)} title={p.feito ? 'Reabrir' : 'Concluir'}
+                            style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid #cbd5e1', background: p.feito ? '#16a34a' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
+                            {p.feito && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                          </button>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>{new Date(p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
+                          {prazoTxt && <span style={{ fontSize: 10.5, fontWeight: 700, color: n < 0 ? '#b91c1c' : '#94a3b8', flexShrink: 0 }}>{prazoTxt}</span>}
+                          <span style={{ flex: 1, fontSize: 12.5, color: p.feito ? '#9ca3af' : '#333', textDecoration: p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
+                          {podeExcluir && <button onClick={() => removerPasso(p.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
               {/* Quick-add de toque (nota/ligação/whatsapp/reabordagem…) */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
                 <select value={novoToque.tipo} onChange={e => setNovoToque(t => ({ ...t, tipo: e.target.value }))} style={{ padding: '9px 8px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
@@ -1166,6 +1225,11 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{(STATUS_AG[item.h.status] || STATUS_AG.agendado).label}</span>
                         </div>
                         {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#555', background: '#fafafa', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
+                        {Array.isArray(item.h.procedimentosRealizados) && item.h.procedimentosRealizados.length > 0 && (
+                          <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: '#166534' }}>
+                            {item.h.procedimentosRealizados.join(' · ')}{item.h.valorInvestido ? ` — ${fmtBRL(item.h.valorInvestido)}` : ''}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
