@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA } from '@/lib/perfisInstanciaCatalogo'
+import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO, perfilSemRecrutamento } from '@/lib/perfisInstanciaCatalogo'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 import { GRUPOS, NIVEIS, podeNivel } from '@/lib/permissoesCatalogo'
 import { podeAbaGranular } from '@/lib/permissoesGranular'
@@ -25,6 +25,7 @@ describe('catálogo de perfis', () => {
   it('perfilDef resolve chave válida e rejeita o resto', () => {
     expect(perfilDef('clinica')?.chave).toBe('clinica')
     expect(perfilDef('gestao')?.chave).toBe('gestao')
+    expect(perfilDef('turismo')?.chave).toBe('turismo')
     expect(perfilDef('inexistente')).toBeNull()
     expect(perfilDef('')).toBeNull()
     expect(perfilDef(undefined)).toBeNull()
@@ -148,5 +149,44 @@ describe('perfil gestao — comportamento esperado', () => {
   it('financeiro segue exclusivo do admin mesmo no perfil gestao', () => {
     expect(podeNivel('gerente', 'financeiro', 'ver', undefined, def.permissoesPapel)).toBe(false)
     expect(podeNivel('admin', 'financeiro', 'ver', undefined, def.permissoesPapel)).toBe(true)
+  })
+})
+
+describe('perfil turismo — operadora de excursões', () => {
+  const def = perfilDef('turismo')!
+
+  it('funil "Vendas de Viagem" com Emitido(ganho) e Perdido', () => {
+    expect(def.pipelines!.map(p => p.nome)).toEqual(['Vendas de Viagem'])
+    const funil = def.pipelines![0]
+    expect(funil.estagios.find(e => e.ganho)?.nome).toBe('Emitido')
+    expect(funil.estagios.find(e => e.perdido)?.nome).toBe('Perdido')
+    expect(funil.estagios.map(e => e.nome)).toContain('Reserva')
+  })
+
+  it('CRM ligado, Estratégia desligada; social/Agenda escondidos', () => {
+    for (const papel of ['gerente', 'usuario']) {
+      expect(podeAbaGranular(papel, 'crm', undefined, def.permissoesGranular)).toBe(true)
+      expect(podeAbaGranular(papel, 'studio', undefined, def.permissoesGranular)).toBe(false)
+      expect(podeAbaGranular(papel, 'agenda', undefined, def.permissoesGranular)).toBe(false)
+    }
+    expect(podeNivel('gerente', 'estrategia', 'ver', undefined, def.permissoesPapel)).toBe(false)
+    expect(podeNivel('usuario', 'crm', 'editar', undefined, def.permissoesPapel)).toBe(true)
+  })
+
+  it('esconde agência/clínica mas mantém CRM/Tarefas/Financeiro', () => {
+    for (const oculta of ['studio', 'agenda', 'clientes', 'recrutamento', 'conversao']) {
+      expect(ABAS_OCULTAS_TURISMO).toContain(oculta)
+    }
+    for (const essencial of ['crm', 'tarefas', 'rentabilidade', 'home', 'mensagens']) {
+      expect(ABAS_OCULTAS_TURISMO).not.toContain(essencial)
+    }
+    expect(new Set(ABAS_OCULTAS_TURISMO).size).toBe(ABAS_OCULTAS_TURISMO.length)
+  })
+
+  it('perfilSemRecrutamento: clínica e turismo sim; gestão e agência não', () => {
+    expect(perfilSemRecrutamento('clinica')).toBe(true)
+    expect(perfilSemRecrutamento('turismo')).toBe(true)
+    expect(perfilSemRecrutamento('gestao')).toBe(false)
+    expect(perfilSemRecrutamento(null)).toBe(false)
   })
 })

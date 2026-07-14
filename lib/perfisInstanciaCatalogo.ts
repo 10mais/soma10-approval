@@ -9,7 +9,7 @@ import { PermissoesPapel } from './permissoesCatalogo'
 import { PermGranularPapel } from './permissoesGranular'
 import { PLAYBOOK_CLINICA, PlaybookSeed } from './playbookClinica'
 
-export type PerfilInstancia = 'clinica' | 'gestao'
+export type PerfilInstancia = 'clinica' | 'gestao' | 'turismo'
 
 export type DefPerfil = {
   chave: PerfilInstancia
@@ -40,6 +40,20 @@ export const ABAS_OCULTAS_CLINICA: string[] = [
   'candidaturas', 'recrutamento', // Pessoas e Cultura (Trabalhe Conosco)
   'solicitacoes', // Solicitações do cliente (conceito de agência)
   'clientes', // gestão de clientes B2B (agência/assessoria) — clínica usa Pacientes no CRM
+]
+
+// Abas que o modo turismo (operadora de excursões) esconde de TODOS os papéis.
+// Turismo usa CRM + Financeiro + módulos próprios de Operação (Excursões/Ônibus/
+// Reservas/Recebíveis, adicionados na navegação por perfilTurismo). Não usa
+// produção de conteúdo, Estratégia de agência, nem a Agenda clínica.
+export const ABAS_OCULTAS_TURISMO: string[] = [
+  'studio', 'planner', 'mapas', 'agentes', // produção de conteúdo/social
+  'playbook', 'campanhas', 'modelos', 'automacoes', // Estratégia de agência
+  'conversao', // Conversão & Retenção (agência)
+  'candidaturas', 'recrutamento', // Trabalhe Conosco
+  'solicitacoes', // Solicitações do cliente (agência)
+  'clientes', // gestão de clientes B2B de agência — turismo usa Contatos/Empresas do CRM
+  'agenda', // agenda clínica (turismo tem calendário de ônibus próprio, F5)
 ]
 
 export const PERFIS: DefPerfil[] = [
@@ -118,9 +132,53 @@ export const PERFIS: DefPerfil[] = [
       usuario: { abas: { ...ABAS_SOCIAL_OFF, agenda: false, campanhas: false, automacoes: false } },
     },
   },
+  {
+    chave: 'turismo',
+    label: 'Turismo',
+    descricao: 'Operadora de excursões rodoviárias: CRM + Operação (excursões, ônibus, reservas, poltronas) + Financeiro. Ex.: Deny Turismo.',
+    permissoesPapel: {
+      gerente: {
+        producao: { ver: true, editar: true, excluir: true },
+        estrategia: { ver: false, editar: false, excluir: false },
+        crm: { ver: true, editar: true, excluir: true },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+      usuario: {
+        producao: { ver: true, editar: true, excluir: false },
+        estrategia: { ver: false, editar: false, excluir: false },
+        crm: { ver: true, editar: true, excluir: false },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+    },
+    permissoesGranular: {
+      gerente: { abas: { ...ABAS_SOCIAL_OFF, conversao: false, agenda: false } },
+      usuario: { abas: { ...ABAS_SOCIAL_OFF, conversao: false, agenda: false } },
+    },
+    // Funil de vendas de viagem (kanban). Ganho = Emitido; Perdido = desistência.
+    pipelines: [
+      {
+        nome: 'Vendas de Viagem',
+        estagios: [
+          { nome: 'Novo lead' },
+          { nome: 'Cotação enviada' },
+          { nome: 'Proposta enviada' },
+          { nome: 'Reserva' },
+          { nome: 'Pago' },
+          { nome: 'Emitido', ganho: true },
+          { nome: 'Perdido', perdido: true },
+        ],
+      },
+    ],
+  },
 ]
 
 export function perfilDef(chave?: string | null): DefPerfil | null {
   if (!chave) return null
   return PERFIS.find(p => p.chave === chave) || null
+}
+
+// Perfis que NÃO usam "Trabalhe Conosco"/recrutamento (clínica, turismo). Usado
+// para 404 nas rotas públicas de candidaturas/recrutamento nessas instâncias.
+export function perfilSemRecrutamento(perfil?: string | null): boolean {
+  return perfil === 'clinica' || perfil === 'turismo'
 }

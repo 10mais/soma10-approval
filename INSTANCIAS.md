@@ -38,6 +38,7 @@ fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},bo
 2. **`perfil` (opcional) pré-configura a instância inteira** — permissões por papel, telas da equipe e funil de CRM. `GET /api/setup` lista os disponíveis:
    - **`clinica`** — CRM (funil de pacientes: Lead → Contato → Avaliação agendada → Compareceu → Orçamento → Fechou/Não fechou) + Agenda. Equipe sem Estratégia/Studio/Planner. *(Norah, Phenoma — toda clínica nasce igual)*
    - **`gestao`** — CRM + Financeiro (admin) + Projetos (Playbook/Tarefas/Modelos/Documentos). Equipe sem Studio/Planner/Agenda/Campanhas. *(Sua Dupla Cidadania)*
+   - **`turismo`** — operadora de excursões rodoviárias: CRM (funil "Vendas de Viagem": Novo lead → Cotação → Proposta → Reserva → Pago → Emitido/Perdido) + Financeiro (admin) + módulos de Operação (Excursões/Ônibus/Reservas/Recebíveis). Equipe sem Estratégia/Studio/Planner/Agenda clínica/Trabalhe Conosco. *(Deny Turismo)*
    - Sem `perfil` = padrão da agência (tudo ligado). Perfil desconhecido = 400 (evita typo silencioso).
 3. A rota **só funciona com o banco vazio** — depois do 1º admin ela tranca (403).
 4. Logar → **Minha Conta**: trocar a senha → **Config → Geral**: logo/cores da empresa.

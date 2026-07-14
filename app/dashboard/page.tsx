@@ -4,7 +4,14 @@ import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
-import { ABAS_OCULTAS_CLINICA } from '@/lib/perfisInstanciaCatalogo'
+import { ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO } from '@/lib/perfisInstanciaCatalogo'
+
+// Abas escondidas de TODOS os papéis conforme o perfil da instância (nav + guarda).
+function abasOcultas(perfil: string | null): string[] {
+  if (perfil === 'clinica') return ABAS_OCULTAS_CLINICA
+  if (perfil === 'turismo') return ABAS_OCULTAS_TURISMO
+  return []
+}
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -584,6 +591,8 @@ function Dashboard() {
   // Perfil da instância (clinica/gestao/null=agência) — adapta home, CRM e Agenda
   const [perfilInstancia, setPerfilInstancia] = useState<string | null>(null)
   const perfilClinica = perfilInstancia === 'clinica'
+  const perfilTurismo = perfilInstancia === 'turismo'
+  const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
   const [perfilAberto, setPerfilAberto] = useState(false)
@@ -926,7 +935,7 @@ function Dashboard() {
   const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
-    if (perfilClinica && ABAS_OCULTAS_CLINICA.includes(aba)) { setAba('home'); return }
+    if (ocultas.includes(aba)) { setAba('home'); return }
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
     if (g && !podeGrupo(g)) { setAba('home'); return }
@@ -1682,7 +1691,7 @@ function Dashboard() {
     // Permissão detalhada por aba (esconde a tela para quem não pode vê-la).
     if (ABAS_PERM.some(a => a.key === chave) && !podeAbaDash(chave)) return null
     // Modo clínica: telas de agência somem para TODOS, admin incluso
-    if (perfilClinica && ABAS_OCULTAS_CLINICA.includes(chave)) return null
+    if (ocultas.includes(chave)) return null
     const ativo = aba === chave
     // Ao clicar com a sidebar recolhida, expande automaticamente
     const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
@@ -1997,7 +2006,7 @@ function Dashboard() {
               {([
                 { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
                 { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
-              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && !(perfilClinica && g.itens.every(([a]) => ABAS_OCULTAS_CLINICA.includes(a)))).map((grupo, gi) => (
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
@@ -2013,7 +2022,7 @@ function Dashboard() {
               {([
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
                 { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
-              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && !(perfilClinica && g.itens.every(([a]) => ABAS_OCULTAS_CLINICA.includes(a)))).map((grupo) => (
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
@@ -4575,6 +4584,7 @@ function Dashboard() {
                   <option value="">Agência (padrão)</option>
                   <option value="clinica">Clínica</option>
                   <option value="gestao">Gestão</option>
+                  <option value="turismo">Turismo</option>
                 </select>
                 <span style={{ fontSize: 11.5, color: '#aaa' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
               </div>

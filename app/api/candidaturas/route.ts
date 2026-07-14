@@ -6,13 +6,14 @@ import { v4 as uuid } from 'uuid'
 import { notificarAdmins } from '@/lib/notificacoes'
 import { checarRate } from '@/lib/rateLimit'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { perfilSemRecrutamento } from '@/lib/perfisInstanciaCatalogo'
 
 export const runtime = 'nodejs'
 
 // POST: publico (qualquer candidato envia, sem login)
 export async function POST(req: NextRequest) {
-  // Instância clínica não tem recrutamento — bloqueia também o envio público
-  if ((await getPerfilInstancia()) === 'clinica') return NextResponse.json({ error: 'recurso indisponível nesta instância' }, { status: 404 })
+  // Instâncias clínica/turismo não têm recrutamento — bloqueia também o envio público
+  if (perfilSemRecrutamento(await getPerfilInstancia())) return NextResponse.json({ error: 'recurso indisponível nesta instância' }, { status: 404 })
   const rl = await checarRate(req, 'candidaturas', 5, 60); if (rl) return rl
   const body = await req.json()
   const nome = (body.nome || '').toString().trim()
