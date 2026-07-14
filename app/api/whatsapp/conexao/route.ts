@@ -24,7 +24,9 @@ async function registrarWebhook(): Promise<boolean> {
   try {
     const r = await fetch(`${base()}/webhook/set/${inst()}`, {
       method: 'POST', headers: headers(),
-      body: JSON.stringify({ webhook: { enabled: true, url: webhookUrl(), events: ['MESSAGES_UPSERT'] } }),
+      // base64: o Evolution embute os bytes da mídia no próprio webhook — caminho
+      // mais robusto para o inbox salvar imagem/áudio/vídeo no Blob.
+      body: JSON.stringify({ webhook: { enabled: true, url: webhookUrl(), base64: true, events: ['MESSAGES_UPSERT'] } }),
     })
     return r.ok
   } catch { return false }

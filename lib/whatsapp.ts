@@ -112,28 +112,45 @@ const EXT_POR_MIME: Record<string, string> = {
   'application/pdf': 'pdf',
 }
 
+// Pede ao Evolution os bytes (base64) de uma mensagem de mídia. Loga falhas
+// no runtime da Vercel para diagnóstico ([wa-midia]).
+async function pedirBase64Evolution(corpo: any): Promise<{ b64: string; mimetype?: string }> {
+  const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+  const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${process.env.EVOLUTION_INSTANCE}`, {
+    method: 'POST',
+    headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+  })
+  const d = await r.json().catch(() => ({} as any))
+  if (!r.ok) { console.warn('[wa-midia] getBase64 HTTP', r.status, d?.message || d?.error || ''); return { b64: '' } }
+  return { b64: typeof d?.base64 === 'string' ? d.base64 : '', mimetype: d?.mimetype }
+}
+
 // Captura a MÍDIA de uma mensagem recebida e guarda no Blob (URL permanente).
-// 1º tenta o base64 já embutido no webhook (Evolution com "webhook base64" ligado);
-// senão pede os bytes ao Evolution (getBase64FromMediaMessage). Best-effort:
+// 1º tenta o base64 já embutido no webhook (registramos o webhook com base64:true);
+// senão pede os bytes ao Evolution (getBase64FromMediaMessage — tenta os DOIS
+// formatos de corpo, key-só e mensagem completa, p/ cobrir versões). Best-effort:
 // qualquer falha devolve só o tipo — a mensagem fica com o rótulo, nada quebra.
 export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem, 'tipo' | 'midiaUrl' | 'mimetype' | 'fileName'> | null> {
   try {
     const m = noMidiaEvolution(data?.message)
-    if (!m) return null
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return { tipo: m.tipo }
-    let b64: string = typeof data?.message?.base64 === 'string' ? data.message.base64 : ''
+    if (!m) {
+      // Diagnóstico: payload tem cara de mídia mas num formato que não conhecemos
+      const ks = Object.keys(data?.message || {})
+      if (ks.some(k => /image|video|audio|document|sticker|media/i.test(k))) console.warn('[wa-midia] formato desconhecido:', ks.join(','))
+      return null
+    }
+    if (!process.env.BLOB_READ_WRITE_TOKEN) { console.warn('[wa-midia] sem BLOB_READ_WRITE_TOKEN'); return { tipo: m.tipo } }
+    let b64: string = typeof data?.message?.base64 === 'string' ? data.message.base64
+      : typeof data?.base64 === 'string' ? data.base64
+      : typeof m.no?.base64 === 'string' ? m.no.base64 : ''
     let mimetype: string = m.no?.mimetype || ''
     if (!b64 && evolutionConfigurado() && data?.key?.id) {
-      const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-      const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${process.env.EVOLUTION_INSTANCE}`, {
-        method: 'POST',
-        headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: { key: data.key }, convertToMp4: false }),
-      })
-      const d = await r.json().catch(() => ({} as any))
-      if (typeof d?.base64 === 'string' && d.base64) { b64 = d.base64; mimetype = d?.mimetype || mimetype }
+      let r = await pedirBase64Evolution({ message: { key: data.key }, convertToMp4: false })
+      if (!r.b64) r = await pedirBase64Evolution({ message: data, convertToMp4: false }) // formato antigo (mensagem completa)
+      if (r.b64) { b64 = r.b64; mimetype = r.mimetype || mimetype }
     }
-    if (!b64) return { tipo: m.tipo }
+    if (!b64) { console.warn('[wa-midia] sem base64 para', m.tipo, data?.key?.id || ''); return { tipo: m.tipo } }
     if (b64.length > 34_000_000) return { tipo: m.tipo } // ~25MB binário: grande demais p/ guardar
     const buf = Buffer.from(b64, 'base64')
     mimetype = (mimetype || 'application/octet-stream').split(';')[0].trim()
@@ -143,7 +160,7 @@ export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem
     })
     const nomeOriginal = m.no?.fileName ? String(m.no.fileName).slice(0, 120) : ''
     return { tipo: m.tipo, midiaUrl: blob.url, mimetype, ...(nomeOriginal ? { fileName: nomeOriginal } : {}) }
-  } catch { return null }
+  } catch (e: any) { console.warn('[wa-midia] erro:', e?.message || String(e)); return null }
 }
 
 // Salva uma mensagem na conversa (por telefone) e atualiza os metadados/índice.
