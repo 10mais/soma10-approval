@@ -16,7 +16,7 @@ export async function GET() {
   const usuarios = await getUsuariosRaw()
   const equipe = usuarios
     .filter(u => u.role !== 'cliente')
-    .map(u => ({ id: u.id, nome: u.nome, email: u.email, role: u.role, cargo: u.cargo || '', funcaoVendas: u.funcaoVendas, foto: u.foto || '' }))
+    .map(u => ({ id: u.id, nome: u.nome, email: u.email, role: u.role, cargo: u.cargo || '', funcaoVendas: u.funcaoVendas, foto: u.foto || '', tipoTurismo: (u as any).tipoTurismo, cnh: (u as any).cnh, telefone: u.telefone || '' }))
 
   return NextResponse.json(equipe)
 }

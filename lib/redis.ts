@@ -20,6 +20,8 @@ export type Usuario = {
   areaSaude?: string // clínicas: área de atuação (estética/dermato/nutrição…) do profissional que recebe pacientes.
   corAgenda?: string // clínicas: cor do profissional na Agenda (hex)
   recebeAgenda?: boolean // clínicas: Sim = profissional agendável (recebe pacientes na Agenda); Não = gestão/comercial (usa a agenda, mas não aparece como profissional). Ausente = infere pela areaSaude (retrocompat).
+  tipoTurismo?: 'equipe' | 'motorista' | 'guia' | 'parceiro' // turismo: papel na operação (motorista fica selecionável nas Excursões)
+  cnh?: string // turismo: nº da CNH (usado quando tipoTurismo = motorista)
   // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
   // Cada módulo aceita boolean (formato antigo) ou { ver, editar, excluir } (novo, 3 níveis).
   permissoes?: Record<'producao' | 'estrategia' | 'crm' | 'clientes', boolean | { ver?: boolean; editar?: boolean; excluir?: boolean }> | Partial<Record<string, any>>

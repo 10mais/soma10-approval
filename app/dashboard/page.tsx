@@ -1675,7 +1675,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', recebeAgenda: (edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude, permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', recebeAgenda: (edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude, permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, tipoTurismo: (edicaoUsuario as any).tipoTurismo ?? '', cnh: (edicaoUsuario as any).cnh ?? '', telefone: (edicaoUsuario as any).telefone ?? '', novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -4183,6 +4183,32 @@ function Dashboard() {
                   </div>
                   <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                  {perfilTurismo && (
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Tipo no turismo</label>
+                        <select value={(novoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setNovoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
+                          style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                          <option value="equipe">Equipe</option>
+                          <option value="motorista">Motorista</option>
+                          <option value="guia">Guia</option>
+                          <option value="parceiro">Parceiro</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Telefone</label>
+                        <input value={(novoUsuario as any).telefone || ''} onChange={e => setNovoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      </div>
+                      {(novoUsuario as any).tipoTurismo === 'motorista' && (
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>CNH</label>
+                          <input value={(novoUsuario as any).cnh || ''} onChange={e => setNovoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {perfilClinica && novoUsuario.role !== 'vendas' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -4372,6 +4398,32 @@ function Dashboard() {
                           </button>
                         </div>
                       </div>
+                      {perfilTurismo && (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Tipo no turismo</label>
+                            <select value={(edicaoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setEdicaoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
+                              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                              <option value="equipe">Equipe</option>
+                              <option value="motorista">Motorista</option>
+                              <option value="guia">Guia</option>
+                              <option value="parceiro">Parceiro</option>
+                            </select>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 150 }}>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Telefone</label>
+                            <input value={(edicaoUsuario as any).telefone || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
+                              style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                          </div>
+                          {(edicaoUsuario as any).tipoTurismo === 'motorista' && (
+                            <div style={{ flex: 1, minWidth: 130 }}>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>CNH</label>
+                              <input value={(edicaoUsuario as any).cnh || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
+                                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {perfilClinica && edicaoUsuario.role !== 'vendas' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
