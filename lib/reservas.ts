@@ -28,6 +28,7 @@ export type Reserva = {
   observacoes?: string
   status: StatusReserva
   financeiro?: FinanceiroReserva
+  token?: string           // link público p/ o cliente escolher poltrona (reservatoken:{token})
   criadoPor?: string
   criadoEm: string
   atualizadoEm: string

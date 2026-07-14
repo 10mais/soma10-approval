@@ -120,6 +120,22 @@ export async function PUT(req: NextRequest) {
   const b = await req.json()
   const atual = await redis.get<Reserva>(`reserva:${b.id}`)
   if (!atual) return NextResponse.json({ error: 'não encontrada' }, { status: 404 })
+
+  // Link público de seleção de poltrona (token + mapa reverso O(1)).
+  if (b.gerarLink) {
+    const token = atual.token || uuid().replace(/-/g, '').slice(0, 20)
+    const atualizado = { ...atual, token }
+    await redis.set(`reserva:${atual.id}`, atualizado)
+    await redis.set(`reservatoken:${token}`, atual.id)
+    return NextResponse.json({ ok: true, token, reserva: atualizado })
+  }
+  if (b.revogarLink) {
+    if (atual.token) await redis.del(`reservatoken:${atual.token}`)
+    const atualizado = { ...atual, token: undefined }
+    await redis.set(`reserva:${atual.id}`, atualizado)
+    return NextResponse.json({ ok: true, reserva: atualizado })
+  }
+
   const r: Reserva = { ...atual }
   if (b.contratanteNome !== undefined) r.contratanteNome = String(b.contratanteNome).trim().slice(0, 120)
   if (b.contatoId !== undefined) r.contatoId = String(b.contatoId) || undefined

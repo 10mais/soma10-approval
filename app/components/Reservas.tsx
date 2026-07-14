@@ -137,6 +137,15 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     setPagValor('')
   }
   const removerPagamento = (id: string) => setForm(f => f?.financeiro ? ({ ...f, financeiro: { ...f.financeiro, pagamentos: f.financeiro.pagamentos.filter(p => p.id !== id) } }) : f)
+  // Link público para o cliente escolher a poltrona
+  async function gerarLinkCliente() {
+    if (!form?.id) return
+    const r = await fetch('/api/reservas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: form.id, gerarLink: true }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok && r.token) {
+      const url = `${location.origin}/reserva/${r.token}`
+      navigator.clipboard?.writeText(url).then(() => toast('Link copiado! Envie ao cliente para escolher a poltrona.', 'sucesso')).catch(() => toast(url, 'info'))
+    } else toast(r?.error || 'Falha ao gerar o link.', 'erro')
+  }
   // Clicar numa poltrona no form: adiciona/remove um passageiro naquele assento.
   function togglePoltrona(n: string) {
     setForm(f => {
@@ -323,6 +332,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {form.id && podeExcluir && <button onClick={() => { const r = reservas.find(x => x.id === form.id); if (r) { setForm(null); excluir(r) } }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
+              {form.id && layout && <button onClick={gerarLinkCliente} title="Gera um link para o cliente escolher a poltrona" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: 9, color: '#1d4ed8', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Link do cliente</button>}
               <span style={{ flex: form.id ? undefined : 1 }} />
               <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar reserva'}</button>

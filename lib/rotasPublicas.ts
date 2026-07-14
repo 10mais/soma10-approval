@@ -1,6 +1,6 @@
 // Rotas publicas/standalone onde os widgets flutuantes da equipe (assistente de IA,
 // banner de instalacao) NAO devem aparecer.
-export const ROTAS_PUBLICAS = ['/privacidade', '/termos', '/exclusao-de-dados', '/aprovar', '/aprovacoes', '/status', '/trabalhe-conosco', '/login', '/doc']
+export const ROTAS_PUBLICAS = ['/privacidade', '/termos', '/exclusao-de-dados', '/aprovar', '/aprovacoes', '/status', '/trabalhe-conosco', '/login', '/doc', '/reserva']
 
 export function ehRotaPublica(pathname: string | null | undefined): boolean {
   if (!pathname) return false
