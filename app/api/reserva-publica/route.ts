@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { redis, Excursao, Veiculo } from '@/lib/redis'
+import { redis, Viagem, Veiculo } from '@/lib/redis'
 import { Reserva, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
 import { poltronaExiste } from '@/lib/layoutVeiculo'
 
@@ -19,19 +19,19 @@ async function carregarReservas(): Promise<Reserva[]> {
   return (await redis.mget<(Reserva | null)[]>(...ids.map(i => `reserva:${i}`))).filter(Boolean) as Reserva[]
 }
 
-// GET ?token= — devolve o mapa da excursão, ocupadas e os passageiros da reserva.
+// GET ?token= — devolve o mapa da viagem, ocupadas e os passageiros da reserva.
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token') || ''
   const reserva = token ? await reservaPorToken(token) : null
   if (!reserva) return NextResponse.json({ error: 'link inválido ou expirado' }, { status: 404 })
-  const excursao = await redis.get<Excursao>(`excursao:${reserva.excursaoId}`)
-  const veiculo = excursao?.veiculoId ? await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`) : null
+  const viagem = await redis.get<Viagem>(`viagem:${reserva.viagemId}`)
+  const veiculo = viagem?.veiculoId ? await redis.get<Veiculo>(`veiculo:${viagem.veiculoId}`) : null
   const layout = veiculo?.layout || null
-  const ocupadas = Array.from(poltronasOcupadas(await carregarReservas(), reserva.excursaoId, reserva.id))
+  const ocupadas = Array.from(poltronasOcupadas(await carregarReservas(), reserva.viagemId, reserva.id))
   return NextResponse.json({
     contratanteNome: reserva.contratanteNome,
     status: reserva.status,
-    excursao: excursao ? { titulo: excursao.titulo, dataIda: excursao.dataIda, dataVolta: excursao.dataVolta } : null,
+    viagem: viagem ? { titulo: viagem.titulo, dataIda: viagem.dataIda, dataVolta: viagem.dataVolta } : null,
     layout,
     ocupadas,
     passageiros: reserva.passageiros.map(p => ({ nome: p.nome, poltrona: p.poltrona })),
@@ -53,15 +53,15 @@ export async function POST(req: NextRequest) {
   if (poltronas.some(p => !p)) return NextResponse.json({ error: 'escolha uma poltrona para cada passageiro' }, { status: 400 })
 
   // Assentos existem no layout?
-  const excursao = await redis.get<Excursao>(`excursao:${reserva.excursaoId}`)
-  const veiculo = excursao?.veiculoId ? await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`) : null
+  const viagem = await redis.get<Viagem>(`viagem:${reserva.viagemId}`)
+  const veiculo = viagem?.veiculoId ? await redis.get<Veiculo>(`veiculo:${viagem.veiculoId}`) : null
   const layout = veiculo?.layout || null
   if (layout) {
     const inexistente = poltronas.find(n => !poltronaExiste(layout, n))
     if (inexistente) return NextResponse.json({ error: `poltrona ${inexistente} não existe` }, { status: 400 })
   }
   // Conflito com outras reservas (ignora a própria) ou repetida entre os pax.
-  const ocupadas = poltronasOcupadas(await carregarReservas(), reserva.excursaoId, reserva.id)
+  const ocupadas = poltronasOcupadas(await carregarReservas(), reserva.viagemId, reserva.id)
   const conflitos = poltronasEmConflito(poltronas, ocupadas)
   if (conflitos.length) return NextResponse.json({ error: `poltrona(s) já ocupada(s): ${conflitos.join(', ')}`, conflito: true }, { status: 409 })
 

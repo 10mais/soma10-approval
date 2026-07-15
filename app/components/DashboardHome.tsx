@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCliente from './AvatarCliente'
 import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
-import { valorTotalReserva } from '@/lib/reservas'
+import { valorDaReserva as calcularValorReserva } from '@/lib/pacoteViagem'
 import { saldoDevedor } from '@/lib/financeiroReserva'
 import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
 
@@ -40,8 +40,8 @@ function temSocialMedia(c: Cliente): boolean {
 
 type AgLite = { id: string; pacienteNome: string; pacienteTelefone?: string; dataInicio: string; status: string; servico?: string; profissionalNome: string }
 type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string; nascimento?: string; ativo?: boolean }
-type ExcursaoLite = { id: string; titulo: string; dataIda: string; dataVolta?: string; veiculoId?: string; valorPacote: number; descontoPadrao?: number; status: string }
-type ReservaLite = { id: string; excursaoId: string; passageiros: { poltrona?: string }[]; desconto?: number; status: string; financeiro?: any; criadoEm: string }
+type ViagemLite = { id: string; titulo: string; dataIda: string; dataVolta?: string; veiculoId?: string; valorPacote: number; descontoPadrao?: number; status: string }
+type ReservaLite = { id: string; viagemId: string; passageiros: { poltrona?: string }[]; desconto?: number; status: string; financeiro?: any; criadoEm: string }
 type VeiculoLite = { id: string; nome?: string; layout?: LayoutVeiculo }
 
 // Ícone WhatsApp (SVG — sem emoji, regra do produto)
@@ -163,36 +163,36 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   }), [clientesSM, contagemPorCliente])
   const temAlertas = falhasPendentes > 0 || clientesSemBrand > 0 || clientesSemEntregaveis > 0 || clientesEmRisco.length > 0 || clientesOrdenados.some(c => (contagemPorCliente[c.id] || 0) < 8)
 
-  // ---- Home turismo (perfilTurismo): operação de excursões ----
-  const [excursoes, setExcursoes] = useState<ExcursaoLite[]>([])
+  // ---- Home turismo (perfilTurismo): operação de viagens ----
+  const [viagens, setViagens] = useState<ViagemLite[]>([])
   const [reservasT, setReservasT] = useState<ReservaLite[]>([])
   const [veiculosT, setVeiculosT] = useState<VeiculoLite[]>([])
   useEffect(() => {
     if (!perfilTurismo) return
-    fetch('/api/excursoes').then(r => r.json()).then(d => setExcursoes(Array.isArray(d) ? d : (d?.excursoes || []))).catch(() => {})
+    fetch('/api/viagens').then(r => r.json()).then(d => setViagens(Array.isArray(d) ? d : (d?.viagens || []))).catch(() => {})
     fetch('/api/reservas').then(r => r.json()).then(d => setReservasT(Array.isArray(d) ? d : (d?.reservas || []))).catch(() => {})
     fetch('/api/frota').then(r => r.json()).then(d => setVeiculosT(Array.isArray(d) ? d : (d?.veiculos || []))).catch(() => {})
   }, [perfilTurismo])
 
-  const excById = useMemo(() => Object.fromEntries(excursoes.map(e => [e.id, e])) as Record<string, ExcursaoLite>, [excursoes])
+  const excById = useMemo(() => Object.fromEntries(viagens.map(e => [e.id, e])) as Record<string, ViagemLite>, [viagens])
   const capacidadeDe = (veiculoId?: string) => { const v = veiculosT.find(b => b.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
   const reservasAtivasT = useMemo(() => reservasT.filter(r => r.status !== 'cancelada'), [reservasT])
-  const paxDaExcursao = (excId: string) => reservasAtivasT.filter(r => r.excursaoId === excId).reduce((s, r) => s + (r.passageiros?.length || 0), 0)
-  const valorDaReserva = (r: ReservaLite) => { const e = excById[r.excursaoId]; return valorTotalReserva(r.passageiros?.length || 0, e?.valorPacote || 0, r.desconto || 0) }
+  const paxDaViagem = (excId: string) => reservasAtivasT.filter(r => r.viagemId === excId).reduce((s, r) => s + (r.passageiros?.length || 0), 0)
+  const valorDaReserva = (r: ReservaLite) => calcularValorReserva(excById[r.viagemId] || {}, r.passageiros?.length || 0, r.desconto || 0)
   const hojeStr = agora.toISOString().slice(0, 10)
   const ehDoMesStr = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual }
-  const proximasSaidas = useMemo(() => excursoes
+  const proximasSaidas = useMemo(() => viagens
     .filter(e => (e.status === 'aberta' || e.status === 'planejada') && e.dataIda && e.dataIda >= hojeStr)
-    .sort((a, b) => a.dataIda.localeCompare(b.dataIda)), [excursoes, hojeStr])
+    .sort((a, b) => a.dataIda.localeCompare(b.dataIda)), [viagens, hojeStr])
   const reservasDoMes = useMemo(() => reservasAtivasT.filter(r => ehDoMesStr(r.criadoEm)), [reservasAtivasT, mesAtual, anoAtual])
   const receitaMes = useMemo(() => reservasDoMes.reduce((s, r) => s + valorDaReserva(r), 0), [reservasDoMes, excById])
   const aReceber = useMemo(() => reservasAtivasT.reduce((s, r) => s + (r.financeiro ? saldoDevedor(r.financeiro) : valorDaReserva(r)), 0), [reservasAtivasT, excById])
   const ocupacaoMedia = useMemo(() => {
-    const abertas = excursoes.filter(e => e.status === 'aberta' || e.status === 'planejada')
-    const ocs = abertas.map(e => { const cap = capacidadeDe(e.veiculoId); return cap ? paxDaExcursao(e.id) / cap : null }).filter((x): x is number => x !== null)
+    const abertas = viagens.filter(e => e.status === 'aberta' || e.status === 'planejada')
+    const ocs = abertas.map(e => { const cap = capacidadeDe(e.veiculoId); return cap ? paxDaViagem(e.id) / cap : null }).filter((x): x is number => x !== null)
     return ocs.length ? Math.round((ocs.reduce((s, x) => s + x, 0) / ocs.length) * 100) : 0
-  }, [excursoes, reservasAtivasT, veiculosT])
-  const saidasBaixaOcup = useMemo(() => proximasSaidas.filter(e => { const cap = capacidadeDe(e.veiculoId); return cap && emDias(e.dataIda) <= 21 && paxDaExcursao(e.id) / cap < 0.5 }), [proximasSaidas, reservasAtivasT, veiculosT])
+  }, [viagens, reservasAtivasT, veiculosT])
+  const saidasBaixaOcup = useMemo(() => proximasSaidas.filter(e => { const cap = capacidadeDe(e.veiculoId); return cap && emDias(e.dataIda) <= 21 && paxDaViagem(e.id) / cap < 0.5 }), [proximasSaidas, reservasAtivasT, veiculosT])
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   if (perfilTurismo) {
@@ -220,14 +220,14 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>Próximas saídas</h2>
-            {onIr && <button onClick={() => onIr('excursoes')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver excursões</button>}
+            {onIr && <button onClick={() => onIr('viagens')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver viagens</button>}
           </div>
           {proximasSaidas.length === 0 ? (
             <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Nenhuma saída futura programada.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {proximasSaidas.slice(0, 6).map(e => {
-                const cap = capacidadeDe(e.veiculoId); const pax = paxDaExcursao(e.id); const pct = cap ? Math.round(pax / cap * 100) : 0
+                const cap = capacidadeDe(e.veiculoId); const pax = paxDaViagem(e.id); const pct = cap ? Math.round(pax / cap * 100) : 0
                 return (
                   <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ minWidth: 52, textAlign: 'center', background: '#f5f5f5', borderRadius: 8, padding: '6px 4px' }}>
@@ -252,7 +252,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#92400e' }}>Baixa ocupação — saídas em até 21 dias</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {saidasBaixaOcup.slice(0, 6).map(e => {
-                const cap = capacidadeDe(e.veiculoId); const pax = paxDaExcursao(e.id)
+                const cap = capacidadeDe(e.veiculoId); const pax = paxDaViagem(e.id)
                 return <div key={e.id} style={{ fontSize: 13, color: '#7c2d12' }}>{dataCurta(e.dataIda)} · <strong>{e.titulo}</strong> — {pax}/{cap} poltronas</div>
               })}
             </div>
@@ -260,7 +260,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         )}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {([['excursoes', 'Excursões'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
+          {([['viagens', 'Viagens'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
             onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>

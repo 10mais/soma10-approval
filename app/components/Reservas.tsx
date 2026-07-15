@@ -2,16 +2,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { LayoutVeiculo, Poltrona, capacidadeLayout } from '@/lib/layoutVeiculo'
+import { valorDaReserva, vendePoltrona } from '@/lib/pacoteViagem'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
 import { v4 as uuid } from 'uuid'
 
-// Reservas de excursão + MAPA DE POLTRONAS visual. Jamais duas pessoas na mesma
+// Reservas de viagem + MAPA DE POLTRONAS visual. Jamais duas pessoas na mesma
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
 
 type Veiculo = { id: string; nome: string; layout: LayoutVeiculo }
-type Excursao = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string }
+type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string }
 type Passageiro = { nome: string; cpf?: string; nascimento?: string; poltrona?: string }
-type Reserva = { id: string; excursaoId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
+type Reserva = { id: string; viagemId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
 type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string; financeiro?: FinanceiroReserva }
 
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -80,10 +81,10 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
 }
 
 export default function Reservas({ podeEditar = true, podeExcluir = false, meuEmail = '', meuNome = '' }: { podeEditar?: boolean; podeExcluir?: boolean; meuEmail?: string; meuNome?: string }) {
-  const [excursoes, setExcursoes] = useState<Excursao[]>([])
+  const [viagens, setViagens] = useState<Viagem[]>([])
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [reservas, setReservas] = useState<Reserva[]>([])
-  const [excursaoSel, setExcursaoSel] = useState('')
+  const [viagemSel, setViagemSel] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [form, setForm] = useState<FormReserva | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -95,22 +96,28 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   const [pagMetodo, setPagMetodo] = useState<MetodoPagamento>('pix')
 
   const carregarBase = useCallback(() => {
-    Promise.all([fetch('/api/excursoes').then(r => r.json()), fetch('/api/frota').then(r => r.json())]).then(([e, o]) => {
-      const exs = Array.isArray(e?.excursoes) ? e.excursoes : []
-      setExcursoes(exs); if (Array.isArray(o?.veiculos)) setVeiculos(o.veiculos)
-      setExcursaoSel(prev => prev || exs[0]?.id || '')
+    Promise.all([fetch('/api/viagens').then(r => r.json()), fetch('/api/frota').then(r => r.json())]).then(([e, o]) => {
+      const exs = Array.isArray(e?.viagens) ? e.viagens : []
+      setViagens(exs); if (Array.isArray(o?.veiculos)) setVeiculos(o.veiculos)
+      setViagemSel(prev => prev || exs[0]?.id || '')
     }).catch(() => {}).finally(() => setCarregando(false))
   }, [])
   useEffect(() => { carregarBase() }, [carregarBase])
 
   const carregarReservas = useCallback(() => {
-    if (!excursaoSel) { setReservas([]); return }
-    fetch(`/api/reservas?excursaoId=${excursaoSel}`).then(r => r.json()).then(d => { if (Array.isArray(d?.reservas)) setReservas(d.reservas) }).catch(() => {})
-  }, [excursaoSel])
+    if (!viagemSel) { setReservas([]); return }
+    fetch(`/api/reservas?viagemId=${viagemSel}`).then(r => r.json()).then(d => { if (Array.isArray(d?.reservas)) setReservas(d.reservas) }).catch(() => {})
+  }, [viagemSel])
   useEffect(() => { carregarReservas() }, [carregarReservas])
 
-  const excursao = excursoes.find(e => e.id === excursaoSel)
-  const layout = useMemo(() => veiculos.find(x => x.id === excursao?.veiculoId)?.layout || null, [veiculos, excursao])
+  const viagem = viagens.find(e => e.id === viagemSel)
+  // Fretamento não vende poltrona: o contratante leva o veículo inteiro, e o valor
+  // é fechado. Sem isto, o mapa apareceria e o total sairia × passageiro.
+  const comPoltrona = !viagem || vendePoltrona(viagem)
+  const layout = useMemo(() => {
+    if (viagem && !vendePoltrona(viagem)) return null
+    return veiculos.find(x => x.id === viagem?.veiculoId)?.layout || null
+  }, [veiculos, viagem, comPoltrona])
   // Ocupadas = poltronas das reservas não canceladas (ignorando a que está sendo editada)
   const ocupadas = useMemo(() => {
     const s = new Set<string>()
@@ -125,7 +132,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   const vendidas = ocupadas.size
 
   function novaReserva() {
-    if (!excursao) { toast('Selecione uma excursão.', 'erro'); return }
+    if (!viagem) { toast('Selecione uma viagem.', 'erro'); return }
     setForm({ contratanteNome: '', passageiros: [], desconto: '' })
   }
   function editarReserva(r: Reserva) {
@@ -166,15 +173,15 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   }
   const setPax = (i: number, patch: Partial<Passageiro>) => setForm(f => f && ({ ...f, passageiros: f.passageiros.map((p, j) => j === i ? { ...p, ...patch } : p) }))
 
-  const valorForm = excursao ? Math.max(0, (form?.passageiros.length || 0) * (excursao.valorPacote || 0) - (Number(form?.desconto) || 0)) : 0
+  const valorForm = viagem ? valorDaReserva(viagem, form?.passageiros.length || 0, Number(form?.desconto) || 0) : 0
 
   async function salvar() {
-    if (!form || !excursao || salvando) return
+    if (!form || !viagem || salvando) return
     if (!form.contratanteNome.trim()) { toast('Informe o contratante.', 'erro'); return }
     if (!form.passageiros.length) { toast('Selecione ao menos uma poltrona.', 'erro'); return }
     if (form.passageiros.some(p => !p.nome.trim())) { toast('Preencha o nome de todos os passageiros.', 'erro'); return }
     setSalvando(true)
-    const corpo: any = { ...form, excursaoId: excursao.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome, financeiro: form.financeiro ? { ...form.financeiro, valorTotal: valorForm } : undefined }
+    const corpo: any = { ...form, viagemId: viagem.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome, financeiro: form.financeiro ? { ...form.financeiro, valorTotal: valorForm } : undefined }
     const r = await fetch('/api/reservas', { method: form.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(form.id ? 'Reserva atualizada.' : 'Reserva criada.', 'sucesso'); setForm(null); carregarReservas() }
@@ -192,23 +199,36 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Reservas</h2>
-        <select value={excursaoSel} onChange={e => setExcursaoSel(e.target.value)} style={{ ...inputStyle, minWidth: 220, background: '#fff' }}>
-          <option value="">Selecione a excursão...</option>
-          {excursoes.map(e => <option key={e.id} value={e.id}>{e.titulo} · {fmtData(e.dataIda)}</option>)}
+        <select value={viagemSel} onChange={e => setViagemSel(e.target.value)} style={{ ...inputStyle, minWidth: 220, background: '#fff' }}>
+          <option value="">Selecione a viagem...</option>
+          {viagens.map(e => <option key={e.id} value={e.id}>{e.titulo} · {fmtData(e.dataIda)}</option>)}
         </select>
         <span style={{ flex: 1 }} />
-        {podeEditar && excursao && <button onClick={novaReserva} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Reserva</button>}
+        {podeEditar && viagem && <button onClick={novaReserva} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Reserva</button>}
       </div>
 
       {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
-        : !excursao ? <p style={{ color: '#aaa', fontSize: 13 }}>Selecione uma excursão para ver as reservas e o mapa de poltronas.</p>
+        : !viagem ? <p style={{ color: '#aaa', fontSize: 13 }}>Selecione uma viagem para ver as reservas e o mapa de poltronas.</p>
         : (
           <>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
-              {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
-              {!layout && <span style={{ fontSize: 12.5, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '5px 12px' }}>Excursão sem ônibus/layout — defina o ônibus para o mapa de poltronas.</span>}
+              {!comPoltrona ? (
+                <>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '5px 12px' }}>Fretamento — veículo inteiro</span>
+                  {viagem.contratante && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>Contratante: {viagem.contratante}</span>}
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{fmtBRL(viagem.valorFechado || 0)} fechado</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
+                  {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
+                  {!layout && <span style={{ fontSize: 12.5, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '5px 12px' }}>Viagem sem veículo/croqui — defina o veículo para o mapa de poltronas.</span>}
+                </>
+              )}
             </div>
+            {!comPoltrona && (
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#bbb' }}>No fretamento não se vende poltrona: registre o contrato e, se quiser, a lista de passageiros (manifesto).</p>
+            )}
 
             {layout && !form && (
               <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 16, marginBottom: 18 }}>
@@ -218,11 +238,11 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
 
             {/* Lista de reservas */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {reservas.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma reserva nesta excursão.</p>
+              {reservas.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma reserva nesta viagem.</p>
                 : reservas.map(r => {
                   const st = stReserva[r.status] || stReserva['pre-reserva']
                   const poltronas = r.passageiros.map(p => p.poltrona).filter(Boolean).join(', ')
-                  const valor = Math.max(0, r.passageiros.length * (excursao.valorPacote || 0) - (r.desconto || 0))
+                  const valor = valorDaReserva(viagem, r.passageiros.length, r.desconto || 0)
                   return (
                     <div key={r.id} onClick={() => podeEditar && editarReserva(r)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: '11px 14px', cursor: podeEditar ? 'pointer' : 'default', opacity: r.status === 'cancelada' ? 0.6 : 1 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -240,11 +260,11 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
         )}
 
       {/* Modal criar/editar reserva */}
-      {form && excursao && (
+      {form && viagem && (
         <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', margin: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar reserva' : 'Nova reserva'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{excursao.titulo} · {fmtData(excursao.dataIda)} · {fmtBRL(excursao.valorPacote)}/pessoa</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{viagem.titulo} · {fmtData(viagem.dataIda)} · {fmtBRL(viagem.valorPacote)}/pessoa</p>
             <input value={form.contratanteNome} onChange={e => setForm(f => f && ({ ...f, contratanteNome: e.target.value, passageiros: f.passageiros.map((p, i) => i === 0 && !p.nome ? { ...p, nome: e.target.value } : p) }))} placeholder="Contratante (nome) *" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', fontSize: 14, marginBottom: 12 }} />
 
             {layout ? (
@@ -254,7 +274,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                   <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={selecionadas} onToggle={togglePoltrona} />
                 </div>
               </>
-            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Defina o ônibus da excursão para escolher poltronas.</p>}
+            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Defina o ônibus da viagem para escolher poltronas.</p>}
 
             {form.passageiros.length > 0 && (
               <div style={{ marginBottom: 12 }}>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Veiculo, Excursao, CondicaoVeiculo } from '@/lib/redis'
+import { redis, Veiculo, Viagem, CondicaoVeiculo } from '@/lib/redis'
+import { Reserva } from '@/lib/reservas'
 import { expandirModelo, layoutVazio } from '@/lib/layoutVeiculo'
 
 export const runtime = 'nodejs'
@@ -68,32 +69,64 @@ export async function POST(req: NextRequest) {
     migrados++
   }
 
-  // ── excursao.onibusId → veiculoId ────────────────────────────────────────
+  // ── Excursão → Viagem ────────────────────────────────────────────────────
+  //   `excursao:{id}` (set `excursoes`) → `viagem:{id}` (set `viagens`)
+  //   `onibusId` → `veiculoId` · toda excursão antiga é do tipo 'pacote'
+  //   (fretamento não existia; era tudo × passageiro).
   const exIds = await redis.smembers('excursoes')
-  const excursoes = exIds.length
-    ? (await redis.mget<(Excursao | null)[]>(...exIds.map(i => `excursao:${i}`))).filter(Boolean) as (Excursao & { onibusId?: string })[]
+  const antigasViagens = exIds.length
+    ? (await redis.mget<(any | null)[]>(...exIds.map(i => `excursao:${i}`))).filter(Boolean) as any[]
     : []
-  let excursoesAjustadas = 0
-  for (const e of excursoes) {
-    if (!e.onibusId || e.veiculoId) continue
-    log.push(`excursão "${e.titulo}": onibusId → veiculoId (${e.onibusId})`)
-    if (!dry) {
-      const { onibusId, ...resto } = e
-      await redis.set(`excursao:${e.id}`, { ...resto, veiculoId: onibusId, atualizadoEm: new Date().toISOString() })
+  let viagensMigradas = 0
+  for (const e of antigasViagens) {
+    if (await redis.get(`viagem:${e.id}`)) { log.push(`viagem:${e.id} ("${e.titulo}") já existe — pulada`); continue }
+    const { onibusId, ...resto } = e
+    const viagem: Viagem = {
+      ...resto,
+      tipo: 'pacote',
+      veiculoId: e.veiculoId || onibusId || undefined,
+      valorPacote: Math.max(0, Number(e.valorPacote) || 0),
+      atualizadoEm: new Date().toISOString(),
     }
-    excursoesAjustadas++
+    log.push(`"${e.titulo}" → viagem:${e.id} (tipo pacote${onibusId ? ', onibusId → veiculoId' : ''})`)
+    if (!dry) {
+      await redis.set(`viagem:${viagem.id}`, viagem)
+      await redis.sadd('viagens', viagem.id)
+    }
+    viagensMigradas++
   }
 
+  // ── reserva.excursaoId → viagemId ────────────────────────────────────────
+  // Sem isto a reserva aponta para o vazio e a poltrona vendida some do mapa.
+  const rIds = await redis.smembers('reservas')
+  const reservas = rIds.length
+    ? (await redis.mget<(any | null)[]>(...rIds.map(i => `reserva:${i}`))).filter(Boolean) as any[]
+    : []
+  let reservasAjustadas = 0
+  for (const r of reservas) {
+    if (!r.excursaoId || r.viagemId) continue
+    const { excursaoId, ...resto } = r
+    log.push(`reserva de "${r.contratanteNome}": excursaoId → viagemId (${excursaoId})`)
+    if (!dry) {
+      await redis.set(`reserva:${r.id}`, { ...resto, viagemId: excursaoId, atualizadoEm: new Date().toISOString() } as Reserva)
+      await redis.sadd(`viagem:${excursaoId}:reservas`, r.id)
+    }
+    reservasAjustadas++
+  }
+
+  const total = `${migrados} veículo(s), ${viagensMigradas} viagem(ns) e ${reservasAjustadas} reserva(s)`
   return NextResponse.json({
     ok: true,
     dry,
     resumo: dry
-      ? `Simulação: ${migrados} veículo(s) e ${excursoesAjustadas} excursão(ões) seriam migrados. Nada foi gravado.`
-      : `${migrados} veículo(s) e ${excursoesAjustadas} excursão(ões) migrados. As chaves antigas (onibus:*) continuam intactas.`,
+      ? `Simulação: ${total} seriam migrados. Nada foi gravado.`
+      : `${total} migrados. As chaves antigas (onibus:*, excursao:*) continuam intactas para conferência.`,
     onibusEncontrados: antigos.length,
+    excursoesEncontradas: antigasViagens.length,
     migrados,
     jaExistiam,
-    excursoesAjustadas,
+    viagensMigradas,
+    reservasAjustadas,
     log,
   })
 }

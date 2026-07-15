@@ -1,0 +1,139 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redis, PacoteViagem, ParadaModelo } from '@/lib/redis'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { v4 as uuid } from 'uuid'
+
+export const runtime = 'nodejs'
+
+// PACOTES DE VIAGEM (turismo): o modelo reutilizável que a Viagem copia.
+// Equipe lê; escrita exige CRM/editar.
+//
+// ⚠️ Rota separada de `/api/pacotes` DE PROPÓSITO — aquela é pacote de TRATAMENTO
+// da clínica (sessões/saldo). Nomes iguais, negócios diferentes.
+//
+// O roteiro daqui é em DIA RELATIVO (1 = dia da ida): o mesmo pacote sai em julho
+// e em dezembro. A conversão para data real acontece ao criar a viagem.
+
+const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
+
+async function sessaoEquipe() {
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as any).role === 'cliente') return null
+  return session
+}
+
+async function carregarTodos(): Promise<PacoteViagem[]> {
+  const ids = await redis.smembers('pacotesviagem')
+  if (!ids.length) return []
+  return (await redis.mget<(PacoteViagem | null)[]>(...ids.map(i => `pacoteviagem:${i}`))).filter(Boolean) as PacoteViagem[]
+}
+
+function limparRoteiro(arr: any): ParadaModelo[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((p: any) => ({
+    id: String(p?.id || uuid()),
+    dia: Math.max(1, Math.floor(Number(p?.dia) || 1)),
+    hora: horaOk(String(p?.hora || '')) ? String(p.hora) : undefined,
+    titulo: String(p?.titulo || '').trim().slice(0, 120),
+    local: (p?.local || '').toString().slice(0, 120) || undefined,
+    tipo: (p?.tipo || '').toString().slice(0, 20) || undefined,
+    observacoes: (p?.observacoes || '').toString().slice(0, 300) || undefined,
+  })).filter((p: ParadaModelo) => p.titulo).slice(0, 100)
+}
+function limparLista(arr: any, max = 40): string[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((s: any) => String(s).trim().slice(0, 120)).filter(Boolean).slice(0, max)
+}
+const numOpc = (v: any) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v) || 0))
+
+export async function GET(req: NextRequest) {
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const id = req.nextUrl.searchParams.get('id')
+  if (id) {
+    const p = await redis.get<PacoteViagem>(`pacoteviagem:${id}`)
+    return p ? NextResponse.json(p) : NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  }
+  const pacotes = (await carregarTodos()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+  return NextResponse.json({ pacotes })
+}
+
+export async function POST(req: NextRequest) {
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const b = await req.json()
+  const nome = String(b.nome || '').trim()
+  if (!nome) return NextResponse.json({ error: 'informe o nome do pacote' }, { status: 400 })
+
+  const agora = new Date().toISOString()
+  const pacote: PacoteViagem = {
+    id: uuid(),
+    nome: nome.slice(0, 140),
+    destino: (b.destino || '').toString().slice(0, 140) || undefined,
+    dias: numOpc(b.dias),
+    noites: numOpc(b.noites),
+    valorBase: Math.max(0, Number(b.valorBase) || 0),
+    inclusos: limparLista(b.inclusos),
+    roteiroPadrao: limparRoteiro(b.roteiroPadrao),
+    hoteis: limparLista(b.hoteis, 20),
+    observacoes: (b.observacoes || '').toString().slice(0, 800) || undefined,
+    ativo: b.ativo !== false,
+    criadoPor: session.user?.name || session.user?.email || undefined,
+    criadoEm: agora,
+    atualizadoEm: agora,
+  }
+  await redis.set(`pacoteviagem:${pacote.id}`, pacote)
+  await redis.sadd('pacotesviagem', pacote.id)
+  return NextResponse.json({ ok: true, pacote })
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const b = await req.json()
+  const atual = await redis.get<PacoteViagem>(`pacoteviagem:${b.id}`)
+  if (!atual) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  const p: PacoteViagem = { ...atual }
+  if (b.nome !== undefined) {
+    const nome = String(b.nome).trim()
+    if (!nome) return NextResponse.json({ error: 'informe o nome do pacote' }, { status: 400 })
+    p.nome = nome.slice(0, 140)
+  }
+  if (b.destino !== undefined) p.destino = String(b.destino).slice(0, 140) || undefined
+  if (b.dias !== undefined) p.dias = numOpc(b.dias)
+  if (b.noites !== undefined) p.noites = numOpc(b.noites)
+  if (b.valorBase !== undefined) p.valorBase = Math.max(0, Number(b.valorBase) || 0)
+  if (b.inclusos !== undefined) p.inclusos = limparLista(b.inclusos)
+  if (b.roteiroPadrao !== undefined) p.roteiroPadrao = limparRoteiro(b.roteiroPadrao)
+  if (b.hoteis !== undefined) p.hoteis = limparLista(b.hoteis, 20)
+  if (b.observacoes !== undefined) p.observacoes = String(b.observacoes).slice(0, 800) || undefined
+  if (b.ativo !== undefined) p.ativo = !!b.ativo
+  p.atualizadoEm = new Date().toISOString()
+  await redis.set(`pacoteviagem:${p.id}`, p)
+  // Sem propagação para as viagens: elas COPIARAM o modelo. Corrigir o preço aqui
+  // não pode reescrever viagem já vendida.
+  return NextResponse.json({ ok: true, pacote: p })
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
+  // Viagens que nasceram deste pacote continuam inteiras (copiaram tudo); só
+  // perdem o ponteiro de origem. Por isso excluir aqui é seguro.
+  await redis.del(`pacoteviagem:${id}`)
+  await redis.srem('pacotesviagem', id)
+  return NextResponse.json({ ok: true })
+}

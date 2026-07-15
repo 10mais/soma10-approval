@@ -1,4 +1,4 @@
-// Financeiro de uma reserva de excursão (client-safe, puro, testável).
+// Financeiro de uma reserva de viagem (client-safe, puro, testável).
 // Parcelamento flexível por método + pagamentos manuais que abatem o saldo devedor
 // (o cliente pode ir pagando sem valor fixo). Saldo nunca fica negativo.
 

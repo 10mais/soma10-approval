@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { poltronasOcupadas, poltronasEmConflito, valorTotalReserva, ocupaPoltrona, Reserva } from '@/lib/reservas'
 
 // Reservas: JAMAIS dois passageiros na mesma poltrona. Errar aqui = overbooking.
-const reserva = (id: string, excursaoId: string, poltronas: string[], status: any = 'confirmada'): Reserva => ({
-  id, excursaoId, contratanteNome: 'X', status,
+const reserva = (id: string, viagemId: string, poltronas: string[], status: any = 'confirmada'): Reserva => ({
+  id, viagemId, contratanteNome: 'X', status,
   passageiros: poltronas.map(p => ({ nome: 'p' + p, poltrona: p })),
   criadoEm: '', atualizadoEm: '',
 })
@@ -13,10 +13,10 @@ describe('poltronas — unicidade', () => {
     reserva('r1', 'e1', ['1', '2']),
     reserva('r2', 'e1', ['5'], 'pre-reserva'),
     reserva('r3', 'e1', ['9'], 'cancelada'), // cancelada libera a poltrona
-    reserva('r4', 'e2', ['1']),              // outra excursão não conta
+    reserva('r4', 'e2', ['1']),              // outra viagem não conta
   ]
 
-  it('ocupadas ignora canceladas e outra excursão', () => {
+  it('ocupadas ignora canceladas e outra viagem', () => {
     const oc = poltronasOcupadas(reservas, 'e1')
     expect(Array.from(oc).sort()).toEqual(['1', '2', '5'])
     expect(oc.has('9')).toBe(false) // cancelada

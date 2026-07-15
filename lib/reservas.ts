@@ -1,7 +1,7 @@
-// Reservas de excursão (client-safe, puro, testável). Uma Reserva pertence a uma
-// Excursão, é feita por um contratante (contato) e agrupa N passageiros — cada um
+// Reservas de viagem (client-safe, puro, testável). Uma Reserva pertence a uma
+// Viagem, é feita por um contratante (contato) e agrupa N passageiros — cada um
 // com sua POLTRONA nominal. Regra de ouro: JAMAIS dois passageiros na mesma
-// poltrona de uma excursão (nem entre reservas, nem dentro da mesma reserva).
+// poltrona de uma viagem (nem entre reservas, nem dentro da mesma reserva).
 // O financeiro (parcelas/pagamentos) vive em `lib/financeiroReserva.ts`.
 
 import { FinanceiroReserva } from './financeiroReserva'
@@ -17,7 +17,7 @@ export type StatusReserva = 'pre-reserva' | 'confirmada' | 'cancelada'
 
 export type Reserva = {
   id: string
-  excursaoId: string
+  viagemId: string
   contatoId?: string        // contratante (CrmContato)
   contratanteNome: string
   passageiros: Passageiro[]  // pode incluir o próprio contratante + acompanhantes
@@ -39,12 +39,12 @@ export function ocupaPoltrona(status?: StatusReserva): boolean {
   return status !== 'cancelada'
 }
 
-// Poltronas já ocupadas numa excursão (todas as reservas que ocupam, ignorando
+// Poltronas já ocupadas numa viagem (todas as reservas que ocupam, ignorando
 // opcionalmente uma reserva — usado ao EDITAR a própria reserva).
-export function poltronasOcupadas(reservas: Reserva[], excursaoId: string, ignorarReservaId?: string): Set<string> {
+export function poltronasOcupadas(reservas: Reserva[], viagemId: string, ignorarReservaId?: string): Set<string> {
   const set = new Set<string>()
   for (const r of reservas) {
-    if (r.excursaoId !== excursaoId || !ocupaPoltrona(r.status)) continue
+    if (r.viagemId !== viagemId || !ocupaPoltrona(r.status)) continue
     if (ignorarReservaId && r.id === ignorarReservaId) continue
     for (const p of r.passageiros) if (p.poltrona) set.add(p.poltrona)
   }

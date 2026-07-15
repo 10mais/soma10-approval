@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Excursao, Veiculo } from '@/lib/redis'
+import { redis, Viagem, Veiculo } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito, valorTotalReserva } from '@/lib/reservas'
+import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
+import { valorDaReserva } from '@/lib/pacoteViagem'
 import { poltronaExiste } from '@/lib/layoutVeiculo'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
 
-// Reservas de excursão. Regra crítica: JAMAIS duas pessoas na mesma poltrona.
+// Reservas de viagem. Regra crítica: JAMAIS duas pessoas na mesma poltrona.
 // Equipe lê; escrita exige CRM/editar.
 
 async function sessaoEquipe() {
@@ -34,21 +35,21 @@ function limparPassageiros(arr: any): Passageiro[] {
   })).filter(p => p.nome).slice(0, 60)
 }
 
-// Valida assentos: existem no layout do ônibus da excursão e não conflitam com
+// Valida assentos: existem no layout do ônibus da viagem e não conflitam com
 // outras reservas ( nem repetem dentro da própria). Retorna erro (string) ou null.
-async function validarPoltronas(excursao: Excursao, passageiros: Passageiro[], reservaId?: string): Promise<string | null> {
+async function validarPoltronas(viagem: Viagem, passageiros: Passageiro[], reservaId?: string): Promise<string | null> {
   const pedidas = passageiros.map(p => p.poltrona).filter(Boolean) as string[]
   if (!pedidas.length) return null // reserva sem poltrona definida ainda é permitida
   // Assentos existem no croqui do veículo?
-  if (excursao.veiculoId) {
-    const veiculo = await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`)
+  if (viagem.veiculoId) {
+    const veiculo = await redis.get<Veiculo>(`veiculo:${viagem.veiculoId}`)
     const layout = veiculo?.layout
     if (layout) {
       const inexistente = pedidas.find(n => !poltronaExiste(layout, n))
       if (inexistente) return `Poltrona ${inexistente} não existe no croqui do veículo.`
     }
   }
-  const ocupadas = poltronasOcupadas(await carregarTodas(), excursao.id, reservaId)
+  const ocupadas = poltronasOcupadas(await carregarTodas(), viagem.id, reservaId)
   const conflitos = poltronasEmConflito(pedidas, ocupadas)
   if (conflitos.length) return `Poltrona(s) já ocupada(s) ou repetida(s): ${conflitos.join(', ')}.`
   return null
@@ -62,9 +63,9 @@ export async function GET(req: NextRequest) {
     const r = await redis.get<Reserva>(`reserva:${id}`)
     return r ? NextResponse.json(r) : NextResponse.json({ error: 'não encontrada' }, { status: 404 })
   }
-  const excursaoId = req.nextUrl.searchParams.get('excursaoId')
+  const viagemId = req.nextUrl.searchParams.get('viagemId')
   let lista = await carregarTodas()
-  if (excursaoId) lista = lista.filter(r => r.excursaoId === excursaoId)
+  if (viagemId) lista = lista.filter(r => r.viagemId === viagemId)
   lista.sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime())
   return NextResponse.json({ reservas: lista })
 }
@@ -76,21 +77,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
   }
   const b = await req.json()
-  const excursao = await redis.get<Excursao>(`excursao:${b.excursaoId}`)
-  if (!excursao) return NextResponse.json({ error: 'excursão não encontrada' }, { status: 400 })
+  const viagem = await redis.get<Viagem>(`viagem:${b.viagemId}`)
+  if (!viagem) return NextResponse.json({ error: 'viagem não encontrada' }, { status: 400 })
   const contratanteNome = String(b.contratanteNome || '').trim()
   if (!contratanteNome) return NextResponse.json({ error: 'informe o contratante' }, { status: 400 })
   const passageiros = limparPassageiros(b.passageiros)
   if (!passageiros.length) return NextResponse.json({ error: 'informe ao menos um passageiro' }, { status: 400 })
 
-  const erro = await validarPoltronas(excursao, passageiros)
+  const erro = await validarPoltronas(viagem, passageiros)
   if (erro) return NextResponse.json({ error: erro, conflito: true }, { status: 409 })
 
   const agora = new Date().toISOString()
   const desconto = Math.max(0, Number(b.desconto) || 0)
   const reserva: Reserva = {
     id: uuid(),
-    excursaoId: excursao.id,
+    viagemId: viagem.id,
     contatoId: (b.contatoId || '').toString() || undefined,
     contratanteNome: contratanteNome.slice(0, 120),
     passageiros,
@@ -106,8 +107,8 @@ export async function POST(req: NextRequest) {
   }
   await redis.set(`reserva:${reserva.id}`, reserva)
   await redis.sadd('reservas', reserva.id)
-  await redis.sadd(`excursao:${excursao.id}:reservas`, reserva.id)
-  const valorTotal = valorTotalReserva(passageiros.length, excursao.valorPacote, desconto)
+  await redis.sadd(`viagem:${viagem.id}:reservas`, reserva.id)
+  const valorTotal = valorDaReserva(viagem, passageiros.length, desconto)
   return NextResponse.json({ ok: true, reserva, valorTotal })
 }
 
@@ -148,9 +149,9 @@ export async function PUT(req: NextRequest) {
   if (b.financeiro !== undefined) r.financeiro = b.financeiro
   if (b.passageiros !== undefined) {
     const passageiros = limparPassageiros(b.passageiros)
-    const excursao = await redis.get<Excursao>(`excursao:${r.excursaoId}`)
-    if (excursao) {
-      const erro = await validarPoltronas(excursao, passageiros, r.id)
+    const viagem = await redis.get<Viagem>(`viagem:${r.viagemId}`)
+    if (viagem) {
+      const erro = await validarPoltronas(viagem, passageiros, r.id)
       if (erro) return NextResponse.json({ error: erro, conflito: true }, { status: 409 })
     }
     r.passageiros = passageiros
@@ -171,6 +172,6 @@ export async function DELETE(req: NextRequest) {
   const r = await redis.get<Reserva>(`reserva:${id}`)
   await redis.del(`reserva:${id}`)
   await redis.srem('reservas', id)
-  if (r) await redis.srem(`excursao:${r.excursaoId}:reservas`, id)
+  if (r) await redis.srem(`viagem:${r.viagemId}:reservas`, id)
   return NextResponse.json({ ok: true })
 }

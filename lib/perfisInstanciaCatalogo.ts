@@ -42,8 +42,8 @@ export const ABAS_OCULTAS_CLINICA: string[] = [
   'clientes', // gestão de clientes B2B (agência/assessoria) — clínica usa Pacientes no CRM
 ]
 
-// Abas que o modo turismo (operadora de excursões) esconde de TODOS os papéis.
-// Turismo usa CRM + Financeiro + módulos próprios de Operação (Excursões/Ônibus/
+// Abas que o modo turismo (operadora de viagens) esconde de TODOS os papéis.
+// Turismo usa CRM + Financeiro + módulos próprios de Operação (Viagens/Ônibus/
 // Reservas/Recebíveis, adicionados na navegação por perfilTurismo). Não usa
 // produção de conteúdo, Estratégia de agência, nem a Agenda clínica.
 export const ABAS_OCULTAS_TURISMO: string[] = [
@@ -136,7 +136,7 @@ export const PERFIS: DefPerfil[] = [
   {
     chave: 'turismo',
     label: 'Turismo',
-    descricao: 'Operadora de excursões rodoviárias: CRM + Operação (excursões, ônibus, reservas, poltronas) + Financeiro. Ex.: Deny Turismo.',
+    descricao: 'Operadora de viagens rodoviárias: CRM + Operação (viagens, ônibus, reservas, poltronas) + Financeiro. Ex.: Deny Turismo.',
     permissoesPapel: {
       gerente: {
         producao: { ver: true, editar: true, excluir: true },

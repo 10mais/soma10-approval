@@ -21,7 +21,7 @@ export type Usuario = {
   areaSaude?: string // clínicas: área de atuação (estética/dermato/nutrição…) do profissional que recebe pacientes.
   corAgenda?: string // clínicas: cor do profissional na Agenda (hex)
   recebeAgenda?: boolean // clínicas: Sim = profissional agendável (recebe pacientes na Agenda); Não = gestão/comercial (usa a agenda, mas não aparece como profissional). Ausente = infere pela areaSaude (retrocompat).
-  tipoTurismo?: 'equipe' | 'motorista' | 'guia' | 'parceiro' // turismo: papel na operação (motorista fica selecionável nas Excursões)
+  tipoTurismo?: 'equipe' | 'motorista' | 'guia' | 'parceiro' // turismo: papel na operação (motorista fica selecionável nas Viagens)
   cnh?: string // turismo: nº da CNH (usado quando tipoTurismo = motorista)
   // Override de permissões POR USUÁRIO (sobre o padrão do papel). Financeiro é sempre só admin.
   // Cada módulo aceita boolean (formato antigo) ou { ver, editar, excluir } (novo, 3 níveis).
@@ -263,7 +263,7 @@ export type EsperaItem = {
   criadoPor?: string
 }
 
-// ── Turismo (operadora de excursões) ─────────────────────────────────────────
+// ── Turismo (operadora de viagens rodoviárias) ─────────────────────────────────────────
 // FROTA. Chaves: `veiculo:{id}`, set `veiculos`. Cada veículo carrega o PRÓPRIO
 // croqui (`layout`) — antes era um preset fixo no código (`layoutId`), e cadastrar
 // veículo novo exigia deploy. Amenidades: Starlink/Wi-Fi/ar/banheiro…
@@ -313,11 +313,19 @@ export type Veiculo = {
   atualizadoEm: string
 }
 
-// Excursão (uma saída): roteiro, datas, ônibus, motoristas, valor do pacote e
-// inclusos. Chaves: `excursao:{id}`, set `excursoes`. Vagas derivam do layout.
-export type MotoristaExcursao = { nome: string; cpf?: string; cnh?: string; email?: string } // email = vínculo com o colaborador cadastrado (tipoTurismo=motorista)
-export type StatusExcursao = 'planejada' | 'aberta' | 'realizada' | 'cancelada'
-// Parada do itinerário (timeline dia-a-dia da excursão, dentro de dataIda..dataVolta).
+// VIAGEM (uma saída): roteiro, datas, veículo, motoristas, valor e inclusos.
+// Chaves: `viagem:{id}`, set `viagens`. Vagas derivam do croqui do veículo.
+//
+// Dois negócios diferentes convivem aqui (`tipo`):
+//  - 'pacote'     → a operadora vende POLTRONA a poltrona. Valor POR CLIENTE
+//                   (`valorPacote` × passageiros). Tem mapa de poltronas.
+//  - 'fretamento' → alguém contrata o veículo INTEIRO por um preço fechado
+//                   (`valorFechado`), não × passageiro. Sem venda de poltrona.
+// Errar isso cobra 40× o valor de um fretamento — ver lib/pacoteViagem.ts.
+export type MotoristaViagem = { nome: string; cpf?: string; cnh?: string; email?: string } // email = vínculo com o colaborador cadastrado (tipoTurismo=motorista)
+export type StatusViagem = 'planejada' | 'aberta' | 'realizada' | 'cancelada'
+export type TipoViagem = 'pacote' | 'fretamento'
+// Parada do itinerário (timeline dia-a-dia da viagem, dentro de dataIda..dataVolta).
 export type ParadaRoteiro = {
   id: string
   data: string        // YYYY-MM-DD
@@ -327,22 +335,66 @@ export type ParadaRoteiro = {
   tipo?: string       // embarque/passeio/refeicao/hospedagem/translado/livre
   observacoes?: string
 }
-export type Excursao = {
+export type Viagem = {
   id: string
   titulo: string
+  tipo: TipoViagem
+  pacoteId?: string    // só em tipo='pacote': de qual modelo NASCEU (a viagem COPIA;
+                       // mexer no pacote depois não reescreve viagem já vendida)
   roteiro?: string
   dataIda: string      // YYYY-MM-DD
   dataVolta?: string   // YYYY-MM-DD
   horaSaida?: string   // HH:MM — horário de saída
   horaRetorno?: string // HH:MM — horário previsto de retorno
   veiculoId?: string
-  motoristas?: MotoristaExcursao[]
-  valorPacote: number
+  motoristas?: MotoristaViagem[]
+  valorPacote: number  // tipo='pacote': valor POR CLIENTE
+  valorFechado?: number // tipo='fretamento': valor da viagem inteira
+  contratante?: string  // tipo='fretamento': quem contratou o veículo
   descontoPadrao?: number
   inclusos?: string[]
   paradas?: ParadaRoteiro[]   // itinerário dia-a-dia (timeline)
-  status: StatusExcursao
+  status: StatusViagem
   observacoes?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+// PACOTE DE VIAGEM — modelo reutilizável ("Foz do Iguaçu 3 dias" sai 5x no ano).
+// Chaves: `pacoteviagem:{id}`, set `pacotesviagem`.
+//
+// ⚠️ NÃO confundir com `Pacote` de lib/pacotes.ts — aquele é pacote de TRATAMENTO
+// da clínica (sessões/saldo), outro negócio inteiramente. Os dois nunca aparecem
+// juntos porque as abas são gated por perfil de instância.
+//
+// A Viagem COPIA o pacote (não lê dele em tempo real): corrigir o preço de um
+// pacote não pode reescrever viagem já vendida.
+//
+// O roteiro do modelo usa DIA RELATIVO (1 = dia da ida), não data absoluta — é o
+// que deixa o mesmo pacote servir julho e dezembro. `lib/pacoteViagem.ts` converte
+// em datas reais na hora de criar a viagem.
+export type ParadaModelo = {
+  id: string
+  dia: number         // 1 = dia da ida, 2 = ida+1…
+  hora?: string       // HH:MM
+  titulo: string
+  local?: string
+  tipo?: string       // embarque/passeio/refeicao/hospedagem/translado/livre
+  observacoes?: string
+}
+export type PacoteViagem = {
+  id: string
+  nome: string
+  destino?: string
+  dias?: number       // duração; define dataVolta sugerida (ida + dias-1)
+  noites?: number
+  valorBase: number   // valor POR CLIENTE sugerido — a viagem pode ajustar
+  inclusos?: string[]
+  roteiroPadrao?: ParadaModelo[]
+  hoteis?: string[]   // nomes previstos; vira vínculo com o cadastro de Hotéis na fase 4
+  observacoes?: string
+  ativo?: boolean     // ausente = ativo
   criadoPor?: string
   criadoEm: string
   atualizadoEm: string

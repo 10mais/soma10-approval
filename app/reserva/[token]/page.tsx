@@ -9,7 +9,7 @@ type ElementoLayout = { label: string; andar: number; fileira: number; coluna: n
 type Layout = { id: string; nome: string; andares: number; poltronas: Poltrona[]; elementos?: ElementoLayout[] }
 type Dados = {
   contratanteNome: string; status: string
-  excursao: { titulo: string; dataIda: string; dataVolta?: string } | null
+  viagem: { titulo: string; dataIda: string; dataVolta?: string } | null
   layout: Layout | null; ocupadas: string[]
   passageiros: { nome: string; poltrona?: string }[]
 }
@@ -86,8 +86,8 @@ export default function ReservaPublica() {
   return (
     <div style={wrap}>
       <div style={card}>
-        <h2 style={{ margin: '0 0 2px', fontSize: 19, color: '#111' }}>{dados.excursao?.titulo || 'Sua viagem'}</h2>
-        <p style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>{fmtData(dados.excursao?.dataIda)}{dados.excursao?.dataVolta ? ` → ${fmtData(dados.excursao?.dataVolta)}` : ''}</p>
+        <h2 style={{ margin: '0 0 2px', fontSize: 19, color: '#111' }}>{dados.viagem?.titulo || 'Sua viagem'}</h2>
+        <p style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>{fmtData(dados.viagem?.dataIda)}{dados.viagem?.dataVolta ? ` → ${fmtData(dados.viagem?.dataVolta)}` : ''}</p>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: '#555' }}>Olá, <b>{dados.contratanteNome}</b>! Escolha {dados.passageiros.length === 1 ? 'sua poltrona' : `as ${dados.passageiros.length} poltronas`} tocando no mapa abaixo.</p>
 
         {!dados.layout ? <p style={{ color: '#b45309', fontSize: 14 }}>O mapa de poltronas ainda não está disponível. Fale com a agência.</p> : (

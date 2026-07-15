@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Veiculo, CondicaoVeiculo, TipoVeiculo, ManutencaoVeiculo, DocumentoVeiculo, Excursao } from '@/lib/redis'
+import { redis, Veiculo, CondicaoVeiculo, TipoVeiculo, ManutencaoVeiculo, DocumentoVeiculo, Viagem } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { LayoutVeiculo, validarLayout, layoutVazio, numerosPoltronas } from '@/lib/layoutVeiculo'
 import { Reserva, poltronasOcupadas } from '@/lib/reservas'
@@ -66,10 +66,10 @@ function limparDocumentos(arr: any): DocumentoVeiculo[] {
 // verdade do mapa de reservas.
 async function poltronasVendidas(veiculoId: string): Promise<Map<string, string>> {
   const vendidas = new Map<string, string>() // poltrona -> título da viagem
-  const ids = await redis.smembers('excursoes')
+  const ids = await redis.smembers('viagens')
   if (!ids.length) return vendidas
-  const excursoes = (await redis.mget<(Excursao | null)[]>(...ids.map(i => `excursao:${i}`))).filter(Boolean) as Excursao[]
-  const ativas = excursoes.filter(e =>
+  const viagens = (await redis.mget<(Viagem | null)[]>(...ids.map(i => `viagem:${i}`))).filter(Boolean) as Viagem[]
+  const ativas = viagens.filter(e =>
     e.veiculoId === veiculoId && e.status !== 'cancelada' && (e.dataVolta || e.dataIda) >= hoje()
   )
   if (!ativas.length) return vendidas

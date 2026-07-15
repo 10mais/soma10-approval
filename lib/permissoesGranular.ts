@@ -8,7 +8,7 @@ export type AcaoPerm = 'publicar' | 'enviar_cliente' | 'gerar_ia' | 'aprovar' | 
 
 // Abas operacionais que podem ser ligadas/desligadas por papel/usuário.
 // `perfil` (opcional) = tela que só existe naquele perfil de instância; a UI de
-// permissões esconde as que não se aplicam (a Norah não precisa ver "Excursões").
+// permissões esconde as que não se aplicam (a Norah não precisa ver "Viagens").
 // Telas admin-only (Colaboradores, Configurações, Reuniões, Trabalhe Conosco)
 // ficam FORA: o granular só afeta gerente/usuario, e admin atravessa tudo.
 export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?: 'clinica' | 'turismo' }[] = [
@@ -36,7 +36,8 @@ export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?
   { key: 'mensagens', label: 'Mensagens', categoria: 'Comunicação' },
   { key: 'solicitacoes', label: 'Solicitações do cliente', categoria: 'Comunicação' },
   { key: 'procedimentos', label: 'Procedimentos e Métodos', categoria: 'Clínica', perfil: 'clinica' },
-  { key: 'excursoes', label: 'Excursões', categoria: 'Operação', perfil: 'turismo' },
+  { key: 'viagens', label: 'Viagens', categoria: 'Operação', perfil: 'turismo' },
+  { key: 'pacotes', label: 'Pacotes', categoria: 'Operação', perfil: 'turismo' },
   { key: 'reservas', label: 'Reservas', categoria: 'Operação', perfil: 'turismo' },
   { key: 'frota', label: 'Frota', categoria: 'Operação', perfil: 'turismo' },
   { key: 'rentabilidade', label: 'Financeiro', categoria: 'Gestão' },
