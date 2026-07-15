@@ -901,7 +901,9 @@ function Dashboard() {
 
   // Override DETALHADO por usuário (por aba + por ação). Começa no padrão do papel
   // (config:permissoesGranular) e o admin refina só o que quiser deste usuário.
-  function renderGranular(r: string, perm: any, onChange: (p: any) => void) {
+  // `escopo` muda só o rodapé: 'usuario' = ajuste individual no cadastro;
+  // 'papel' = padrão do papel (Configurações → Funcionalidades por papel).
+  function renderGranular(r: string, perm: any, onChange: (p: any) => void, escopo: 'usuario' | 'papel' = 'usuario') {
     if (r !== 'gerente' && r !== 'usuario') return null
     const g: any = perm || {}
     const setAba = (aba: string, valor: boolean) => onChange({ ...g, abas: { ...(g.abas || {}), [aba]: valor } })
@@ -910,7 +912,10 @@ function Dashboard() {
       <button type="button" onClick={onClick}
         style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#16a34a' : '#fff', color: on ? '#fff' : '#bbb', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
     )
-    const cats = Array.from(new Set(ABAS_PERM.map(a => a.categoria)))
+    // Só as telas que EXISTEM nesta instância: tira as ocultas pelo perfil e as
+    // exclusivas de outro perfil (a clínica não precisa ver "Excursões").
+    const abasVisiveis = ABAS_PERM.filter(a => !ocultas.includes(a.key) && (!a.perfil || a.perfil === perfilInstancia))
+    const cats = Array.from(new Set(abasVisiveis.map(a => a.categoria)))
     return (
       <div style={{ width: '100%', marginTop: 8, background: '#fafafa', borderRadius: 10, padding: 12 }}>
         <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões detalhadas (telas e ações)</label>
@@ -928,7 +933,7 @@ function Dashboard() {
         {cats.map(cat => (
           <div key={cat} style={{ marginBottom: 6 }}>
             <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#bbb' }}>{cat}</p>
-            {ABAS_PERM.filter(a => a.categoria === cat).map(a => {
+            {abasVisiveis.filter(a => a.categoria === cat).map(a => {
               const on = podeAbaGranular(r, a.key, perm, permGranular)
               return (
                 <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
@@ -939,7 +944,7 @@ function Dashboard() {
             })}
           </div>
         ))}
-        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>Começa no padrão do papel; ajuste só o que for específico deste usuário.</p>
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>{escopo === 'papel' ? 'Vale para todo mundo com este papel. Salva na hora.' : 'Começa no padrão do papel; ajuste só o que for específico deste usuário.'}</p>
       </div>
     )
   }
@@ -959,6 +964,15 @@ function Dashboard() {
   function setPermPapelNivel(papel: 'gerente' | 'usuario', novoPerm: any) {
     setPermPapel(p => ({ ...p, [papel]: novoPerm }))
     fetch('/api/permissoes-papel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [papel]: novoPerm }) }).catch(() => {})
+  }
+  // Permissões DETALHADAS por papel (telas/ações) — padrão de todo gerente/usuário.
+  // O ajuste individual no cadastro do colaborador continua valendo por cima deste.
+  function setPermGranularPapel(papel: 'gerente' | 'usuario', novoPerm: any) {
+    const atualizado = { ...permGranular, [papel]: novoPerm }
+    setPermGranular(atualizado)
+    fetch('/api/permissoes-granular', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(atualizado) })
+      .then(r => r.json()).then(d => { if (!d?.ok) toast(d?.error || 'Não foi possível salvar as permissões.', 'erro') })
+      .catch(() => toast('Falha de conexão ao salvar as permissões.', 'erro'))
   }
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
@@ -4175,6 +4189,21 @@ function Dashboard() {
                   <div key={papel}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
                     {matrizNiveis(papel, permPapel[papel] || {}, (novoPerm: any) => setPermPapelNivel(papel, novoPerm), 'papel', '')}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Permissões detalhadas por papel — liga/desliga CADA tela e ação
+                para todo gerente/usuário (o cadastro individual sobrepõe). */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>Funcionalidades por papel (telas e ações)</h3>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>Controle fino de <b>cada tela</b> e das <b>ações críticas</b> (gerar com IA, enviar ao cliente, publicar, aprovar, excluir). Vale como padrão do papel — no cadastro de cada colaborador dá para ajustar individualmente. <b>Admin</b> sempre tem acesso total.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {(['gerente', 'usuario'] as const).map(papel => (
+                  <div key={papel}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    {renderGranular(papel, permGranular?.[papel] || {}, (novoPerm: any) => setPermGranularPapel(papel, novoPerm), 'papel')}
                   </div>
                 ))}
               </div>
