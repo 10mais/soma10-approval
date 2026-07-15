@@ -30,6 +30,37 @@ async function rodarPrazos(): Promise<NextResponse> {
     const chaveProximo = `tarefa_notif_proximo:${t.id}`
     const chaveVencida = `tarefa_notif_vencida:${t.id}`
 
+    // ABORDAGEM do CRM (jornada do contato): o comercial precisa se organizar,
+    // então avisa NA SEMANA e NO DIA — e não pelo "falta 1h" das tarefas comuns
+    // (um retorno marcado para daqui a 90 dias não se resolve em 1 hora).
+    if ((t as any).tipo === 'retorno_paciente') {
+      const dataBR = new Date(prazoMs).toLocaleDateString('pt-BR')
+      const SEMANA = 7 * 24 * UMA_HORA
+      // 1) Entrou na semana da abordagem. Se a tarefa JÁ nasceu dentro da semana,
+      //    o aviso da criação já cobriu — não repete.
+      if (diff > 0 && diff <= SEMANA) {
+        const nasceuDentroDaSemana = prazoMs - new Date(t.criadoEm).getTime() <= SEMANA
+        const chaveSemana = `tarefa_notif_semana:${t.id}`
+        if (!nasceuDentroDaSemana && !(await redis.get(chaveSemana))) {
+          await notificar(t.responsavelEmail, 'tarefa_prazo_proximo', 'Abordagem esta semana', `"${t.titulo}" está marcada para ${dataBR}.`, undefined, t.id)
+          await redis.set(chaveSemana, '1', { ex: 8 * 24 * 3600 })
+          notificados++
+        }
+      }
+      // 2) É HOJE — avisa de manhã (a partir das 8h), não de madrugada.
+      const ehHoje = new Date(prazoMs).toDateString() === new Date(agora).toDateString()
+      if (ehHoje && new Date(agora).getHours() >= 8) {
+        const chaveDia = `tarefa_notif_dia:${t.id}`
+        if (!(await redis.get(chaveDia))) {
+          await notificar(t.responsavelEmail, 'tarefa_prazo_proximo', 'Abordagem hoje', `"${t.titulo}" é hoje (${dataBR}).`, undefined, t.id)
+          await redis.set(chaveDia, '1', { ex: 20 * 3600 })
+          notificados++
+        }
+      }
+      // Segue para "vencida" abaixo; pula a regra de 1h (já avisada no dia).
+      if (diff > 0) continue
+    }
+
     // Prazo proximo (entre 0 e 1h)
     if (diff > 0 && diff <= UMA_HORA) {
       const jaNotificou = await redis.get(chaveProximo)

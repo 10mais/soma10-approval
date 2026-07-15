@@ -147,10 +147,10 @@ export async function PUT(req: NextRequest) {
     const passo: ProximoPasso = { id: uuid(), titulo, quando, ...(d.nota ? { nota: String(d.nota).slice(0, 500) } : {}), feito: false, tarefaId: tarefa.id, criadoEm: agora }
     const atualizado: CrmContato = { ...contato, proximosPassos: [...(contato.proximosPassos || []), passo], atualizadoEm: agora }
     await redis.set(`contato:${id}`, atualizado)
-    // Lembrete: avisa o comercial na hora (o cron de prazos avisa de novo na data).
+    // Lembrete: avisa o comercial na hora. O cron reforça na semana e no dia.
     const quandoBR = quando.split('-').reverse().join('/')
     const alvos = comerciais.length ? comerciais : equipe.filter(u => u.email === autorEmail)
-    await Promise.all(alvos.map(u => notificar(u.email, 'tarefa_atribuida', `Abordagem: ${contato.nome}`, `${titulo} — programado para ${quandoBR}`, undefined, tarefa.id)))
+    await Promise.all(alvos.map(u => notificar(u.email, 'tarefa_atribuida', `Abordagem: ${contato.nome}`, `${titulo} — marcada para ${quandoBR}. Você será lembrado na semana e no dia.`, undefined, tarefa.id)))
       .catch(() => { /* lembrete é best-effort, não derruba o registro */ })
     return NextResponse.json({ ok: true, contato: atualizado })
   }

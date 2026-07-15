@@ -1106,18 +1106,20 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
   // Próximos passos (jornada futura): "o que fazer e daqui quanto tempo".
   // Cada passo vira uma Tarefa para a equipe na data (o servidor cria/conclui/remove junto).
   const [passos, setPassos] = useState<{ id: string; titulo: string; quando: string; feito?: boolean }[]>(((contato as any)?.proximosPassos) || [])
-  const [novoPasso, setNovoPasso] = useState({ titulo: '', dias: 30 })
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const hojeYmd = ymd(new Date())
+  const [novoPasso, setNovoPasso] = useState({ titulo: '', quando: '' })
   const [addPassoBusy, setAddPassoBusy] = useState(false)
-  const diasAte = (ymd: string) => Math.round((new Date(ymd + 'T00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
+  const diasAte = (d: string) => Math.round((new Date(d + 'T00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
+  // Atalhos: o caso comum é "retorno em X" — evita abrir o calendário à toa.
+  const emDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d) }
   async function addPasso() {
-    if (!contato?.id || !novoPasso.titulo.trim() || addPassoBusy) return
-    const d = new Date(); d.setDate(d.getDate() + Math.max(1, Number(novoPasso.dias) || 1))
-    const quando = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (!contato?.id || !novoPasso.titulo.trim() || !novoPasso.quando || addPassoBusy) return
     setAddPassoBusy(true)
-    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novoPasso: { titulo: novoPasso.titulo, quando } }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novoPasso: { titulo: novoPasso.titulo, quando: novoPasso.quando } }) }).then(x => x.json()).catch(() => null)
     setAddPassoBusy(false)
-    if (r?.ok) { setPassos(r.contato.proximosPassos || []); setNovoPasso({ titulo: '', dias: novoPasso.dias }); toast('Passo agendado — tarefa criada para a equipe.', 'sucesso') }
-    else toast(r?.error || 'Falha ao agendar o passo.', 'erro')
+    if (r?.ok) { setPassos(r.contato.proximosPassos || []); setNovoPasso({ titulo: '', quando: '' }); toast('Abordagem agendada — o comercial foi avisado.', 'sucesso') }
+    else toast(r?.error || 'Falha ao agendar a abordagem.', 'erro')
   }
   async function togglePasso(passoId: string) {
     if (!contato?.id) return
@@ -1223,14 +1225,27 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
               </div>
               {/* Próximos passos — jornada futura do paciente (cada passo vira tarefa) */}
               <div style={{ margin: '10px 0 12px', background: '#f8faff', border: '1px solid #e3eaff', borderRadius: 10, padding: 10 }}>
-                <label style={{ ...labelStyle, marginBottom: 6 }}>Próximos passos (jornada)</label>
-                <div style={{ display: 'flex', gap: 6, marginBottom: passosOrdenados.length ? 8 : 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ ...labelStyle, marginBottom: 6 }}>Próximas abordagens (jornada)</label>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input value={novoPasso.titulo} onChange={e => setNovoPasso(p => ({ ...p, titulo: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') addPasso() }}
                     placeholder="O que fazer (ex.: Retorno de avaliação)" style={{ ...inputStyle, flex: 1, minWidth: 170 }} />
-                  <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>daqui</span>
-                  <input type="number" min={1} value={novoPasso.dias} onChange={e => setNovoPasso(p => ({ ...p, dias: Number(e.target.value) || 1 }))} style={{ ...inputStyle, width: 62, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>dias</span>
-                  <button onClick={addPasso} disabled={addPassoBusy || !novoPasso.titulo.trim()} style={{ padding: '9px 14px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() ? 1 : 0.5, flexShrink: 0 }}>+</button>
+                  {/* Data exata — o comercial é avisado na semana e no dia */}
+                  <input type="date" value={novoPasso.quando} min={hojeYmd} onChange={e => setNovoPasso(p => ({ ...p, quando: e.target.value }))}
+                    style={{ ...inputStyle, width: 150, flexShrink: 0, color: novoPasso.quando ? '#111' : '#999' }} />
+                  <button onClick={addPasso} disabled={addPassoBusy || !novoPasso.titulo.trim() || !novoPasso.quando}
+                    title={!novoPasso.quando ? 'Escolha a data da abordagem' : 'Agendar abordagem'}
+                    style={{ padding: '9px 14px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() && novoPasso.quando ? 1 : 0.5, flexShrink: 0 }}>+</button>
+                </div>
+                {/* Atalhos de data (o caso comum é "retorno em X") */}
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: passosOrdenados.length ? 8 : 0 }}>
+                  {([['7 dias', 7], ['15 dias', 15], ['30 dias', 30], ['60 dias', 60], ['90 dias', 90]] as [string, number][]).map(([lab, n]) => {
+                    const d = emDias(n)
+                    const ativo = novoPasso.quando === d
+                    return (
+                      <button key={n} type="button" onClick={() => setNovoPasso(p => ({ ...p, quando: d }))}
+                        style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${ativo ? '#1d4ed8' : '#dbe3f0'}`, background: ativo ? '#dbeafe' : '#fff', color: ativo ? '#1d4ed8' : '#77839a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{lab}</button>
+                    )
+                  })}
                 </div>
                 {passosOrdenados.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
