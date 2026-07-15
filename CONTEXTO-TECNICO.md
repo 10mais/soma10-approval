@@ -2,6 +2,12 @@
 
 > Documento para retomar o projeto em outra janela/sessão sem perder informação.
 > Mantido manualmente. Atualizar quando algo estrutural mudar.
+>
+> **Comece pela §38** (2026-07-14/15) — é o estado mais recente e, onde divergir
+> de seções antigas, vale o que está lá. Ela cobre: 3ª instância (**Deny Turismo**,
+> perfil `turismo`), marca perfil-aware (**Soma10 Agency/Clinic/App**), inbox de
+> WhatsApp rico (mídia/grupos/encaminhar/editar) e o CRM de clínica unificado.
+> Pendências abertas: **§38.9**.
 
 ## 1. Visão geral e acesso
 
@@ -29,7 +35,7 @@
 | Var | Uso |
 |---|---|
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash Redis (Marketplace) |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob (upload de mídia/anexos). **Store é privado** — uploads usam o fluxo client `upload()` |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob (upload de mídia/anexos). ⚠️ **O modo do store VARIA por instância** (a Norah é privado; a agência, público) — em gravação server-side use `putBlobAdaptativo` e para ler use o `get()` do SDK, nunca `fetch` cru com Bearer (§38.4) |
 | `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | NextAuth |
 | `APP_ID`, `APP_SECRET` | Meta (Facebook/Instagram) OAuth + publicação |
 | `INSTAGRAM_APP_ID` | Login "API com login do Instagram" |
@@ -915,3 +921,185 @@ Painel (topo) · Meu dia · Personal list → **Produção** (Tarefas, Studio, *
 - **Instagram Direct rico** (anexos/busca/abas): BLOQUEADO no App Review Meta (dono: Business Verification) — ver `[[app-review-meta]]`.
 - **Provisionar** Sua Dupla Cidadania (`gestao`) e Phenoma (`clinica`).
 - **Dono:** validar qualidade do texto do playbook (aba Playbook); preencher `areaSaude` de Jéssica/Vanessa em Colaboradores (senão a Agenda mostra todos).
+
+---
+
+## 38. Evolução 2026-07-14/15 — Deny Turismo (3ª instância) · Marca perfil-aware · Inbox WhatsApp rico · CRM de clínica unificado
+
+> Sessão muito longa, **tudo na `main`** (push por implementação). Onde diverge de
+> seções antigas, **vale o que está aqui**. Memórias: `[[clientes-instancias]]`,
+> `[[feedback-git-add-wip]]`.
+
+### 38.0 Modelo mental (não confundir de novo)
+**Um código, N instâncias.** O repo `soma10-approval` é a fonte de TODAS: a
+instância da **Agência (10+)** em `approval.soma10.com.br`, a **Norah** (clínica) e
+a **Deny Turismo**. O que muda é `config:perfilInstancia` no Redis de cada uma.
+Um push na `main` atualiza todas, mas cada feature sai **gated por perfil** — por
+isso o código de turismo/clínica convive no mesmo repo sem poluir as outras.
+Ao receber um pedido, **saber para QUAL instância é** (o dono fala "na Deny", "na
+Norah", "no 10+"); "em todos" = sem portão.
+
+### 38.1 Planner — filtro endurecido (agência)
+`app/dashboard/page.tsx` (~L818) e `app/cliente/[clienteId]/planner/page.tsx`: o
+Planner só mostra o **confirmado**. Fica de fora rascunho (`status:'rascunho'`,
+`rascunhoInterno`), **em ajuste** (`status:'corrigir'`) e qualquer pauta ainda no
+pipe (`etapa` ≠ `pronto`) — inclusive **reenviada** (o OR frouxo
+`PLANNER_STATUS_OK.includes(status)` deixava um post com `status:'agendado'` antigo
+voltar ao calendário mesmo tendo retornado à aprovação). Exceção: já publicado
+(`publicando/publicado/falha_publicacao`) permanece como histórico. O relatório
+mensal manteve a semântica antiga (const local própria).
+
+### 38.2 Deny Turismo — 3ª instância (perfil `turismo`)
+- **Provisionada**: projeto Vercel `soma10-denyturismo`, domínio
+  **`denyturismo.soma10.com.br`** (CNAME no Cloudflare, **DNS only/nuvem cinza** —
+  proxy laranja quebra o SSL da Vercel). Runbook preenchido + segredos ficaram no
+  **scratchpad** (o repo é PÚBLICO — segredo não entra em arquivo versionado).
+- **Upstash agora só pela Vercel** (Marketplace) — `INSTANCIAS.md` §1 ainda manda ir
+  no console.upstash.com: **está desatualizado**. O prefixo de env saiu `KV_*`
+  automático (a pegadinha do `STORAGE_*` não se repetiu). Blob continua exigindo
+  criar `BLOB_READ_WRITE_TOKEN` **na mão** (aba `.env.local` do store).
+- **Módulos de Operação** (todos gated por `perfilTurismo`): Excursões, Reservas
+  (mapa de poltronas + financeiro), Ônibus, Roteiros. Colaborador ganhou
+  `tipoTurismo` (equipe/motorista/guia/parceiro) + `cnh` → o motorista da excursão
+  vira **seleção do cadastro** (via `/api/equipe`), não texto livre.
+- **Painel do turismo** (`DashboardHome`, 3º branch): próximas saídas, reservas no
+  mês, ocupação média, a receber. **Tipos de tarefa** próprios (`TIPOS_TURISMO`).
+  Turismo **esconde** Carga da equipe e o seletor "Acessar sub-account".
+- ⚠️ **Falta o dono rodar** `/api/setup` com `perfil:'turismo'` — até lá a instância
+  responde como agência (`/api/marca` devolve "Soma10 Agency") e os módulos de
+  Operação não aparecem.
+
+### 38.3 Marca perfil-aware (todas as instâncias)
+- `nomeSistema(perfil)` em `lib/perfisInstanciaCatalogo.ts`: `clinica`→**Soma10
+  Clinic**, `turismo`/`gestao`→**Soma10 App**, agência/padrão→**Soma10 Agency**.
+- **Rota pública `/api/marca`** (`{perfil, nome}`) + `<SystemName/>`
+  (`app/components/SystemName.tsx`) para telas client **pré-login**; server usa
+  `getPerfilCache()` (`lib/cache.ts`, tag `config`).
+- Aplicado em: login (título+rodapé), `<title>`, manifest (PWA), header do portal
+  do cliente e páginas públicas (aprovar/aprovações/status). **Páginas legais
+  mantêm "Soma10 Approval"** de propósito (superfície do App Review da Meta).
+- Não contradiz a decisão de marca: continua **sempre Soma10**, sem marca do cliente.
+- Login também ganhou **"ver senha"** (olho) — vale em todas as instâncias.
+
+### 38.4 Inbox WhatsApp rico (Norah) — mídia, grupos, encaminhar, editar
+Sequência de erros MEUS que custou 4 deploys; registrado para não repetir:
+1. `access:'public'` no `put()` do Blob, mas **o Blob da Norah é PRIVADO** (dado de
+   saúde) → toda gravação falhava. Hoje: `putBlobAdaptativo` tenta `private` e cai
+   para `public` (a agência precisa de público p/ o Instagram buscar a mídia).
+2. **Webhook morria na captura** (`POST /api/whatsapp/webhook` com **status 0** nos
+   logs = função morta) porque eu baixava a mídia ANTES de gravar a mensagem — e a
+   mensagem inteira se perdia sem log. Hoje: **grava a mensagem primeiro** (já com
+   `tipo`), depois baixa e anexa via `atualizarMensagem()`; `maxDuration = 60`.
+3. **Proxy com `fetch` cru + Bearer** não autentica em Blob privado → usar o
+   **`get()` do SDK** (`lerBlobMidia`, tenta private→public). Rota
+   **`/api/whatsapp/midia`** é o único caminho de exibição (exige login, bloqueia
+   `cliente`, só repassa `*.vercel-storage.com` p/ não virar proxy aberto).
+4. **Encaminhar** mandava a URL p/ o Evolution baixar — impossível em Blob privado.
+   Hoje envia os **bytes em base64** (`sendMedia`/`sendWhatsAppAudio`).
+
+Outros pontos do inbox:
+- **`desembrulhar()`** (`lib/whatsapp.ts`): o WhatsApp EMBRULHA mensagens
+  (ephemeral, viewOnce, documentWithCaption, edited, deviceSent). Sem abrir o
+  envelope o texto sumia (`[mensagem]`) **e a mídia nem era detectada** — era a raiz
+  de 2 bugs. Parser cobre enquete/contato/reação/localização/lista/botões/ptv;
+  `ehMensagemSistema()` evita balão vazio de evento de protocolo.
+- **`fromMe` deixou de ser ignorado**: o que a equipe manda pelo **celular/WhatsApp
+  Web** entra como `de:'agente'` com `autor:'via celular/Web'` (auditoria do
+  atendimento). Dedupe por `key.id` (`mensagemExiste`) evita duplicar o eco do que o
+  sistema envia. **Guarda importante:** mensagem nossa NÃO renomeia a conversa (o
+  `pushName` do fromMe é o nome do NOSSO número) e não dispara notificação.
+- **Grupos** (`@g.us`) deixaram de ser ignorados: `WaConversa.jid`/`grupo`,
+  `infoGrupoEvolution()` traz subject+foto+participantes (1x por grupo, flag
+  `wa:grupoinfo:{tel}` com validade — sem ela, grupo sem foto = 1 chamada por
+  mensagem). Envio para grupo usa o **JID completo**.
+- **Agenda de nomes** aprendida do WhatsApp (`wa:nome:{id}`, do `pushName` e dos
+  participantes) resolve **@menções** que apareciam como ID cru. Foto de quem falou
+  cacheada (`wa:foto:{id}`).
+- **Editar enviada** (`chat/updateMessage`, regra dos ~15 min, só texto próprio,
+  marcador "editada") e **encaminhar** (escolhe a conversa na lista).
+- **Imagem abre em lightbox** (não em nova guia) com **Baixar**; documento baixa
+  direto. Nome sugerido `foto-15-07-2026-1432.jpg`.
+- **Webhook registrado com `base64:true`** (`/api/whatsapp/conexao`) — reconectar em
+  Config → Integrações se a mídia parar de vir.
+- Logs de diagnóstico: **`[wa-midia]`** no runtime da Vercel (sucesso e falha).
+- ⚠️ **Nada é retroativo**: mensagem antiga não recupera mídia (o WhatsApp não
+  reenvia o passado).
+
+### 38.5 CRM de clínica — REESCRITO (contraria a §37.3)
+- **Pacientes × Contatos acabou**: agora é **uma lista só** ("Contatos"). O `tipo`
+  (lead/paciente) continua no cadastro como selo, e a promoção lead→paciente ao
+  atender segue valendo — mas **não há mais aba Pacientes**. ⚠️ A lista filtrava por
+  tipo; unificar exigiu tirar o filtro, senão os pacientes sumiriam.
+- **Busca** na lista (nome/telefone/e-mail/empresa/área/etiquetas): ignora acento nos
+  dois sentidos e casa telefone **só por dígitos**.
+- **Ficha enxuta**: saíram "Vender pacote" e o quick-add "Registrar um contato"
+  (registro manual é vida do CRM). Toques já gravados seguem visíveis.
+- **HISTÓRICO automático** na ficha (para projetar a próxima abordagem): criação do
+  contato + atendimentos (com **procedimentos realizados e valor**) + **WhatsApp
+  agregado por dia** ("5 mensagens · 3 recebidas" — mensagem a mensagem viraria um
+  chat) + abordagens programadas/feitas.
+- **Próximas abordagens (jornada)**: `CrmContato.proximosPassos[]` (`ProximoPasso`)
+  com **data exata (calendário)** + atalhos 7/15/30/60/90 dias. Cada passo cria uma
+  **Tarefa no COMERCIAL** (papel `vendas`, não em quem registrou) e notifica todos os
+  comerciais na hora. ⚠️ **Sem ninguém com papel Vendas/Comercial, o lembrete cai em
+  quem registrou** (fallback).
+- **Cron `/api/cron/tarefas`**: abordagem (`tipo:'retorno_paciente'`) tem regra
+  própria — avisa **ao entrar na semana** e **no dia (≥8h)**, e **pula** a regra
+  genérica de "falta 1h" (um retorno de 90 dias não se resolve em 1 hora). Sem aviso
+  duplicado: quem nasce dentro da semana já foi avisado na criação.
+- **Funil ganhou "Próximas abordagens"** ao lado de Nova oportunidade: contador
+  discreto (vira alerta só com atrasada/hoje), abre com Atrasadas/Hoje/Próximos 7
+  dias, concluir dá baixa na tarefa. **Sai dos contatos já carregados** (sem chamada
+  nova) e **não tem relação com pipeline/estágio**.
+- **Queixa principal** na oportunidade (`CrmNegocio.queixaPrincipal`), espelhando o
+  campo que já existia na Agenda.
+- **Excluir conversa** no inbox (`DELETE /api/crm/mensagens?tel=`, permissão
+  CRM/excluir): apaga `wa:msgs` + `wa:conversa` + índice. Se o número escrever de
+  novo, o webhook recria a conversa limpa.
+
+### 38.6 Clínica — catálogo, pós-atendimento e jornada
+- **Procedimentos e Métodos**: aba própria do perfil clínica (`/api/procedimentos`,
+  chave `clinica:procedimentos`, padrão do `tipos-tarefa`; admin/gerente editam). A
+  **Agenda consome o catálogo** no "tipo de atendimento" (fallback à lista básica
+  `SERVICOS_CLINICA` quando vazio).
+- **Pós-atendimento**: `Agendamento.procedimentosRealizados[]` + `valorInvestido` —
+  chips do catálogo no modal quando `status:'atendido'`; aparece na ficha do paciente.
+
+### 38.7 Permissões — catálogo completo + matriz por papel
+- `ABAS_PERM` estava com **12 telas faltando**. Agora inclui Meu dia, Personal list,
+  Aprovações, Marca, Social Listening, Analytics, Solicitações, Procedimentos
+  (clínica), Excursões/Reservas/Ônibus (turismo). Cada entrada pode declarar
+  `perfil` — a matriz **esconde o que não existe na instância**.
+- Telas **admin-only** (Colaboradores, Configurações, Reuniões, Trabalhe Conosco)
+  ficam **fora de propósito**: o granular só afeta gerente/usuario e o admin
+  atravessa tudo.
+- **Configurações → "Funcionalidades por papel (telas e ações)"**: matriz nova que
+  liga/desliga cada tela e as ações críticas para todo gerente/usuário
+  (`PUT /api/permissoes-granular`, que já existia **sem UI**). O ajuste individual no
+  cadastro do colaborador continua sobrepondo o padrão do papel.
+
+### 38.8 Agência (10+)
+- **Solicitações do cliente** agora **abrem o post**: card com `postId` vira clicável
+  ("Abrir e corrigir") → `iniciarEdicaoPost` → corrige → **"Enviar para aprovação"**
+  reenvia (fluxo que já existia). Post fora da janela carregada é buscado com
+  `?tudo=1`. Solicitação de conteúdo (sem post) segue informativa.
+- **Assistente lê prints**: clip no chat (até 4 imagens) → `comprimirImagemChat`
+  (`lib/comprimirImagem.ts`, alvo 2,5MB/1600px p/ manter texto legível) → Blob →
+  a rota `/api/assistente/chat` aceita `imagens[]` e monta **blocos de imagem** para
+  a visão do modelo.
+
+### 38.9 Pendências (próxima sessão)
+- **VALIDAR EM PRODUÇÃO (só o dono consegue — precisa de WhatsApp/dado real):**
+  mídia nova abrindo no inbox da Norah, encaminhar, editar, @menção com nome, foto do
+  grupo; e o lembrete de abordagem chegando no comercial.
+- **Deny:** rodar `/api/setup` com `perfil:'turismo'` + parear o WhatsApp (QR em
+  Config → Integrações). Sem isso a instância ainda responde como agência.
+- **Norah:** precisa de alguém com papel **Vendas/Comercial** para o lembrete de
+  abordagem ter dono certo. `ANTHROPIC_API_KEY` na Vercel da Norah é pré-requisito
+  dos prints/agentes de IA.
+- **Agente de reels (método 10+)**: sem código — dono cria em Agentes com as
+  instruções que redigi + sobe o doc do método como conhecimento.
+- **`INSTANCIAS.md` desatualizado**: §1 manda usar console.upstash.com (hoje é só
+  pela Vercel) e não cobre o addendum **Railway/Evolution** (WhatsApp).
+- Herdadas da §37.7: bloqueios da agenda, busca full-text no WhatsApp, Instagram
+  Direct (App Review), provisionar Sua Dupla (`gestao`) e Phenoma (`clinica`).
