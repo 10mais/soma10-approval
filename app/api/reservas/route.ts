@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Excursao, Onibus } from '@/lib/redis'
+import { redis, Excursao, Veiculo } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito, valorTotalReserva } from '@/lib/reservas'
-import { layoutPorId, poltronaExiste } from '@/lib/layoutsOnibus'
+import { poltronaExiste } from '@/lib/layoutVeiculo'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -39,13 +39,13 @@ function limparPassageiros(arr: any): Passageiro[] {
 async function validarPoltronas(excursao: Excursao, passageiros: Passageiro[], reservaId?: string): Promise<string | null> {
   const pedidas = passageiros.map(p => p.poltrona).filter(Boolean) as string[]
   if (!pedidas.length) return null // reserva sem poltrona definida ainda é permitida
-  // Assentos existem no layout?
-  if (excursao.onibusId) {
-    const onibus = await redis.get<Onibus>(`onibus:${excursao.onibusId}`)
-    const layout = onibus && layoutPorId(onibus.layoutId)
+  // Assentos existem no croqui do veículo?
+  if (excursao.veiculoId) {
+    const veiculo = await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`)
+    const layout = veiculo?.layout
     if (layout) {
       const inexistente = pedidas.find(n => !poltronaExiste(layout, n))
-      if (inexistente) return `Poltrona ${inexistente} não existe no layout do ônibus.`
+      if (inexistente) return `Poltrona ${inexistente} não existe no croqui do veículo.`
     }
   }
   const ocupadas = poltronasOcupadas(await carregarTodas(), excursao.id, reservaId)

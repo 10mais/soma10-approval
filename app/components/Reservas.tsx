@@ -1,15 +1,15 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { layoutPorId, LayoutOnibus, Poltrona, totalPoltronas } from '@/lib/layoutsOnibus'
+import { LayoutVeiculo, Poltrona, capacidadeLayout } from '@/lib/layoutVeiculo'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
 import { v4 as uuid } from 'uuid'
 
 // Reservas de excursão + MAPA DE POLTRONAS visual. Jamais duas pessoas na mesma
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
 
-type Onibus = { id: string; nome: string; layoutId: string }
-type Excursao = { id: string; titulo: string; dataIda: string; onibusId?: string; valorPacote: number; status: string }
+type Veiculo = { id: string; nome: string; layout: LayoutVeiculo }
+type Excursao = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string }
 type Passageiro = { nome: string; cpf?: string; nascimento?: string; poltrona?: string }
 type Reserva = { id: string; excursaoId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
 type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string; financeiro?: FinanceiroReserva }
@@ -23,7 +23,7 @@ const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
 }
 
 // Grade de um andar: poltronas + elementos (amenidades) por (fileira-coluna).
-function gradeAndar(layout: LayoutOnibus, andar: number) {
+function gradeAndar(layout: LayoutVeiculo, andar: number) {
   const ps = layout.poltronas.filter(p => p.andar === andar)
   const els = (layout.elementos || []).filter(e => e.andar === andar)
   const todos = [...ps.map(p => ({ f: p.fileira, c: p.coluna })), ...els.map(e => ({ f: e.fileira, c: e.coluna }))]
@@ -38,7 +38,7 @@ function gradeAndar(layout: LayoutOnibus, andar: number) {
 
 // Mapa visual de poltronas (por andar). Ocupadas travadas; selecionadas destacadas.
 function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
-  layout: LayoutOnibus; ocupadas: Set<string>; selecionadas: Set<string>; onToggle?: (n: string) => void; readOnly?: boolean
+  layout: LayoutVeiculo; ocupadas: Set<string>; selecionadas: Set<string>; onToggle?: (n: string) => void; readOnly?: boolean
 }) {
   const andares = Array.from({ length: layout.andares }, (_, i) => i + 1)
   return (
@@ -81,7 +81,7 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
 
 export default function Reservas({ podeEditar = true, podeExcluir = false, meuEmail = '', meuNome = '' }: { podeEditar?: boolean; podeExcluir?: boolean; meuEmail?: string; meuNome?: string }) {
   const [excursoes, setExcursoes] = useState<Excursao[]>([])
-  const [onibus, setOnibus] = useState<Onibus[]>([])
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [reservas, setReservas] = useState<Reserva[]>([])
   const [excursaoSel, setExcursaoSel] = useState('')
   const [carregando, setCarregando] = useState(true)
@@ -95,9 +95,9 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   const [pagMetodo, setPagMetodo] = useState<MetodoPagamento>('pix')
 
   const carregarBase = useCallback(() => {
-    Promise.all([fetch('/api/excursoes').then(r => r.json()), fetch('/api/onibus').then(r => r.json())]).then(([e, o]) => {
+    Promise.all([fetch('/api/excursoes').then(r => r.json()), fetch('/api/frota').then(r => r.json())]).then(([e, o]) => {
       const exs = Array.isArray(e?.excursoes) ? e.excursoes : []
-      setExcursoes(exs); if (Array.isArray(o?.onibus)) setOnibus(o.onibus)
+      setExcursoes(exs); if (Array.isArray(o?.veiculos)) setVeiculos(o.veiculos)
       setExcursaoSel(prev => prev || exs[0]?.id || '')
     }).catch(() => {}).finally(() => setCarregando(false))
   }, [])
@@ -110,7 +110,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   useEffect(() => { carregarReservas() }, [carregarReservas])
 
   const excursao = excursoes.find(e => e.id === excursaoSel)
-  const layout = useMemo(() => { const o = onibus.find(x => x.id === excursao?.onibusId); return o ? layoutPorId(o.layoutId) : null }, [onibus, excursao])
+  const layout = useMemo(() => veiculos.find(x => x.id === excursao?.veiculoId)?.layout || null, [veiculos, excursao])
   // Ocupadas = poltronas das reservas não canceladas (ignorando a que está sendo editada)
   const ocupadas = useMemo(() => {
     const s = new Set<string>()
@@ -121,7 +121,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     return s
   }, [reservas, form])
   const selecionadas = useMemo(() => new Set((form?.passageiros || []).map(p => p.poltrona).filter(Boolean) as string[]), [form])
-  const vagas = layout ? totalPoltronas(layout) : 0
+  const vagas = layout ? capacidadeLayout(layout) : 0
   const vendidas = ocupadas.size
 
   function novaReserva() {

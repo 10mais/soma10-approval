@@ -4,7 +4,7 @@ import AvatarCliente from './AvatarCliente'
 import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
 import { valorTotalReserva } from '@/lib/reservas'
 import { saldoDevedor } from '@/lib/financeiroReserva'
-import { layoutPorId, totalPoltronas } from '@/lib/layoutsOnibus'
+import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }
 type Post = { id: string; clienteId: string; clienteNome: string; status: string; dataAgendada?: string; criadoEm: string; atualizadoEm?: string; etapa?: string; erroPublicacao?: string; imagens: string[] }
@@ -40,9 +40,9 @@ function temSocialMedia(c: Cliente): boolean {
 
 type AgLite = { id: string; pacienteNome: string; pacienteTelefone?: string; dataInicio: string; status: string; servico?: string; profissionalNome: string }
 type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string; nascimento?: string; ativo?: boolean }
-type ExcursaoLite = { id: string; titulo: string; dataIda: string; dataVolta?: string; onibusId?: string; valorPacote: number; descontoPadrao?: number; status: string }
+type ExcursaoLite = { id: string; titulo: string; dataIda: string; dataVolta?: string; veiculoId?: string; valorPacote: number; descontoPadrao?: number; status: string }
 type ReservaLite = { id: string; excursaoId: string; passageiros: { poltrona?: string }[]; desconto?: number; status: string; financeiro?: any; criadoEm: string }
-type OnibusLite = { id: string; nome?: string; layoutId?: string }
+type VeiculoLite = { id: string; nome?: string; layout?: LayoutVeiculo }
 
 // Ícone WhatsApp (SVG — sem emoji, regra do produto)
 const IconWhats = () => (
@@ -166,16 +166,16 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   // ---- Home turismo (perfilTurismo): operação de excursões ----
   const [excursoes, setExcursoes] = useState<ExcursaoLite[]>([])
   const [reservasT, setReservasT] = useState<ReservaLite[]>([])
-  const [onibusT, setOnibusT] = useState<OnibusLite[]>([])
+  const [veiculosT, setVeiculosT] = useState<VeiculoLite[]>([])
   useEffect(() => {
     if (!perfilTurismo) return
     fetch('/api/excursoes').then(r => r.json()).then(d => setExcursoes(Array.isArray(d) ? d : (d?.excursoes || []))).catch(() => {})
     fetch('/api/reservas').then(r => r.json()).then(d => setReservasT(Array.isArray(d) ? d : (d?.reservas || []))).catch(() => {})
-    fetch('/api/onibus').then(r => r.json()).then(d => setOnibusT(Array.isArray(d) ? d : (d?.onibus || []))).catch(() => {})
+    fetch('/api/frota').then(r => r.json()).then(d => setVeiculosT(Array.isArray(d) ? d : (d?.veiculos || []))).catch(() => {})
   }, [perfilTurismo])
 
   const excById = useMemo(() => Object.fromEntries(excursoes.map(e => [e.id, e])) as Record<string, ExcursaoLite>, [excursoes])
-  const capacidadeDe = (onibusId?: string) => { const o = onibusT.find(b => b.id === onibusId); const lay = layoutPorId(o?.layoutId); return lay ? totalPoltronas(lay) : 0 }
+  const capacidadeDe = (veiculoId?: string) => { const v = veiculosT.find(b => b.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
   const reservasAtivasT = useMemo(() => reservasT.filter(r => r.status !== 'cancelada'), [reservasT])
   const paxDaExcursao = (excId: string) => reservasAtivasT.filter(r => r.excursaoId === excId).reduce((s, r) => s + (r.passageiros?.length || 0), 0)
   const valorDaReserva = (r: ReservaLite) => { const e = excById[r.excursaoId]; return valorTotalReserva(r.passageiros?.length || 0, e?.valorPacote || 0, r.desconto || 0) }
@@ -189,10 +189,10 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   const aReceber = useMemo(() => reservasAtivasT.reduce((s, r) => s + (r.financeiro ? saldoDevedor(r.financeiro) : valorDaReserva(r)), 0), [reservasAtivasT, excById])
   const ocupacaoMedia = useMemo(() => {
     const abertas = excursoes.filter(e => e.status === 'aberta' || e.status === 'planejada')
-    const ocs = abertas.map(e => { const cap = capacidadeDe(e.onibusId); return cap ? paxDaExcursao(e.id) / cap : null }).filter((x): x is number => x !== null)
+    const ocs = abertas.map(e => { const cap = capacidadeDe(e.veiculoId); return cap ? paxDaExcursao(e.id) / cap : null }).filter((x): x is number => x !== null)
     return ocs.length ? Math.round((ocs.reduce((s, x) => s + x, 0) / ocs.length) * 100) : 0
-  }, [excursoes, reservasAtivasT, onibusT])
-  const saidasBaixaOcup = useMemo(() => proximasSaidas.filter(e => { const cap = capacidadeDe(e.onibusId); return cap && emDias(e.dataIda) <= 21 && paxDaExcursao(e.id) / cap < 0.5 }), [proximasSaidas, reservasAtivasT, onibusT])
+  }, [excursoes, reservasAtivasT, veiculosT])
+  const saidasBaixaOcup = useMemo(() => proximasSaidas.filter(e => { const cap = capacidadeDe(e.veiculoId); return cap && emDias(e.dataIda) <= 21 && paxDaExcursao(e.id) / cap < 0.5 }), [proximasSaidas, reservasAtivasT, veiculosT])
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   if (perfilTurismo) {
@@ -227,7 +227,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {proximasSaidas.slice(0, 6).map(e => {
-                const cap = capacidadeDe(e.onibusId); const pax = paxDaExcursao(e.id); const pct = cap ? Math.round(pax / cap * 100) : 0
+                const cap = capacidadeDe(e.veiculoId); const pax = paxDaExcursao(e.id); const pct = cap ? Math.round(pax / cap * 100) : 0
                 return (
                   <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ minWidth: 52, textAlign: 'center', background: '#f5f5f5', borderRadius: 8, padding: '6px 4px' }}>
@@ -252,7 +252,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#92400e' }}>Baixa ocupação — saídas em até 21 dias</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {saidasBaixaOcup.slice(0, 6).map(e => {
-                const cap = capacidadeDe(e.onibusId); const pax = paxDaExcursao(e.id)
+                const cap = capacidadeDe(e.veiculoId); const pax = paxDaExcursao(e.id)
                 return <div key={e.id} style={{ fontSize: 13, color: '#7c2d12' }}>{dataCurta(e.dataIda)} · <strong>{e.titulo}</strong> — {pax}/{cap} poltronas</div>
               })}
             </div>
@@ -260,7 +260,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         )}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {([['excursoes', 'Excursões'], ['reservas', 'Reservas'], ['onibus', 'Ônibus'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
+          {([['excursoes', 'Excursões'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
             onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>

@@ -38,7 +38,7 @@ export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?
   { key: 'procedimentos', label: 'Procedimentos e Métodos', categoria: 'Clínica', perfil: 'clinica' },
   { key: 'excursoes', label: 'Excursões', categoria: 'Operação', perfil: 'turismo' },
   { key: 'reservas', label: 'Reservas', categoria: 'Operação', perfil: 'turismo' },
-  { key: 'onibus', label: 'Ônibus', categoria: 'Operação', perfil: 'turismo' },
+  { key: 'frota', label: 'Frota', categoria: 'Operação', perfil: 'turismo' },
   { key: 'rentabilidade', label: 'Financeiro', categoria: 'Gestão' },
   { key: 'clientes', label: 'Clientes', categoria: 'Gestão' },
 ]

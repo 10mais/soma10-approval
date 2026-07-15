@@ -51,7 +51,7 @@ const ReferenciasVisuais = dynamic(() => import('../components/ReferenciasVisuai
 const FontesMarca = dynamic(() => import('../components/FontesMarca'), { ssr: false })
 const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
-const OnibusModulo = dynamic(() => import('../components/Onibus'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Frota = dynamic(() => import('../components/Frota'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Excursoes = dynamic(() => import('../components/Excursoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
@@ -212,6 +212,9 @@ const ICONE_ABA: Record<string, string> = {
   listening: 'M22 12h-4l-3 9L9 3l-3 9H2',
   analytics: 'M3 3v18h18M7 14v4M12 9v9M17 5v13',
   crm: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  frota: 'M4 17V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11M4 17h16M4 17v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 17v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M5 8h14M5 12h14M9 8v4M15 8v4',
+  excursoes: 'M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zM12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+  reservas: 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4zM14 5v14',
   default: 'M5 12h14',
 }
 
@@ -414,7 +417,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'onibus' | 'excursoes' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'excursoes' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -950,7 +953,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', onibus: 'crm', excursoes: 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', excursoes: 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -2049,7 +2052,7 @@ function Dashboard() {
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
                   <NavBtn chave="excursoes" label="Excursões" />
                   <NavBtn chave="reservas" label="Reservas" />
-                  <NavBtn chave="onibus" label="Ônibus" />
+                  <NavBtn chave="frota" label="Frota" />
                 </nav>
               )}
               {/* Clínica — catálogo de procedimentos e métodos (brick do perfil clínica) */}
@@ -3323,8 +3326,8 @@ function Dashboard() {
         {aba === 'reservas' && perfilTurismo && role !== 'cliente' && (
           <Reservas podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} meuEmail={(session?.user as any)?.email || ''} meuNome={session?.user?.name || ''} />
         )}
-        {aba === 'onibus' && perfilTurismo && role !== 'cliente' && (
-          <OnibusModulo podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+        {aba === 'frota' && perfilTurismo && role !== 'cliente' && (
+          <Frota podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
 
         {/* Reuniões internas — Pessoas e Cultura (admin) */}

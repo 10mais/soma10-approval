@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { redis, Excursao, Onibus } from '@/lib/redis'
+import { redis, Excursao, Veiculo } from '@/lib/redis'
 import { Reserva, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
-import { layoutPorId, poltronaExiste } from '@/lib/layoutsOnibus'
+import { poltronaExiste } from '@/lib/layoutVeiculo'
 
 export const runtime = 'nodejs'
 
@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
   const reserva = token ? await reservaPorToken(token) : null
   if (!reserva) return NextResponse.json({ error: 'link inválido ou expirado' }, { status: 404 })
   const excursao = await redis.get<Excursao>(`excursao:${reserva.excursaoId}`)
-  const onibus = excursao?.onibusId ? await redis.get<Onibus>(`onibus:${excursao.onibusId}`) : null
-  const layout = onibus ? layoutPorId(onibus.layoutId) : null
+  const veiculo = excursao?.veiculoId ? await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`) : null
+  const layout = veiculo?.layout || null
   const ocupadas = Array.from(poltronasOcupadas(await carregarReservas(), reserva.excursaoId, reserva.id))
   return NextResponse.json({
     contratanteNome: reserva.contratanteNome,
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
 
   // Assentos existem no layout?
   const excursao = await redis.get<Excursao>(`excursao:${reserva.excursaoId}`)
-  const onibus = excursao?.onibusId ? await redis.get<Onibus>(`onibus:${excursao.onibusId}`) : null
-  const layout = onibus ? layoutPorId(onibus.layoutId) : null
+  const veiculo = excursao?.veiculoId ? await redis.get<Veiculo>(`veiculo:${excursao.veiculoId}`) : null
+  const layout = veiculo?.layout || null
   if (layout) {
     const inexistente = poltronas.find(n => !poltronaExiste(layout, n))
     if (inexistente) return NextResponse.json({ error: `poltrona ${inexistente} não existe` }, { status: 400 })

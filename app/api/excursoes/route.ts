@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     dataVolta: dataOk(String(b.dataVolta || '')) ? String(b.dataVolta) : undefined,
     horaSaida: horaOk(String(b.horaSaida || '')) ? String(b.horaSaida) : undefined,
     horaRetorno: horaOk(String(b.horaRetorno || '')) ? String(b.horaRetorno) : undefined,
-    onibusId: (b.onibusId || '').toString() || undefined,
+    veiculoId: (b.veiculoId || '').toString() || undefined,
     motoristas: limparMotoristas(b.motoristas),
     valorPacote: Math.max(0, Number(b.valorPacote) || 0),
     descontoPadrao: b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined,
@@ -116,7 +116,7 @@ export async function PUT(req: NextRequest) {
   if (b.dataVolta !== undefined) e.dataVolta = dataOk(String(b.dataVolta)) ? String(b.dataVolta) : undefined
   if (b.horaSaida !== undefined) e.horaSaida = horaOk(String(b.horaSaida)) ? String(b.horaSaida) : undefined
   if (b.horaRetorno !== undefined) e.horaRetorno = horaOk(String(b.horaRetorno)) ? String(b.horaRetorno) : undefined
-  if (b.onibusId !== undefined) e.onibusId = String(b.onibusId) || undefined
+  if (b.veiculoId !== undefined) e.veiculoId = String(b.veiculoId) || undefined
   if (b.motoristas !== undefined) e.motoristas = limparMotoristas(b.motoristas)
   if (b.valorPacote !== undefined) e.valorPacote = Math.max(0, Number(b.valorPacote) || 0)
   if (b.descontoPadrao !== undefined) e.descontoPadrao = b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined

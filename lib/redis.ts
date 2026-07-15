@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis'
+import type { LayoutVeiculo } from './layoutVeiculo'
 
 export const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -263,15 +264,49 @@ export type EsperaItem = {
 }
 
 // ── Turismo (operadora de excursões) ─────────────────────────────────────────
-// Ônibus da frota. Chaves: `onibus:{id}`, set `onibus`. `layoutId` referencia um
-// preset de poltronas (lib/layoutsOnibus). Amenidades: Starlink/Wi-Fi/ar/banheiro…
-export type Onibus = {
+// FROTA. Chaves: `veiculo:{id}`, set `veiculos`. Cada veículo carrega o PRÓPRIO
+// croqui (`layout`) — antes era um preset fixo no código (`layoutId`), e cadastrar
+// veículo novo exigia deploy. Amenidades: Starlink/Wi-Fi/ar/banheiro…
+export type TipoVeiculo = 'onibus' | 'micro' | 'van' | 'carro'
+// 'excluido' = exclusão SUAVE: some dos seletores mas preserva o histórico das
+// viagens/reservas que já apontam para ele.
+export type CondicaoVeiculo = 'disponivel' | 'ocupado' | 'manutencao' | 'excluido'
+
+// Serviço na ficha de manutenção. `proximaData`/`proximoKm` alimentam o alerta de
+// revisão (vira Tarefa no cron).
+export type ManutencaoVeiculo = {
   id: string
-  nome: string
+  data: string // YYYY-MM-DD
+  tipo: 'preventiva' | 'corretiva' | 'revisao' | 'pneu' | 'oleo' | 'outro'
+  km?: number
+  oficina?: string
+  custo?: number
+  descricao?: string
+  proximaData?: string // YYYY-MM-DD — próxima revisão prevista
+  proximoKm?: number
+  criadoPor?: string
+  criadoEm: string
+}
+
+// Documento com validade (licenciamento/seguro/ANTT) — vencimento vira alerta.
+export type DocumentoVeiculo = {
+  id: string
+  tipo: 'licenciamento' | 'seguro' | 'antt' | 'outro'
+  numero?: string
+  vencimento: string // YYYY-MM-DD
+  observacoes?: string
+}
+
+export type Veiculo = {
+  id: string
+  nome: string // ex.: "DD 01 - Prata"
+  tipo?: TipoVeiculo
   placa?: string
-  layoutId: string
+  layout: LayoutVeiculo // croqui próprio; a CAPACIDADE é contada dele (nunca persistida, p/ não divergir)
+  condicao: CondicaoVeiculo
   amenidades?: string[]
-  ativo?: boolean
+  manutencoes?: ManutencaoVeiculo[]
+  documentos?: DocumentoVeiculo[]
   observacoes?: string
   criadoPor?: string
   criadoEm: string
@@ -300,7 +335,7 @@ export type Excursao = {
   dataVolta?: string   // YYYY-MM-DD
   horaSaida?: string   // HH:MM — horário de saída
   horaRetorno?: string // HH:MM — horário previsto de retorno
-  onibusId?: string
+  veiculoId?: string
   motoristas?: MotoristaExcursao[]
   valorPacote: number
   descontoPadrao?: number

@@ -1,19 +1,19 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { layoutPorId, totalPoltronas } from '@/lib/layoutsOnibus'
+import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
 import RoteiroExcursao, { type Parada } from './RoteiroExcursao'
 
-// Excursões (turismo): uma saída com ônibus, motoristas, valor do pacote e inclusos.
+// Excursões (turismo): uma saída com veículo, motoristas, valor do pacote e inclusos.
 // As reservas (poltronas + passageiros) vivem no módulo Reservas.
 
-type Onibus = { id: string; nome: string; layoutId: string; ativo?: boolean }
+type Veiculo = { id: string; nome: string; layout: LayoutVeiculo; condicao?: string }
 type Motorista = { nome: string; cpf?: string; cnh?: string; email?: string }
 type MotoristaCad = { id: string; nome: string; cnh?: string; email: string }
 type Excursao = {
   id: string; titulo: string; roteiro?: string; dataIda: string; dataVolta?: string
   horaSaida?: string; horaRetorno?: string
-  onibusId?: string; motoristas?: Motorista[]; valorPacote: number; descontoPadrao?: number
+  veiculoId?: string; motoristas?: Motorista[]; valorPacote: number; descontoPadrao?: number
   inclusos?: string[]; paradas?: Parada[]; status: string; observacoes?: string
 }
 type Form = Omit<Excursao, 'id' | 'valorPacote' | 'descontoPadrao'> & { id?: string; valorPacote: string; descontoPadrao: string; inclusoNovo: string }
@@ -28,11 +28,11 @@ const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[1]
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : ''
 
-const vazio = (): Form => ({ titulo: '', roteiro: '', dataIda: '', dataVolta: '', horaSaida: '', horaRetorno: '', onibusId: '', motoristas: [], valorPacote: '', descontoPadrao: '', inclusos: [], status: 'aberta', observacoes: '', inclusoNovo: '' })
+const vazio = (): Form => ({ titulo: '', roteiro: '', dataIda: '', dataVolta: '', horaSaida: '', horaRetorno: '', veiculoId: '', motoristas: [], valorPacote: '', descontoPadrao: '', inclusos: [], status: 'aberta', observacoes: '', inclusoNovo: '' })
 
 export default function Excursoes({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
   const [lista, setLista] = useState<Excursao[]>([])
-  const [onibus, setOnibus] = useState<Onibus[]>([])
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [form, setForm] = useState<Form | null>(null)
   const [formInicial, setFormInicial] = useState('')
@@ -44,22 +44,22 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
     setCarregando(true)
     Promise.all([
       fetch('/api/excursoes').then(r => r.json()),
-      fetch('/api/onibus').then(r => r.json()),
+      fetch('/api/frota').then(r => r.json()),
       fetch('/api/equipe').then(r => r.json()).catch(() => []),
     ]).then(([e, o, eq]) => {
       if (Array.isArray(e?.excursoes)) setLista(e.excursoes)
-      if (Array.isArray(o?.onibus)) setOnibus(o.onibus)
+      if (Array.isArray(o?.veiculos)) setVeiculos(o.veiculos)
       setMotoristasCad(Array.isArray(eq) ? eq.filter((u: any) => u.tipoTurismo === 'motorista').map((u: any) => ({ id: u.id, nome: u.nome, cnh: u.cnh, email: u.email })) : [])
     }).catch(() => {}).finally(() => setCarregando(false))
   }, [])
   useEffect(() => { carregar() }, [carregar])
 
-  const vagasDe = (onibusId?: string) => { const o = onibus.find(x => x.id === onibusId); const l = o && layoutPorId(o.layoutId); return l ? totalPoltronas(l) : 0 }
+  const vagasDe = (veiculoId?: string) => { const v = veiculos.find(x => x.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
 
   const snap = (f: Form | null) => f ? JSON.stringify({ ...f, inclusoNovo: '' }) : ''
   function abrirNovo() { const f = vazio(); setForm(f); setFormInicial(snap(f)) }
   function abrirEditar(e: Excursao) {
-    const f: Form = { id: e.id, titulo: e.titulo, roteiro: e.roteiro || '', dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', onibusId: e.onibusId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], status: e.status, observacoes: e.observacoes || '', inclusoNovo: '' }
+    const f: Form = { id: e.id, titulo: e.titulo, roteiro: e.roteiro || '', dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', veiculoId: e.veiculoId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], status: e.status, observacoes: e.observacoes || '', inclusoNovo: '' }
     setForm(f); setFormInicial(snap(f))
   }
   async function fecharForm() {
@@ -103,14 +103,14 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
         <span style={{ flex: 1 }} />
         {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Excursão</button>}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#999' }}>Saídas da operadora. Defina ônibus, motoristas, valor do pacote e o que está incluso.</p>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#999' }}>Saídas da operadora. Defina veículo, motoristas, valor do pacote e o que está incluso.</p>
 
       {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
         : lista.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma excursão cadastrada.</p>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {lista.map(e => {
-              const st = stInfo(e.status); const vagas = vagasDe(e.onibusId); const o = onibus.find(x => x.id === e.onibusId)
+              const st = stInfo(e.status); const vagas = vagasDe(e.veiculoId); const o = veiculos.find(x => x.id === e.veiculoId)
               return (
                 <div key={e.id} onClick={() => podeEditar && abrirEditar(e)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', cursor: podeEditar ? 'pointer' : 'default' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -152,10 +152,10 @@ export default function Excursoes({ podeEditar = true, podeExcluir = false }: { 
                 <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Horário de retorno</label><input type="time" value={form.horaRetorno || ''} onChange={e => setForm(f => f && ({ ...f, horaRetorno: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
               </div>
               <div>
-                <label style={labelStyle}>Ônibus</label>
-                <select value={form.onibusId} onChange={e => setForm(f => f && ({ ...f, onibusId: e.target.value }))} style={{ ...inputStyle, width: '100%', background: '#fff' }}>
-                  <option value="">Sem ônibus definido</option>
-                  {onibus.filter(o => o.ativo !== false).map(o => <option key={o.id} value={o.id}>{o.nome} ({vagasDe(o.id)} lug.)</option>)}
+                <label style={labelStyle}>Veículo</label>
+                <select value={form.veiculoId} onChange={e => setForm(f => f && ({ ...f, veiculoId: e.target.value }))} style={{ ...inputStyle, width: '100%', background: '#fff' }}>
+                  <option value="">Sem veículo definido</option>
+                  {veiculos.filter(o => o.condicao === 'disponivel').map(o => <option key={o.id} value={o.id}>{o.nome} ({vagasDe(o.id)} lug.)</option>)}
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
