@@ -13,6 +13,7 @@ function abasOcultas(perfil: string | null): string[] {
   return []
 }
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
+import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -822,19 +823,8 @@ function Dashboard() {
 
   const role = (session?.user as any)?.role
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
-  // Planner = só o que está confirmado para o calendário. Fica de FORA: rascunho
-  // (interno ou avulso), "em ajuste" (corrigir) e qualquer pauta ainda no pipe de
-  // aprovação (aprovacao_copy/aprovacao_criativo) — inclusive quando reenviada.
-  // Exceção: o que já foi publicado permanece como histórico, mesmo com etapa presa.
-  const JA_PUBLICADO = ['publicando', 'publicado', 'falha_publicacao']
-  const postsPlanner = posts.filter(p => {
-    const st = (p as any).status
-    const et = (p as any).etapa
-    if ((p as any).rascunhoInterno) return false
-    if (st === 'rascunho' || st === 'corrigir') return false
-    if (JA_PUBLICADO.includes(st)) return true
-    return !et || et === 'pronto'
-  })
+  // Regra e histórico das regressões: lib/plannerFiltro.ts (com testes).
+  const postsPlanner = posts.filter(p => apareceNoPlanner(p as any))
   const postsView = verComoClienteId ? postsPlanner.filter(p => p.clienteId === verComoClienteId) : postsPlanner
 
   // Cliente logado: trava na visao dele, aba padrao aprovacoes

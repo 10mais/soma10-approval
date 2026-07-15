@@ -3,6 +3,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
+import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
@@ -179,14 +180,8 @@ export default function PlannerPage() {
     publicarEmBackground(id, cliente?.nome || 'Post', post ? capaDoPost(post) : '')
   }
 
-  // Planner mostra apenas posts reais (criados no compositor) ou pautas que
-  // chegaram em "pronto". Ficam de fora: pautas em andamento na esteira (planoId/etapa),
-  // rascunhos e posts em ajuste (corrigir).
-  const filtrados = posts.filter(p => {
-    const st = (p as any).status
-    if (st === 'rascunho' || st === 'corrigir') return false
-    return (p as any).etapa === 'pronto' || (!(p as any).etapa && !(p as any).planoId)
-  })
+  // Regra e histórico das regressões: lib/plannerFiltro.ts (com testes).
+  const filtrados = posts.filter(p => apareceNoPlanner(p as any))
     .sort((a, b) => new Date(b.dataAgendada || b.criadoEm).getTime() - new Date(a.dataAgendada || a.criadoEm).getTime())
 
   return (
