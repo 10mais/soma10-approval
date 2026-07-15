@@ -634,8 +634,24 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
   )
 }
 
-function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = [], mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string }[]; mostrarFrequencia?: boolean }) {
+// Normaliza p/ busca: sem acento, minúsculo (achar "Joao" digitando "joão" e vice-versa)
+const semAcento = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = [], mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string }[]; mostrarFrequencia?: boolean }) {
   const [vista, setVista] = useState<'lista' | 'cards'>('lista')
+  // Busca: nome, telefone, e-mail, empresa, área e etiquetas. Telefone casa só
+  // pelos dígitos — assim "99994104" acha "+55 (55) 99994-4104".
+  const [busca, setBusca] = useState('')
+  const contatos = useMemo(() => {
+    const q = semAcento(busca.trim())
+    if (!q) return contatosTodos
+    const qDigitos = q.replace(/\D/g, '')
+    return contatosTodos.filter(c => {
+      if (qDigitos && (c.telefone || '').replace(/\D/g, '').includes(qDigitos)) return true
+      const alvo = semAcento([c.nome, c.email, c.empresa, c.areaAtuacao, c.cargo, (c.etiquetas || []).join(' ')].filter(Boolean).join(' '))
+      return alvo.includes(q)
+    })
+  }, [contatosTodos, busca])
   // Datas dos atendimentos CONCLUÍDOS por contato — base da coluna Frequência
   const datasAtendidas = useMemo(() => {
     const m = new Map<string, string[]>()
@@ -719,7 +735,8 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
     else toast(r?.error || 'Falha ao mesclar.', 'erro')
   }
 
-  if (contatos.length === 0) return dz(
+  // Base vazia de verdade: nem mostra a busca (não há o que buscar).
+  if (contatosTodos.length === 0) return dz(
     <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
       <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p>
       {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#bbb' }}>Arraste um arquivo .csv aqui para importar em massa.</p>}
@@ -771,6 +788,19 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
           <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
         ))}
       </div>
+      {/* Busca — com a lista única (leads + pacientes) ela fica longa */}
+      <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 380 }}>
+        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: '#bbb', pointerEvents: 'none' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+        </span>
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, telefone, e-mail…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 30px 8px 30px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
+        {busca && (
+          <button onClick={() => setBusca('')} title="Limpar busca"
+            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+        )}
+      </div>
+      {busca && <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
       {podeExcluir && quebrados.length > 0 && (
         <button onClick={selecionarQuebrados} title="Seleciona os contatos com nome corrompido (importação de arquivo binário) para você conferir e excluir"
           style={{ padding: '6px 13px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
@@ -780,11 +810,19 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
     </div>
   )
 
+  // Busca sem resultado: mantém a caixa na tela para o usuário corrigir o termo.
+  const nadaEncontrado = contatos.length === 0 && (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 13.5, color: '#888' }}>Nenhum contato encontrado para “{busca}”.</p>
+    </div>
+  )
+
   if (vista === 'cards') {
     return dz(
       <div>
         {toggleVista}
         {barraSel}
+        {nadaEncontrado}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {contatos.map(c => {
             const nNeg = negocios.filter(n => n.contatoId === c.id).length
@@ -815,6 +853,8 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
     <div>
       {toggleVista}
       {barraSel}
+      {nadaEncontrado}
+      {contatos.length > 0 && (
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
@@ -852,6 +892,7 @@ function ContatosLista({ contatos, negocios, onAbrir, podeExcluir = false, onRec
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
