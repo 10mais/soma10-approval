@@ -1065,8 +1065,11 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImporta
   )
 }
 
-function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilClinica = false, tipoPadrao = 'paciente', onAgendar }: { contato: Contato | null; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; perfilClinica?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
+// `prefill` só vale na criação (contato null) — é como o inbox abre a ficha já
+// com o telefone e o nome que vieram do WhatsApp. `onSalvo` devolve o contato
+// recém-criado para quem precisa do id (o inbox vincula a conversa a ele).
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, tipoPadrao = 'paciente', onAgendar }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : ''), nascimento: contato?.nascimento || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
   const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
@@ -1153,9 +1156,10 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
     setSalvando(true)
     const { etiquetasTxt, ...resto } = f
     const corpo = { ...resto, etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
+    let criado: Contato | undefined
     if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...corpo }) }).catch(() => {})
-    else await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).catch(() => {})
-    setSalvando(false); onSalvo()
+    else criado = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).then(d => d?.contato).catch(() => undefined)
+    setSalvando(false); onSalvo(criado)
   }
   async function excluir() {
     if (!contato?.id || !(await confirmar('Excluir este contato?', { titulo: 'Excluir contato', okLabel: 'Excluir', perigo: true }))) return
@@ -2028,6 +2032,7 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
   }
   async function abrir(id: string) {
     setSel(id)
+    setSugestoes([]); setSugestoesAbertas(false) // sugestão é da conversa anterior
     const d = await cfg.historico(id)
     if (d) setMensagens(Array.isArray(d.mensagens) ? d.mensagens : [])
     setConversas(cs => cs.map(c => c.id === id ? { ...c, naoLidas: 0 } : c))
@@ -2081,17 +2086,15 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
     if (r?.ok) { toast('Conversa excluída.', 'sucesso'); setSel(''); setMensagens([]); carregarConversas() }
     else toast(r?.error || 'Não foi possível excluir a conversa.', 'erro')
   }
-  // Cria um contato novo com os dados da conversa e já vincula (direto do inbox).
-  async function criarEContatoVincular() {
-    if (!sel) return
-    const nomeSugerido = (conversaSel?.nome || '').trim() || (canal === 'whatsapp' ? `+${sel}` : (conversaSel?.username ? `@${conversaSel.username}` : sel))
-    const nome = (typeof window !== 'undefined' ? window.prompt('Nome do contato/paciente:', nomeSugerido) : nomeSugerido)
-    if (nome === null) return // cancelou
-    const corpo: any = { nome: (nome || nomeSugerido).trim(), telefone: canal === 'whatsapp' ? sel : '' }
-    if (perfilClinica) corpo.tipo = 'lead'
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
-    if (r?.contato?.id) { await cfg.vincular(sel, r.contato.id); onContatosMudou?.(); carregarConversas(); toast('Contato criado e vinculado.', 'sucesso') }
-    else toast('Não foi possível criar o contato.', 'erro')
+  // Criar contato a partir da conversa: abre a ficha normal (já com o telefone e
+  // o nome que vieram do WhatsApp) e vincula a conversa assim que salvar.
+  const [contatoNovo, setContatoNovo] = useState<{ nome: string; telefone: string } | null>(null)
+  async function contatoNovoSalvo(criado?: Contato) {
+    setContatoNovo(null)
+    if (!criado?.id || !sel) return
+    await cfg.vincular(sel, criado.id)
+    onContatosMudou?.(); carregarConversas()
+    toast('Contato criado e vinculado.', 'sucesso')
   }
 
   // Troca de canal (e carga inicial): reseta a seleção e recarrega
@@ -2132,6 +2135,24 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
     if (!(await confirmar('Remover este modelo?', { titulo: 'Modelos de mensagem', okLabel: 'Remover', perigo: true }))) return
     const r = await fetch('/api/crm/msg-templates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json()).catch(() => null)
     if (r?.ok) setTemplates(r.templates || [])
+  }
+
+  // Assistente de perguntas — lê a conversa + o playbook do CRM e sugere a
+  // próxima pergunta. Nunca envia: a escolhida cai no compositor para editar.
+  const [sugestoes, setSugestoes] = useState<{ pergunta: string; porque: string; fase: string }[]>([])
+  const [sugerindo, setSugerindo] = useState(false)
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false)
+  async function sugerirPerguntas() {
+    if (!sel || sugerindo) return
+    setSugerindo(true); setSugestoesAbertas(true); setModelosAberto(false)
+    const r = await fetch('/api/crm/sugerir-perguntas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel }) }).then(x => x.json()).catch(() => null)
+    setSugerindo(false)
+    if (r?.ok && Array.isArray(r.sugestoes)) setSugestoes(r.sugestoes)
+    else { setSugestoesAbertas(false); toast(r?.error || 'Não foi possível sugerir perguntas.', 'erro') }
+  }
+  function inserirPergunta(p: string) {
+    setTexto(prev => (prev.trim() ? prev.replace(/\s*$/, '') + '\n' : '') + p)
+    setSugestoesAbertas(false)
   }
 
   // Abrir uma conversa específica (vindo do CRM "WhatsApp" da oportunidade)
@@ -2267,7 +2288,7 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                         style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
                     </div>
                     <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                      <button onClick={() => { setVincularAberto(false); criarEContatoVincular() }}
+                      <button onClick={() => { setVincularAberto(false); setContatoNovo({ nome: (conversaSel?.nome || '').trim(), telefone: canal === 'whatsapp' ? sel : '' }) }}
                         style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid #f5f5f5', background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: '#1d4ed8' }}>＋ Criar contato novo</button>
                       {conversaSel?.contatoId && (
                         <button onClick={() => { vincular(''); setVincularAberto(false) }}
@@ -2385,7 +2406,33 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                   ))}
                 </div>
               )}
-              <button onClick={() => setModelosAberto(v => !v)} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? '#111' : '#f4f4f5', color: modelosAberto ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
+              {/* Popover do assistente — perguntas sugeridas a partir do playbook */}
+              {sugestoesAbertas && (
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Próximas perguntas</span>
+                    <span style={{ flex: 1 }} />
+                    {!sugerindo && sugestoes.length > 0 && <button onClick={sugerirPerguntas} style={{ padding: '4px 10px', background: '#f4f4f5', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#333' }}>Gerar de novo</button>}
+                    <button onClick={() => setSugestoesAbertas(false)} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: '#999' }}>×</button>
+                  </div>
+                  {sugerindo && <p style={{ margin: '4px 2px', fontSize: 12, color: '#aaa' }}>Lendo a conversa e o playbook...</p>}
+                  {!sugerindo && sugestoes.map((s, i) => (
+                    <button key={i} onClick={() => inserirPergunta(s.pergunta)} title="Inserir no compositor"
+                      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i ? '1px solid #f5f5f5' : 'none', cursor: 'pointer', padding: '8px 4px' }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#111' }}>{s.pergunta}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: '#999', marginTop: 2 }}>{[s.fase, s.porque].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  ))}
+                  {!sugerindo && <p style={{ margin: '8px 2px 2px', fontSize: 11, color: '#bbb' }}>Sugestões da IA a partir do playbook. Revise antes de enviar.</p>}
+                </div>
+              )}
+              <button onClick={() => { setModelosAberto(v => !v); setSugestoesAbertas(false) }} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? '#111' : '#f4f4f5', color: modelosAberto ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
+              {canal === 'whatsapp' && (
+                <button onClick={() => (sugestoesAbertas ? setSugestoesAbertas(false) : sugerirPerguntas())} disabled={sugerindo} title="Sugerir a próxima pergunta com base no playbook"
+                  style={{ padding: '9px 12px', background: sugestoesAbertas ? '#111' : '#f4f4f5', color: sugestoesAbertas ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: sugerindo ? 'wait' : 'pointer', flexShrink: 0 }}>
+                  {sugerindo ? '...' : 'Sugerir'}
+                </button>
+              )}
               <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
                 placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
               <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
@@ -2393,6 +2440,12 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
           </>)}
         </div>
       </div>
+
+      {/* Contato criado a partir da conversa — ficha normal, sem prompt do navegador */}
+      {contatoNovo && (
+        <ContatoModal contato={null} prefill={contatoNovo} perfilClinica={perfilClinica} tipoPadrao="lead"
+          onClose={() => setContatoNovo(null)} onSalvo={contatoNovoSalvo} />
+      )}
 
       {/* Visualizador de imagem — abre sobre a conversa (sem perder o contexto).
           Fecha no ESC, no X ou clicando fora; permite baixar no computador. */}
