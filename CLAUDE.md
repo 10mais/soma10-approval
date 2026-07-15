@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev          # Start dev server (Next.js 14, http://localhost:3000)
-npm run build        # Production build
+npm run test         # vitest run — the gate; `npm run build` runs it first
+npm run build        # vitest run && next build (a failing test blocks the deploy)
 npm run start        # Start production server
 ```
 
@@ -15,7 +16,10 @@ Type-check without emitting (use the local TypeScript, not npx):
 node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 ```
 
-No test suite exists. Validate changes via `tsc --noEmit` before committing.
+Validate changes with **both** `npm run test` and `tsc --noEmit` before committing.
+Tests live in `tests/*.test.ts` (vitest, `@/lib` alias) and cover pure logic in
+`lib/` — every new lib gets one. Since `build` runs them, a broken test breaks the
+deploy of **every** instance at once (see INSTANCIAS.md) — that is the point.
 
 ## Deployment
 
