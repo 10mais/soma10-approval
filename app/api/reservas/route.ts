@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
   await redis.set(`reserva:${reserva.id}`, reserva)
   await redis.sadd('reservas', reserva.id)
   await redis.sadd(`viagem:${viagem.id}:reservas`, reserva.id)
-  const valorTotal = valorDaReserva(viagem, passageiros.length, desconto)
+  const valorTotal = valorDaReserva(viagem, passageiros, desconto)
   return NextResponse.json({ ok: true, reserva, valorTotal })
 }
 

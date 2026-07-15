@@ -111,6 +111,8 @@ export async function POST(req: NextRequest) {
     motoristas: limparMotoristas(b.motoristas),
     // Fretamento não cobra por cliente: valorPacote fica zerado de propósito.
     valorPacote: tipo === 'fretamento' ? 0 : Math.max(0, Number(b.valorPacote ?? doPacote.valorPacote) || 0),
+    precos: tipo === 'fretamento' ? undefined : (b.precos ?? doPacote.precos),
+    hoteis: b.hoteis ?? doPacote.hoteis ?? [],
     valorFechado: tipo === 'fretamento' ? Math.max(0, Number(b.valorFechado) || 0) : undefined,
     contratante: tipo === 'fretamento' ? String(b.contratante).trim().slice(0, 140) : undefined,
     descontoPadrao: b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined,
@@ -148,6 +150,8 @@ export async function PUT(req: NextRequest) {
   if (b.veiculoId !== undefined) v.veiculoId = String(b.veiculoId) || undefined
   if (b.motoristas !== undefined) v.motoristas = limparMotoristas(b.motoristas)
   if (b.valorPacote !== undefined) v.valorPacote = Math.max(0, Number(b.valorPacote) || 0)
+  if (b.precos !== undefined) v.precos = b.precos || undefined
+  if (b.hoteis !== undefined) v.hoteis = Array.isArray(b.hoteis) ? b.hoteis : []
   if (b.valorFechado !== undefined) v.valorFechado = Math.max(0, Number(b.valorFechado) || 0)
   if (b.contratante !== undefined) v.contratante = String(b.contratante).trim().slice(0, 140) || undefined
   if (b.descontoPadrao !== undefined) v.descontoPadrao = b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined
@@ -163,6 +167,7 @@ export async function PUT(req: NextRequest) {
     if (!v.contratante) return NextResponse.json({ error: 'no fretamento, informe quem contratou o veículo' }, { status: 400 })
     v.valorPacote = 0
     v.pacoteId = undefined
+    v.precos = undefined
   } else {
     v.valorFechado = undefined
     v.contratante = undefined

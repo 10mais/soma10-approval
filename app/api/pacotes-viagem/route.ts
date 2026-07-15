@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, PacoteViagem, ParadaModelo } from '@/lib/redis'
+import { redis, PacoteViagem, ParadaModelo, HotelPacote, PrecosViagem, FormaPagamento } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { diasENoites } from '@/lib/pacoteViagem'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -17,6 +18,35 @@ export const runtime = 'nodejs'
 // e em dezembro. A conversão para data real acontece ao criar a viagem.
 
 const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
+const ymd = (s: any) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? String(s) : undefined)
+const hhmm = (s: any) => (horaOk(String(s || '')) ? String(s) : undefined)
+const FORMAS: FormaPagamento[] = ['pix', 'cartao', 'boleto', 'dinheiro', 'transferencia']
+
+function limparHoteis(arr: any): HotelPacote[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((h: any) => ({
+    id: String(h?.id || uuid()),
+    nome: String(h?.nome || '').trim().slice(0, 120),
+    checkinDia: Number.isFinite(Number(h?.checkinDia)) && Number(h?.checkinDia) >= 1 ? Math.floor(Number(h.checkinDia)) : undefined,
+    checkinHora: hhmm(h?.checkinHora),
+    checkoutDia: Number.isFinite(Number(h?.checkoutDia)) && Number(h?.checkoutDia) >= 1 ? Math.floor(Number(h.checkoutDia)) : undefined,
+    checkoutHora: hhmm(h?.checkoutHora),
+  })).filter((h: HotelPacote) => h.nome).slice(0, 20)
+}
+
+function limparPrecos(o: any): PrecosViagem | undefined {
+  if (!o || typeof o !== 'object') return undefined
+  const n = (v: any) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v) || 0))
+  const p: PrecosViagem = {
+    valorCrianca: n(o.valorCrianca),
+    valorMeia: n(o.valorMeia),
+    entrada: n(o.entrada),
+    parcelas: o.parcelas ? Math.max(1, Math.floor(Number(o.parcelas) || 1)) : undefined,
+    valorParcela: n(o.valorParcela),
+    formasAceitas: Array.isArray(o.formasAceitas) ? o.formasAceitas.filter((f: any) => FORMAS.includes(f)) : undefined,
+  }
+  return Object.values(p).some(v => v !== undefined && !(Array.isArray(v) && !v.length)) ? p : undefined
+}
 
 async function sessaoEquipe() {
   const session = await getServerSession(authOptions)
@@ -70,17 +100,28 @@ export async function POST(req: NextRequest) {
   const nome = String(b.nome || '').trim()
   if (!nome) return NextResponse.json({ error: 'informe o nome do pacote' }, { status: 400 })
 
+  // Dias/noites são CALCULADOS das datas de referência — nunca do que veio no
+  // corpo. Deixar digitar geraria "3 dias" numa viagem de 20 a 25/07.
+  const dataIdaRef = ymd(b.dataIdaRef)
+  const dataVoltaRef = ymd(b.dataVoltaRef)
+  const dn = diasENoites(dataIdaRef, dataVoltaRef)
+
   const agora = new Date().toISOString()
   const pacote: PacoteViagem = {
     id: uuid(),
     nome: nome.slice(0, 140),
     destino: (b.destino || '').toString().slice(0, 140) || undefined,
-    dias: numOpc(b.dias),
-    noites: numOpc(b.noites),
+    dataIdaRef,
+    dataVoltaRef,
+    horaSaida: hhmm(b.horaSaida),
+    horaRetorno: hhmm(b.horaRetorno),
+    dias: dn.dias,
+    noites: dn.noites,
     valorBase: Math.max(0, Number(b.valorBase) || 0),
+    precos: limparPrecos(b.precos),
     inclusos: limparLista(b.inclusos),
     roteiroPadrao: limparRoteiro(b.roteiroPadrao),
-    hoteis: limparLista(b.hoteis, 20),
+    hoteis: limparHoteis(b.hoteis),
     observacoes: (b.observacoes || '').toString().slice(0, 800) || undefined,
     ativo: b.ativo !== false,
     criadoPor: session.user?.name || session.user?.email || undefined,
@@ -108,12 +149,19 @@ export async function PUT(req: NextRequest) {
     p.nome = nome.slice(0, 140)
   }
   if (b.destino !== undefined) p.destino = String(b.destino).slice(0, 140) || undefined
-  if (b.dias !== undefined) p.dias = numOpc(b.dias)
-  if (b.noites !== undefined) p.noites = numOpc(b.noites)
+  if (b.dataIdaRef !== undefined) p.dataIdaRef = ymd(b.dataIdaRef)
+  if (b.dataVoltaRef !== undefined) p.dataVoltaRef = ymd(b.dataVoltaRef)
+  if (b.horaSaida !== undefined) p.horaSaida = hhmm(b.horaSaida)
+  if (b.horaRetorno !== undefined) p.horaRetorno = hhmm(b.horaRetorno)
+  // Recalcula sempre: dias/noites nunca vêm do corpo (ver POST).
+  const dn = diasENoites(p.dataIdaRef, p.dataVoltaRef)
+  p.dias = dn.dias
+  p.noites = dn.noites
   if (b.valorBase !== undefined) p.valorBase = Math.max(0, Number(b.valorBase) || 0)
+  if (b.precos !== undefined) p.precos = limparPrecos(b.precos)
   if (b.inclusos !== undefined) p.inclusos = limparLista(b.inclusos)
   if (b.roteiroPadrao !== undefined) p.roteiroPadrao = limparRoteiro(b.roteiroPadrao)
-  if (b.hoteis !== undefined) p.hoteis = limparLista(b.hoteis, 20)
+  if (b.hoteis !== undefined) p.hoteis = limparHoteis(b.hoteis)
   if (b.observacoes !== undefined) p.observacoes = String(b.observacoes).slice(0, 800) || undefined
   if (b.ativo !== undefined) p.ativo = !!b.ativo
   p.atualizadoEm = new Date().toISOString()

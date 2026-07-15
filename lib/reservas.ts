@@ -10,8 +10,13 @@ import { FinanceiroReserva } from './financeiroReserva'
 // ou lista internacional. Por isso o cadastro é do momento da venda — a POLTRONA
 // é de depois (pode nem ter veículo definido ainda), e por isso é opcional aqui.
 // Ver lib/manifesto.ts para o que cada lista exige.
+// Faixa do passageiro — muda o PREÇO dele na reserva (lib/pacoteViagem).
+// Ausente = adulto (é o que a base antiga toda é).
+export type FaixaPassageiro = 'adulto' | 'crianca' | 'meia'
+
 export type Passageiro = {
   nome: string
+  faixa?: FaixaPassageiro
   cpf?: string
   rg?: string
   rgOrgao?: string      // órgão emissor do RG (ex.: SSP/RS)

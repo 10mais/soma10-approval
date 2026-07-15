@@ -351,7 +351,9 @@ export type Viagem = {
   horaRetorno?: string // HH:MM — horário previsto de retorno
   veiculoId?: string
   motoristas?: MotoristaViagem[]
-  valorPacote: number  // tipo='pacote': valor POR CLIENTE
+  valorPacote: number  // tipo='pacote': À VISTA, por cliente ADULTO
+  precos?: PrecosViagem // criança/meia, entrada, parcelamento, formas aceitas
+  hoteis?: HotelPacote[] // herdados do pacote (check-in/out em dia relativo)
   valorFechado?: number // tipo='fretamento': valor da viagem inteira
   contratante?: string  // tipo='fretamento': quem contratou o veículo
   descontoPadrao?: number
@@ -386,16 +388,50 @@ export type ParadaModelo = {
   tipo?: string       // embarque/passeio/refeicao/hospedagem/translado/livre
   observacoes?: string
 }
+
+// Hotel previsto no pacote. Check-in/out em DIA RELATIVO, igual ao roteiro — vira
+// data real junto com a viagem. Na fase 4 ganha vínculo com o cadastro de Hotéis.
+export type HotelPacote = {
+  id: string
+  nome: string
+  checkinDia?: number    // 1 = dia da ida
+  checkinHora?: string   // HH:MM
+  checkoutDia?: number
+  checkoutHora?: string
+}
+
+export type FormaPagamento = 'pix' | 'cartao' | 'boleto' | 'dinheiro' | 'transferencia'
+
+// Preço de viagem não é um número só: tem à vista, parcelado, entrada e faixa
+// (adulto/criança/meia). Compartilhado entre PacoteViagem (o modelo) e Viagem (a
+// saída real, que copia). `valorBase`/`valorPacote` = À VISTA, ADULTO.
+export type PrecosViagem = {
+  valorCrianca?: number
+  valorMeia?: number
+  entrada?: number        // sinal; o saldo é que parcela
+  parcelas?: number       // nº de vezes do saldo
+  valorParcela?: number
+  formasAceitas?: FormaPagamento[]
+}
+
 export type PacoteViagem = {
   id: string
   nome: string
   destino?: string
-  dias?: number       // duração; define dataVolta sugerida (ida + dias-1)
-  noites?: number
-  valorBase: number   // valor POR CLIENTE sugerido — a viagem pode ajustar
+  // Datas de REFERÊNCIA (uma saída típica): servem para preencher naturalmente e
+  // para o sistema CALCULAR dias/noites. O pacote segue reutilizável — o roteiro é
+  // guardado em dia relativo e a viagem escolhe a data real dela.
+  dataIdaRef?: string    // YYYY-MM-DD
+  dataVoltaRef?: string  // YYYY-MM-DD
+  horaSaida?: string     // HH:MM
+  horaRetorno?: string   // HH:MM
+  dias?: number          // CALCULADO das datas de referência (ida conta como dia 1)
+  noites?: number        // CALCULADO
+  valorBase: number      // À VISTA, por cliente adulto — a viagem pode ajustar
+  precos?: PrecosViagem
   inclusos?: string[]
   roteiroPadrao?: ParadaModelo[]
-  hoteis?: string[]   // nomes previstos; vira vínculo com o cadastro de Hotéis na fase 4
+  hoteis?: HotelPacote[]
   observacoes?: string
   ativo?: boolean     // ausente = ativo
   criadoPor?: string

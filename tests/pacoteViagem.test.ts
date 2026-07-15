@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  somarDias, dataVoltaSugerida, materializarRoteiro, copiarPacoteParaViagem,
-  valorDaReserva, vendePoltrona,
+  somarDias, dataVoltaSugerida, diasENoites, materializarRoteiro, copiarPacoteParaViagem,
+  valorDaReserva, precoDaFaixa, vendePoltrona, resumoParcelamento,
   type PacoteLite, type ParadaModeloLite,
 } from '@/lib/pacoteViagem'
 
@@ -130,10 +130,79 @@ describe('copiarPacoteParaViagem', () => {
   })
 })
 
+describe('diasENoites — o dono preenche datas, o sistema conta', () => {
+  it('a IDA conta como dia 1 — 20 a 22/07 = 3 dias, 2 noites', () => {
+    expect(diasENoites('2026-07-20', '2026-07-22')).toEqual({ dias: 3, noites: 2 })
+  })
+
+  it('mesmo dia = bate-volta: 1 dia, 0 noites', () => {
+    expect(diasENoites('2026-07-20', '2026-07-20')).toEqual({ dias: 1, noites: 0 })
+  })
+
+  it('sem volta assume bate-volta', () => {
+    expect(diasENoites('2026-07-20')).toEqual({ dias: 1, noites: 0 })
+  })
+
+  it('atravessa mês e ano', () => {
+    expect(diasENoites('2026-12-30', '2027-01-02')).toEqual({ dias: 4, noites: 3 })
+  })
+
+  it('volta ANTES da ida é inválido — não inventa número negativo', () => {
+    expect(diasENoites('2026-07-22', '2026-07-20')).toEqual({})
+  })
+
+  it('data mal formada não quebra', () => {
+    expect(diasENoites('', '2026-07-22')).toEqual({})
+    expect(diasENoites('20/07/2026', '22/07/2026')).toEqual({})
+  })
+})
+
+describe('precoDaFaixa', () => {
+  const v = { tipo: 'pacote' as const, valorPacote: 1000, precos: { valorCrianca: 500, valorMeia: 700 } }
+
+  it('cobra pela faixa do passageiro', () => {
+    expect(precoDaFaixa(v, 'adulto')).toBe(1000)
+    expect(precoDaFaixa(v, 'crianca')).toBe(500)
+    expect(precoDaFaixa(v, 'meia')).toBe(700)
+  })
+
+  it('sem faixa = adulto (é o que a base antiga toda é)', () => {
+    expect(precoDaFaixa(v, undefined)).toBe(1000)
+  })
+
+  it('faixa SEM valor próprio cai no adulto — cobra o cheio em vez de dar de graça', () => {
+    expect(precoDaFaixa({ tipo: 'pacote', valorPacote: 1000 }, 'crianca')).toBe(1000)
+    expect(precoDaFaixa({ tipo: 'pacote', valorPacote: 1000, precos: {} }, 'meia')).toBe(1000)
+  })
+
+  it('valor de criança ZERO é respeitado (colo não paga), não vira adulto', () => {
+    expect(precoDaFaixa({ tipo: 'pacote', valorPacote: 1000, precos: { valorCrianca: 0 } }, 'crianca')).toBe(0)
+  })
+})
+
 describe('valorDaReserva — fretamento × pacote', () => {
   it('PACOTE cobra por cliente', () => {
     expect(valorDaReserva({ tipo: 'pacote', valorPacote: 1200 }, 3)).toBe(3600)
     expect(valorDaReserva({ tipo: 'pacote', valorPacote: 1200 }, 3, 600)).toBe(3000)
+  })
+
+  it('soma POR FAIXA quando recebe a lista de passageiros', () => {
+    const v = { tipo: 'pacote' as const, valorPacote: 1000, precos: { valorCrianca: 500, valorMeia: 700 } }
+    expect(valorDaReserva(v, [{ faixa: 'adulto' }, { faixa: 'crianca' }])).toBe(1500)
+    expect(valorDaReserva(v, [{ faixa: 'adulto' }, { faixa: 'adulto' }, { faixa: 'meia' }])).toBe(2700)
+    expect(valorDaReserva(v, [{ faixa: 'adulto' }, { faixa: 'crianca' }], 200)).toBe(1300)
+  })
+
+  it('lista sem faixa = todos adultos', () => {
+    expect(valorDaReserva({ tipo: 'pacote', valorPacote: 1000 }, [{}, {}])).toBe(2000)
+  })
+
+  it('fretamento ignora a lista inteira — valor fechado', () => {
+    expect(valorDaReserva({ tipo: 'fretamento', valorFechado: 8000 }, [{ faixa: 'crianca' }, { faixa: 'adulto' }])).toBe(8000)
+  })
+
+  it('lista vazia não cobra nada', () => {
+    expect(valorDaReserva({ tipo: 'pacote', valorPacote: 1000 }, [])).toBe(0)
   })
 
   it('FRETAMENTO é valor FECHADO — passageiro NÃO multiplica', () => {

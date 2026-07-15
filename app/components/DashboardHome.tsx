@@ -41,7 +41,7 @@ function temSocialMedia(c: Cliente): boolean {
 type AgLite = { id: string; pacienteNome: string; pacienteTelefone?: string; dataInicio: string; status: string; servico?: string; profissionalNome: string }
 type ContatoLite = { id: string; nome: string; telefone?: string; tipo?: string; nascimento?: string; ativo?: boolean }
 type ViagemLite = { id: string; titulo: string; dataIda: string; dataVolta?: string; veiculoId?: string; valorPacote: number; descontoPadrao?: number; status: string }
-type ReservaLite = { id: string; viagemId: string; passageiros: { poltrona?: string }[]; desconto?: number; status: string; financeiro?: any; criadoEm: string }
+type ReservaLite = { id: string; viagemId: string; passageiros: { poltrona?: string; faixa?: 'adulto' | 'crianca' | 'meia' }[]; desconto?: number; status: string; financeiro?: any; criadoEm: string }
 type VeiculoLite = { id: string; nome?: string; layout?: LayoutVeiculo }
 
 // Ícone WhatsApp (SVG — sem emoji, regra do produto)
@@ -178,7 +178,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   const capacidadeDe = (veiculoId?: string) => { const v = veiculosT.find(b => b.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
   const reservasAtivasT = useMemo(() => reservasT.filter(r => r.status !== 'cancelada'), [reservasT])
   const paxDaViagem = (excId: string) => reservasAtivasT.filter(r => r.viagemId === excId).reduce((s, r) => s + (r.passageiros?.length || 0), 0)
-  const valorDaReserva = (r: ReservaLite) => calcularValorReserva(excById[r.viagemId] || {}, r.passageiros?.length || 0, r.desconto || 0)
+  const valorDaReserva = (r: ReservaLite) => calcularValorReserva(excById[r.viagemId] || {}, r.passageiros || [], r.desconto || 0)
   const hojeStr = agora.toISOString().slice(0, 10)
   const ehDoMesStr = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual }
   const proximasSaidas = useMemo(() => viagens

@@ -11,7 +11,7 @@ import { v4 as uuid } from 'uuid'
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
 
 type Veiculo = { id: string; nome: string; layout: LayoutVeiculo }
-type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string; internacional?: boolean }
+type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string; internacional?: boolean; precos?: { valorCrianca?: number; valorMeia?: number } }
 // Passageiro vem de lib/reservas: é o mesmo que a rota grava e que vira a LISTA
 // oficial. Redeclarar aqui já deixou a tela para trás dos campos do manifesto.
 import type { Passageiro } from '@/lib/reservas'
@@ -187,7 +187,8 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   const addPax = () => setForm(f => f && ({ ...f, passageiros: [...f.passageiros, { nome: f.passageiros.length === 0 ? f.contratanteNome : '' }] }))
   const rmPax = (i: number) => setForm(f => f && ({ ...f, passageiros: f.passageiros.filter((_, j) => j !== i) }))
 
-  const valorForm = viagem ? valorDaReserva(viagem, form?.passageiros.length || 0, Number(form?.desconto) || 0) : 0
+  // Passa a LISTA (não a contagem): é o que faz criança pagar preço de criança.
+  const valorForm = viagem ? valorDaReserva(viagem, form?.passageiros || [], Number(form?.desconto) || 0) : 0
   // Avisos da ficha: quem ainda não sentou e quem não entra na lista oficial.
   const semPoltrona = (form?.passageiros || []).filter(p => !p.poltrona).length
   const incompletos = (form?.passageiros || []).filter(p => p.nome.trim() && pendenciasDoPassageiro(p, !!viagem?.internacional).length).length
@@ -262,7 +263,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                 : reservas.map(r => {
                   const st = stReserva[r.status] || stReserva['pre-reserva']
                   const poltronas = r.passageiros.map(p => p.poltrona).filter(Boolean).join(', ')
-                  const valor = valorDaReserva(viagem, r.passageiros.length, r.desconto || 0)
+                  const valor = valorDaReserva(viagem, r.passageiros, r.desconto || 0)
                   return (
                     <div key={r.id} onClick={() => podeEditar && editarReserva(r)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: '11px 14px', cursor: podeEditar ? 'pointer' : 'default', opacity: r.status === 'cancelada' ? 0.6 : 1 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -311,6 +312,14 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                     <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#999', width: 16 }}>{i + 1}</span>
                       <input value={p.nome} onChange={e => setPax(i, { nome: e.target.value })} placeholder="Nome completo (como no documento)" style={{ ...inputStyle, flex: 2, minWidth: 180 }} />
+                      {/* Faixa muda o PREÇO deste passageiro (adulto/criança/meia) */}
+                      {comPoltrona && (
+                        <select value={p.faixa || 'adulto'} onChange={e => setPax(i, { faixa: e.target.value as any })} title="Faixa — muda o valor" style={{ ...inputStyle, width: 104, background: '#fff' }}>
+                          <option value="adulto">Adulto</option>
+                          <option value="crianca">Criança</option>
+                          <option value="meia">Meia</option>
+                        </select>
+                      )}
                       <input type="date" value={p.nascimento || ''} onChange={e => setPax(i, { nascimento: e.target.value })} title="Nascimento" style={{ ...inputStyle, width: 145 }} />
                       {/* Poltrona: só faz sentido com croqui, e é sempre opcional */}
                       {layout && (
