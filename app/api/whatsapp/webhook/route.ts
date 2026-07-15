@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, atualizarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
@@ -23,8 +23,10 @@ export async function GET(req: NextRequest) {
   return new NextResponse('forbidden', { status: 403 })
 }
 
-// Recebe UMA mensagem do Evolution (messages.upsert) e grava. Ignora as próprias
-// (fromMe) e mensagens de grupo. Devolve true se gravou algo.
+// Recebe UMA mensagem do Evolution (messages.upsert) e grava — inclusive as que
+// a equipe manda pelo CELULAR/WhatsApp Web (fromMe), para o histórico do CRM
+// refletir o atendimento inteiro. O eco das que o próprio sistema enviou é
+// descartado por ID (elas já foram gravadas no envio). Devolve true se gravou.
 async function processarEvolution(body: any): Promise<boolean> {
   // Opcional: exige ?token= igual ao WHATSAPP_VERIFY_TOKEN quando este existir.
   if (body?.event && !String(body.event).includes('messages.upsert')) return false
@@ -32,31 +34,41 @@ async function processarEvolution(body: any): Promise<boolean> {
   let gravou = false
   for (const d of eventos) {
     const jid: string = d?.key?.remoteJid || ''
-    if (d?.key?.fromMe) continue // mensagem enviada por nós
     const ehGrupo = jid.endsWith('@g.us')
+    const daEquipe = !!d?.key?.fromMe // saiu do nosso número (sistema, celular ou WhatsApp Web)
     const tel = jid.split('@')[0]
     if (!tel) continue
+    // Eco do que o sistema acabou de enviar: mesmo key.id já gravado — ignora.
+    const msgId = d?.key?.id || uuid()
+    if (daEquipe && await mensagemExiste(tel, msgId)) continue
     const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
     const tipoMidia = tipoMidiaEvolution(d?.message)
     const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
     // Grupo: nome da conversa = assunto do grupo (busca uma vez); autor por mensagem.
-    // Individual: foto de perfil (busca uma vez) + nome do contato (pushName).
+    // Individual: foto de perfil + nome do contato (pushName) — mas NUNCA a partir
+    // de uma mensagem nossa: aí o pushName é o nome do NOSSO número.
     let foto: string | undefined
     let nomeConversa: string | undefined
     if (ehGrupo) {
       nomeConversa = (existente as any)?.grupo && existente?.nome ? existente.nome : ((await nomeGrupoEvolution(jid)) || `Grupo ${tel.slice(-6)}`)
     } else {
       if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
-      nomeConversa = d?.pushName
+      if (!daEquipe) nomeConversa = d?.pushName
     }
     // 1) GRAVA a mensagem primeiro (já marcada como mídia). Assim ela nunca se
     //    perde, mesmo que a captura abaixo demore, falhe ou mate a função.
-    const msgId = d?.key?.id || uuid()
     await salvarMensagem(tel,
-      { id: msgId, de: 'cliente', texto, em, ...(ehGrupo && d?.pushName ? { autor: d.pushName } : {}), ...(tipoMidia ? { tipo: tipoMidia } : {}) },
+      {
+        id: msgId, de: daEquipe ? 'agente' : 'cliente', texto, em,
+        // Fora do sistema não dá para saber QUEM da equipe digitou; marca a origem
+        // para a auditoria do atendimento não confundir com envio pelo Soma10.
+        ...(daEquipe ? { autor: 'via celular/Web' } : (ehGrupo && d?.pushName ? { autor: d.pushName } : {})),
+        ...(tipoMidia ? { tipo: tipoMidia } : {}),
+      },
       { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any)
-    await notificarEquipe('geral', `WhatsApp: ${ehGrupo ? nomeConversa : (d?.pushName || tel)}`, texto.slice(0, 120)).catch(() => {})
+    // Só avisa a equipe do que CHEGA (mensagem nossa não é notificação).
+    if (!daEquipe) await notificarEquipe('geral', `WhatsApp: ${ehGrupo ? nomeConversa : (d?.pushName || tel)}`, texto.slice(0, 120)).catch(() => {})
     gravou = true
 
     // 2) Só então baixa a mídia e anexa à mensagem já salva (best-effort).

@@ -205,6 +205,18 @@ export async function lerBlobMidia(url: string): Promise<{ stream: ReadableStrea
   return null
 }
 
+// A mensagem já está no histórico? Usado para não duplicar o ECO do WhatsApp:
+// o que o sistema envia é gravado na hora do envio e volta pelo webhook (fromMe)
+// com o mesmo key.id. Olha só as últimas (o eco chega em segundos).
+export async function mensagemExiste(telefone: string, msgId: string): Promise<boolean> {
+  const tel = soDigitos(telefone)
+  if (!tel || !msgId) return false
+  try {
+    const raw = await redis.lrange(`wa:msgs:${tel}`, -40, -1)
+    return raw.some(m => { try { const o: any = typeof m === 'string' ? JSON.parse(m) : m; return o?.id === msgId } catch { return false } })
+  } catch { return false }
+}
+
 // Atualiza UMA mensagem já gravada (ex.: anexar a mídia depois que ela subiu ao
 // Blob). Procura de trás pra frente: a mensagem alvo é quase sempre a última.
 export async function atualizarMensagem(telefone: string, msgId: string, patch: Partial<WaMensagem>): Promise<boolean> {
