@@ -1,8 +1,8 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { LayoutVeiculo, capacidadeLayout, numerosPoltronas, elementoInfo, rotuloPoltrona } from '@/lib/layoutVeiculo'
-import { CorpoVeiculo, GradeAndar, mapasDoAndar, nomeAndar, poltronaBase, vazioBase } from './CroquiVeiculo'
+import { LayoutVeiculo, capacidadeLayout, numerosPoltronas, rotuloPoltrona } from '@/lib/layoutVeiculo'
+import { CorpoVeiculo, CroquiPiso, poltronaBase } from './CroquiVeiculo'
 import { valorDaReserva, vendePoltrona } from '@/lib/pacoteViagem'
 import { pendenciasDoPassageiro } from '@/lib/manifesto'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
@@ -27,44 +27,33 @@ const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
   'cancelada': { label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
 }
 
-// Mapa visual de poltronas (por andar). Ocupadas travadas; selecionadas destacadas.
-// O casco do veículo e a grade vêm de CroquiVeiculo — o mesmo desenho do editor da
-// Frota. Antes cada tela montava a própria grade e o croqui saía diferente.
+// Mapa visual de poltronas. O casco e a grade vêm de CroquiVeiculo — o mesmo
+// desenho do editor da Frota. Antes cada tela montava a própria grade.
+//
+// As cores são LEITURA DE DINHEIRO, não decoração: livre (branco), vendida (cinza)
+// e selecionada (preto). O amarelo da marca fica fora daqui de propósito — poltrona
+// nunca é amarela por categoria.
 function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
   layout: LayoutVeiculo; ocupadas: Set<string>; selecionadas: Set<string>; onToggle?: (n: string) => void; readOnly?: boolean
 }) {
-  const andares = Array.from({ length: layout.andares }, (_, i) => i + 1)
   return (
-    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-      {andares.map(andar => {
-        const { poltronas, elementos } = mapasDoAndar(layout, andar)
-        if (!poltronas.size && !elementos.size) return null
-        return (
-          <CorpoVeiculo key={andar} titulo={nomeAndar(andar, layout.andares)} comVolante={andar === 1}>
-            <GradeAndar layout={layout} andar={andar} renderCelula={(fileira, coluna) => {
-              const p = poltronas.get(`${fileira}-${coluna}`)
-              if (!p) {
-                const el = elementos.get(`${fileira}-${coluna}`)
-                // Corredor é VÃO: cai no espaço vazio, sem quadradinho rotulado.
-                if (el && (el.tipo || 'amenidade') !== 'corredor') {
-                  const info = elementoInfo(el)
-                  return <span key={coluna} title={el.label} style={{ ...vazioBase, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 7.5, fontWeight: 700, color: info.cor, background: info.bg, borderRadius: 7, padding: '0 3px', textAlign: 'center', lineHeight: 1.1, overflow: 'hidden' }}>{el.label}</span>
-                }
-                return <span key={coluna} style={vazioBase} />
-              }
-              const ocupada = ocupadas.has(p.numero)
-              const sel = selecionadas.has(p.numero)
-              const cor = ocupada ? { bg: '#e5e7eb', bd: '#d8dde3', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#f1f5f9', bd: '#e2e8f0', tx: '#475569' }
-              return (
-                <button key={coluna} type="button" title={`Poltrona ${rotuloPoltrona(p.numero)}${ocupada ? ' (ocupada)' : ''} · ${p.tipo}`}
-                  disabled={readOnly || ocupada}
-                  onClick={() => !ocupada && onToggle?.(p.numero)}
-                  style={{ ...poltronaBase, border: `1.5px solid ${cor.bd}`, background: cor.bg, color: cor.tx, cursor: readOnly || ocupada ? 'default' : 'pointer' }}>{rotuloPoltrona(p.numero)}</button>
-              )
-            }} />
-          </CorpoVeiculo>
-        )
-      })}
+    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      {(layout?.pisos || []).map((piso, i) => (
+        <CorpoVeiculo key={piso.id} titulo={piso.nome} comVolante={i === layout.pisos.length - 1}>
+          <CroquiPiso piso={piso} renderAssento={a => {
+            const numero = a[2]
+            const ocupada = ocupadas.has(numero)
+            const sel = selecionadas.has(numero)
+            const cor = ocupada ? { bg: '#e5e7eb', bd: '#d8dde3', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#c9cace', tx: '#475569' }
+            return (
+              <button type="button" title={`Poltrona ${rotuloPoltrona(numero)}${ocupada ? ' (ocupada)' : ''} · ${a[3] || 'leito'}`}
+                disabled={readOnly || ocupada}
+                onClick={() => !ocupada && onToggle?.(numero)}
+                style={{ ...poltronaBase, border: `1.5px solid ${cor.bd}`, background: cor.bg, color: cor.tx, cursor: readOnly || ocupada ? 'default' : 'pointer' }}>{rotuloPoltrona(numero)}</button>
+            )
+          }} />
+        </CorpoVeiculo>
+      ))}
     </div>
   )
 }

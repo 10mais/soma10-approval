@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Veiculo, CondicaoVeiculo, TipoVeiculo, ManutencaoVeiculo, DocumentoVeiculo, Viagem } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { LayoutVeiculo, validarLayout, layoutVazio, numerosPoltronas } from '@/lib/layoutVeiculo'
+import { LayoutVeiculo, validarLayout, layoutVazio, numerosPoltronas, normalizarLayout } from '@/lib/layoutVeiculo'
 import { Reserva, poltronasOcupadas } from '@/lib/reservas'
 import { v4 as uuid } from 'uuid'
 
@@ -30,7 +30,9 @@ async function sessaoEquipe() {
 async function carregarTodos(): Promise<Veiculo[]> {
   const ids = await redis.smembers('veiculos')
   if (!ids.length) return []
-  return (await redis.mget<(Veiculo | null)[]>(...ids.map(i => `veiculo:${i}`))).filter(Boolean) as Veiculo[]
+  const lista = (await redis.mget<(Veiculo | null)[]>(...ids.map(i => `veiculo:${i}`))).filter(Boolean) as Veiculo[]
+  // Croqui do formato anterior se converte na leitura — sem isso a tela quebra.
+  return lista.map(v => ({ ...v, layout: normalizarLayout(v.layout) }))
 }
 
 function limparManutencoes(arr: any, autor?: string): ManutencaoVeiculo[] {
@@ -91,8 +93,9 @@ export async function GET(req: NextRequest) {
   // travar o que não pode ser apagado/renumerado (o PUT recusaria com 409).
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
-    const veiculo = await redis.get<Veiculo>(`veiculo:${id}`)
-    if (!veiculo) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    const bruto = await redis.get<Veiculo>(`veiculo:${id}`)
+    if (!bruto) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    const veiculo = { ...bruto, layout: normalizarLayout(bruto.layout) }
     const vendidas = await poltronasVendidas(id)
     return NextResponse.json({ veiculo, poltronasVendidas: Array.from(vendidas.keys()) })
   }
@@ -167,7 +170,7 @@ export async function PUT(req: NextRequest) {
     if (erros.length) return NextResponse.json({ error: erros.join(' '), erros }, { status: 400 })
 
     // Trava: poltrona vendida em viagem que ainda não terminou não pode sumir do croqui.
-    const antes = new Set(numerosPoltronas(atual.layout || layoutVazio()))
+    const antes = new Set(numerosPoltronas(normalizarLayout(atual.layout)))
     const depois = new Set(numerosPoltronas(layout))
     const sumiram = Array.from(antes).filter(n => !depois.has(n))
     if (sumiram.length) {

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Veiculo, Viagem, CondicaoVeiculo } from '@/lib/redis'
 import { Reserva } from '@/lib/reservas'
-import { expandirModelo, layoutVazio } from '@/lib/layoutVeiculo'
+import { expandirModelo, layoutVazio, capacidadeLayout } from '@/lib/layoutVeiculo'
 
 export const runtime = 'nodejs'
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (await redis.get(`veiculo:${o.id}`)) { jaExistiam++; log.push(`veiculo:${o.id} (${o.nome}) já existe — pulado`); continue }
     // Sem modelo conhecido o croqui nasce vazio: melhor um veículo sem poltrona
     // (visível e corrigível na tela) do que perder o cadastro.
-    const layout = expandirModelo(o.layoutId) || layoutVazio(1)
+    const layout = expandirModelo(o.layoutId) || layoutVazio()
     if (!expandirModelo(o.layoutId)) log.push(`⚠ ${o.nome}: layoutId "${o.layoutId}" desconhecido — croqui vazio, redesenhar na tela`)
     const condicao: CondicaoVeiculo = o.ativo === false ? 'excluido' : 'disponivel'
     const agora = new Date().toISOString()
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       criadoEm: o.criadoEm || agora,
       atualizadoEm: agora,
     }
-    log.push(`${o.nome} → veiculo:${o.id} (${layout.poltronas.length} poltronas, condição ${condicao})`)
+    log.push(`${o.nome} → veiculo:${o.id} (${capacidadeLayout(layout)} poltronas, condição ${condicao})`)
     if (!dry) {
       await redis.set(`veiculo:${veiculo.id}`, veiculo)
       await redis.sadd('veiculos', veiculo.id)

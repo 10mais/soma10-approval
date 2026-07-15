@@ -51,7 +51,7 @@ const hoje = () => new Date().toISOString().slice(0, 10)
 const diasAte = (ymd: string) => Math.round((new Date(ymd + 'T00:00').getTime() - new Date(hoje() + 'T00:00').getTime()) / 86400000)
 
 const vazio = (): Form => ({
-  nome: '', tipo: 'onibus', placa: '', layout: layoutVazio(1), condicao: 'disponivel',
+  nome: '', tipo: 'onibus', placa: '', layout: layoutVazio(), condicao: 'disponivel',
   amenidades: ['Starlink'], manutencoes: [], documentos: [], observacoes: '',
 })
 
@@ -80,7 +80,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
   async function abrirEditar(v: Veiculo) {
     setForm({
       id: v.id, nome: v.nome, tipo: v.tipo || 'onibus', placa: v.placa || '',
-      layout: v.layout || layoutVazio(1), condicao: v.condicao, amenidades: v.amenidades || [],
+      layout: v.layout || layoutVazio(), condicao: v.condicao, amenidades: v.amenidades || [],
       manutencoes: v.manutencoes || [], documentos: v.documentos || [], observacoes: v.observacoes || '',
     })
     setSecao('dados')
@@ -171,7 +171,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                   </div>
                   <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
                     {tipoLabel} · {cap} {cap === 1 ? 'poltrona' : 'poltronas'}
-                    {v.layout?.andares > 1 ? ' · 2 andares' : ''}
+                    {(v.layout?.pisos?.length || 1) > 1 ? ' · 2 pisos' : ''}
                   </div>
                   {alerta && (
                     <div style={{ fontSize: 11, fontWeight: 700, color: alerta.dias < 0 ? '#b91c1c' : '#a16207', marginTop: 6 }}>
