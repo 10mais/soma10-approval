@@ -1825,6 +1825,10 @@ function AvatarConv({ foto, nome, cor }: { foto?: string; nome: string; cor: str
 }
 type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string; editada?: boolean }
 
+// Mídia recebida do WhatsApp NUNCA é exibida pela URL crua do Blob — sempre pelo
+// proxy autenticado (funciona com store privado OU público; exige login).
+const midiaSrc = (u: string) => `/api/whatsapp/midia?url=${encodeURIComponent(u)}`
+
 // Torna URLs do texto clicáveis (abre em nova aba), mantendo o resto como está.
 function comLinks(texto: string) {
   return (texto || '').split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
@@ -2144,21 +2148,21 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                   return (
                   <div key={m.id} style={{ alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '78%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {m.midiaUrl && m.tipo === 'imagem' && (
-                      <a href={m.midiaUrl} target="_blank" rel="noreferrer" title="Abrir/baixar imagem">
-                        <img src={m.midiaUrl} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                      <a href={midiaSrc(m.midiaUrl)} target="_blank" rel="noreferrer" title="Abrir/baixar imagem">
+                        <img src={midiaSrc(m.midiaUrl)} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                       </a>
                     )}
                     {m.midiaUrl && m.tipo === 'figurinha' && (
-                      <img src={m.midiaUrl} alt="" style={{ width: 110, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                      <img src={midiaSrc(m.midiaUrl)} alt="" style={{ width: 110, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                     )}
                     {m.midiaUrl && m.tipo === 'video' && (
-                      <video src={m.midiaUrl} controls preload="metadata" style={{ maxWidth: 260, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                      <video src={midiaSrc(m.midiaUrl)} controls preload="metadata" style={{ maxWidth: 260, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                     )}
                     {m.midiaUrl && m.tipo === 'audio' && (
-                      <audio src={m.midiaUrl} controls preload="metadata" style={{ maxWidth: 240, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
+                      <audio src={midiaSrc(m.midiaUrl)} controls preload="metadata" style={{ maxWidth: 240, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                     )}
                     {m.midiaUrl && m.tipo === 'documento' && (
-                      <a href={m.midiaUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
+                      <a href={midiaSrc(m.midiaUrl)} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6" /></svg>
                         {m.fileName || 'Baixar documento'}
                       </a>

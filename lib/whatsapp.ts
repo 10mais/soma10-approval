@@ -112,6 +112,31 @@ const EXT_POR_MIME: Record<string, string> = {
   'application/pdf': 'pdf',
 }
 
+// Grava no Blob se adaptando ao modo do store da INSTÂNCIA (cada projeto tem o
+// seu — a Norah é privado de propósito, dado sensível de saúde/paciente; a
+// agência é público, pois posts precisam ser buscáveis pelo Instagram/Facebook
+// na publicação). Tenta 'private' primeiro (mais seguro por padrão); se o store
+// só aceitar 'public', cai para 'public' sozinho — sem env nova por instância.
+// Cacheia o modo que funcionou (só dura enquanto a lambda ficar quente).
+let blobAccessModo: 'public' | 'private' | null = null
+async function putBlobAdaptativo(pathname: string, buf: Buffer, contentType: string): Promise<{ url: string; privado: boolean }> {
+  const tentar = (access: 'public' | 'private') => put(pathname, buf, { access, contentType, token: process.env.BLOB_READ_WRITE_TOKEN } as any)
+  const ordem: ('public' | 'private')[] = blobAccessModo ? [blobAccessModo] : ['private', 'public']
+  let ultimoErro: any
+  for (const modo of ordem) {
+    try {
+      const blob = await tentar(modo)
+      blobAccessModo = modo
+      return { url: blob.url, privado: modo === 'private' }
+    } catch (e: any) {
+      ultimoErro = e
+      if (!/private access|public access/i.test(e?.message || '')) throw e // erro não relacionado ao modo — não insiste
+      blobAccessModo = null // modo cacheado mudou/errou — redescobre na próxima
+    }
+  }
+  throw ultimoErro
+}
+
 // Pede ao Evolution os bytes (base64) de uma mensagem de mídia. Loga falhas
 // no runtime da Vercel para diagnóstico ([wa-midia]).
 async function pedirBase64Evolution(corpo: any): Promise<{ b64: string; mimetype?: string }> {
@@ -155,11 +180,9 @@ export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem
     const buf = Buffer.from(b64, 'base64')
     mimetype = (mimetype || 'application/octet-stream').split(';')[0].trim()
     const ext = EXT_POR_MIME[mimetype] || ((mimetype.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'bin')
-    const blob = await put(`whatsapp/${Date.now()}-${String(data?.key?.id || 'msg').replace(/[^a-zA-Z0-9]/g, '').slice(-12)}.${ext}`, buf, {
-      access: 'public', contentType: mimetype, token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    const { url } = await putBlobAdaptativo(`whatsapp/${Date.now()}-${String(data?.key?.id || 'msg').replace(/[^a-zA-Z0-9]/g, '').slice(-12)}.${ext}`, buf, mimetype)
     const nomeOriginal = m.no?.fileName ? String(m.no.fileName).slice(0, 120) : ''
-    return { tipo: m.tipo, midiaUrl: blob.url, mimetype, ...(nomeOriginal ? { fileName: nomeOriginal } : {}) }
+    return { tipo: m.tipo, midiaUrl: url, mimetype, ...(nomeOriginal ? { fileName: nomeOriginal } : {}) }
   } catch (e: any) { console.warn('[wa-midia] erro:', e?.message || String(e)); return null }
 }
 
