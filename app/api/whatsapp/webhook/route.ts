@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, atualizarMensagem, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
+// Baixar a mídia do Evolution + subir ao Blob leva tempo; sem isto a função era
+// MORTA no meio (status 0 nos logs) e a mensagem se perdia inteira.
+export const maxDuration = 60
 
 // GET — verificação do webhook. Serve a Meta (hub.challenge) E o Evolution
 // (que só faz um GET simples). Configure a mesma string em WHATSAPP_VERIFY_TOKEN.
@@ -35,8 +38,7 @@ async function processarEvolution(body: any): Promise<boolean> {
     if (!tel) continue
     const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
-    // Mídia (imagem/vídeo/áudio/documento): baixa e guarda no Blob (best-effort).
-    const midia = await capturarMidiaEvolution(d)
+    const tipoMidia = tipoMidiaEvolution(d?.message)
     const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
     // Grupo: nome da conversa = assunto do grupo (busca uma vez); autor por mensagem.
     // Individual: foto de perfil (busca uma vez) + nome do contato (pushName).
@@ -48,11 +50,25 @@ async function processarEvolution(body: any): Promise<boolean> {
       if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
       nomeConversa = d?.pushName
     }
+    // 1) GRAVA a mensagem primeiro (já marcada como mídia). Assim ela nunca se
+    //    perde, mesmo que a captura abaixo demore, falhe ou mate a função.
+    const msgId = d?.key?.id || uuid()
     await salvarMensagem(tel,
-      { id: d?.key?.id || uuid(), de: 'cliente', texto, em, ...(ehGrupo && d?.pushName ? { autor: d.pushName } : {}), ...(midia || {}) },
+      { id: msgId, de: 'cliente', texto, em, ...(ehGrupo && d?.pushName ? { autor: d.pushName } : {}), ...(tipoMidia ? { tipo: tipoMidia } : {}) },
       { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any)
     await notificarEquipe('geral', `WhatsApp: ${ehGrupo ? nomeConversa : (d?.pushName || tel)}`, texto.slice(0, 120)).catch(() => {})
     gravou = true
+
+    // 2) Só então baixa a mídia e anexa à mensagem já salva (best-effort).
+    if (tipoMidia) {
+      const midia = await capturarMidiaEvolution(d)
+      if (midia?.midiaUrl) {
+        const ok = await atualizarMensagem(tel, msgId, { midiaUrl: midia.midiaUrl, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}) })
+        console.log('[wa-midia] anexada', tipoMidia, ok ? 'ok' : 'FALHOU-update', msgId)
+      } else {
+        console.warn('[wa-midia] sem url para', tipoMidia, msgId)
+      }
+    }
   }
   return gravou
 }

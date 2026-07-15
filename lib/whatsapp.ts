@@ -1,5 +1,5 @@
 import { redis } from './redis'
-import { put } from '@vercel/blob'
+import { put, get } from '@vercel/blob'
 
 // Integração WhatsApp — DOIS transportes possíveis (o Evolution tem prioridade):
 //
@@ -94,6 +94,12 @@ export function textoMensagemEvolution(message: any): string {
   return ''
 }
 
+// Tipo da mídia SEM baixar nada — o webhook usa para salvar a mensagem já
+// marcada como mídia antes de tentar a captura (que é lenta e pode falhar).
+export function tipoMidiaEvolution(message: any): NonNullable<WaMensagem['tipo']> | null {
+  return noMidiaEvolution(message)?.tipo || null
+}
+
 // Nó de mídia do payload do Evolution (imagem/vídeo/áudio/documento/figurinha).
 function noMidiaEvolution(message: any): { tipo: NonNullable<WaMensagem['tipo']>; no: any } | null {
   if (!message) return null
@@ -184,6 +190,38 @@ export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem
     const nomeOriginal = m.no?.fileName ? String(m.no.fileName).slice(0, 120) : ''
     return { tipo: m.tipo, midiaUrl: url, mimetype, ...(nomeOriginal ? { fileName: nomeOriginal } : {}) }
   } catch (e: any) { console.warn('[wa-midia] erro:', e?.message || String(e)); return null }
+}
+
+// Lê os bytes de uma mídia do Blob para o proxy autenticado. Blob PRIVADO exige
+// o get() do SDK (fetch cru com Bearer não autentica); tenta private e, se o
+// store da instância for público, cai para public. Devolve stream + headers.
+export async function lerBlobMidia(url: string): Promise<{ stream: ReadableStream; contentType?: string; tamanho?: number } | null> {
+  for (const access of ['private', 'public'] as const) {
+    try {
+      const r = await get(url, { access, token: process.env.BLOB_READ_WRITE_TOKEN })
+      if (r?.stream) return { stream: r.stream as any, contentType: (r as any)?.blob?.contentType, tamanho: (r as any)?.blob?.size }
+    } catch { /* modo errado para este store — tenta o outro */ }
+  }
+  return null
+}
+
+// Atualiza UMA mensagem já gravada (ex.: anexar a mídia depois que ela subiu ao
+// Blob). Procura de trás pra frente: a mensagem alvo é quase sempre a última.
+export async function atualizarMensagem(telefone: string, msgId: string, patch: Partial<WaMensagem>): Promise<boolean> {
+  const tel = soDigitos(telefone)
+  if (!tel || !msgId) return false
+  try {
+    const raw = await redis.lrange(`wa:msgs:${tel}`, -25, -1)
+    for (let i = raw.length - 1; i >= 0; i--) {
+      let o: any
+      try { o = typeof raw[i] === 'string' ? JSON.parse(raw[i] as string) : raw[i] } catch { continue }
+      if (o?.id !== msgId) continue
+      const idx = -(raw.length - i) // índice negativo real na lista
+      await redis.lset(`wa:msgs:${tel}`, idx, JSON.stringify({ ...o, ...patch }))
+      return true
+    }
+  } catch (e: any) { console.warn('[wa-midia] falha ao atualizar msg:', e?.message || String(e)) }
+  return false
 }
 
 // Salva uma mensagem na conversa (por telefone) e atualiza os metadados/índice.
@@ -280,16 +318,26 @@ export async function enviarMidiaWhatsApp(
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const headers = { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' }
+    // O Evolution não consegue baixar um Blob PRIVADO por URL (é o caso da
+    // clínica). Então lemos os bytes aqui e mandamos em base64 — funciona nos
+    // dois modos de store. URL externa (não-Blob) segue direto.
+    let media = midia.url
+    if (/\.vercel-storage\.com/i.test(midia.url)) {
+      const b = await lerBlobMidia(midia.url)
+      if (!b) return { ok: false, erro: 'não foi possível ler a mídia para encaminhar' }
+      const buf = Buffer.from(await new Response(b.stream as any).arrayBuffer())
+      media = buf.toString('base64')
+    }
     let r: Response
     if (midia.tipo === 'audio') {
       r = await fetch(`${base}/message/sendWhatsAppAudio/${process.env.EVOLUTION_INSTANCE}`, {
-        method: 'POST', headers, body: JSON.stringify({ number: destinoJid || tel, audio: midia.url }),
+        method: 'POST', headers, body: JSON.stringify({ number: destinoJid || tel, audio: media }),
       })
     } else {
       const mediatype = midia.tipo === 'imagem' || midia.tipo === 'figurinha' ? 'image' : midia.tipo === 'video' ? 'video' : 'document'
       r = await fetch(`${base}/message/sendMedia/${process.env.EVOLUTION_INSTANCE}`, {
         method: 'POST', headers,
-        body: JSON.stringify({ number: destinoJid || tel, mediatype, media: midia.url, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}), ...(midia.caption ? { caption: midia.caption } : {}) }),
+        body: JSON.stringify({ number: destinoJid || tel, mediatype, media, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : { ...(midia.tipo === 'documento' ? { fileName: 'documento' } : {}) }), ...(midia.caption ? { caption: midia.caption } : {}) }),
       })
     }
     const d = await r.json().catch(() => ({} as any))
