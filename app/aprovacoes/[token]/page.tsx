@@ -66,7 +66,7 @@ export default function AprovacoesPublicas() {
           )
         })()}
         {dados.posts.map(p => (
-          <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} logo={dados.logo} logoAlt={dados.logoAlt} onDecidido={() => removerPost(p.id)} />
+          <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} onDecidido={() => removerPost(p.id)} />
         ))}
       </div>
       <Footer />
@@ -74,7 +74,11 @@ export default function AprovacoesPublicas() {
   )
 }
 
-function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: PostA; token: string; handle: string; logo?: string; logoAlt?: string; onDecidido: () => void }) {
+// A foto do cliente é resolvida INTEIRA no servidor (/api/foto-cliente): ele tenta
+// cliente.logo → ativo 'logo' → ícone → qualquer ativo → referência visual, conserta
+// o cliente.logo quebrado e, no pior caso, devolve um SVG com a inicial. Por isso o
+// card não recebe mais `logo`/`logoAlt`: eram props mortas que fingiam ser fallback.
+function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: string; handle: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')          // observação geral do ajuste / motivo da reprovação
@@ -322,12 +326,26 @@ function PostCard({ post, token, handle, logo, logoAlt, onDecidido }: { post: Po
 }
 
 function Header({ clienteName }: { clienteName: string }) {
+  // A logo da agência vem de /api/marca (público). O bloco "10+" só aparece
+  // enquanto carrega ou quando não há logo configurada — antes ele era fixo no
+  // código, então toda instância se anunciava como "10+", fosse qual fosse.
+  const [logo, setLogo] = useState('')
+  const [logoErro, setLogoErro] = useState(false)
+  useEffect(() => {
+    fetch('/api/marca').then(r => r.json()).then(d => { if (d?.logo) setLogo(d.logo) }).catch(() => {})
+  }, [])
+  const temLogo = !!logo && !logoErro
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ background: '#111', borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ color: '#ffc00f', fontWeight: 900, fontSize: 10 }}>10+</span>
-        </div>
+        {temLogo ? (
+          <img src={logo} alt="" onError={() => setLogoErro(true)}
+            style={{ height: 30, maxWidth: 120, objectFit: 'contain', display: 'block' }} />
+        ) : (
+          <div style={{ background: '#111', borderRadius: 7, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: '#ffc00f', fontWeight: 900, fontSize: 10 }}>10+</span>
+          </div>
+        )}
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}><SystemName /></div>
           <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
