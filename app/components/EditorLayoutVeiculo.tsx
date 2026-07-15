@@ -2,13 +2,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@/lib/toast'
 import {
-  LayoutVeiculo, Poltrona, ElementoLayout, Celula, TipoPoltrona, TipoElemento, TIPOS_POLTRONA,
-  ELEMENTOS_COMUNS, ESTRUTURA_PALETA, elementoInfo,
+  LayoutVeiculo, Poltrona, Celula, TipoPoltrona, TipoElemento, TIPOS_POLTRONA,
+  ELEMENTOS_COMUNS, ESTRUTURA_PALETA, elementoInfo, rotuloPoltrona,
   capacidadeLayout, validarLayout, dimensoesLayout, celulaOcupada,
   adicionarPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, moverElemento, limparCelula, definirAndares,
   MODELOS_LAYOUT, expandirModelo,
 } from '@/lib/layoutVeiculo'
+import { CorpoVeiculo, GradeAndar, mapasDoAndar, nomeAndar, poltronaBase, vazioBase } from './CroquiVeiculo'
 
 // Editor do croqui de um veículo. O croqui é a fonte da verdade do mapa de poltronas
 // das reservas — por isso toda operação passa pelos helpers puros de lib/layoutVeiculo,
@@ -222,92 +223,77 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
         </p>
       )}
 
-      {/* Croqui */}
+      {/* Croqui — mesmo casco do mapa de poltronas das Reservas (CroquiVeiculo) */}
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
         {andares.map(andar => {
-          const { maxFileira, maxColuna } = dimensoesLayout(layout, andar)
-          // Sempre uma fileira sobrando embaixo (e o mínimo do croqui 2+1) para dar
-          // onde crescer sem precisar de botão "adicionar fileira".
-          const linhas = Math.max(maxFileira + 1, 6)
-          const colunas = Math.max(maxColuna, 5)
-          const poltronasAndar = new Map<string, Poltrona>()
-          layout.poltronas.filter(p => p.andar === andar).forEach(p => poltronasAndar.set(`${p.fileira}-${p.coluna}`, p))
-          const elementosAndar = new Map<string, ElementoLayout>()
-          ;(layout.elementos || []).filter(e => e.andar === andar).forEach(e => elementosAndar.set(`${e.fileira}-${e.coluna}`, e))
-
+          const { poltronas: poltronasAndar, elementos: elementosAndar } = mapasDoAndar(layout, andar)
           return (
-            <div key={andar}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                {layout.andares > 1 ? (andar === 1 ? 'Inferior' : 'Superior') : 'Poltronas'}
-              </div>
-              <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, background: '#fafafa', border: '1px solid #eee', borderRadius: 10, padding: 8 }}>
-                {Array.from({ length: linhas }, (_, f) => f + 1).map(fileira => (
-                  <div key={fileira} style={{ display: 'flex', gap: 4 }}>
-                    {Array.from({ length: colunas }, (_, c) => c + 1).map(coluna => {
-                      const celula: Celula = { andar, fileira, coluna }
-                      const p = poltronasAndar.get(`${fileira}-${coluna}`)
-                      const el = elementosAndar.get(`${fileira}-${coluna}`)
-                      const elInfo = el ? elementoInfo(el) : null
-                      const dropProps = readOnly ? {} : {
-                        onDragOver: (ev: React.DragEvent) => { if (arrastando) ev.preventDefault() },
-                        onDrop: (ev: React.DragEvent) => { ev.preventDefault(); soltarEm(celula) },
-                      }
+            <CorpoVeiculo key={andar} titulo={nomeAndar(andar, layout.andares)} comVolante={andar === 1}>
+              {/* +1 fileira sobrando embaixo: dá onde crescer sem botão "adicionar fileira" */}
+              <GradeAndar layout={layout} andar={andar} extraFileiras={1} renderCelula={(fileira, coluna) => {
+                const celula: Celula = { andar, fileira, coluna }
+                const p = poltronasAndar.get(`${fileira}-${coluna}`)
+                const el = elementosAndar.get(`${fileira}-${coluna}`)
+                const elInfo = el ? elementoInfo(el) : null
+                const dropProps = readOnly ? {} : {
+                  onDragOver: (ev: React.DragEvent) => { if (arrastando) ev.preventDefault() },
+                  onDrop: (ev: React.DragEvent) => { ev.preventDefault(); soltarEm(celula) },
+                }
 
-                      if (p) {
-                        const travada = bloqueadas.has(p.numero)
-                        const ativa = sel === p.numero
-                        return (
-                          <button key={coluna} type="button"
-                            title={`Poltrona ${p.numero} · ${p.tipo}${travada ? ' · vendida (não pode apagar nem renumerar)' : ''}`}
-                            draggable={!readOnly}
-                            onDragStart={() => setArrastando({ tipo: 'poltrona', numero: p.numero })}
-                            onDragEnd={() => setArrastando(null)}
-                            {...dropProps}
-                            onClick={() => clicarCelula(celula, p)}
-                            style={{
-                              width: CELULA, height: ALTURA, borderRadius: 6, padding: 0,
-                              border: `1.5px solid ${ativa ? '#111' : travada ? '#fbbf24' : '#cbd5e1'}`,
-                              background: ativa ? '#111' : travada ? '#fffbeb' : '#fff',
-                              color: ativa ? '#fff' : travada ? '#b45309' : '#334155',
-                              fontSize: 10, fontWeight: 800, cursor: readOnly ? 'default' : 'pointer',
-                            }}>{p.numero}</button>
-                        )
-                      }
-                      if (el && elInfo) {
-                        // Corredor é passagem, não objeto: fica discreto e sem
-                        // rótulo repetido em 16 células.
-                        const ehCorredor = (el.tipo || 'amenidade') === 'corredor'
-                        return (
-                          <span key={coluna} title={el.label}
-                            draggable={!readOnly}
-                            onDragStart={() => setArrastando({ tipo: 'elemento', origem: celula })}
-                            onDragEnd={() => setArrastando(null)}
-                            {...dropProps}
-                            onClick={() => clicarCelula(celula, undefined, el.label)}
-                            style={{
-                              minWidth: CELULA, height: ALTURA, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: 8, fontWeight: 700, color: elInfo.cor, background: elInfo.bg,
-                              border: ehCorredor ? '1px dashed #e2e8f0' : 'none',
-                              borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap', cursor: readOnly ? 'default' : 'pointer',
-                            }}>{ehCorredor ? '' : el.label}</span>
-                        )
-                      }
-                      return (
-                        <button key={coluna} type="button" aria-label={`Fileira ${fileira}, coluna ${coluna} — vazia`}
-                          {...dropProps}
-                          onClick={() => clicarCelula(celula)}
-                          disabled={readOnly}
-                          style={{
-                            width: CELULA, height: ALTURA, borderRadius: 6, padding: 0,
-                            border: readOnly ? 'none' : '1px dashed #e2e8f0',
-                            background: 'transparent', cursor: readOnly ? 'default' : 'pointer',
-                          }} />
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
+                if (p) {
+                  const travada = bloqueadas.has(p.numero)
+                  const ativa = sel === p.numero
+                  return (
+                    <button key={coluna} type="button"
+                      title={`Poltrona ${rotuloPoltrona(p.numero)} · ${p.tipo}${travada ? ' · vendida (não pode apagar nem renumerar)' : ''}`}
+                      draggable={!readOnly}
+                      onDragStart={() => setArrastando({ tipo: 'poltrona', numero: p.numero })}
+                      onDragEnd={() => setArrastando(null)}
+                      {...dropProps}
+                      onClick={() => clicarCelula(celula, p)}
+                      style={{
+                        ...poltronaBase,
+                        border: `1.5px solid ${ativa ? '#111' : travada ? '#fbbf24' : '#e2e8f0'}`,
+                        background: ativa ? '#111' : travada ? '#fffbeb' : '#f1f5f9',
+                        color: ativa ? '#fff' : travada ? '#b45309' : '#475569',
+                        cursor: readOnly ? 'default' : 'pointer',
+                      }}>{rotuloPoltrona(p.numero)}</button>
+                  )
+                }
+                if (el && elInfo) {
+                  // Corredor é VÃO, não objeto: fica invisível (só o espaço) e sem
+                  // rótulo repetido em 16 células. Segue clicável para apagar.
+                  const ehCorredor = (el.tipo || 'amenidade') === 'corredor'
+                  return (
+                    <span key={coluna} title={el.label}
+                      draggable={!readOnly && !ehCorredor}
+                      onDragStart={() => setArrastando({ tipo: 'elemento', origem: celula })}
+                      onDragEnd={() => setArrastando(null)}
+                      {...dropProps}
+                      onClick={() => clicarCelula(celula, undefined, el.label)}
+                      style={{
+                        ...vazioBase, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 7.5, fontWeight: 700, color: elInfo.cor,
+                        background: ehCorredor ? 'transparent' : elInfo.bg,
+                        border: ehCorredor && !readOnly ? '1px dotted #eef1f4' : 'none',
+                        borderRadius: 7, padding: '0 3px', textAlign: 'center', lineHeight: 1.1, overflow: 'hidden',
+                        cursor: readOnly ? 'default' : 'pointer',
+                      }}>{ehCorredor ? '' : el.label}</span>
+                  )
+                }
+                return (
+                  <button key={coluna} type="button" aria-label={`Fileira ${fileira}, coluna ${coluna} — vazia`}
+                    {...dropProps}
+                    onClick={() => clicarCelula(celula)}
+                    disabled={readOnly}
+                    style={{
+                      ...vazioBase, borderRadius: 8, padding: 0,
+                      border: readOnly ? 'none' : '1px dashed #e8ecf0',
+                      background: 'transparent', cursor: readOnly ? 'default' : 'pointer',
+                    }} />
+                )
+              }} />
+            </CorpoVeiculo>
           )
         })}
       </div>

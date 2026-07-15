@@ -52,6 +52,14 @@ export const ESTRUTURA_PALETA: { tipo: TipoElemento; label: string; cor: string;
 // Amenidades comuns — entram como tipo 'amenidade'; o campo aceita texto livre.
 export const ELEMENTOS_COMUNS = ['Chopeira', 'Cafeteira', 'Frigobar', 'Geladeira', 'TV', 'Ar-condicionado', 'Água', 'Bagageiro']
 
+// Rótulo da poltrona no croqui: "1" vira "01". Mapa de ônibus numera com dois
+// dígitos — sem isso as colunas dançam e o desenho perde o alinhamento. É só
+// APRESENTAÇÃO: a reserva continua guardando o número como foi cadastrado.
+export function rotuloPoltrona(numero: string): string {
+  const n = String(numero ?? '').trim()
+  return /^\d{1}$/.test(n) ? `0${n}` : n
+}
+
 export const elementoInfo = (e: Pick<ElementoLayout, 'tipo'>) =>
   ESTRUTURA_PALETA.find(x => x.tipo === (e.tipo || 'amenidade')) || { tipo: 'amenidade' as TipoElemento, label: 'Amenidade', cor: '#94a3b8', bg: '#f1f5f9' }
 
@@ -159,9 +167,45 @@ const CARRO_2021: LayoutVeiculo = {
   ],
 }
 
+// ── Convencional 2+2 — 48 lugares (1 andar) ──────────────────────────────────
+// O mapa clássico de rodoviário: par à esquerda (colunas 1,2), corredor (3), par
+// à direita (4,5). A numeração ZIGUEZAGUEIA: o par esquerdo sobe (01,02) e o
+// direito desce (04,03) — quem senta na janela direita é o 03. Não é capricho, é
+// como a poltrona vem numerada de fábrica; inventar sequência aqui faria o
+// passageiro procurar um assento que não existe.
+// Fileira 2 sem par direito = porta; última fileira sem par direito = banheiro.
+const CONVENCIONAL_2X2: LayoutVeiculo = (() => {
+  const poltronas: Poltrona[] = []
+  const push = (n: number, f: number, c: number) => poltronas.push(P(n, 1, f, c, 'convencional'))
+  // Fileira 1: 01 02 | 04 03
+  push(1, 1, 1); push(2, 1, 2); push(4, 1, 4); push(3, 1, 5)
+  // Fileira 2: só o par esquerdo (a porta ocupa o lado direito)
+  push(5, 2, 1); push(6, 2, 2)
+  // Fileiras 3..12: par esquerdo sobe, par direito desce
+  let esq = 9
+  let dir = 8
+  for (let f = 3; f <= 12; f++) {
+    push(esq, f, 1); push(esq + 1, f, 2)
+    push(dir, f, 4); push(dir - 1, f, 5)
+    esq += 4; dir += 4
+  }
+  // Última fileira: só o par esquerdo (banheiro no lado direito)
+  push(47, 13, 1); push(48, 13, 2)
+  return {
+    andares: 1,
+    poltronas,
+    elementos: [
+      ...Array.from({ length: 13 }, (_, i) => ({ label: 'Corredor', tipo: 'corredor' as TipoElemento, andar: 1, fileira: i + 1, coluna: 3 })),
+      { label: 'Porta', tipo: 'porta', andar: 1, fileira: 2, coluna: 4 },
+      { label: 'Banheiro', tipo: 'banheiro', andar: 1, fileira: 13, coluna: 5 },
+    ],
+  }
+})()
+
 export const MODELOS_LAYOUT: ModeloLayout[] = [
-  { id: 'carro-2023', nome: 'Carro 2023 (40 lugares)', layout: CARRO_2023 },
-  { id: 'carro-2021', nome: 'Carro 2021 (43 lugares)', layout: CARRO_2021 },
+  { id: 'carro-2023', nome: 'Carro 2023 — leito 2+1 (40 lugares)', layout: CARRO_2023 },
+  { id: 'carro-2021', nome: 'Carro 2021 — leito 2+1 (43 lugares)', layout: CARRO_2021 },
+  { id: 'convencional-2x2', nome: 'Convencional 2+2 (48 lugares)', layout: CONVENCIONAL_2X2 },
   { id: 'em-branco', nome: 'Em branco', layout: { andares: 1, poltronas: [], elementos: [] } },
 ]
 

@@ -1,7 +1,8 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { LayoutVeiculo, Poltrona, ElementoLayout, capacidadeLayout, numerosPoltronas, elementoInfo } from '@/lib/layoutVeiculo'
+import { LayoutVeiculo, capacidadeLayout, numerosPoltronas, elementoInfo, rotuloPoltrona } from '@/lib/layoutVeiculo'
+import { CorpoVeiculo, GradeAndar, mapasDoAndar, nomeAndar, poltronaBase, vazioBase } from './CroquiVeiculo'
 import { valorDaReserva, vendePoltrona } from '@/lib/pacoteViagem'
 import { pendenciasDoPassageiro } from '@/lib/manifesto'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
@@ -26,21 +27,9 @@ const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
   'cancelada': { label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
 }
 
-// Grade de um andar: poltronas + elementos (amenidades) por (fileira-coluna).
-function gradeAndar(layout: LayoutVeiculo, andar: number) {
-  const ps = layout.poltronas.filter(p => p.andar === andar)
-  const els = (layout.elementos || []).filter(e => e.andar === andar)
-  const todos = [...ps.map(p => ({ f: p.fileira, c: p.coluna })), ...els.map(e => ({ f: e.fileira, c: e.coluna }))]
-  const maxFileira = todos.length ? Math.max(...todos.map(x => x.f)) : 0
-  const maxColuna = todos.length ? Math.max(...todos.map(x => x.c)) : 0
-  const mapa = new Map<string, Poltrona>()
-  ps.forEach(p => mapa.set(`${p.fileira}-${p.coluna}`, p))
-  const elMapa = new Map<string, ElementoLayout>()
-  els.forEach(e => elMapa.set(`${e.fileira}-${e.coluna}`, e))
-  return { maxFileira, maxColuna, mapa, elMapa }
-}
-
 // Mapa visual de poltronas (por andar). Ocupadas travadas; selecionadas destacadas.
+// O casco do veículo e a grade vêm de CroquiVeiculo — o mesmo desenho do editor da
+// Frota. Antes cada tela montava a própria grade e o croqui saía diferente.
 function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
   layout: LayoutVeiculo; ocupadas: Set<string>; selecionadas: Set<string>; onToggle?: (n: string) => void; readOnly?: boolean
 }) {
@@ -48,39 +37,32 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
       {andares.map(andar => {
-        const { maxFileira, maxColuna, mapa, elMapa } = gradeAndar(layout, andar)
-        if (!maxFileira) return null
+        const { poltronas, elementos } = mapasDoAndar(layout, andar)
+        if (!poltronas.size && !elementos.size) return null
         return (
-          <div key={andar}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>{layout.andares > 1 ? (andar === 1 ? 'Inferior' : 'Superior') : 'Poltronas'}</div>
-            <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, background: '#fafafa', border: '1px solid #eee', borderRadius: 10, padding: 8 }}>
-              {Array.from({ length: maxFileira }, (_, f) => f + 1).map(fileira => (
-                <div key={fileira} style={{ display: 'flex', gap: 4 }}>
-                  {Array.from({ length: maxColuna }, (_, c) => c + 1).map(coluna => {
-                    const p = mapa.get(`${fileira}-${coluna}`)
-                    if (!p) {
-                      const el = elMapa.get(`${fileira}-${coluna}`)
-                      if (el) {
-                        const info = elementoInfo(el)
-                        const ehCorredor = (el.tipo || 'amenidade') === 'corredor'
-                        return <span key={coluna} title={el.label} style={{ minWidth: 30, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: info.cor, background: info.bg, borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap' }}>{ehCorredor ? '' : el.label}</span>
-                      }
-                      return <span key={coluna} style={{ width: 30, height: 26 }} /> // espaço vazio
-                    }
-                    const ocupada = ocupadas.has(p.numero)
-                    const sel = selecionadas.has(p.numero)
-                    const cor = ocupada ? { bg: '#e5e7eb', bd: '#d1d5db', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#cbd5e1', tx: '#334155' }
-                    return (
-                      <button key={coluna} type="button" title={`Poltrona ${p.numero}${ocupada ? ' (ocupada)' : ''} · ${p.tipo}`}
-                        disabled={readOnly || ocupada}
-                        onClick={() => !ocupada && onToggle?.(p.numero)}
-                        style={{ width: 30, height: 26, borderRadius: 6, border: `1.5px solid ${cor.bd}`, background: cor.bg, color: cor.tx, fontSize: 10, fontWeight: 800, cursor: readOnly || ocupada ? 'default' : 'pointer', padding: 0 }}>{p.numero}</button>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
+          <CorpoVeiculo key={andar} titulo={nomeAndar(andar, layout.andares)} comVolante={andar === 1}>
+            <GradeAndar layout={layout} andar={andar} renderCelula={(fileira, coluna) => {
+              const p = poltronas.get(`${fileira}-${coluna}`)
+              if (!p) {
+                const el = elementos.get(`${fileira}-${coluna}`)
+                // Corredor é VÃO: cai no espaço vazio, sem quadradinho rotulado.
+                if (el && (el.tipo || 'amenidade') !== 'corredor') {
+                  const info = elementoInfo(el)
+                  return <span key={coluna} title={el.label} style={{ ...vazioBase, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 7.5, fontWeight: 700, color: info.cor, background: info.bg, borderRadius: 7, padding: '0 3px', textAlign: 'center', lineHeight: 1.1, overflow: 'hidden' }}>{el.label}</span>
+                }
+                return <span key={coluna} style={vazioBase} />
+              }
+              const ocupada = ocupadas.has(p.numero)
+              const sel = selecionadas.has(p.numero)
+              const cor = ocupada ? { bg: '#e5e7eb', bd: '#d8dde3', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#f1f5f9', bd: '#e2e8f0', tx: '#475569' }
+              return (
+                <button key={coluna} type="button" title={`Poltrona ${rotuloPoltrona(p.numero)}${ocupada ? ' (ocupada)' : ''} · ${p.tipo}`}
+                  disabled={readOnly || ocupada}
+                  onClick={() => !ocupada && onToggle?.(p.numero)}
+                  style={{ ...poltronaBase, border: `1.5px solid ${cor.bd}`, background: cor.bg, color: cor.tx, cursor: readOnly || ocupada ? 'default' : 'pointer' }}>{rotuloPoltrona(p.numero)}</button>
+              )
+            }} />
+          </CorpoVeiculo>
         )
       })}
     </div>

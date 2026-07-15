@@ -5,7 +5,7 @@ import {
   validarLayout, proximoNumeroLivre, celulaOcupada, dimensoesLayout,
   adicionarPoltrona, removerPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, moverElemento, removerElemento, limparCelula, definirAndares,
-  elementoInfo, ESTRUTURA_PALETA,
+  elementoInfo, ESTRUTURA_PALETA, rotuloPoltrona,
   type LayoutVeiculo,
 } from '@/lib/layoutVeiculo'
 
@@ -44,6 +44,35 @@ describe('modelos de croqui', () => {
     for (const m of MODELOS_LAYOUT) expect(validarLayout(m.layout), `modelo ${m.id}`).toEqual([])
   })
 
+  it('convencional 2+2 tem 48 lugares num andar', () => {
+    const l = expandirModelo('convencional-2x2')!
+    expect(capacidadeLayout(l)).toBe(48)
+    expect(l.andares).toBe(1)
+  })
+
+  it('2+2: numeração ZIGUEZAGUEIA — par esquerdo sobe, direito desce (a janela direita é a 03)', () => {
+    const l = expandirModelo('convencional-2x2')!
+    const em = (f: number, c: number) => l.poltronas.find(p => p.fileira === f && p.coluna === c)?.numero
+    expect([em(1, 1), em(1, 2), em(1, 4), em(1, 5)]).toEqual(['1', '2', '4', '3'])
+    expect([em(3, 1), em(3, 2), em(3, 4), em(3, 5)]).toEqual(['9', '10', '8', '7'])
+    expect([em(12, 1), em(12, 2), em(12, 4), em(12, 5)]).toEqual(['45', '46', '44', '43'])
+  })
+
+  it('2+2: fileira da porta e do banheiro não têm par direito', () => {
+    const l = expandirModelo('convencional-2x2')!
+    expect(l.poltronas.filter(p => p.fileira === 2).map(p => p.numero)).toEqual(['5', '6'])
+    expect(l.poltronas.filter(p => p.fileira === 13).map(p => p.numero)).toEqual(['47', '48'])
+    expect(celulaOcupada(l, { andar: 1, fileira: 2, coluna: 4 })).toBe('elemento') // porta
+    expect(celulaOcupada(l, { andar: 1, fileira: 13, coluna: 5 })).toBe('elemento') // banheiro
+  })
+
+  it('2+2: corredor marcado na coluna 3, fileira a fileira', () => {
+    const l = expandirModelo('convencional-2x2')!
+    const corredores = (l.elementos || []).filter(e => e.tipo === 'corredor')
+    expect(corredores).toHaveLength(13)
+    expect(corredores.every(e => e.coluna === 3)).toBe(true)
+  })
+
   it('expandirModelo devolve CÓPIA — editar um veículo não contamina o modelo', () => {
     const a = expandirModelo('carro-2023')!
     a.poltronas.pop()
@@ -57,6 +86,17 @@ describe('modelos de croqui', () => {
     expect(expandirModelo('inexistente')).toBeNull()
     expect(expandirModelo(null)).toBeNull()
     expect(expandirModelo('')).toBeNull()
+  })
+
+  it('rotuloPoltrona zera à esquerda — mapa de ônibus numera com 2 dígitos', () => {
+    expect(rotuloPoltrona('1')).toBe('01')
+    expect(rotuloPoltrona('9')).toBe('09')
+    expect(rotuloPoltrona('10')).toBe('10')
+    expect(rotuloPoltrona('48')).toBe('48')
+    // Não é numérico ou já tem 3 dígitos: deixa como está, não inventa formato.
+    expect(rotuloPoltrona('1A')).toBe('1A')
+    expect(rotuloPoltrona('100')).toBe('100')
+    expect(rotuloPoltrona('')).toBe('')
   })
 
   it('helpers de leitura preservados (usados por Reservas e DashboardHome)', () => {
