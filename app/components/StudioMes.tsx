@@ -637,13 +637,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const taxa = geradas.length ? Math.round((editadas.length / geradas.length) * 100) : null
 
   // Seleção: cliente primeiro (agência), depois o mês/plano daquele cliente.
-  const clientesDosPlanos = Array.from(new Map(planos.map(p => [p.clienteId, p.clienteNome])).entries())
-    .map(([id, nome]) => ({ id, nome })).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'))
+  // Todos os clientes ativos aparecem — quem ainda não tem plano vem marcado, e
+  // escolher já abre o form do mês em vez de cair numa tela vazia.
+  const comPlano = new Set(planos.map(p => p.clienteId))
+  const clientesDosPlanos = (clientes as any[])
+    .filter(c => c.tipo !== 'interno')
+    .map(c => ({ id: c.id, nome: c.nome, temPlano: comPlano.has(c.id) }))
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'))
   const planosDoCliente = clienteSel ? planos.filter(p => p.clienteId === clienteSel) : []
   function escolherCliente(cid: string) {
     setClienteSel(cid)
     const ps = planos.filter(p => p.clienteId === cid)
     setPlanoSel(ps[0]?.id || '') // planos vêm do mais recente ao mais antigo
+    if (cid && ps.length === 0) { setFormPlano(f => ({ ...f, clienteId: cid })); setNovoPlano(true) }
   }
 
   // Abre uma pauta clicada na visão "Hoje na produção": seleciona cliente + mês
@@ -705,7 +711,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
             style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 200, background: '#fff', cursor: 'pointer' }}>
             <option value="">Escolher cliente…</option>
-            {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}{c.temPlano ? '' : ' · sem plano'}</option>)}
           </select>
         )}
         {clienteSel && (
@@ -804,9 +810,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
                   style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, minWidth: 280, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
                   <option value="">Escolher cliente…</option>
-                  {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  {clientesDosPlanos.some(c => c.temPlano) && (
+                    <optgroup label="Com plano">
+                      {clientesDosPlanos.filter(c => c.temPlano).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </optgroup>
+                  )}
+                  {clientesDosPlanos.some(c => !c.temPlano) && (
+                    <optgroup label="Sem plano — escolher já cria">
+                      {clientesDosPlanos.filter(c => !c.temPlano).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </optgroup>
+                  )}
                 </select>
-                {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum plano ainda — clique em “+ Novo plano” para começar.</p>}
+                {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum cliente cadastrado ainda.</p>}
               </>
             ) : (
               <>
