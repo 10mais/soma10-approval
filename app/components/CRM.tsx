@@ -1814,16 +1814,16 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
 type MsgConversa = { id: string; telefone?: string; nome?: string; username?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number }
 
 // Avatar da conversa: foto do perfil (com fallback para a inicial se faltar/quebrar)
-function AvatarConv({ foto, nome, cor }: { foto?: string; nome: string; cor: string }) {
+function AvatarConv({ foto, nome, cor, tam = 34 }: { foto?: string; nome: string; cor: string; tam?: number }) {
   const [erro, setErro] = useState(false)
   const inicial = (nome || '?').replace('@', '').charAt(0).toUpperCase()
   return (
-    <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>
+    <span style={{ width: tam, height: tam, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: tam < 30 ? 11 : 13 }}>
       {foto && !erro ? <img src={foto} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
     </span>
   )
 }
-type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string; editada?: boolean }
+type MsgItem = { id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string; autorFoto?: string; tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'; midiaUrl?: string; mimetype?: string; fileName?: string; editada?: boolean }
 
 // Mídia recebida do WhatsApp NUNCA é exibida pela URL crua do Blob — sempre pelo
 // proxy autenticado (funciona com store privado OU público; exige login).
@@ -2145,8 +2145,12 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
               {mensagens.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
                 : mensagens.map(m => {
                   const textoVisivel = m.midiaUrl && ehRotuloMidia(m.texto) ? '' : m.texto
+                  // No grupo, mostra quem falou (avatar ao lado da bolha).
+                  const comAutor = !!(conversaSel as any)?.grupo && m.de === 'cliente'
                   return (
-                  <div key={m.id} style={{ alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '78%', padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <div key={m.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                  {comAutor && <AvatarConv foto={m.autorFoto} nome={m.autor || '?'} cor={cfg.cor} tam={26} />}
+                  <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
                     {m.midiaUrl && m.tipo === 'imagem' && (
                       <a href={midiaSrc(m.midiaUrl)} target="_blank" rel="noreferrer" title="Abrir/baixar imagem">
                         <img src={midiaSrc(m.midiaUrl)} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
@@ -2180,6 +2184,7 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                         )}
                       </span>
                     )}
+                  </div>
                   </div>
                   )
                 })}

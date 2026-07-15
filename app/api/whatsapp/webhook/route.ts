@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, nomeGrupoEvolution, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, infoGrupoEvolution, ehMensagemSistema, resolverMencoes, lembrarNomeWa, fotoWaCache, WaConversa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
@@ -38,20 +38,37 @@ async function processarEvolution(body: any): Promise<boolean> {
     const daEquipe = !!d?.key?.fromMe // saiu do nosso número (sistema, celular ou WhatsApp Web)
     const tel = jid.split('@')[0]
     if (!tel) continue
+    // Evento de sistema (apagar mensagem, chave de sessão) não vira balão.
+    if (ehMensagemSistema(d?.message)) continue
     // Eco do que o sistema acabou de enviar: mesmo key.id já gravado — ignora.
     const msgId = d?.key?.id || uuid()
     if (daEquipe && await mensagemExiste(tel, msgId)) continue
-    const texto = textoMensagemEvolution(d?.message) || '[mensagem]'
+    // Quem falou: no grupo é o `participant`; no 1:1 é o próprio número.
+    const autorId = String(d?.key?.participant || d?.participant || '').split('@')[0]
+    if (!daEquipe && d?.pushName && (autorId || tel)) await lembrarNomeWa(autorId || tel, d.pushName)
+    const texto = await resolverMencoes(textoMensagemEvolution(d?.message) || '[mensagem]', d?.message)
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
     const tipoMidia = tipoMidiaEvolution(d?.message)
     const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
-    // Grupo: nome da conversa = assunto do grupo (busca uma vez); autor por mensagem.
-    // Individual: foto de perfil + nome do contato (pushName) — mas NUNCA a partir
-    // de uma mensagem nossa: aí o pushName é o nome do NOSSO número.
+    // Grupo: nome/foto = assunto e imagem do grupo (busca uma vez); quem falou vai
+    // por mensagem. Individual: foto e nome do contato (pushName) — mas NUNCA a
+    // partir de uma mensagem nossa: aí o pushName é o nome do NOSSO número.
     let foto: string | undefined
     let nomeConversa: string | undefined
+    let autorFoto: string | undefined
     if (ehGrupo) {
-      nomeConversa = (existente as any)?.grupo && existente?.nome ? existente.nome : ((await nomeGrupoEvolution(jid)) || `Grupo ${tel.slice(-6)}`)
+      // Busca nome/foto/participantes UMA vez por grupo (flag com validade) —
+      // sem isso, um grupo sem foto faria uma chamada por mensagem.
+      const chaveInfo = `wa:grupoinfo:${tel.replace(/\D/g, '')}`
+      const jaBuscou = await redis.get(chaveInfo).catch(() => null)
+      if (!jaBuscou || !existente?.nome) {
+        const g = await infoGrupoEvolution(jid)
+        nomeConversa = g.nome || existente?.nome || `Grupo ${tel.slice(-6)}`
+        foto = g.foto || (existente as any)?.foto
+        await redis.set(chaveInfo, 1, { ex: 60 * 60 * 24 * 7 }).catch(() => {})
+      } else { nomeConversa = existente.nome }
+      // Avatar de quem falou (cacheado por participante)
+      if (!daEquipe && autorId) autorFoto = await fotoWaCache(autorId)
     } else {
       if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
       if (!daEquipe) nomeConversa = d?.pushName
@@ -64,6 +81,7 @@ async function processarEvolution(body: any): Promise<boolean> {
         // Fora do sistema não dá para saber QUEM da equipe digitou; marca a origem
         // para a auditoria do atendimento não confundir com envio pelo Soma10.
         ...(daEquipe ? { autor: 'via celular/Web' } : (ehGrupo && d?.pushName ? { autor: d.pushName } : {})),
+        ...(autorFoto ? { autorFoto } : {}),
         ...(tipoMidia ? { tipo: tipoMidia } : {}),
       },
       { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any)

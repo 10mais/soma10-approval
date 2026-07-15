@@ -16,6 +16,7 @@ import { put, get } from '@vercel/blob'
 
 export type WaMensagem = {
   id: string; de: 'cliente' | 'agente'; texto: string; em: string; autor?: string
+  autorFoto?: string // grupo: foto de quem falou (a conversa tem N pessoas)
   // Mídia recebida (F1 do inbox rico): bytes ficam no Blob; aqui só a referência.
   tipo?: 'imagem' | 'video' | 'audio' | 'documento' | 'figurinha'
   midiaUrl?: string
@@ -49,48 +50,148 @@ export function normalizarUrlEvolution(u?: string): string {
   return /^https?:\/\//i.test(s) ? s : `https://${s}`
 }
 
-// Busca a URL da foto de perfil do contato no WhatsApp (Evolution). Best-effort.
-export async function fotoPerfilEvolution(numero: string): Promise<string | null> {
+// Busca a URL da foto de perfil no WhatsApp (Evolution). Aceita telefone OU jid
+// completo (grupo `...@g.us` precisa do jid). Best-effort.
+export async function fotoPerfilEvolution(numeroOuJid: string): Promise<string | null> {
   if (!evolutionConfigurado()) return null
   try {
+    const alvo = (numeroOuJid || '').includes('@') ? numeroOuJid : (numeroOuJid || '').replace(/\D/g, '')
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${process.env.EVOLUTION_INSTANCE}`, {
       method: 'POST',
       headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: (numero || '').replace(/\D/g, '') }),
+      body: JSON.stringify({ number: alvo }),
     })
     const d = await r.json().catch(() => ({} as any))
     return d?.profilePictureUrl || null
   } catch { return null }
 }
 
-// Nome (subject) de um grupo — best-effort, usado ao criar a conversa do grupo.
-export async function nomeGrupoEvolution(jid: string): Promise<string | null> {
-  if (!evolutionConfigurado() || !jid.endsWith('@g.us')) return null
+// Nome (subject) + foto de um grupo — best-effort, ao criar a conversa do grupo.
+export async function infoGrupoEvolution(jid: string): Promise<{ nome?: string; foto?: string }> {
+  if (!evolutionConfigurado() || !jid.endsWith('@g.us')) return {}
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const r = await fetch(`${base}/group/findGroupInfos/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(jid)}`, {
       headers: { apikey: process.env.EVOLUTION_API_KEY as string },
     })
     const d = await r.json().catch(() => ({} as any))
-    return d?.subject || null
-  } catch { return null }
+    const g = Array.isArray(d) ? d[0] : d
+    // Alguns hosts não trazem a foto aqui; cai no fetchProfilePictureUrl com o jid.
+    const foto = g?.pictureUrl || (await fotoPerfilEvolution(jid)) || undefined
+    // Aprende os nomes dos participantes (resolve @menções depois).
+    for (const p of (g?.participants || [])) {
+      const pid = String(p?.id || '').split('@')[0]
+      const nome = p?.name || p?.notify || p?.subject
+      if (pid && nome) await lembrarNomeWa(pid, String(nome))
+    }
+    return { nome: g?.subject || undefined, foto }
+  } catch { return {} }
+}
+
+// Agenda de nomes aprendida do próprio WhatsApp (pushName / participantes de
+// grupo). Serve para trocar "@140978107240462" pelo nome da pessoa e para
+// mostrar quem falou no grupo. Chave `wa:nome:{id}` (id = telefone ou LID).
+export async function lembrarNomeWa(id: string, nome: string) {
+  const k = (id || '').replace(/\D/g, '')
+  if (!k || !nome?.trim()) return
+  try { await redis.set(`wa:nome:${k}`, nome.trim().slice(0, 80), { ex: 60 * 60 * 24 * 120 }) } catch { /* cache é opcional */ }
+}
+export async function nomeWa(id: string): Promise<string | null> {
+  const k = (id || '').replace(/\D/g, '')
+  if (!k) return null
+  try { return (await redis.get<string>(`wa:nome:${k}`)) || null } catch { return null }
+}
+// Foto de um participante, cacheada (evita bater no Evolution a cada mensagem).
+export async function fotoWaCache(id: string): Promise<string | undefined> {
+  const k = (id || '').replace(/\D/g, '')
+  if (!k) return undefined
+  try {
+    const cache = await redis.get<string>(`wa:foto:${k}`)
+    if (cache) return cache === 'X' ? undefined : cache // 'X' = já tentou e não tem
+    const url = (await fotoPerfilEvolution(k)) || ''
+    await redis.set(`wa:foto:${k}`, url || 'X', { ex: 60 * 60 * 24 * 15 })
+    return url || undefined
+  } catch { return undefined }
+}
+
+// Troca as @menções (que vêm como @<id> no texto) pelo nome conhecido.
+export async function resolverMencoes(texto: string, message: any): Promise<string> {
+  try {
+    const m = desembrulhar(message)
+    const ctx = m?.extendedTextMessage?.contextInfo || m?.imageMessage?.contextInfo || m?.videoMessage?.contextInfo || m?.documentMessage?.contextInfo
+    const jids: string[] = ctx?.mentionedJid || []
+    if (!jids.length || !texto) return texto
+    let out = texto
+    for (const jid of jids) {
+      const id = String(jid).split('@')[0]
+      if (!id) continue
+      const nome = await nomeWa(id)
+      if (nome) out = out.split(`@${id}`).join(`@${nome}`)
+    }
+    return out
+  } catch { return texto }
+}
+
+// Vários tipos chegam EMBRULHADOS (mensagem temporária, ver-uma-vez, documento
+// com legenda, editada). Sem desembrulhar, o conteúdo real fica invisível — era
+// a causa dos balões "[mensagem]" e de mídia não detectada. Desembrulha até o fim.
+export function desembrulhar(message: any): any {
+  let m = message
+  for (let i = 0; i < 6 && m; i++) {
+    const dentro = m.ephemeralMessage?.message
+      || m.viewOnceMessage?.message
+      || m.viewOnceMessageV2?.message
+      || m.viewOnceMessageV2Extension?.message
+      || m.documentWithCaptionMessage?.message
+      || m.editedMessage?.message
+      || m.protocolMessage?.editedMessage
+      || m.deviceSentMessage?.message
+    if (!dentro) break
+    m = dentro
+  }
+  return m
+}
+
+// Evento de sistema (apagar mensagem, chave de sessão, etc.) — não vira balão.
+export function ehMensagemSistema(message: any): boolean {
+  const m = desembrulhar(message)
+  if (!m) return true
+  if (m.protocolMessage || m.senderKeyDistributionMessage || m.messageContextInfo) {
+    // Só é sistema se NÃO houver conteúdo de verdade junto
+    return !(m.conversation || m.extendedTextMessage || noMidiaEvolution(m) || m.reactionMessage)
+  }
+  return false
 }
 
 // Extrai o texto de um payload de mensagem do Evolution (messages.upsert).
-// Cobre texto simples, extendedText e legenda de mídia; mídia sem legenda vira rótulo.
+// Cobre texto, extendedText, legenda de mídia e os tipos "sem texto" (enquete,
+// contato, localização, reação…); mídia sem legenda vira rótulo.
 export function textoMensagemEvolution(message: any): string {
-  if (!message) return ''
-  if (typeof message.conversation === 'string') return message.conversation
-  if (message.extendedTextMessage?.text) return message.extendedTextMessage.text
-  const cap = message.imageMessage?.caption || message.videoMessage?.caption || message.documentMessage?.caption
+  const m = desembrulhar(message)
+  if (!m) return ''
+  if (typeof m.conversation === 'string' && m.conversation) return m.conversation
+  if (m.extendedTextMessage?.text) return m.extendedTextMessage.text
+  const cap = m.imageMessage?.caption || m.videoMessage?.caption || m.documentMessage?.caption
   if (cap) return cap
-  if (message.imageMessage) return '[imagem]'
-  if (message.videoMessage) return '[vídeo]'
-  if (message.audioMessage) return '[áudio]'
-  if (message.documentMessage) return '[documento]'
-  if (message.stickerMessage) return '[figurinha]'
-  if (message.locationMessage) return '[localização]'
+  if (m.imageMessage) return '[imagem]'
+  if (m.videoMessage || m.ptvMessage) return '[vídeo]'
+  if (m.audioMessage) return '[áudio]'
+  if (m.documentMessage) return `[documento${m.documentMessage.fileName ? `: ${m.documentMessage.fileName}` : ''}]`
+  if (m.stickerMessage) return '[figurinha]'
+  if (m.locationMessage) return '[localização]'
+  if (m.liveLocationMessage) return '[localização ao vivo]'
+  if (m.reactionMessage) return `[reagiu: ${m.reactionMessage.text || ''}]`
+  if (m.contactMessage) return `[contato: ${m.contactMessage.displayName || ''}]`
+  if (m.contactsArrayMessage) return `[contatos: ${(m.contactsArrayMessage.contacts || []).length}]`
+  const enquete = m.pollCreationMessage || m.pollCreationMessageV2 || m.pollCreationMessageV3
+  if (enquete) return `[enquete: ${enquete.name || ''}]`
+  if (m.pollUpdateMessage) return '[voto em enquete]'
+  if (m.listMessage) return m.listMessage.description || m.listMessage.title || '[lista]'
+  if (m.buttonsMessage) return m.buttonsMessage.contentText || '[botões]'
+  if (m.templateMessage) return m.templateMessage.hydratedTemplate?.hydratedContentText || '[modelo]'
+  if (m.listResponseMessage) return m.listResponseMessage.title || '[resposta de lista]'
+  if (m.buttonsResponseMessage) return m.buttonsResponseMessage.selectedDisplayText || '[resposta]'
   return ''
 }
 
@@ -101,13 +202,16 @@ export function tipoMidiaEvolution(message: any): NonNullable<WaMensagem['tipo']
 }
 
 // Nó de mídia do payload do Evolution (imagem/vídeo/áudio/documento/figurinha).
+// Desembrulha antes: ver-uma-vez e documento-com-legenda escondem a mídia dentro.
 function noMidiaEvolution(message: any): { tipo: NonNullable<WaMensagem['tipo']>; no: any } | null {
-  if (!message) return null
-  if (message.imageMessage) return { tipo: 'imagem', no: message.imageMessage }
-  if (message.videoMessage) return { tipo: 'video', no: message.videoMessage }
-  if (message.audioMessage) return { tipo: 'audio', no: message.audioMessage }
-  if (message.documentMessage) return { tipo: 'documento', no: message.documentMessage }
-  if (message.stickerMessage) return { tipo: 'figurinha', no: message.stickerMessage }
+  const m = desembrulhar(message)
+  if (!m) return null
+  if (m.imageMessage) return { tipo: 'imagem', no: m.imageMessage }
+  if (m.videoMessage) return { tipo: 'video', no: m.videoMessage }
+  if (m.ptvMessage) return { tipo: 'video', no: m.ptvMessage } // vídeo-recado (redondo)
+  if (m.audioMessage) return { tipo: 'audio', no: m.audioMessage }
+  if (m.documentMessage) return { tipo: 'documento', no: m.documentMessage }
+  if (m.stickerMessage) return { tipo: 'figurinha', no: m.stickerMessage }
   return null
 }
 
