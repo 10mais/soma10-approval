@@ -1838,6 +1838,16 @@ function comLinks(texto: string) {
   )
 }
 
+// Nome sugerido ao baixar uma mídia sem nome original (ex.: foto-15-07-2026-1432.jpg)
+function nomeArquivoMidia(m: { tipo?: string; mimetype?: string; em: string }): string {
+  const d = new Date(m.em)
+  const p = (n: number) => String(n).padStart(2, '0')
+  const carimbo = `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}-${p(d.getHours())}${p(d.getMinutes())}`
+  const ext = (m.mimetype || '').split('/')[1]?.split(';')[0] || 'jpg'
+  const base = m.tipo === 'imagem' ? 'foto' : m.tipo === 'video' ? 'video' : m.tipo === 'audio' ? 'audio' : 'arquivo'
+  return `${base}-${carimbo}.${ext}`
+}
+
 // Rótulos "[imagem]"/"[áudio]"… somem quando a mídia em si é exibida na bolha.
 const ehRotuloMidia = (t: string) => /^\[[^\]]+\]$/.test((t || '').trim())
 type CanalMsg = 'whatsapp' | 'instagram'
@@ -1904,6 +1914,14 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
   // Encaminhar (escolhe a conversa destino na lista) e editar mensagem enviada (~15 min)
   const [encaminhar, setEncaminhar] = useState<MsgItem | null>(null)
   const [editando, setEditando] = useState<MsgItem | null>(null)
+  // Visualizador de imagem: abre AQUI (não em outra guia) e permite baixar.
+  const [lightbox, setLightbox] = useState<{ url: string; nome: string } | null>(null)
+  useEffect(() => {
+    if (!lightbox) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null) }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [lightbox])
 
   const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id)
 
@@ -2152,9 +2170,10 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                   {comAutor && <AvatarConv foto={m.autorFoto} nome={m.autor || '?'} cor={cfg.cor} tam={26} />}
                   <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
                     {m.midiaUrl && m.tipo === 'imagem' && (
-                      <a href={midiaSrc(m.midiaUrl)} target="_blank" rel="noreferrer" title="Abrir/baixar imagem">
+                      <button type="button" onClick={() => setLightbox({ url: midiaSrc(m.midiaUrl!), nome: m.fileName || nomeArquivoMidia(m) })} title="Ver imagem"
+                        style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', display: 'block', width: '100%' }}>
                         <img src={midiaSrc(m.midiaUrl)} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
-                      </a>
+                      </button>
                     )}
                     {m.midiaUrl && m.tipo === 'figurinha' && (
                       <img src={midiaSrc(m.midiaUrl)} alt="" style={{ width: 110, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
@@ -2166,7 +2185,7 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                       <audio src={midiaSrc(m.midiaUrl)} controls preload="metadata" style={{ maxWidth: 240, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                     )}
                     {m.midiaUrl && m.tipo === 'documento' && (
-                      <a href={midiaSrc(m.midiaUrl)} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
+                      <a href={midiaSrc(m.midiaUrl)} download={m.fileName || nomeArquivoMidia(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6" /></svg>
                         {m.fileName || 'Baixar documento'}
                       </a>
@@ -2237,6 +2256,24 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
           </>)}
         </div>
       </div>
+
+      {/* Visualizador de imagem — abre sobre a conversa (sem perder o contexto).
+          Fecha no ESC, no X ou clicando fora; permite baixar no computador. */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 24, flexDirection: 'column', gap: 12 }}>
+          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'flex-end' }}>
+            <a href={lightbox.url} download={lightbox.nome} title="Baixar no computador"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#111', borderRadius: 9, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+              Baixar
+            </a>
+            <button onClick={() => setLightbox(null)} title="Fechar (Esc)"
+              style={{ width: 34, height: 34, borderRadius: 9, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>×</button>
+          </div>
+          <img onClick={e => e.stopPropagation()} src={lightbox.url} alt=""
+            style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', borderRadius: 10, background: '#fff' }} />
+        </div>
+      )}
     </div>
   )
 }
