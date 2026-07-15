@@ -7,7 +7,8 @@
 > de seções antigas, vale o que está lá. Ela cobre: 3ª instância (**Deny Turismo**,
 > perfil `turismo`), marca perfil-aware (**Soma10 Agency/Clinic/App**), inbox de
 > WhatsApp rico (mídia/grupos/encaminhar/editar) e o CRM de clínica unificado.
-> Pendências abertas: **§38.9**.
+> **§38.0** = modelo mental (um código, N instâncias — sempre saber para QUAL
+> instância é o pedido). **§38.9** = mapa de "onde mexer". **§38.10** = pendências.
 
 ## 1. Visão geral e acesso
 
@@ -1056,6 +1057,11 @@ Outros pontos do inbox:
 - **Excluir conversa** no inbox (`DELETE /api/crm/mensagens?tel=`, permissão
   CRM/excluir): apaga `wa:msgs` + `wa:conversa` + índice. Se o número escrever de
   novo, o webhook recria a conversa limpa.
+- **Inbox → venda**: "Vincular contato" virou seletor **com busca** (o `<select>`
+  com a base inteira era inviável); com o contato vinculado, o header mostra
+  **"Abrir oportunidade"** → abre a Nova oportunidade já com o contato escolhido
+  (`NovoNegocioModal` aceita `contatoIdInicial`). Depois de salvar, o atendente
+  **fica na conversa** (não pula para o Funil — estava atendendo).
 
 ### 38.6 Clínica — catálogo, pós-atendimento e jornada
 - **Procedimentos e Métodos**: aba própria do perfil clínica (`/api/procedimentos`,
@@ -1088,7 +1094,21 @@ Outros pontos do inbox:
   a rota `/api/assistente/chat` aceita `imagens[]` e monta **blocos de imagem** para
   a visão do modelo.
 
-### 38.9 Pendências (próxima sessão)
+### 38.9 Onde mexer (mapa rápido do que esta sessão tocou)
+| Assunto | Arquivo(s) |
+|---|---|
+| Perfis, abas ocultas, `nomeSistema()` | `lib/perfisInstanciaCatalogo.ts` · `lib/perfisInstancia.ts` (applier) |
+| Marca perfil-aware | `app/api/marca/route.ts` · `app/components/SystemName.tsx` · `lib/cache.ts` (`getPerfilCache`) |
+| WhatsApp (transporte, parser, mídia, grupos) | `lib/whatsapp.ts` (grande — `desembrulhar`, `capturarMidiaEvolution`, `putBlobAdaptativo`, `lerBlobMidia`, `atualizarMensagem`, `mensagemExiste`) |
+| WhatsApp (entrada/saída) | `app/api/whatsapp/webhook/route.ts` · `.../midia/route.ts` (proxy) · `.../conexao/route.ts` (QR + registra webhook com base64) · `app/api/crm/mensagens/route.ts` |
+| CRM inteiro (funil, contatos, ficha, inbox) | `app/components/CRM.tsx` (**~2.300 linhas** — `ContatosLista`, `ContatoModal`, `NovoNegocioModal`, `NegocioModal`, `MensagensInbox`) |
+| Jornada/abordagens + lembrete | `app/api/crm/contatos/route.ts` (PUT `novoPasso`/`togglePasso`/`removerPasso`) · `app/api/cron/tarefas/route.ts` |
+| Clínica: catálogo e agenda | `app/api/procedimentos/route.ts` · `app/components/Procedimentos.tsx` · `app/components/Agenda.tsx` · `app/api/agenda/route.ts` |
+| Turismo | `app/components/{Excursoes,Reservas,Onibus,RoteiroExcursao}.tsx` · `app/api/{excursoes,reservas,onibus}/route.ts` · `lib/{reservas,financeiroReserva,layoutsOnibus}.ts` |
+| Permissões | `lib/permissoesGranular.ts` (`ABAS_PERM`) · `app/api/permissoes-granular/route.ts` · `renderGranular()` no dashboard |
+| Nav, abas, gating, perfil | `app/dashboard/page.tsx` (**~4.500 linhas** — `NavBtn`, `ABA_GRUPO`, `abasOcultas`, `perfilClinica`/`perfilTurismo`) |
+
+### 38.10 Pendências (próxima sessão)
 - **VALIDAR EM PRODUÇÃO (só o dono consegue — precisa de WhatsApp/dado real):**
   mídia nova abrindo no inbox da Norah, encaminhar, editar, @menção com nome, foto do
   grupo; e o lembrete de abordagem chegando no comercial.
