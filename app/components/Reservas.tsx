@@ -1,8 +1,9 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { LayoutVeiculo, Poltrona, capacidadeLayout } from '@/lib/layoutVeiculo'
+import { LayoutVeiculo, Poltrona, capacidadeLayout, numerosPoltronas } from '@/lib/layoutVeiculo'
 import { valorDaReserva, vendePoltrona } from '@/lib/pacoteViagem'
+import { pendenciasDoPassageiro } from '@/lib/manifesto'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
 import { v4 as uuid } from 'uuid'
 
@@ -10,8 +11,10 @@ import { v4 as uuid } from 'uuid'
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
 
 type Veiculo = { id: string; nome: string; layout: LayoutVeiculo }
-type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string }
-type Passageiro = { nome: string; cpf?: string; nascimento?: string; poltrona?: string }
+type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string; internacional?: boolean }
+// Passageiro vem de lib/reservas: é o mesmo que a rota grava e que vira a LISTA
+// oficial. Redeclarar aqui já deixou a tela para trás dos campos do manifesto.
+import type { Passageiro } from '@/lib/reservas'
 type Reserva = { id: string; viagemId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
 type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string; financeiro?: FinanceiroReserva }
 
@@ -161,24 +164,37 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
       navigator.clipboard?.writeText(url).then(() => toast('Link copiado! Envie ao cliente para escolher a poltrona.', 'sucesso')).catch(() => toast(url, 'info'))
     } else toast(r?.error || 'Falha ao gerar o link.', 'erro')
   }
-  // Clicar numa poltrona no form: adiciona/remove um passageiro naquele assento.
+  // Clicar numa poltrona: ATRIBUI o assento a quem ainda não tem (ou libera, se já
+  // for dele). Não apaga passageiro — os dados dele viram a lista oficial, jogar
+  // fora num clique errado é perda real. Quem cria/remove passageiro é a lista.
   function togglePoltrona(n: string) {
     setForm(f => {
       if (!f) return f
-      const existe = f.passageiros.find(p => p.poltrona === n)
-      if (existe) return { ...f, passageiros: f.passageiros.filter(p => p.poltrona !== n) }
-      const nome = f.passageiros.length === 0 ? f.contratanteNome : ''
-      return { ...f, passageiros: [...f.passageiros, { nome, poltrona: n }] }
+      const dono = f.passageiros.findIndex(p => p.poltrona === n)
+      if (dono >= 0) return { ...f, passageiros: f.passageiros.map((p, j) => j === dono ? { ...p, poltrona: undefined } : p) }
+      const semAssento = f.passageiros.findIndex(p => !p.poltrona)
+      if (semAssento >= 0) return { ...f, passageiros: f.passageiros.map((p, j) => j === semAssento ? { ...p, poltrona: n } : p) }
+      // Todos já sentados: o clique cria mais um passageiro naquele assento.
+      return { ...f, passageiros: [...f.passageiros, { nome: '', poltrona: n }] }
     })
   }
   const setPax = (i: number, patch: Partial<Passageiro>) => setForm(f => f && ({ ...f, passageiros: f.passageiros.map((p, j) => j === i ? { ...p, ...patch } : p) }))
+  // O 1º passageiro costuma ser o próprio contratante — poupa redigitar.
+  const addPax = () => setForm(f => f && ({ ...f, passageiros: [...f.passageiros, { nome: f.passageiros.length === 0 ? f.contratanteNome : '' }] }))
+  const rmPax = (i: number) => setForm(f => f && ({ ...f, passageiros: f.passageiros.filter((_, j) => j !== i) }))
 
   const valorForm = viagem ? valorDaReserva(viagem, form?.passageiros.length || 0, Number(form?.desconto) || 0) : 0
+  // Avisos da ficha: quem ainda não sentou e quem não entra na lista oficial.
+  const semPoltrona = (form?.passageiros || []).filter(p => !p.poltrona).length
+  const incompletos = (form?.passageiros || []).filter(p => p.nome.trim() && pendenciasDoPassageiro(p, !!viagem?.internacional).length).length
 
   async function salvar() {
     if (!form || !viagem || salvando) return
     if (!form.contratanteNome.trim()) { toast('Informe o contratante.', 'erro'); return }
-    if (!form.passageiros.length) { toast('Selecione ao menos uma poltrona.', 'erro'); return }
+    // A POLTRONA não entra aqui: o passageiro é cadastrado na venda e o assento é
+    // atribuído depois. Exigir assento travava a reserva quando a viagem ainda não
+    // tinha veículo — não havia mapa para clicar, e não havia como salvar.
+    if (!form.passageiros.length) { toast('Adicione ao menos um passageiro.', 'erro'); return }
     if (form.passageiros.some(p => !p.nome.trim())) { toast('Preencha o nome de todos os passageiros.', 'erro'); return }
     setSalvando(true)
     const corpo: any = { ...form, viagemId: viagem.id, desconto: Number(form.desconto) || 0, vendedorEmail: meuEmail, vendedorNome: meuNome, financeiro: form.financeiro ? { ...form.financeiro, valorTotal: valorForm } : undefined }
@@ -267,28 +283,72 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
             <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{viagem.titulo} · {fmtData(viagem.dataIda)} · {fmtBRL(viagem.valorPacote)}/pessoa</p>
             <input value={form.contratanteNome} onChange={e => setForm(f => f && ({ ...f, contratanteNome: e.target.value, passageiros: f.passageiros.map((p, i) => i === 0 && !p.nome ? { ...p, nome: e.target.value } : p) }))} placeholder="Contratante (nome) *" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', fontSize: 14, marginBottom: 12 }} />
 
-            {layout ? (
+            {/* Passageiros — a LISTA manda. O assento é opcional e vem depois. */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Passageiros ({form.passageiros.length})</label>
+                {semPoltrona > 0 && layout && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#a16207', background: '#fef9c3', borderRadius: 999, padding: '2px 8px' }}>{semPoltrona} sem poltrona</span>}
+                {incompletos > 0 && <span title="Faltam dados para a lista do DAER/ANTT" style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fff7ed', borderRadius: 999, padding: '2px 8px' }}>{incompletos} incompleto(s) para a lista</span>}
+                <span style={{ flex: 1 }} />
+                <button type="button" onClick={addPax} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Passageiro</button>
+              </div>
+              <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>
+                Estes dados viram a lista {viagem.internacional ? 'internacional (passaporte)' : 'do DAER/ANTT'}. A poltrona pode ficar para depois.
+              </p>
+
+              {form.passageiros.length === 0 && (
+                <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#ccc' }}>Nenhum passageiro. Clique em &quot;+ Passageiro&quot; para começar.</p>
+              )}
+
+              {form.passageiros.map((p, i) => {
+                const falta = pendenciasDoPassageiro(p, !!viagem.internacional)
+                return (
+                  <div key={i} style={{ border: '1px solid #eee', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#999', width: 16 }}>{i + 1}</span>
+                      <input value={p.nome} onChange={e => setPax(i, { nome: e.target.value })} placeholder="Nome completo (como no documento)" style={{ ...inputStyle, flex: 2, minWidth: 180 }} />
+                      <input type="date" value={p.nascimento || ''} onChange={e => setPax(i, { nascimento: e.target.value })} title="Nascimento" style={{ ...inputStyle, width: 145 }} />
+                      {/* Poltrona: só faz sentido com croqui, e é sempre opcional */}
+                      {layout && (
+                        <select value={p.poltrona || ''} onChange={e => setPax(i, { poltrona: e.target.value || undefined })} title="Poltrona (opcional)" style={{ ...inputStyle, width: 92, background: '#fff' }}>
+                          <option value="">Poltrona</option>
+                          {numerosPoltronas(layout)
+                            .filter(n => !ocupadas.has(n) && (!selecionadas.has(n) || p.poltrona === n))
+                            .sort((a, b) => Number(a) - Number(b))
+                            .map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      )}
+                      <button type="button" onClick={() => rmPax(i)} title="Remover passageiro" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <input value={p.cpf || ''} onChange={e => setPax(i, { cpf: e.target.value })} placeholder="CPF" style={{ ...inputStyle, flex: 1, minWidth: 130 }} />
+                      <input value={p.rg || ''} onChange={e => setPax(i, { rg: e.target.value })} placeholder="RG" style={{ ...inputStyle, flex: 1, minWidth: 110 }} />
+                      <input value={p.rgOrgao || ''} onChange={e => setPax(i, { rgOrgao: e.target.value })} placeholder="Órgão (SSP/RS)" style={{ ...inputStyle, width: 120 }} />
+                    </div>
+                    {viagem.internacional && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                        <input value={p.passaporte || ''} onChange={e => setPax(i, { passaporte: e.target.value })} placeholder="Passaporte" style={{ ...inputStyle, flex: 1, minWidth: 130 }} />
+                        <input type="date" value={p.passaporteValidade || ''} onChange={e => setPax(i, { passaporteValidade: e.target.value })} title="Validade do passaporte" style={{ ...inputStyle, width: 145 }} />
+                        <input value={p.nacionalidade || ''} onChange={e => setPax(i, { nacionalidade: e.target.value })} placeholder="Nacionalidade" style={{ ...inputStyle, flex: 1, minWidth: 120 }} />
+                      </div>
+                    )}
+                    {falta.length > 0 && p.nome.trim() && (
+                      <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#b45309' }}>Falta para a lista: {falta.join(', ')}.</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Mapa: atalho para atribuir assento — não é o caminho único */}
+            {comPoltrona && (layout ? (
               <>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Clique nas poltronas livres para escolher</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Poltronas — clique para atribuir a quem ainda não tem</label>
                 <div style={{ marginBottom: 14, overflowX: 'auto' }}>
                   <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={selecionadas} onToggle={togglePoltrona} />
                 </div>
               </>
-            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Defina o ônibus da viagem para escolher poltronas.</p>}
-
-            {form.passageiros.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Passageiros ({form.passageiros.length})</label>
-                {form.passageiros.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ width: 34, textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#111', background: '#f1f5f9', borderRadius: 6, padding: '6px 0', flexShrink: 0 }}>{p.poltrona}</span>
-                    <input value={p.nome} onChange={e => setPax(i, { nome: e.target.value })} placeholder="Nome do passageiro" style={{ ...inputStyle, flex: 2, minWidth: 140 }} />
-                    <input value={p.cpf || ''} onChange={e => setPax(i, { cpf: e.target.value })} placeholder="CPF" style={{ ...inputStyle, flex: 1, minWidth: 100 }} />
-                    <input type="date" value={p.nascimento || ''} onChange={e => setPax(i, { nascimento: e.target.value })} title="Nascimento" style={{ ...inputStyle, width: 140 }} />
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Sem veículo definido na viagem — dá para cadastrar os passageiros agora e atribuir as poltronas depois.</p>)}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>

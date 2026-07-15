@@ -21,7 +21,7 @@ type Motorista = { nome: string; cpf?: string; cnh?: string; email?: string }
 type MotoristaCad = { id: string; nome: string; cnh?: string; email: string }
 type Viagem = {
   id: string; titulo: string; tipo?: TipoViagem; pacoteId?: string
-  roteiro?: string; dataIda: string; dataVolta?: string
+  roteiro?: string; internacional?: boolean; dataIda: string; dataVolta?: string
   horaSaida?: string; horaRetorno?: string
   veiculoId?: string; motoristas?: Motorista[]; valorPacote: number
   valorFechado?: number; contratante?: string; descontoPadrao?: number
@@ -46,7 +46,7 @@ const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[1]
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : ''
 
-const vazio = (): Form => ({ titulo: '', tipo: 'pacote', pacoteId: '', roteiro: '', dataIda: '', dataVolta: '', horaSaida: '', horaRetorno: '', veiculoId: '', motoristas: [], valorPacote: '', valorFechado: '', contratante: '', descontoPadrao: '', inclusos: [], status: 'aberta', observacoes: '', inclusoNovo: '' })
+const vazio = (): Form => ({ titulo: '', tipo: 'pacote', pacoteId: '', roteiro: '', internacional: false, dataIda: '', dataVolta: '', horaSaida: '', horaRetorno: '', veiculoId: '', motoristas: [], valorPacote: '', valorFechado: '', contratante: '', descontoPadrao: '', inclusos: [], status: 'aberta', observacoes: '', inclusoNovo: '' })
 
 export default function Viagens({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
   const [lista, setLista] = useState<Viagem[]>([])
@@ -113,10 +113,29 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
 
   const vagasDe = (veiculoId?: string) => { const v = veiculos.find(x => x.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
 
+  // Lista oficial de passageiros (DAER/ANTT ou internacional). Confere as
+  // pendências ANTES de baixar: entregar lista incompleta ao órgão é retrabalho na
+  // véspera — melhor descobrir aqui e deixar o dono decidir.
+  async function exportarLista(v: Viagem) {
+    const d = await fetch(`/api/viagens/manifesto?id=${v.id}&check=1`).then(r => r.json()).catch(() => null)
+    if (!d) { toast('Falha ao conferir a lista.', 'erro'); return }
+    if (!d.total) { toast('Esta viagem ainda não tem passageiros.', 'erro'); return }
+    if (d.incompletos) {
+      const quem = (d.quem || []).slice(0, 3).map((q: any) => `${q.nome} (falta ${q.falta})`).join('; ')
+      const ok = await confirmar(
+        `${d.incompletos} de ${d.total} passageiro(s) estão incompletos para a lista${d.internacional ? ' internacional' : ' do DAER/ANTT'}.\n\n${quem}${d.quem?.length > 3 ? '…' : ''}\n\nBaixar assim mesmo? As pendências saem marcadas na última coluna.`,
+        { titulo: 'Lista incompleta', okLabel: 'Baixar assim mesmo', cancelLabel: 'Voltar e completar', perigo: true },
+      )
+      if (!ok) return
+    }
+    // Same-origin: o download vem pelo Content-Disposition da rota.
+    window.location.href = `/api/viagens/manifesto?id=${v.id}`
+  }
+
   const snap = (f: Form | null) => f ? JSON.stringify({ ...f, inclusoNovo: '' }) : ''
   function abrirNovo() { const f = vazio(); setForm(f); setFormInicial(snap(f)) }
   function abrirEditar(e: Viagem) {
-    const f: Form = { id: e.id, titulo: e.titulo, tipo: e.tipo || 'pacote', pacoteId: e.pacoteId || '', roteiro: e.roteiro || '', dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', veiculoId: e.veiculoId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), valorFechado: e.valorFechado ? String(e.valorFechado) : '', contratante: e.contratante || '', descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], paradas: e.paradas || [], status: e.status, observacoes: e.observacoes || '', inclusoNovo: '' }
+    const f: Form = { id: e.id, titulo: e.titulo, tipo: e.tipo || 'pacote', pacoteId: e.pacoteId || '', roteiro: e.roteiro || '', internacional: !!e.internacional, dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', veiculoId: e.veiculoId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), valorFechado: e.valorFechado ? String(e.valorFechado) : '', contratante: e.contratante || '', descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], paradas: e.paradas || [], status: e.status, observacoes: e.observacoes || '', inclusoNovo: '' }
     setForm(f); setFormInicial(snap(f))
   }
   async function fecharForm() {
@@ -197,11 +216,14 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                     {e.motoristas && e.motoristas.length > 0 && <span>· {e.motoristas.length} motorista(s)</span>}
                   </div>
                   {e.inclusos && e.inclusos.length > 0 && <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>Inclusos: {e.inclusos.join(' · ')}</div>}
-                  {(podeEditar || (e.paradas && e.paradas.length > 0)) && (
-                    <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {(podeEditar || (e.paradas && e.paradas.length > 0)) && (
                       <button type="button" onClick={ev => { ev.stopPropagation(); setRoteiroDe(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Roteiro{e.paradas && e.paradas.length ? ` (${e.paradas.length})` : ''}</button>
-                    </div>
-                  )}
+                    )}
+                    <button type="button" onClick={ev => { ev.stopPropagation(); exportarLista(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: '#166534', background: '#dcfce7', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
+                      Exportar lista{e.internacional ? ' (internacional)' : ' (DAER/ANTT)'}
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -227,6 +249,13 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 </div>
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>{TIPOS.find(t => t.key === form.tipo)?.ajuda}</p>
               </div>
+
+              {/* Internacional muda o que a LISTA de passageiros exige */}
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#333', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!form.internacional} onChange={e => setForm(f => f && ({ ...f, internacional: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                Viagem internacional
+                <span style={{ fontSize: 11, color: '#bbb' }}>— a ficha do passageiro passa a pedir passaporte, validade e nacionalidade</span>
+              </label>
 
               {/* Pacote: escolher um modelo pronto OU cadastrar um novo na aba Pacotes */}
               {form.tipo === 'pacote' && (

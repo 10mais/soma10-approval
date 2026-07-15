@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
     tipo,
     pacoteId: tipo === 'pacote' ? (b.pacoteId || undefined) : undefined,
     roteiro: (b.roteiro ?? doPacote.roteiro ?? '').toString().slice(0, 500) || undefined,
+    internacional: !!b.internacional,
     dataIda,
     dataVolta: dataOk(String(b.dataVolta || '')) ? String(b.dataVolta) : (doPacote.dataVolta || undefined),
     horaSaida: horaOk(String(b.horaSaida || '')) ? String(b.horaSaida) : undefined,
@@ -139,6 +140,7 @@ export async function PUT(req: NextRequest) {
   if (b.titulo !== undefined) v.titulo = String(b.titulo).trim().slice(0, 140)
   if (b.tipo !== undefined && TIPOS.includes(b.tipo)) v.tipo = b.tipo
   if (b.roteiro !== undefined) v.roteiro = String(b.roteiro).slice(0, 500) || undefined
+  if (b.internacional !== undefined) v.internacional = !!b.internacional
   if (b.dataIda !== undefined && dataOk(String(b.dataIda))) v.dataIda = String(b.dataIda)
   if (b.dataVolta !== undefined) v.dataVolta = dataOk(String(b.dataVolta)) ? String(b.dataVolta) : undefined
   if (b.horaSaida !== undefined) v.horaSaida = horaOk(String(b.horaSaida)) ? String(b.horaSaida) : undefined

@@ -6,11 +6,21 @@
 
 import { FinanceiroReserva } from './financeiroReserva'
 
+// Passageiro. Estes dados viram a LISTA oficial: manifesto do DAER/ANTT (nacional)
+// ou lista internacional. Por isso o cadastro é do momento da venda — a POLTRONA
+// é de depois (pode nem ter veículo definido ainda), e por isso é opcional aqui.
+// Ver lib/manifesto.ts para o que cada lista exige.
 export type Passageiro = {
   nome: string
   cpf?: string
+  rg?: string
+  rgOrgao?: string      // órgão emissor do RG (ex.: SSP/RS)
   nascimento?: string   // YYYY-MM-DD
-  poltrona?: string     // número da poltrona no layout do ônibus
+  // Só em viagem internacional (Viagem.internacional)
+  passaporte?: string
+  passaporteValidade?: string // YYYY-MM-DD
+  nacionalidade?: string
+  poltrona?: string     // número da poltrona no croqui — ATRIBUÍDA DEPOIS, opcional
 }
 
 export type StatusReserva = 'pre-reserva' | 'confirmada' | 'cancelada'

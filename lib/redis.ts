@@ -342,6 +342,9 @@ export type Viagem = {
   pacoteId?: string    // só em tipo='pacote': de qual modelo NASCEU (a viagem COPIA;
                        // mexer no pacote depois não reescreve viagem já vendida)
   roteiro?: string
+  // Muda o que a LISTA de passageiros exige: nacional = CPF/RG; internacional =
+  // passaporte + validade + nacionalidade. Ver lib/manifesto.ts.
+  internacional?: boolean
   dataIda: string      // YYYY-MM-DD
   dataVolta?: string   // YYYY-MM-DD
   horaSaida?: string   // HH:MM — horário de saída

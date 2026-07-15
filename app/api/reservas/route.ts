@@ -6,6 +6,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
 import { valorDaReserva } from '@/lib/pacoteViagem'
 import { poltronaExiste } from '@/lib/layoutVeiculo'
+import { passageiroSalvavel } from '@/lib/manifesto'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -25,14 +26,25 @@ async function carregarTodas(): Promise<Reserva[]> {
   return (await redis.mget<(Reserva | null)[]>(...ids.map(i => `reserva:${i}`))).filter(Boolean) as Reserva[]
 }
 
+const ymd = (s: any) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? String(s) : undefined)
+
+// Os dados do passageiro viram a LISTA do DAER/ANTT (ou a internacional), então
+// são gravados por inteiro. A POLTRONA é opcional DE PROPÓSITO: o passageiro é
+// cadastrado na venda; o assento é atribuído depois (a viagem pode nem ter veículo
+// ainda). Exigir poltrona aqui trancava a reserva num beco sem saída.
 function limparPassageiros(arr: any): Passageiro[] {
   if (!Array.isArray(arr)) return []
   return arr.map((p: any) => ({
     nome: String(p?.nome || '').trim().slice(0, 120),
     cpf: (p?.cpf || '').toString().slice(0, 20) || undefined,
-    nascimento: /^\d{4}-\d{2}-\d{2}$/.test(String(p?.nascimento || '')) ? String(p.nascimento) : undefined,
+    rg: (p?.rg || '').toString().slice(0, 20) || undefined,
+    rgOrgao: (p?.rgOrgao || '').toString().slice(0, 20) || undefined,
+    nascimento: ymd(p?.nascimento),
+    passaporte: (p?.passaporte || '').toString().slice(0, 20) || undefined,
+    passaporteValidade: ymd(p?.passaporteValidade),
+    nacionalidade: (p?.nacionalidade || '').toString().slice(0, 40) || undefined,
     poltrona: (p?.poltrona || '').toString().trim() || undefined,
-  })).filter(p => p.nome).slice(0, 60)
+  })).filter(passageiroSalvavel).slice(0, 60)
 }
 
 // Valida assentos: existem no layout do ônibus da viagem e não conflitam com
