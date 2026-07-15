@@ -2,12 +2,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
-import { Pacote, usadas, restantes, statusPacote, podeConsumir } from '@/lib/pacotes'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
 type Interacao = { id: string; tipo: string; texto: string; autor: string; data: string; criadoEm: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; ultimoContato?: string }
+type ProximoPasso = { id: string; titulo: string; quando: string; nota?: string; feito?: boolean; tarefaId?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; proximosPassos?: ProximoPasso[]; ultimoContato?: string; criadoEm?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
@@ -35,12 +35,13 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
-  const [vista, setVista] = useState<'painel' | 'funil' | 'pacientes' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
+  const [vista, setVista] = useState<'painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook'>(() => (typeof window !== 'undefined' && (sessionStorage.getItem('crm_vista') as any)) || 'funil')
   useEffect(() => { try { sessionStorage.setItem('crm_vista', vista) } catch {} }, [vista])
-  // Perfil clínica: sem Empresas; 'pacientes' só existe nele (guarda o sessionStorage antigo)
+  // Clínica não tem Empresas. 'pacientes' foi unificado em Contatos — o
+  // sessionStorage antigo pode trazer essa vista, que já não existe.
   useEffect(() => {
     if (perfilClinica && vista === 'empresas') setVista('funil')
-    if (!perfilClinica && vista === 'pacientes') setVista('contatos')
+    if ((vista as string) === 'pacientes') setVista('contatos')
   }, [perfilClinica, vista])
   // "Agendar" a partir do CRM: guarda o pré-preenchimento e navega pra Agenda
   function agendarNoCrm(prefill: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) {
@@ -72,6 +73,28 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   function pararAutoScroll() {
     if (scrollTimer.current) { clearInterval(scrollTimer.current); scrollTimer.current = null }
   }
+  // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
+  // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
+  // Sai dos contatos já carregados; nada de chamada extra.
+  const [abordagensAberto, setAbordagensAberto] = useState(false)
+  const hojeYmd = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+  const abordagens = useMemo(() => {
+    const hoje = hojeYmd()
+    const fim = new Date(); fim.setDate(fim.getDate() + 7)
+    const fimYmd = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}-${String(fim.getDate()).padStart(2, '0')}`
+    const itens = contatos.flatMap(c => (c.proximosPassos || [])
+      .filter(p => !p.feito)
+      .map(p => ({ contato: c, passo: p })))
+    const atrasadas = itens.filter(i => i.passo.quando < hoje).sort((a, b) => a.passo.quando.localeCompare(b.passo.quando))
+    const deHoje = itens.filter(i => i.passo.quando === hoje)
+    const semana = itens.filter(i => i.passo.quando > hoje && i.passo.quando <= fimYmd).sort((a, b) => a.passo.quando.localeCompare(b.passo.quando))
+    return { atrasadas, hoje: deHoje, semana, urgentes: atrasadas.length + deHoje.length }
+  }, [contatos])
+  async function concluirAbordagem(contatoId: string, passoId: string) {
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contatoId, togglePasso: passoId }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) carregar(); else toast('Não foi possível concluir a abordagem.', 'erro')
+  }
+
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
   const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
@@ -158,21 +181,32 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <h2 style={{ margin: 0, fontSize: 18, color: '#111', flexShrink: 0 }}>CRM</h2>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
           {((perfilClinica
-            ? [['painel', 'Painel'], ['funil', 'Funil'], ['pacientes', 'Pacientes'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
+            ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
             : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Playbook']]
-          ) as ['painel' | 'funil' | 'pacientes' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
+          ) as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
-        {vista === 'funil' && podeEditar && (
-          <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica ? 'Nova oportunidade' : 'Novo negócio'}</button>
+        {vista === 'funil' && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Discreto: só um contador. Vira alerta quando há atrasada/para hoje. */}
+            <button onClick={() => setAbordagensAberto(true)} title="Lembretes registrados nas fichas dos contatos"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', background: '#fff', color: abordagens.urgentes ? '#b45309' : '#555', border: `1px solid ${abordagens.urgentes ? '#fde68a' : '#e0e0e0'}`, borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+              Próximas abordagens
+              {abordagens.urgentes > 0 && (
+                <span style={{ background: '#b45309', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
+              )}
+            </button>
+            {podeEditar && <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica ? 'Nova oportunidade' : 'Novo negócio'}</button>}
+          </div>
         )}
-        {(vista === 'contatos' || vista === 'pacientes') && (
+        {vista === 'contatos' && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={exportarCSV} style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
             <label style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               Importar CSV
-              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0], vista === 'pacientes' ? 'paciente' : (perfilClinica ? 'lead' : undefined)); e.target.value = '' }} />
+              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0], perfilClinica ? 'lead' : undefined); e.target.value = '' }} />
             </label>
             {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
             {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
@@ -200,10 +234,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
       {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
-      ) : vista === 'pacientes' ? (
-        <ContatosLista contatos={contatos.filter(c => c.tipo === 'paciente')} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica agendamentos={agendamentos} mostrarFrequencia onImportar={podeEditar ? (f => importarCSV(f, 'paciente')) : undefined} />
       ) : vista === 'contatos' ? (
-        <ContatosLista contatos={perfilClinica ? contatos.filter(c => c.tipo !== 'paciente') : contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
+        // Lista ÚNICA: leads e pacientes convivem aqui (o tipo vira só um selo).
+        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} agendamentos={perfilClinica ? agendamentos : undefined} mostrarFrequencia={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
@@ -261,6 +294,45 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Próximas abordagens — o que precisa ser feito HOJE e na semana, vindo
+          dos lembretes das fichas. Nada a ver com o estágio do funil. */}
+      {abordagensAberto && (
+        <div onClick={() => setAbordagensAberto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Próximas abordagens</h3>
+              <span style={{ flex: 1 }} />
+              <button onClick={() => setAbordagensAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Lembretes registrados nas fichas dos contatos. Concluir aqui dá baixa na tarefa do responsável.</p>
+            {([
+              ['Atrasadas', abordagens.atrasadas, '#b91c1c'],
+              ['Hoje', abordagens.hoje, '#b45309'],
+              ['Próximos 7 dias', abordagens.semana, '#1d4ed8'],
+            ] as [string, { contato: Contato; passo: ProximoPasso }[], string][]).map(([titulo, itens, cor]) => (
+              <div key={titulo} style={{ marginBottom: 14 }}>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 800, color: cor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo} · {itens.length}</p>
+                {itens.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Nada por aqui.</p>
+                ) : itens.map(({ contato: c, passo: p }) => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f5f5f5' }}>
+                    <button onClick={() => concluirAbordagem(c.id, p.id)} title="Marcar como feita"
+                      style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: cor, flexShrink: 0 }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
+                      <p style={{ margin: 0, fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</p>
+                    </div>
+                    <button onClick={() => { setAbordagensAberto(false); setContatoModal(c) }} title="Abrir a ficha do contato"
+                      style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0, padding: 0 }}>Abrir ficha</button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -960,41 +1032,31 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
       .then(d => setHistorico(Array.isArray(d?.agendamentos) ? d.agendamentos : []))
       .catch(() => setHistorico([]))
   }, [perfilClinica, contato?.id])
-  // Pacotes de tratamento do paciente (venda de N sessões; consumo por atendimento)
-  const [pacotes, setPacotes] = useState<Pacote[]>([])
-  const [pacoteForm, setPacoteForm] = useState<{ titulo: string; servico: string; totalSessoes: number; valor: string } | null>(null)
-  const [pacoteBusy, setPacoteBusy] = useState(false)
-  const carregarPacotes = useCallback(() => {
-    if (!perfilClinica || !contato?.id) return
-    fetch(`/api/pacotes?contatoId=${contato.id}`).then(r => r.json()).then(d => { if (Array.isArray(d?.pacotes)) setPacotes(d.pacotes) }).catch(() => {})
-  }, [perfilClinica, contato?.id])
-  useEffect(() => { carregarPacotes() }, [carregarPacotes])
-  async function venderPacote() {
-    if (!pacoteForm || !contato?.id || pacoteBusy) return
-    if (!pacoteForm.titulo.trim() || !pacoteForm.totalSessoes) { toast('Informe título e nº de sessões.', 'erro'); return }
-    setPacoteBusy(true)
-    const r = await fetch('/api/pacotes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contatoId: contato.id, pacienteNome: contato.nome, titulo: pacoteForm.titulo, servico: pacoteForm.servico, totalSessoes: pacoteForm.totalSessoes, valor: Number(pacoteForm.valor) || 0 }) }).then(x => x.json()).catch(() => null)
-    setPacoteBusy(false)
-    if (r?.ok) { setPacoteForm(null); carregarPacotes() } else toast(r?.error || 'Falha ao vender pacote.', 'erro')
-  }
-  async function pacoteAcao(id: string, body: any) {
-    const r = await fetch('/api/pacotes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) carregarPacotes(); else toast(r?.error || 'Não foi possível atualizar o pacote.', 'erro')
-  }
   const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-  // Linha do tempo de NUTRIÇÃO (toques manuais ao longo do ano) — registra na hora
+  // Conversa de WhatsApp do contato — entra no histórico agregada por dia
+  // ("3 mensagens trocadas"), senão a timeline viraria um chat.
+  const [msgsDias, setMsgsDias] = useState<{ dia: string; total: number; recebidas: number; ultima: string }[]>([])
+  useEffect(() => {
+    const tel = (contato?.telefone || '').replace(/\D/g, '')
+    if (!perfilClinica || !tel) { setMsgsDias([]); return }
+    fetch(`/api/crm/mensagens?tel=${tel}`).then(r => r.json()).then(d => {
+      const msgs: any[] = Array.isArray(d?.mensagens) ? d.mensagens : []
+      const porDia = new Map<string, { dia: string; total: number; recebidas: number; ultima: string }>()
+      for (const m of msgs) {
+        const dia = String(m.em).slice(0, 10)
+        const a = porDia.get(dia) || { dia, total: 0, recebidas: 0, ultima: m.em }
+        a.total++; if (m.de === 'cliente') a.recebidas++
+        if (new Date(m.em) > new Date(a.ultima)) a.ultima = m.em
+        porDia.set(dia, a)
+      }
+      setMsgsDias(Array.from(porDia.values()))
+    }).catch(() => setMsgsDias([]))
+  }, [perfilClinica, contato?.telefone])
+
+  // Toques manuais antigos: seguem VISÍVEIS no histórico (dado real já registrado),
+  // mas o registro novo é feito no CRM — a ficha é só leitura da linha do tempo.
   const [interacoes, setInteracoes] = useState<Interacao[]>(contato?.historico || [])
-  const [novoToque, setNovoToque] = useState<{ tipo: string; texto: string }>({ tipo: 'nota', texto: '' })
-  const [registrando, setRegistrando] = useState(false)
-  async function registrarToque() {
-    if (!contato?.id || !novoToque.texto.trim() || registrando) return
-    setRegistrando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novaInteracao: novoToque }) }).then(x => x.json()).catch(() => null)
-    setRegistrando(false)
-    if (r?.ok) { setInteracoes(r.contato.historico || []); setNovoToque({ tipo: novoToque.tipo, texto: '' }) }
-    else toast(r?.error || 'Falha ao registrar.', 'erro')
-  }
   async function removerToque(interacaoId: string) {
     if (!contato?.id) return
     const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, removerInteracao: interacaoId }) }).then(x => x.json()).catch(() => null)
@@ -1027,10 +1089,15 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
     if (r?.ok) setPassos(r.contato.proximosPassos || [])
   }
   const passosOrdenados = [...passos].sort((a, b) => (a.feito ? 1 : 0) - (b.feito ? 1 : 0) || a.quando.localeCompare(b.quando))
-  // Timeline unificada: toques manuais + atendimentos da agenda, mais recentes primeiro
+  // HISTÓRICO completo do contato, montado sozinho de tudo que aconteceu:
+  // criação, atendimentos (com procedimentos e valor), conversas de WhatsApp,
+  // abordagens programadas/feitas e os toques manuais antigos. Recente primeiro.
   const timeline = [
     ...interacoes.map(i => ({ id: i.id, data: i.data, kind: 'toque' as const, i })),
     ...(historico || []).map(h => ({ id: h.id, data: h.dataInicio, kind: 'agenda' as const, h })),
+    ...msgsDias.map(w => ({ id: `wa-${w.dia}`, data: w.ultima, kind: 'whatsapp' as const, w })),
+    ...passos.map(p => ({ id: `passo-${p.id}`, data: `${p.quando}T09:00:00`, kind: 'passo' as const, p })),
+    ...(contato?.criadoEm ? [{ id: 'criado', data: contato.criadoEm, kind: 'criado' as const }] : []),
   ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
   // Frequência: a partir dos atendimentos CONCLUÍDOS do paciente
   const freq = frequenciaPaciente((historico || []).filter(h => h.status === 'atendido').map(h => h.dataInicio))
@@ -1103,64 +1170,6 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
           )}
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
 
-          {/* Pacotes de tratamento (venda de N sessões; consumo por atendimento) */}
-          {perfilClinica && contato?.id && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Pacotes de tratamento</label>
-                <span style={{ flex: 1 }} />
-                {!pacoteForm && <button type="button" onClick={() => setPacoteForm({ titulo: '', servico: '', totalSessoes: 10, valor: '' })} style={{ padding: '5px 11px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>+ Vender pacote</button>}
-              </div>
-              {pacoteForm && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                  <input value={pacoteForm.titulo} onChange={e => setPacoteForm(p => p && { ...p, titulo: e.target.value })} placeholder="Título (ex.: 10 sessões de Limpeza de Pele)" style={{ ...inputStyle, fontSize: 13 }} />
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <input value={pacoteForm.servico} onChange={e => setPacoteForm(p => p && { ...p, servico: e.target.value })} placeholder="Serviço (opcional)" style={{ ...inputStyle, flex: 2, minWidth: 120, fontSize: 13 }} />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#666', fontWeight: 600 }}>
-                      Sessões
-                      <input type="number" min={1} value={pacoteForm.totalSessoes} onChange={e => setPacoteForm(p => p && { ...p, totalSessoes: Math.max(1, Number(e.target.value) || 1) })} style={{ width: 64, padding: '9px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#666', fontWeight: 600 }}>
-                      Valor R$
-                      <input type="number" min={0} step="0.01" value={pacoteForm.valor} onChange={e => setPacoteForm(p => p && { ...p, valor: e.target.value })} placeholder="0,00" style={{ width: 100, padding: '9px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
-                    </label>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => setPacoteForm(null)} style={{ padding: '7px 12px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
-                    <button type="button" onClick={venderPacote} disabled={pacoteBusy} style={{ padding: '7px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: pacoteBusy ? 'wait' : 'pointer' }}>Vender</button>
-                  </div>
-                </div>
-              )}
-              {pacotes.length === 0 && !pacoteForm && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhum pacote. Venda um pacote de sessões e acompanhe o consumo por atendimento.</p>}
-              {pacotes.map(p => {
-                const usa = usadas(p), rest = restantes(p), st = statusPacote(p)
-                const cor = st === 'concluido' ? '#166534' : st === 'cancelado' ? '#9ca3af' : '#1d4ed8'
-                const pct = p.totalSessoes > 0 ? Math.min(100, Math.round((usa / p.totalSessoes) * 100)) : 0
-                return (
-                  <div key={p.id} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 10, marginBottom: 8, opacity: st === 'cancelado' ? 0.6 : 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{p.titulo}</span>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: cor, background: `${cor}18`, borderRadius: 999, padding: '2px 8px' }}>{st === 'concluido' ? 'Concluído' : st === 'cancelado' ? 'Cancelado' : 'Ativo'}</span>
-                      <span style={{ flex: 1 }} />
-                      {p.valor > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>{fmtBRL(p.valor)}</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                      <div style={{ flex: 1, height: 7, background: '#eee', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: cor }} />
-                      </div>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#555', flexShrink: 0 }}>{usa}/{p.totalSessoes} · restam {rest}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                      {podeConsumir(p) && <button type="button" onClick={() => pacoteAcao(p.id, { consumirSessao: {} })} style={{ padding: '5px 11px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Registrar sessão</button>}
-                      {usa > 0 && <button type="button" onClick={() => pacoteAcao(p.id, { removerSessao: p.sessoes[p.sessoes.length - 1].id })} style={{ padding: '5px 11px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#555' }}>Desfazer última</button>}
-                      {st !== 'cancelado' && podeExcluir && <button type="button" onClick={() => pacoteAcao(p.id, { cancelar: true })} style={{ padding: '5px 11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#b91c1c' }}>Cancelar</button>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
           {perfilClinica && contato?.id && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1203,20 +1212,33 @@ function ContatoModal({ contato, onClose, onSalvo, podeExcluir = false, perfilCl
                   </div>
                 )}
               </div>
-              {/* Quick-add de toque (nota/ligação/whatsapp/reabordagem…) */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-                <select value={novoToque.tipo} onChange={e => setNovoToque(t => ({ ...t, tipo: e.target.value }))} style={{ padding: '9px 8px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
-                  {TIPOS_INTER.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-                </select>
-                <input value={novoToque.texto} onChange={e => setNovoToque(t => ({ ...t, texto: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') registrarToque() }}
-                  placeholder="Registrar um contato… (Enter)" style={{ ...inputStyle, flex: 1 }} />
-                <button onClick={registrarToque} disabled={registrando || !novoToque.texto.trim()} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoToque.texto.trim() ? 1 : 0.5, flexShrink: 0 }}>+</button>
-              </div>
+              {/* O histórico é AUTOMÁTICO (criação, atendimentos, WhatsApp, abordagens).
+                  Registro manual de toque vive no CRM, não na ficha. */}
               {timeline.length === 0
-                ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem histórico ainda. Registre contatos para nutrir a base e planejar reabordagens.</p>
+                ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem histórico ainda. Atendimentos, mensagens e abordagens aparecem aqui automaticamente.</p>
                 : (
-                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 220, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
-                    {timeline.map(item => item.kind === 'agenda' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 260, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
+                    {timeline.map(item => item.kind === 'criado' ? (
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: '#666' }}>Contato criado</span>
+                      </div>
+                    ) : item.kind === 'whatsapp' ? (
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>WHATSAPP</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: '#666' }}>
+                          {item.w.total} mensage{item.w.total > 1 ? 'ns' : 'm'} · {item.w.recebidas} recebida{item.w.recebidas === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    ) : item.kind === 'passo' ? (
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: item.p.feito ? '#166534' : '#1d4ed8', background: item.p.feito ? '#dcfce7' : '#dbeafe', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{item.p.feito ? 'FEITO' : 'ABORDAGEM'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: item.p.feito ? '#9ca3af' : '#444', textDecoration: item.p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.p.titulo}</span>
+                      </div>
+                    ) : item.kind === 'agenda' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 9, fontWeight: 800, color: '#374151', background: '#e5e7eb', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>AGENDA</span>

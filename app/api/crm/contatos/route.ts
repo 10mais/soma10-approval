@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, CrmContato, CrmEmpresa, ContatoInteracao, ProximoPasso } from '@/lib/redis'
+import { redis, CrmContato, CrmEmpresa, ContatoInteracao, ProximoPasso, Usuario } from '@/lib/redis'
+import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
@@ -117,8 +118,9 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, contato: atualizado })
   }
 
-  // Ação: PRÓXIMO PASSO da jornada (clínica) — "o que fazer e daqui quanto tempo".
-  // Cada passo gera uma Tarefa para a equipe na data (aparece em Tarefas com prazo).
+  // Ação: PRÓXIMO PASSO da jornada — a futura abordagem/retorno/procedimento.
+  // Vira Tarefa com prazo E lembrete para o COMERCIAL (papel vendas), que é quem
+  // faz a abordagem; sem comercial cadastrado, fica com quem registrou.
   if (updates.novoPasso) {
     const d = updates.novoPasso
     const titulo = String(d.titulo || '').trim().slice(0, 200)
@@ -127,11 +129,17 @@ export async function PUT(req: NextRequest) {
     const agora = new Date().toISOString()
     const autorEmail = (session.user as any)?.email || ''
     const autorNome = session.user?.name || ''
-    // Tarefa automática para a equipe (tipo do catálogo de clínica)
+    // Quem faz a abordagem: o comercial (role 'vendas'). Vários = o 1º é o dono
+    // da tarefa, mas todos recebem o lembrete.
+    const emails = await redis.smembers('usuarios')
+    const equipe = (await Promise.all(emails.map(e => redis.get<Usuario>(`usuario:${e}`)))).filter(Boolean) as Usuario[]
+    const comerciais = equipe.filter(u => u.role === 'vendas')
+    const dono = comerciais[0]
     const tarefa: any = {
-      id: uuid(), titulo: `${titulo} — ${contato.nome}`, descricao: [d.nota, `Jornada do paciente: ${contato.nome}`].filter(Boolean).join('\n'),
+      id: uuid(), titulo: `${titulo} — ${contato.nome}`,
+      descricao: [d.nota, `Abordagem programada do contato ${contato.nome}${contato.telefone ? ` (${contato.telefone})` : ''}.`].filter(Boolean).join('\n'),
       status: 'a_fazer', prioridade: 'media', tipo: 'retorno_paciente',
-      responsavelEmail: autorEmail, responsavelNome: autorNome,
+      responsavelEmail: dono?.email || autorEmail, responsavelNome: dono?.nome || autorNome,
       prazo: `${quando}T09:00:00`, criadoPor: autorNome, criadoEm: agora, atualizadoEm: agora,
     }
     await redis.set(`tarefa:${tarefa.id}`, tarefa)
@@ -139,6 +147,11 @@ export async function PUT(req: NextRequest) {
     const passo: ProximoPasso = { id: uuid(), titulo, quando, ...(d.nota ? { nota: String(d.nota).slice(0, 500) } : {}), feito: false, tarefaId: tarefa.id, criadoEm: agora }
     const atualizado: CrmContato = { ...contato, proximosPassos: [...(contato.proximosPassos || []), passo], atualizadoEm: agora }
     await redis.set(`contato:${id}`, atualizado)
+    // Lembrete: avisa o comercial na hora (o cron de prazos avisa de novo na data).
+    const quandoBR = quando.split('-').reverse().join('/')
+    const alvos = comerciais.length ? comerciais : equipe.filter(u => u.email === autorEmail)
+    await Promise.all(alvos.map(u => notificar(u.email, 'tarefa_atribuida', `Abordagem: ${contato.nome}`, `${titulo} — programado para ${quandoBR}`, undefined, tarefa.id)))
+      .catch(() => { /* lembrete é best-effort, não derruba o registro */ })
     return NextResponse.json({ ok: true, contato: atualizado })
   }
   // Concluir/reabrir um passo (sincroniza a tarefa vinculada)
