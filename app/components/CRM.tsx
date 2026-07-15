@@ -32,6 +32,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [agendamentos, setAgendamentos] = useState<{ contatoId?: string; status: string; dataInicio: string }[]>([])
   const [carregando, setCarregando] = useState(true)
   const [novoModal, setNovoModal] = useState(false)
+  // Contato já escolhido ao abrir a oportunidade (ex.: vindo do inbox)
+  const [novoNegocioContatoId, setNovoNegocioContatoId] = useState('')
   const [aberto, setAberto] = useState<Negocio | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
@@ -240,7 +242,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')} />
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')}
+          onAbrirOportunidade={podeEditar ? (contatoId => { setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
       ) : (
@@ -336,7 +339,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} onClose={() => setNovoModal(false)} onSalvo={() => { setNovoModal(false); carregar() }} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={perfilClinica ? abrirWhatsAppInterno : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
@@ -1453,11 +1456,12 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   )
 }
 
-function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; onClose: () => void; onSalvo: () => void }) {
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '' })
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
-  const [contatoId, setContatoId] = useState('')
+  // Vindo do inbox, o contato já chega escolhido (a conversa É o contato)
+  const [contatoId, setContatoId] = useState(contatoIdInicial)
   const [buscaContato, setBuscaContato] = useState('') // pesquisa do contato pelo nome
   const [salvando, setSalvando] = useState(false)
   // #3 — responsavel: somente admins ou quem tem funcao de vendas
@@ -1973,7 +1977,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abrirTel = '', onAbriuTel }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void }) {
+function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abrirTel = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -1992,6 +1996,20 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
   // Encaminhar (escolhe a conversa destino na lista) e editar mensagem enviada (~15 min)
   const [encaminhar, setEncaminhar] = useState<MsgItem | null>(null)
   const [editando, setEditando] = useState<MsgItem | null>(null)
+  // Vincular contato: com centenas de contatos, o <select> era inviável — vira
+  // um seletor com busca (nome/telefone), igual ao resto do CRM.
+  const [vincularAberto, setVincularAberto] = useState(false)
+  const [buscaVinculo, setBuscaVinculo] = useState('')
+  const contatosVinculo = useMemo(() => {
+    const q = semAcento(buscaVinculo.trim())
+    if (!q) return contatos.slice(0, 50) // sem busca, só os primeiros (lista é longa)
+    const qDig = q.replace(/\D/g, '')
+    return contatos.filter(ct => {
+      if (qDig && (ct.telefone || '').replace(/\D/g, '').includes(qDig)) return true
+      return semAcento(ct.nome).includes(q)
+    }).slice(0, 50)
+  }, [contatos, buscaVinculo])
+
   // Visualizador de imagem: abre AQUI (não em outra guia) e permite baixar.
   const [lightbox, setLightbox] = useState<{ url: string; nome: string } | null>(null)
   useEffect(() => {
@@ -2224,12 +2242,53 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                   <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
                 </div>
               </div>
-              <select value={conversaSel?.contatoId || ''} onChange={e => { if (e.target.value === '__novo') { criarEContatoVincular(); e.target.value = conversaSel?.contatoId || '' } else vincular(e.target.value) }} title="Vincular a um contato do CRM"
-                style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', maxWidth: 180 }}>
-                <option value="">Vincular contato...</option>
-                <option value="__novo">＋ Criar contato novo</option>
-                {contatos.map(ct => <option key={ct.id} value={ct.id}>{ct.nome}</option>)}
-              </select>
+              {/* Com o contato vinculado, a conversa vira venda em 1 clique */}
+              {conversaSel?.contatoId && onAbrirOportunidade && (
+                <button onClick={() => onAbrirOportunidade(conversaSel.contatoId!)} title="Criar uma oportunidade no funil para este contato"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                  Abrir oportunidade
+                </button>
+              )}
+              {/* Vincular contato — seletor com BUSCA (a lista tem centenas) */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <button onClick={() => { setVincularAberto(v => !v); setBuscaVinculo('') }} title="Vincular a um contato do CRM"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 190, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', cursor: 'pointer', color: conversaSel?.contatoId ? '#111' : '#888', fontWeight: conversaSel?.contatoId ? 700 : 400 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {conversaSel?.contatoId ? (contatos.find(ct => ct.id === conversaSel.contatoId)?.nome || 'Contato vinculado') : 'Vincular contato...'}
+                  </span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                {vincularAberto && (<>
+                  <div onClick={() => setVincularAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 5px)', right: 0, width: 260, background: '#fff', border: '1px solid #e6e6e6', borderRadius: 11, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', zIndex: 31, overflow: 'hidden' }}>
+                    <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0' }}>
+                      <input autoFocus value={buscaVinculo} onChange={e => setBuscaVinculo(e.target.value)} placeholder="Buscar por nome ou telefone…"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
+                    </div>
+                    <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                      <button onClick={() => { setVincularAberto(false); criarEContatoVincular() }}
+                        style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid #f5f5f5', background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: '#1d4ed8' }}>＋ Criar contato novo</button>
+                      {conversaSel?.contatoId && (
+                        <button onClick={() => { vincular(''); setVincularAberto(false) }}
+                          style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid #f5f5f5', background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#b91c1c' }}>Desvincular</button>
+                      )}
+                      {contatosVinculo.length === 0 ? (
+                        <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: '#bbb' }}>Nenhum contato encontrado.</p>
+                      ) : contatosVinculo.map(ct => (
+                        <button key={ct.id} onClick={() => { vincular(ct.id); setVincularAberto(false) }}
+                          style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid #f8f8f8', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : '#fff', cursor: 'pointer' }}>
+                          <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct.nome}</span>
+                          {ct.telefone && <span style={{ display: 'block', fontSize: 11, color: '#999' }}>{ct.telefone}</span>}
+                        </button>
+                      ))}
+                      {!buscaVinculo && contatos.length > 50 && (
+                        <p style={{ margin: 0, padding: '8px 11px', fontSize: 11, color: '#bbb', borderTop: '1px solid #f5f5f5' }}>Mostrando 50 de {contatos.length} — use a busca.</p>
+                      )}
+                    </div>
+                  </div>
+                </>)}
+              </div>
               {cfg.excluir && (
                 <button onClick={excluirConversa} title="Excluir conversa (remove todo o histórico)"
                   style={{ background: 'transparent', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
