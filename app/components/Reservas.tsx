@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { LayoutVeiculo, Poltrona, capacidadeLayout, numerosPoltronas } from '@/lib/layoutVeiculo'
+import { LayoutVeiculo, Poltrona, ElementoLayout, capacidadeLayout, numerosPoltronas, elementoInfo } from '@/lib/layoutVeiculo'
 import { valorDaReserva, vendePoltrona } from '@/lib/pacoteViagem'
 import { pendenciasDoPassageiro } from '@/lib/manifesto'
 import { FinanceiroReserva, MetodoPagamento, METODOS, gerarParcelas, saldoDevedor, totalPago } from '@/lib/financeiroReserva'
@@ -35,8 +35,8 @@ function gradeAndar(layout: LayoutVeiculo, andar: number) {
   const maxColuna = todos.length ? Math.max(...todos.map(x => x.c)) : 0
   const mapa = new Map<string, Poltrona>()
   ps.forEach(p => mapa.set(`${p.fileira}-${p.coluna}`, p))
-  const elMapa = new Map<string, string>()
-  els.forEach(e => elMapa.set(`${e.fileira}-${e.coluna}`, e.label))
+  const elMapa = new Map<string, ElementoLayout>()
+  els.forEach(e => elMapa.set(`${e.fileira}-${e.coluna}`, e))
   return { maxFileira, maxColuna, mapa, elMapa }
 }
 
@@ -60,8 +60,12 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
                     const p = mapa.get(`${fileira}-${coluna}`)
                     if (!p) {
                       const el = elMapa.get(`${fileira}-${coluna}`)
-                      if (el) return <span key={coluna} title={el} style={{ minWidth: 30, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap' }}>{el}</span>
-                      return <span key={coluna} style={{ width: 30, height: 26 }} /> // corredor
+                      if (el) {
+                        const info = elementoInfo(el)
+                        const ehCorredor = (el.tipo || 'amenidade') === 'corredor'
+                        return <span key={coluna} title={el.label} style={{ minWidth: 30, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: info.cor, background: info.bg, borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap' }}>{ehCorredor ? '' : el.label}</span>
+                      }
+                      return <span key={coluna} style={{ width: 30, height: 26 }} /> // espaço vazio
                     }
                     const ocupada = ocupadas.has(p.numero)
                     const sel = selecionadas.has(p.numero)

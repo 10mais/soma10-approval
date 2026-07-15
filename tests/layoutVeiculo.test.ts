@@ -5,6 +5,7 @@ import {
   validarLayout, proximoNumeroLivre, celulaOcupada, dimensoesLayout,
   adicionarPoltrona, removerPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, moverElemento, removerElemento, limparCelula, definirAndares,
+  elementoInfo, ESTRUTURA_PALETA,
   type LayoutVeiculo,
 } from '@/lib/layoutVeiculo'
 
@@ -192,6 +193,26 @@ describe('operações do editor', () => {
     const l = alterarTipoPoltrona(base(), '1', 'executivo')
     expect(l.poltronas.find(p => p.numero === '1')!.tipo).toBe('executivo')
     expect(l.poltronas.find(p => p.numero === '2')!.tipo).toBe('leito')
+  })
+
+  it('elemento guarda o TIPO — corredor não pode parecer chopeira no croqui', () => {
+    const l = adicionarElemento(base(), { andar: 2, fileira: 1, coluna: 3 }, 'Corredor', 'corredor')!
+    const el = l.elementos!.find(e => e.tipo === 'corredor')!
+    expect(el.label).toBe('Corredor')
+    expect(elementoInfo(el).label).toBe('Corredor')
+  })
+
+  it('elemento sem tipo continua valendo como amenidade (croqui antigo)', () => {
+    expect(elementoInfo({ tipo: undefined }).tipo).toBe('amenidade')
+    const l = adicionarElemento(base(), { andar: 1, fileira: 5, coluna: 5 }, 'Chopeira')!
+    expect(l.elementos!.find(e => e.label === 'Chopeira')!.tipo).toBe('amenidade')
+  })
+
+  it('a paleta de estrutura cobre volante, porta e corredor', () => {
+    const tipos = ESTRUTURA_PALETA.map(e => e.tipo)
+    expect(tipos).toContain('corredor')
+    expect(tipos).toContain('volante')
+    expect(tipos).toContain('porta')
   })
 
   it('elementos: adicionar, mover, remover e recusar sobreposição', () => {

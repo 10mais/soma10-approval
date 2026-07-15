@@ -14,8 +14,15 @@
 export type TipoPoltrona = 'leito' | 'leito-cama' | 'semi-leito' | 'executivo' | 'convencional'
 
 export type Poltrona = { numero: string; tipo: TipoPoltrona; andar: number; fileira: number; coluna: number }
-// Elemento fixo (não-poltrona): amenidade/estrutura, para render fiel do croqui.
-export type ElementoLayout = { label: string; andar: number; fileira: number; coluna: number }
+
+// Tipo do elemento: dá SIGNIFICADO ao que não é poltrona, em vez de tudo virar um
+// rótulo cinza. O corredor era só célula vazia (implícito) — marcá-lo deixa o
+// croqui legível e evita que alguém coloque poltrona no meio da passagem.
+// `tipo` ausente = 'amenidade' (compatível com o croqui que já existe).
+export type TipoElemento = 'corredor' | 'volante' | 'porta' | 'escada' | 'banheiro' | 'amenidade'
+
+// Elemento fixo (não-poltrona): estrutura ou amenidade, para render fiel do croqui.
+export type ElementoLayout = { label: string; tipo?: TipoElemento; andar: number; fileira: number; coluna: number }
 
 // O croqui em si. Sem id/nome: quem tem identidade é o Veículo dono dele.
 export type LayoutVeiculo = { andares: number; poltronas: Poltrona[]; elementos?: ElementoLayout[] }
@@ -32,8 +39,21 @@ export const TIPOS_POLTRONA: { key: TipoPoltrona; label: string }[] = [
   { key: 'convencional', label: 'Convencional' },
 ]
 
-// Rótulos comuns de croqui — atalhos do editor (o campo aceita texto livre).
-export const ELEMENTOS_COMUNS = ['Chopeira', 'Cafeteira', 'Frigobar', 'Geladeira', 'Banheiro', 'Escada', 'Motorista', 'Porta']
+// Paleta do editor: ESTRUTURA do veículo. Cada uma tem tipo próprio para o croqui
+// renderizar diferente (o corredor não pode parecer uma chopeira).
+export const ESTRUTURA_PALETA: { tipo: TipoElemento; label: string; cor: string; bg: string }[] = [
+  { tipo: 'corredor', label: 'Corredor', cor: '#94a3b8', bg: '#f8fafc' },
+  { tipo: 'volante', label: 'Volante', cor: '#7c2d12', bg: '#ffedd5' },
+  { tipo: 'porta', label: 'Porta', cor: '#166534', bg: '#dcfce7' },
+  { tipo: 'escada', label: 'Escada', cor: '#4338ca', bg: '#e0e7ff' },
+  { tipo: 'banheiro', label: 'Banheiro', cor: '#0e7490', bg: '#cffafe' },
+]
+
+// Amenidades comuns — entram como tipo 'amenidade'; o campo aceita texto livre.
+export const ELEMENTOS_COMUNS = ['Chopeira', 'Cafeteira', 'Frigobar', 'Geladeira', 'TV', 'Ar-condicionado', 'Água', 'Bagageiro']
+
+export const elementoInfo = (e: Pick<ElementoLayout, 'tipo'>) =>
+  ESTRUTURA_PALETA.find(x => x.tipo === (e.tipo || 'amenidade')) || { tipo: 'amenidade' as TipoElemento, label: 'Amenidade', cor: '#94a3b8', bg: '#f1f5f9' }
 
 // atalho: poltrona
 const P = (numero: number, andar: number, fileira: number, coluna: number, tipo: TipoPoltrona = 'leito'): Poltrona => ({ numero: String(numero), tipo, andar, fileira, coluna })
@@ -63,12 +83,28 @@ const CARRO_2023: LayoutVeiculo = {
     P(38, 1, 4, 1, 'leito-cama'), P(39, 1, 4, 2, 'leito-cama'), P(40, 1, 4, 4, 'leito-cama'),
   ],
   elementos: [
-    { label: 'Chopeira', andar: 2, fileira: 5, coluna: 5 },
-    { label: 'Cafeteira', andar: 2, fileira: 6, coluna: 5 },
-    { label: 'Frigobar', andar: 2, fileira: 7, coluna: 5 },
-    { label: 'Frigobar', andar: 2, fileira: 15, coluna: 2 },
-    { label: 'Banheiro', andar: 1, fileira: 1, coluna: 1 },
-    { label: 'Geladeira', andar: 1, fileira: 4, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 1, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 2, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 3, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 4, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 5, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 6, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 7, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 8, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 9, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 10, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 11, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 12, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 13, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 14, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 15, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 16, coluna: 3 },
+    { label: 'Chopeira', tipo: 'amenidade', andar: 2, fileira: 5, coluna: 5 },
+    { label: 'Cafeteira', tipo: 'amenidade', andar: 2, fileira: 6, coluna: 5 },
+    { label: 'Frigobar', tipo: 'amenidade', andar: 2, fileira: 7, coluna: 5 },
+    { label: 'Frigobar', tipo: 'amenidade', andar: 2, fileira: 15, coluna: 2 },
+    { label: 'Banheiro', tipo: 'banheiro', andar: 1, fileira: 1, coluna: 1 },
+    { label: 'Geladeira', tipo: 'amenidade', andar: 1, fileira: 4, coluna: 3 },
   ],
 }
 
@@ -98,12 +134,28 @@ const CARRO_2021: LayoutVeiculo = {
     P(41, 1, 5, 1, 'leito-cama'), P(42, 1, 5, 2, 'leito-cama'), P(43, 1, 5, 4, 'leito-cama'),
   ],
   elementos: [
-    { label: 'Chopeira', andar: 2, fileira: 5, coluna: 5 },
-    { label: 'Cafeteira', andar: 2, fileira: 6, coluna: 5 },
-    { label: 'Frigobar', andar: 2, fileira: 7, coluna: 5 },
-    { label: 'Frigobar', andar: 2, fileira: 15, coluna: 2 },
-    { label: 'Banheiro', andar: 1, fileira: 1, coluna: 1 },
-    { label: 'Geladeira', andar: 1, fileira: 5, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 1, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 2, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 3, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 4, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 5, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 6, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 7, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 8, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 9, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 10, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 11, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 12, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 13, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 14, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 15, coluna: 3 },
+    { label: 'Corredor', tipo: 'corredor', andar: 2, fileira: 16, coluna: 3 },
+    { label: 'Chopeira', tipo: 'amenidade', andar: 2, fileira: 5, coluna: 5 },
+    { label: 'Cafeteira', tipo: 'amenidade', andar: 2, fileira: 6, coluna: 5 },
+    { label: 'Frigobar', tipo: 'amenidade', andar: 2, fileira: 7, coluna: 5 },
+    { label: 'Frigobar', tipo: 'amenidade', andar: 2, fileira: 15, coluna: 2 },
+    { label: 'Banheiro', tipo: 'banheiro', andar: 1, fileira: 1, coluna: 1 },
+    { label: 'Geladeira', tipo: 'amenidade', andar: 1, fileira: 5, coluna: 3 },
   ],
 }
 
@@ -244,12 +296,12 @@ export function alterarTipoPoltrona(layout: LayoutVeiculo, numero: string, tipo:
   return { ...layout, poltronas: layout.poltronas.map(p => p.numero === numero ? { ...p, tipo } : p) }
 }
 
-export function adicionarElemento(layout: LayoutVeiculo, celula: Celula, label: string): LayoutVeiculo | null {
+export function adicionarElemento(layout: LayoutVeiculo, celula: Celula, label: string, tipo: TipoElemento = 'amenidade'): LayoutVeiculo | null {
   const l = String(label || '').trim()
   if (!l) return null
   if (celulaOcupada(layout, celula)) return null
   if (celula.andar < 1 || celula.andar > layout.andares) return null
-  return { ...layout, elementos: [...(layout.elementos || []), { label: l.slice(0, 24), ...celula }] }
+  return { ...layout, elementos: [...(layout.elementos || []), { label: l.slice(0, 24), tipo, ...celula }] }
 }
 
 export function moverElemento(layout: LayoutVeiculo, origem: Celula, destino: Celula): LayoutVeiculo | null {

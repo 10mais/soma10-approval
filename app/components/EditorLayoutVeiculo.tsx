@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@/lib/toast'
 import {
-  LayoutVeiculo, Poltrona, Celula, TipoPoltrona, TIPOS_POLTRONA, ELEMENTOS_COMUNS,
+  LayoutVeiculo, Poltrona, ElementoLayout, Celula, TipoPoltrona, TipoElemento, TIPOS_POLTRONA,
+  ELEMENTOS_COMUNS, ESTRUTURA_PALETA, elementoInfo,
   capacidadeLayout, validarLayout, dimensoesLayout, celulaOcupada,
   adicionarPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, moverElemento, limparCelula, definirAndares,
@@ -35,7 +36,8 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
 }) {
   const [ferramenta, setFerramenta] = useState<Ferramenta>('selecionar')
   const [tipoNovo, setTipoNovo] = useState<TipoPoltrona>('leito')
-  const [rotuloEl, setRotuloEl] = useState('Frigobar')
+  const [rotuloEl, setRotuloEl] = useState('Corredor')
+  const [tipoEl, setTipoEl] = useState<TipoElemento>('corredor')
   const [sel, setSel] = useState<string | null>(null) // número da poltrona selecionada
   const [arrastando, setArrastando] = useState<{ tipo: 'poltrona'; numero: string } | { tipo: 'elemento'; origem: Celula } | null>(null)
   // Rascunho do número: renumerar a cada tecla faria "40"→"7" passar por "4", que
@@ -91,8 +93,22 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
       return
     }
     if (ferramenta === 'elemento') {
-      aplicar(adicionarElemento(layout, celula, rotuloEl), 'Informe o rótulo do elemento (ou a célula está ocupada).')
+      aplicar(adicionarElemento(layout, celula, rotuloEl, tipoEl), 'Informe o rótulo do elemento (ou a célula está ocupada).')
     }
+  }
+
+  // Corredor é uma FAIXA, não um quadradinho: marcar 16 fileiras uma a uma seria
+  // absurdo. Preenche a coluna inteira do andar, pulando o que já está ocupado.
+  function corredorNaColuna(andar: number, coluna: number) {
+    const { maxFileira } = dimensoesLayout(layout, andar)
+    let novo = layout
+    let postos = 0
+    for (let f = 1; f <= Math.max(maxFileira, 1); f++) {
+      const tentativa = adicionarElemento(novo, { andar, fileira: f, coluna }, 'Corredor', 'corredor')
+      if (tentativa) { novo = tentativa; postos++ }
+    }
+    if (!postos) { toast('A coluna já está ocupada nesse andar.', 'erro'); return }
+    onChange(novo)
   }
 
   function soltarEm(celula: Celula) {
@@ -156,13 +172,44 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
         </div>
       )}
       {!readOnly && ferramenta === 'elemento' && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-          {ELEMENTOS_COMUNS.map(e => (
-            <button key={e} type="button" onClick={() => setRotuloEl(e)}
-              style={{ padding: '5px 10px', borderRadius: 999, border: rotuloEl === e ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: rotuloEl === e ? '#eff6ff' : '#fff', color: rotuloEl === e ? '#1d4ed8' : '#777', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{e}</button>
-          ))}
-          <input value={rotuloEl} onChange={e => setRotuloEl(e.target.value)} placeholder="ou digite…" maxLength={24}
-            style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 11.5, fontFamily: 'inherit', width: 110 }} />
+        <div style={{ marginBottom: 10, padding: 10, background: '#fafafa', border: '1px solid #eee', borderRadius: 10 }}>
+          {/* Estrutura do veículo — cada uma tem cor própria no croqui */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#888', width: 70 }}>Estrutura</span>
+            {ESTRUTURA_PALETA.map(e => {
+              const on = tipoEl === e.tipo
+              return (
+                <button key={e.tipo} type="button" onClick={() => { setTipoEl(e.tipo); setRotuloEl(e.label) }}
+                  style={{ padding: '5px 10px', borderRadius: 999, border: on ? `1.5px solid ${e.cor}` : '1px solid #e6e6e6', background: on ? e.bg : '#fff', color: on ? e.cor : '#777', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{e.label}</button>
+              )
+            })}
+          </div>
+          {/* Amenidades — texto livre, tudo com o mesmo visual */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#888', width: 70 }}>Amenidade</span>
+            {ELEMENTOS_COMUNS.map(e => {
+              const on = tipoEl === 'amenidade' && rotuloEl === e
+              return (
+                <button key={e} type="button" onClick={() => { setTipoEl('amenidade'); setRotuloEl(e) }}
+                  style={{ padding: '5px 10px', borderRadius: 999, border: on ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: on ? '#eff6ff' : '#fff', color: on ? '#1d4ed8' : '#777', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{e}</button>
+              )
+            })}
+            <input value={tipoEl === 'amenidade' ? rotuloEl : ''} onChange={e => { setTipoEl('amenidade'); setRotuloEl(e.target.value) }} placeholder="ou digite…" maxLength={24}
+              style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 11.5, fontFamily: 'inherit', width: 110 }} />
+          </div>
+          {/* Corredor é faixa: marcar 16 células uma a uma seria absurdo */}
+          {tipoEl === 'corredor' && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e6e6e6' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#888' }}>Coluna inteira:</span>
+              {Array.from({ length: layout.andares }, (_, i) => i + 1).map(andar => (
+                <button key={andar} type="button" onClick={() => corredorNaColuna(andar, 3)}
+                  style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  Coluna 3 · {layout.andares > 1 ? (andar === 1 ? 'inferior' : 'superior') : 'todo o croqui'}
+                </button>
+              ))}
+              <span style={{ fontSize: 10.5, color: '#bbb' }}>(a coluna 3 é o corredor por convenção — ou clique célula a célula)</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -185,8 +232,8 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
           const colunas = Math.max(maxColuna, 5)
           const poltronasAndar = new Map<string, Poltrona>()
           layout.poltronas.filter(p => p.andar === andar).forEach(p => poltronasAndar.set(`${p.fileira}-${p.coluna}`, p))
-          const elementosAndar = new Map<string, string>()
-          ;(layout.elementos || []).filter(e => e.andar === andar).forEach(e => elementosAndar.set(`${e.fileira}-${e.coluna}`, e.label))
+          const elementosAndar = new Map<string, ElementoLayout>()
+          ;(layout.elementos || []).filter(e => e.andar === andar).forEach(e => elementosAndar.set(`${e.fileira}-${e.coluna}`, e))
 
           return (
             <div key={andar}>
@@ -200,6 +247,7 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
                       const celula: Celula = { andar, fileira, coluna }
                       const p = poltronasAndar.get(`${fileira}-${coluna}`)
                       const el = elementosAndar.get(`${fileira}-${coluna}`)
+                      const elInfo = el ? elementoInfo(el) : null
                       const dropProps = readOnly ? {} : {
                         onDragOver: (ev: React.DragEvent) => { if (arrastando) ev.preventDefault() },
                         onDrop: (ev: React.DragEvent) => { ev.preventDefault(); soltarEm(celula) },
@@ -225,15 +273,23 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
                             }}>{p.numero}</button>
                         )
                       }
-                      if (el) {
+                      if (el && elInfo) {
+                        // Corredor é passagem, não objeto: fica discreto e sem
+                        // rótulo repetido em 16 células.
+                        const ehCorredor = (el.tipo || 'amenidade') === 'corredor'
                         return (
-                          <span key={coluna} title={el}
+                          <span key={coluna} title={el.label}
                             draggable={!readOnly}
                             onDragStart={() => setArrastando({ tipo: 'elemento', origem: celula })}
                             onDragEnd={() => setArrastando(null)}
                             {...dropProps}
-                            onClick={() => clicarCelula(celula, undefined, el)}
-                            style={{ minWidth: CELULA, height: ALTURA, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap', cursor: readOnly ? 'default' : 'pointer' }}>{el}</span>
+                            onClick={() => clicarCelula(celula, undefined, el.label)}
+                            style={{
+                              minWidth: CELULA, height: ALTURA, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 8, fontWeight: 700, color: elInfo.cor, background: elInfo.bg,
+                              border: ehCorredor ? '1px dashed #e2e8f0' : 'none',
+                              borderRadius: 5, padding: '0 4px', whiteSpace: 'nowrap', cursor: readOnly ? 'default' : 'pointer',
+                            }}>{ehCorredor ? '' : el.label}</span>
                         )
                       }
                       return (
