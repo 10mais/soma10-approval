@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Tarefa, Usuario } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
+import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -71,7 +72,11 @@ export async function POST(req: NextRequest) {
   const agora = new Date().toISOString()
   const { getOperacional } = await import('@/lib/operacional')
   const prioridadePadrao = (await getOperacional()).prioridadePadrao
+  // Os campos do formulário entram primeiro (é o que traz anexos/checklist/
+  // documentoId/mapaId — antes eles se perdiam ao CRIAR); os defaults abaixo
+  // reescrevem o que veio vazio. Ordem importa: default só vale se não veio.
   const tarefa: Tarefa = {
+    ...camposDoCorpo(body),
     id: uuid(),
     titulo: body.titulo || 'Nova tarefa',
     descricao: body.descricao || '',
@@ -125,7 +130,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const camposPermitidos = ['titulo', 'descricao', 'tipo', 'status', 'prioridade', 'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome', 'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist', 'documentoId', 'mapaId']
   const atualizado = { ...tarefa, atualizadoEm: new Date().toISOString() } as any
   const autor = session.user?.name || ''
   const agora = new Date().toISOString()
@@ -228,7 +232,7 @@ export async function PUT(req: NextRequest) {
   }
 
   atualizado.atividades = novasAtividades
-  for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
+  Object.assign(atualizado, camposDoCorpo(updates))
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
   await redis.set(`tarefa:${id}`, atualizado)
 
