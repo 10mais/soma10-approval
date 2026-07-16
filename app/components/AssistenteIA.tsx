@@ -84,6 +84,10 @@ export default function AssistenteIA() {
   }, [])
   const fabBottom = mobile ? 'calc(76px + env(safe-area-inset-bottom) + 12px)' : 20
   const [msgs, setMsgs] = useState<Msg[]>([])
+  // Espelho de msgs/agentes para o salvamento: no finally do streaming o state
+  // ainda não propagou, e salvaríamos a conversa sem a última resposta.
+  const msgsRef = useRef<Msg[]>([])
+  const agentesRef = useRef<any[]>([])
   const [input, setInput] = useState('')
   const [carregando, setCarregando] = useState(false)
   const fimRef = useRef<HTMLDivElement>(null)
@@ -108,6 +112,37 @@ export default function AssistenteIA() {
     setSubindoImg(false)
     if (fileRef.current) fileRef.current.value = ''
   }
+  // HISTÓRICO: cada conversa fica salva no servidor (pedido do dono, 16/07 —
+  // "podemos reaproveitar a qualquer momento"). O sessionStorage segue como
+  // cache da conversa ABERTA (recarregar a aba não recomeça); a fonte de
+  // verdade é /api/assistente/conversas.
+  const [convId, setConvId] = useState('')
+  const [historico, setHistorico] = useState<{ id: string; titulo: string; agenteNome?: string; atualizadoEm: string }[]>([])
+  const [histAberto, setHistAberto] = useState(false)
+  const carregarHistorico = () => {
+    fetch('/api/assistente/conversas').then(r => r.json())
+      .then(d => setHistorico(Array.isArray(d?.conversas) ? d.conversas : [])).catch(() => {})
+  }
+  useEffect(() => { if (aberto && status === 'authenticated' && role !== 'cliente') carregarHistorico() }, [aberto, status, role])
+
+  async function abrirConversa(id: string) {
+    const d = await fetch(`/api/assistente/conversas?id=${id}`).then(r => r.json()).catch(() => null)
+    if (!d?.conversa) return
+    setConvId(d.conversa.id)
+    setAgenteId(d.conversa.agenteId || '')
+    setMsgs(d.conversa.mensagens || [])
+    setHistAberto(false)
+  }
+  async function excluirConversa(id: string) {
+    await fetch(`/api/assistente/conversas?id=${id}`, { method: 'DELETE' }).catch(() => {})
+    if (id === convId) { setConvId(''); setMsgs([]) }
+    carregarHistorico()
+  }
+  function novaConversa() {
+    setConvId(''); setMsgs([]); setHistAberto(false)
+    try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
+  }
+
   // Agentes treinados: quando um é escolhido, a persona dele assume a conversa
   const [agentes, setAgentes] = useState<any[]>([])
   const [agenteId, setAgenteId] = useState('')
@@ -115,13 +150,16 @@ export default function AssistenteIA() {
     if (status !== 'authenticated' || role === 'cliente') return
     // Rebusca ao autenticar E ao abrir o assistente, para refletir agentes recem-criados
     if (!aberto) return
-    fetch('/api/agentes').then(r => r.json()).then(d => setAgentes(Array.isArray(d) ? d.filter((a: any) => a.ativo !== false) : [])).catch(() => {})
+    fetch('/api/agentes').then(r => r.json()).then(d => { const lista = Array.isArray(d) ? d.filter((a: any) => a.ativo !== false) : []; setAgentes(lista); agentesRef.current = lista }).catch(() => {})
   }, [status, aberto])
   const agenteAtivo = agentes.find(a => a.id === agenteId)
   function trocarAgente(id: string) {
     if (id === agenteId) return
     setAgenteId(id)
-    setMsgs([]) // nova conversa ao trocar de agente (evita mistura de personas)
+    // Nova conversa ao trocar de agente (evita mistura de personas). A anterior
+    // NÃO se perde: já está salva no histórico.
+    setMsgs([])
+    setConvId('')
   }
 
   // Fase 2: confirmar/descartar uma ação proposta pelo agente
@@ -145,6 +183,7 @@ export default function AssistenteIA() {
   }, [])
 
   useEffect(() => {
+    msgsRef.current = msgs
     try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-30))) } catch {}
   }, [msgs])
 
@@ -219,12 +258,28 @@ export default function AssistenteIA() {
     } finally {
       setCarregando(false)
       setTimeout(() => inputRef.current?.focus(), 50)
+      salvarConversa()
     }
   }
 
+  // Salva depois de CADA resposta. Não é debounce nem "ao fechar": fechar a aba,
+  // cair a rede ou a pessoa mudar de tela não pode levar a conversa junto.
+  // Usa o ref (msgsRef) porque o setMsgs do streaming não terminou de propagar
+  // quando o finally roda — o state aqui ainda seria o de antes da resposta.
+  async function salvarConversa() {
+    const mensagens = msgsRef.current
+    if (!mensagens.some(m => (m.content || '').trim() || m.imagens?.length)) return
+    const d = await fetch('/api/assistente/conversas', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: convId || undefined, agenteId: agenteId || undefined, agenteNome: agentesRef.current.find(a => a.id === agenteId)?.nome, mensagens }),
+    }).then(r => r.json()).catch(() => null)
+    if (d?.conversa?.id) { setConvId(d.conversa.id); carregarHistorico() }
+  }
+
+  // "Limpar" some com a conversa da TELA, não do histórico: ela continua salva
+  // (é isso que o dono pediu). Para apagar de vez, o × na lista do histórico.
   function limpar() {
-    setMsgs([])
-    try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
+    novaConversa()
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -282,15 +337,42 @@ export default function AssistenteIA() {
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? agenteAtivo.nome : (ehVendas ? 'Assistente de Vendas' : 'Assistente de IA')}</p>
               <p style={{ margin: 0, fontSize: 11, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? (agenteAtivo.funcao || 'Agente treinado') : (ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema')}</p>
             </div>
+            <button onClick={() => setHistAberto(v => !v)} title="Conversas salvas" style={{ background: 'none', border: 'none', color: histAberto ? '#ffc00f' : '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 8v4l3 2" /><circle cx="12" cy="12" r="9" />
+              </svg>
+            </button>
             {msgs.length > 0 && (
-              <button onClick={limpar} title="Limpar conversa" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <button onClick={limpar} title="Nova conversa (esta fica salva no histórico)" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
                 <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                  <path d="M12 5v14M5 12h14" />
                 </svg>
               </button>
             )}
             <button onClick={() => setAberto(false)} title="Fechar" aria-label="Fechar assistente" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 2px' }}>×</button>
           </div>
+
+          {/* Conversas salvas — cada uma fica no servidor, não no navegador */}
+          {histAberto && (
+            <div style={{ borderBottom: '1px solid #f0f0f0', background: '#fff', maxHeight: 240, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f7f7f7' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: '#888', flex: 1 }}>CONVERSAS SALVAS</span>
+                <button onClick={novaConversa} style={{ padding: '4px 10px', background: '#111', color: '#fff', border: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>+ Nova</button>
+              </div>
+              {historico.length === 0 && <p style={{ margin: 0, padding: '12px', fontSize: 12, color: '#aaa' }}>Nenhuma conversa salva ainda.</p>}
+              {historico.map(c => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid #f7f7f7', background: c.id === convId ? '#fffbeb' : 'transparent' }}>
+                  <button onClick={() => abrirConversa(c.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12.5, color: '#222', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.titulo}</span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: '#aaa' }}>
+                      {c.agenteNome ? `${c.agenteNome} · ` : ''}{new Date(c.atualizadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </button>
+                  <button onClick={() => excluirConversa(c.id)} title="Excluir esta conversa" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Seletor de agente treinado */}
           {agentes.length > 0 && (
