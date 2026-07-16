@@ -5,6 +5,7 @@ import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
+import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -384,7 +385,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
-      {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
+      {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir}
+        onAbrirContato={c => { setEmpresaModal(null); setContatoModal(c) }}
+        onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
       {pipelinesModal && <PipelinesModal pipelines={pipelines} podeExcluir={podeExcluir} onClose={() => setPipelinesModal(false)} onMudou={carregar} />}
       {etapasModal && <EtapasModal pipelineId={pipelineSel} pipelineNome={pipelines.find(p => p.id === pipelineSel)?.nome || ''} estagios={estagiosDoPipeline(pipelineSel)} onClose={() => setEtapasModal(false)} onMudou={carregar} />}
     </div>
@@ -631,15 +634,44 @@ function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Em
   )
 }
 
-function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExcluir = false }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean }) {
-  const [f, setF] = useState<any>({ nome: empresa?.nome || '', segmento: empresa?.segmento || '', site: empresa?.site || '', instagram: empresa?.instagram || '', telefone: empresa?.telefone || '', observacoes: empresa?.observacoes || '' })
+function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExcluir = false, onAbrirContato }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; onAbrirContato?: (c: Contato) => void }) {
+  const [f, setF] = useState<any>({ nome: empresa?.nome || '', cnpj: formatarCnpj((empresa as any)?.cnpj), segmento: empresa?.segmento || '', site: empresa?.site || '', instagram: empresa?.instagram || '', telefone: empresa?.telefone || '', observacoes: empresa?.observacoes || '' })
   const [salvando, setSalvando] = useState(false)
   const lig = empresa ? ligadosEmpresa(empresa, contatos, negocios) : { cts: [], negs: [] }
+
+  // Vínculo com contatos, aqui mesmo — inclusive na CRIAÇÃO (a empresa nasce
+  // com gente dentro; antes era criar, ir em Contatos e editar um por um).
+  // Pendente até salvar: a empresa nova só tem id depois do POST.
+  const [vincularIds, setVincularIds] = useState<string[]>([])
+  const [desvincularIds, setDesvincularIds] = useState<string[]>([])
+  const [buscaCt, setBuscaCt] = useState('')
+  const [seletorAberto, setSeletorAberto] = useState(false)
+
+  const jaLigados = lig.cts.filter(c => !desvincularIds.includes(c.id))
+  const pendentes = contatos.filter(c => vincularIds.includes(c.id))
+  const naFicha = [...jaLigados, ...pendentes]
+  const candidatos = useMemo(() => {
+    const q = semAcento(buscaCt.trim())
+    const fora = contatos.filter(c => !naFicha.some(x => x.id === c.id))
+    const lista = q ? fora.filter(c => semAcento(c.nome).includes(q) || semAcento(c.empresa || '').includes(q)) : fora
+    return lista.slice(0, 30) // lista longa: sem busca, só os primeiros
+  }, [contatos, naFicha, buscaCt])
+
   async function salvar() {
     if (!f.nome.trim()) return
     setSalvando(true)
-    if (empresa?.id) await fetch('/api/crm/empresas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: empresa.id, ...f }) }).catch(() => {})
-    else await fetch('/api/crm/empresas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(f) }).catch(() => {})
+    const corpo = { ...f, cnpj: soDigitosCnpj(f.cnpj) }
+    let id = empresa?.id || ''
+    if (id) await fetch('/api/crm/empresas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...corpo }) }).catch(() => {})
+    else id = await fetch('/api/crm/empresas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).then(d => d?.empresa?.id || '').catch(() => '')
+    // O vínculo mora no CONTATO (empresaId), então cada um é um PUT. Grava o
+    // nome junto: as duas telas casam por id OU por nome (ligadosEmpresa).
+    if (id) {
+      await Promise.all([
+        ...vincularIds.map(cid => fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cid, empresaId: id, empresa: f.nome.trim() }) }).catch(() => {})),
+        ...desvincularIds.map(cid => fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cid, empresaId: '', empresa: '' }) }).catch(() => {})),
+      ])
+    }
     setSalvando(false); onSalvo()
   }
   async function excluir() {
@@ -654,6 +686,15 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={labelStyle}>CNPJ</label>
+              <input value={f.cnpj} onChange={e => setF({ ...f, cnpj: formatarCnpj(e.target.value) })} inputMode="numeric" placeholder="00.000.000/0000-00" style={inputStyle} />
+              {/* Opcional — mas se veio errado, avisa. CNPJ torto vai parar em
+                  contrato e nota, e ninguém confere de novo. Não impede salvar. */}
+              {f.cnpj.trim() && !cnpjValido(f.cnpj) && (
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#b91c1c', fontWeight: 600 }}>CNPJ incompleto ou inválido — confira antes de salvar.</p>
+              )}
+            </div>
             <div><label style={labelStyle}>Segmento</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Site</label><input value={f.site} onChange={e => setF({ ...f, site: e.target.value })} style={inputStyle} /></div>
@@ -661,12 +702,46 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
           </div>
           <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
         </div>
-        {empresa && (lig.cts.length > 0 || lig.negs.length > 0) && (
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
-            {lig.cts.length > 0 && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}><b>Contatos:</b> {lig.cts.map(c => c.nome).join(', ')}</p>}
-            {lig.negs.length > 0 && <p style={{ margin: 0, fontSize: 12, color: '#888' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
+        {/* Contatos da empresa: clicáveis (abrem a ficha) e vinculáveis daqui */}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+          <label style={labelStyle}>Contatos desta empresa</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {naFicha.map(c => (
+              <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: vincularIds.includes(c.id) ? '#fef9c3' : '#f4f4f5', border: '1px solid #e5e7eb', borderRadius: 999, padding: '4px 6px 4px 10px', fontSize: 12, fontWeight: 600, color: '#333' }}>
+                <button onClick={() => onAbrirContato?.(c)} title="Abrir a ficha do contato"
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: onAbrirContato ? '#1d4ed8' : '#333', cursor: onAbrirContato ? 'pointer' : 'default' }}>{c.nome}</button>
+                <button onClick={() => {
+                  if (vincularIds.includes(c.id)) setVincularIds(ids => ids.filter(x => x !== c.id))
+                  else setDesvincularIds(ids => [...ids, c.id])
+                }} title="Desvincular da empresa"
+                  style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>×</button>
+              </span>
+            ))}
+            {naFicha.length === 0 && <span style={{ fontSize: 12, color: '#aaa' }}>Nenhum contato vinculado.</span>}
+            <button onClick={() => setSeletorAberto(v => !v)}
+              style={{ padding: '4px 10px', background: '#fff', border: '1.5px dashed #d4d4d8', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#666', cursor: 'pointer' }}>+ Vincular</button>
           </div>
-        )}
+
+          {seletorAberto && (
+            <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+              <input value={buscaCt} onChange={e => setBuscaCt(e.target.value)} autoFocus placeholder="Buscar contato por nome..."
+                style={{ ...inputStyle, border: 'none', borderBottom: '1px solid #f0f0f0', borderRadius: 0 }} />
+              <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                {candidatos.map(c => (
+                  <button key={c.id} onClick={() => { setVincularIds(ids => [...ids, c.id]); setBuscaCt('') }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid #f7f7f7', fontSize: 12.5, color: '#333', cursor: 'pointer' }}>
+                    {c.nome}{c.empresa ? <span style={{ color: '#aaa' }}> · hoje em {c.empresa}</span> : ''}
+                  </button>
+                ))}
+                {candidatos.length === 0 && <p style={{ margin: 0, padding: '10px 12px', fontSize: 12, color: '#aaa' }}>Nenhum contato encontrado.</p>}
+              </div>
+            </div>
+          )}
+          {(vincularIds.length > 0 || desvincularIds.length > 0) && (
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#92400e' }}>As mudanças de vínculo são aplicadas ao salvar.</p>
+          )}
+          {lig.negs.length > 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#888' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
+        </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
           {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}

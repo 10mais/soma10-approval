@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, CrmEmpresa } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { soDigitosCnpj } from '@/lib/cnpj'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 
 export const runtime = 'nodejs'
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   if (!String(b.nome || '').trim()) return NextResponse.json({ error: 'informe o nome' }, { status: 400 })
   const agora = new Date().toISOString()
   const empresa: CrmEmpresa = {
-    id: uuid(), nome: String(b.nome).trim(), segmento: b.segmento || '', site: b.site || '', instagram: b.instagram || '', telefone: b.telefone || '', observacoes: b.observacoes || '',
+    id: uuid(), nome: String(b.nome).trim(), cnpj: soDigitosCnpj(b.cnpj), segmento: b.segmento || '', site: b.site || '', instagram: b.instagram || '', telefone: b.telefone || '', observacoes: b.observacoes || '',
     criadoPor: session.user?.name || '', criadoEm: agora, atualizadoEm: agora,
   }
   await redis.set(`empresa:${empresa.id}`, empresa)
@@ -50,9 +51,11 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const empresa = await redis.get<CrmEmpresa>(`empresa:${id}`)
   if (!empresa) return NextResponse.json({ error: 'não encontrada' }, { status: 404 })
-  const campos = ['nome', 'segmento', 'site', 'instagram', 'telefone', 'observacoes']
+  const campos = ['nome', 'cnpj', 'segmento', 'site', 'instagram', 'telefone', 'observacoes']
   const atualizado: any = { ...empresa, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
+  // Guardado só com dígitos: a máscara é da tela; no banco, dado limpo.
+  if ('cnpj' in updates) atualizado.cnpj = soDigitosCnpj(updates.cnpj)
   await redis.set(`empresa:${id}`, atualizado)
   return NextResponse.json({ ok: true, empresa: atualizado })
 }

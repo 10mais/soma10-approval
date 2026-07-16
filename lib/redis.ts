@@ -828,6 +828,7 @@ export type CrmEstagio = { id: string; nome: string; ordem: number; ganho?: bool
 export type CrmEmpresa = {
   id: string
   nome: string
+  cnpj?: string // opcional; guardado só com dígitos (a tela formata)
   segmento?: string
   site?: string
   instagram?: string
