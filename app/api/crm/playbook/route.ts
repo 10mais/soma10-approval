@@ -11,11 +11,12 @@ export const runtime = 'nodejs'
 const CHAVE = 'crm:playbookQualificacao'
 
 export type CadenciaPasso = { id: string; dia: number; canal: 'whatsapp' | 'ligacao' | 'email'; titulo: string; script: string }
-export type PlaybookQualificacao = { roteiro: string; cadencia: CadenciaPasso[] }
+export type PassoReaquecimento = { id: string; quando: string; titulo: string; script: string }
+export type PlaybookQualificacao = { roteiro: string; cadencia: CadenciaPasso[]; reaquecimento?: PassoReaquecimento[] }
 
 // Padrão da instância clínica: playbook de clínica em vez do de marketing/agência.
 function padraoClinica(): PlaybookQualificacao {
-  return { roteiro: PLAYBOOK_CLINICA.roteiro, cadencia: PLAYBOOK_CLINICA.cadencia.map(p => ({ id: uuid(), ...p })) }
+  return { roteiro: PLAYBOOK_CLINICA.roteiro, cadencia: PLAYBOOK_CLINICA.cadencia.map(p => ({ id: uuid(), ...p })), reaquecimento: PLAYBOOK_CLINICA.reaquecimento.map(p => ({ id: uuid(), ...p })) }
 }
 
 function padrao(): PlaybookQualificacao {
@@ -40,7 +41,15 @@ function padrao(): PlaybookQualificacao {
 
 async function carregar(): Promise<PlaybookQualificacao> {
   const t = await redis.get<PlaybookQualificacao>(CHAVE)
-  if (t && Array.isArray(t.cadencia)) return t
+  if (t && Array.isArray(t.cadencia)) {
+    // Instância que já tinha playbook salvo (a Norah) não conhece a seção nova:
+    // sem isto, "Reaquecimento" nasceria vazia justamente onde o dono pediu.
+    // AUSENTE = nunca viu, recebe o padrão. VAZIO = apagou de propósito, respeita.
+    if (!Array.isArray(t.reaquecimento) && (await getPerfilInstancia()) === 'clinica') {
+      return { ...t, reaquecimento: PLAYBOOK_CLINICA.reaquecimento.map(p => ({ id: uuid(), ...p })) }
+    }
+    return t
+  }
   const novo = (await getPerfilInstancia()) === 'clinica' ? padraoClinica() : padrao()
   await redis.set(CHAVE, novo)
   return novo
@@ -61,7 +70,10 @@ export async function PUT(req: NextRequest) {
     ? body.cadencia.map((p: any) => ({ id: String(p.id || uuid()), dia: Number(p.dia) || 0, canal: (['whatsapp', 'ligacao', 'email'].includes(p.canal) ? p.canal : 'whatsapp'), titulo: String(p.titulo || ''), script: String(p.script || '') }))
     : []
   cadencia.sort((a, b) => a.dia - b.dia)
-  const data: PlaybookQualificacao = { roteiro: String(body.roteiro || ''), cadencia }
+  const reaquecimento: PassoReaquecimento[] = Array.isArray(body.reaquecimento)
+    ? body.reaquecimento.map((p: any) => ({ id: String(p.id || uuid()), quando: String(p.quando || ''), titulo: String(p.titulo || ''), script: String(p.script || '') }))
+    : []
+  const data: PlaybookQualificacao = { roteiro: String(body.roteiro || ''), cadencia, reaquecimento }
   await redis.set(CHAVE, data)
   return NextResponse.json({ ok: true, playbook: data })
 }

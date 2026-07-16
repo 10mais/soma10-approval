@@ -486,25 +486,28 @@ const CANAL: Record<string, { label: string; cor: string }> = {
 }
 type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
 
+type PassoReaq = { id: string; quando: string; titulo: string; script: string }
+
 function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
   const [roteiro, setRoteiro] = useState('')
   const [cadencia, setCadencia] = useState<Passo[]>([])
+  const [reaquecimento, setReaquecimento] = useState<PassoReaq[]>([])
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
 
   function carregar() {
-    return fetch('/api/crm/playbook').then(r => r.json()).then(d => { if (d && !d.error) { setRoteiro(d.roteiro || ''); setCadencia(Array.isArray(d.cadencia) ? d.cadencia : []) } setCarregando(false) }).catch(() => setCarregando(false))
+    return fetch('/api/crm/playbook').then(r => r.json()).then(d => { if (d && !d.error) { setRoteiro(d.roteiro || ''); setCadencia(Array.isArray(d.cadencia) ? d.cadencia : []); setReaquecimento(Array.isArray(d.reaquecimento) ? d.reaquecimento : []) } setCarregando(false) }).catch(() => setCarregando(false))
   }
   useEffect(() => { carregar() }, [])
 
-  function copiar(p: Passo) { navigator.clipboard?.writeText(p.script).then(() => { setCopiado(p.id); setTimeout(() => setCopiado(null), 1500) }).catch(() => {}) }
+  function copiar(p: { id: string; script: string }) { navigator.clipboard?.writeText(p.script).then(() => { setCopiado(p.id); setTimeout(() => setCopiado(null), 1500) }).catch(() => {}) }
   async function salvar() {
     setSalvando(true)
-    const r = await fetch('/api/crm/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roteiro, cadencia }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roteiro, cadencia, reaquecimento }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { setCadencia(r.playbook.cadencia); setEditando(false) }
+    if (r?.ok) { setCadencia(r.playbook.cadencia); setReaquecimento(r.playbook.reaquecimento || []); setEditando(false) }
   }
 
   if (carregando) return <p style={{ color: '#aaa' }}>Carregando...</p>
@@ -516,6 +519,7 @@ function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
           {editando ? (
             <>
               <button onClick={() => setCadencia(c => [...c, { id: Math.random().toString(36).slice(2), dia: (c[c.length - 1]?.dia || 0) + 2, canal: 'whatsapp', titulo: '', script: '' }])} style={{ padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Passo</button>
+              <button onClick={() => setReaquecimento(c => [...c, { id: Math.random().toString(36).slice(2), quando: '', titulo: '', script: '' }])} style={{ padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Reaquecimento</button>
               <button onClick={salvar} disabled={salvando} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
               <button onClick={() => { carregar(); setEditando(false) }} style={{ padding: '8px 16px', background: '#fff', color: '#666', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
             </>
@@ -567,6 +571,40 @@ function PlaybookVendas({ podeEditar }: { podeEditar: boolean }) {
           )
         })}
       </div>
+
+      {/* REAQUECIMENTO DE BASE — quem ja veio e o ativo mais barato da clinica:
+          ja confiou, ja pagou, ja viu o resultado. Diferente da cadencia, que
+          persegue lead novo em D0/D1/D3, aqui nao ha dia zero: ha um GATILHO
+          (procedimento vencendo, sumiu depois da avaliacao, aniversario). */}
+      {(reaquecimento.length > 0 || editando) && (<>
+        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', margin: '22px 0 4px' }}>Reaquecimento de base</span>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#999' }}>Retomar quem ja veio. Fale do que a PESSOA fez — o procedimento e a data estao na ficha dela.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {reaquecimento.map((p, i) => (
+            <div key={p.id} style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee' }}>
+              {editando ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input value={p.quando} onChange={e => setReaquecimento(arr => arr.map((x, j) => j === i ? { ...x, quando: e.target.value } : x))} placeholder="Quando usar (ex.: procedimento vencendo)" style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12 }} />
+                    <input value={p.titulo} onChange={e => setReaquecimento(arr => arr.map((x, j) => j === i ? { ...x, titulo: e.target.value } : x))} placeholder="Titulo" style={{ flex: 1, minWidth: 140, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontWeight: 700 }} />
+                    <button onClick={() => setReaquecimento(arr => arr.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                  </div>
+                  <textarea value={p.script} onChange={e => setReaquecimento(arr => arr.map((x, j) => j === i ? { ...x, script: e.target.value } : x))} placeholder="Mensagem..." style={{ ...inputStyle, minHeight: 64, resize: 'vertical', fontSize: 12.5 }} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', background: '#7c3aed18', borderRadius: 999, padding: '3px 10px' }}>{p.quando || 'Quando fizer sentido'}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>{p.titulo}</span>
+                    <button onClick={() => copiar(p)} style={{ marginLeft: 'auto', padding: '6px 12px', background: copiado === p.id ? '#16a34a' : '#f5f5f5', color: copiado === p.id ? '#fff' : '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>{copiado === p.id ? 'Copiado!' : 'Copiar script'}</button>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: '#444', whiteSpace: 'pre-wrap', lineHeight: 1.6, background: '#fafafa', borderRadius: 8, padding: '10px 12px' }}>{p.script}</p>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </>)}
     </div>
   )
 }
