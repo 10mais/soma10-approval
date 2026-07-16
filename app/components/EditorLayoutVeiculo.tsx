@@ -113,7 +113,13 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
             <select value="" onChange={e => { const l = expandirModelo(e.target.value); if (l) { setSel(null); onChange(l) } }}
               style={{ ...inputS, background: '#fff' }}>
               <option value="">Começar de um modelo…</option>
-              {MODELOS_LAYOUT.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              <optgroup label="Ônibus">
+                {MODELOS_LAYOUT.filter(m => m.grupo === 'onibus').map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              </optgroup>
+              <optgroup label="Vans">
+                {MODELOS_LAYOUT.filter(m => m.grupo === 'van').map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              </optgroup>
+              {MODELOS_LAYOUT.filter(m => !m.grupo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
             {layout.pisos.length < 2
               ? <button type="button" onClick={() => aplicar(adicionarPiso(layout), 'Já são 2 pisos.')} style={{ ...inputS, background: '#fff', fontWeight: 700, color: '#2563eb', cursor: 'pointer', border: 'none' }}>+ Piso inferior</button>

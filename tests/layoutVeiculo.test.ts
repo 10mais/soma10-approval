@@ -23,6 +23,33 @@ describe('frota da Deny — croquis dos PDFs', () => {
     expect(capacidadeLayout(expandirModelo('em-branco')!)).toBe(0)
   })
 
+  it('vans: Sprinter 15+1 = 15, Sprinter 19+1 = 19, Master 16 lugares = 15 passageiros', () => {
+    // Capacidade = PASSAGEIROS (o motorista não vende poltrona).
+    expect(capacidadeLayout(expandirModelo('van-sprinter-15')!)).toBe(15)
+    expect(capacidadeLayout(expandirModelo('van-sprinter-19')!)).toBe(19)
+    expect(capacidadeLayout(expandirModelo('van-master-16')!)).toBe(15)
+  })
+
+  it('vans seguem a configuração real: dupla na cabine da Master e última fileira inteiriça', () => {
+    // Master 16L: banco duplo AO LADO do motorista (01/02 na fileira do volante).
+    const master = pisoPorId(expandirModelo('van-master-16')!, 'unico')!
+    expect(assentoEm(master, 0, 2)![2]).toBe('01')
+    expect(assentoEm(master, 0, 3)![2]).toBe('02')
+    expect(elementoEm(master, 0, 0)?.tipo).toBe('volante')
+    // Última fileira atravessa o corredor: os assentos à direita do vão vêm com
+    // desloc (mover livre) para encostar no vizinho, como no carro real.
+    const s15 = pisoPorId(expandirModelo('van-sprinter-15')!, 'unico')!
+    expect(assentoEm(s15, 5, 2)![4]?.[0]).toBeLessThan(0)
+    const s19 = pisoPorId(expandirModelo('van-sprinter-19')!, 'unico')!
+    expect(assentoEm(s19, 6, 2)![4]?.[0]).toBeLessThan(0)
+    expect(assentoEm(s19, 6, 3)![4]?.[0]).toBeLessThan(0)
+  })
+
+  it("'em-branco' é o ÚLTIMO modelo — layoutVazio() lê o final da lista", () => {
+    expect(MODELOS_LAYOUT[MODELOS_LAYOUT.length - 1].id).toBe('em-branco')
+    expect(capacidadeLayout(layoutVazio())).toBe(0)
+  })
+
   it('todo modelo tem números ÚNICOS cobrindo 01..total', () => {
     for (const m of MODELOS_LAYOUT) {
       const nums = numerosPoltronas(m.layout)

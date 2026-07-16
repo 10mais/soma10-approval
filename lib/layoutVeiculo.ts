@@ -52,7 +52,7 @@ export type Piso = {
 
 export type LayoutVeiculo = { pisos: Piso[] }
 
-export type ModeloLayout = { id: string; nome: string; layout: LayoutVeiculo }
+export type ModeloLayout = { id: string; nome: string; grupo?: 'onibus' | 'van'; layout: LayoutVeiculo }
 
 // Célula dentro de um piso.
 export type Celula = { pisoId: string; linha: number; col: number }
@@ -180,10 +180,73 @@ const CONVENCIONAL_2X2: LayoutVeiculo = (() => {
 
 function pad(n: number): string { return n < 10 ? `0${n}` : String(n) }
 
+// ── Vans (configurações de fábrica/mercado BR) ───────────────────────────────
+// Nas vans o motorista divide o piso com os passageiros: o volante entra no
+// croqui como elemento. A última fileira é INTEIRIÇA (atravessa o corredor) —
+// os assentos à direita do vão usam o desloc para encostar no vizinho, como no
+// carro real. `-0.54` ≈ largura do corredor em células ((16+5)/(34+5)).
+const EX: TipoPoltrona = 'executivo'
+const ENCOSTA: [number, number] = [-0.54, 0]
+const VOLANTE_VAN: ElementoLayout = { linha: 0, col: 0, rotulo: 'Volante', tipo: 'volante' }
+
+// Sprinter Van 415/416 15+1: motorista sozinho na cabine, porta de correr à
+// direita na frente do salão; 4 fileiras de 2+1 e última inteiriça de 3.
+const VAN_SPRINTER_15: LayoutVeiculo = {
+  pisos: [{
+    id: 'unico', nome: 'Poltronas', colunas: 3, corredorApos: [1],
+    assentos: [
+      [1, 0, '01', EX], [1, 1, '02', EX], [1, 2, '03', EX],
+      [2, 0, '04', EX], [2, 1, '05', EX], [2, 2, '06', EX],
+      [3, 0, '07', EX], [3, 1, '08', EX], [3, 2, '09', EX],
+      [4, 0, '10', EX], [4, 1, '11', EX], [4, 2, '12', EX],
+      [5, 0, '13', EX], [5, 1, '14', EX], [5, 2, '15', EX, ENCOSTA],
+    ],
+    elementos: [VOLANTE_VAN, { linha: 0, col: 2, rotulo: 'Porta', tipo: 'porta' }],
+  }],
+}
+
+// Sprinter 19+1 (nova geração): embarque pela porta DIANTEIRA ao lado do
+// motorista, corredor livre até o fundo; 5 fileiras de 2+1 e última de 4.
+const VAN_SPRINTER_19: LayoutVeiculo = {
+  pisos: [{
+    id: 'unico', nome: 'Poltronas', colunas: 4, corredorApos: [1],
+    assentos: [
+      [1, 0, '01', EX], [1, 1, '02', EX], [1, 2, '03', EX],
+      [2, 0, '04', EX], [2, 1, '05', EX], [2, 2, '06', EX],
+      [3, 0, '07', EX], [3, 1, '08', EX], [3, 2, '09', EX],
+      [4, 0, '10', EX], [4, 1, '11', EX], [4, 2, '12', EX],
+      [5, 0, '13', EX], [5, 1, '14', EX], [5, 2, '15', EX],
+      [6, 0, '16', EX], [6, 1, '17', EX], [6, 2, '18', EX, ENCOSTA], [6, 3, '19', EX, ENCOSTA],
+    ],
+    elementos: [VOLANTE_VAN, { linha: 0, col: 2, span: 2, rotulo: 'Porta (embarque)', tipo: 'porta' }],
+  }],
+}
+
+// Renault Master Minibus L3H2 16 lugares: banco DUPLO ao lado do motorista,
+// porta de correr à direita, 3 fileiras de 2+1 e última fileira de 4
+// individuais (configuração de fábrica).
+const VAN_MASTER_16: LayoutVeiculo = {
+  pisos: [{
+    id: 'unico', nome: 'Poltronas', colunas: 4, corredorApos: [1],
+    assentos: [
+      [0, 2, '01', EX], [0, 3, '02', EX],
+      [1, 0, '03', EX], [1, 1, '04', EX], [1, 2, '05', EX],
+      [2, 0, '06', EX], [2, 1, '07', EX], [2, 2, '08', EX],
+      [3, 0, '09', EX], [3, 1, '10', EX], [3, 2, '11', EX],
+      [4, 0, '12', EX], [4, 1, '13', EX], [4, 2, '14', EX, ENCOSTA], [4, 3, '15', EX, ENCOSTA],
+    ],
+    elementos: [VOLANTE_VAN, { linha: 1, col: 3, rotulo: 'Porta', tipo: 'porta' }],
+  }],
+}
+
 export const MODELOS_LAYOUT: ModeloLayout[] = [
-  { id: 'carro-2023', nome: 'Carro 2023 — leito 2+1 (40 lugares)', layout: CARRO_2023 },
-  { id: 'carro-2021', nome: 'Carro 2021 — leito 2+1 (43 lugares)', layout: CARRO_2021 },
-  { id: 'convencional-2x2', nome: 'Convencional 2+2 (48 lugares)', layout: CONVENCIONAL_2X2 },
+  { id: 'carro-2023', nome: 'Carro 2023 — leito 2+1 (40 lugares)', grupo: 'onibus', layout: CARRO_2023 },
+  { id: 'carro-2021', nome: 'Carro 2021 — leito 2+1 (43 lugares)', grupo: 'onibus', layout: CARRO_2021 },
+  { id: 'convencional-2x2', nome: 'Convencional 2+2 (48 lugares)', grupo: 'onibus', layout: CONVENCIONAL_2X2 },
+  { id: 'van-sprinter-15', nome: 'Sprinter 15+1 — 2+1, última de 3', grupo: 'van', layout: VAN_SPRINTER_15 },
+  { id: 'van-sprinter-19', nome: 'Sprinter 19+1 — porta dianteira, última de 4', grupo: 'van', layout: VAN_SPRINTER_19 },
+  { id: 'van-master-16', nome: 'Master L3H2 16 lugares — dupla na cabine, última de 4', grupo: 'van', layout: VAN_MASTER_16 },
+  // ⚠️ 'em-branco' fica por ÚLTIMO: layoutVazio() lê o final da lista.
   { id: 'em-branco', nome: 'Em branco', layout: { pisos: [{ id: 'unico', nome: 'Poltronas', colunas: 3, corredorApos: [1], assentos: [], elementos: [] }] } },
 ]
 
