@@ -117,7 +117,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
       setFormPauta(f => ({ ...f, sugestaoLegenda: d.legenda }))
       setLegendaNovaMsg('Legenda gerada!')
       setTimeout(() => setLegendaNovaMsg(''), 4000)
-    } catch { setLegendaNovaMsg('Erro de conexao.') }
+    } catch { setLegendaNovaMsg('Erro de conexão.') }
     finally { setGerandoLegendaNova(false) }
   }
 
@@ -180,7 +180,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 
   async function gerarPlanoIA() {
     if (!planoSel) return
-    if (!(await confirmar('A IA vai gerar pautas para o mes inteiro com base no Brand Board. Isso consome creditos da IA. Continuar?', { titulo: 'Gerar pautas com IA', okLabel: 'Continuar' }))) return
+    if (!(await confirmar('A IA vai gerar pautas para o mês inteiro com base no Brand Board. Isso consome créditos da IA. Continuar?', { titulo: 'Gerar pautas com IA', okLabel: 'Continuar' }))) return
     setGerandoIA(true); setIaMsg('Gerando pautas com IA... (pode levar ate 1 minuto)')
     try {
       const r = await fetch('/api/esteira/gerar-plano', {
@@ -192,7 +192,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
       setIaMsg(`${d.quantidade} pautas criadas com sucesso!`)
       carregarPautas(planoSel)
       setTimeout(() => setIaMsg(''), 6000)
-    } catch { setIaMsg('Erro de conexao ao gerar o plano.') }
+    } catch { setIaMsg('Erro de conexão ao gerar o plano.') }
     finally { setGerandoIA(false) }
   }
 
@@ -238,7 +238,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
             </div>
           )}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mes</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mês</label>
             <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13 }}>
               {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
@@ -320,7 +320,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
-                            {p.briefing || p.legenda || 'Sem titulo'}
+                            {p.briefing || p.legenda || 'Sem título'}
                           </p>
                           {col.key !== 'pronto' && (() => { const a = idadeNaEtapa(p); return a ? (
                             <span title="Tempo parado nesta etapa" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? '#b91c1c' : '#999', background: a.atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
@@ -522,7 +522,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
       setLegenda(d.legenda)
       setLegendaMsg('Legenda gerada!')
       setTimeout(() => setLegendaMsg(''), 4000)
-    } catch { setLegendaMsg('Erro de conexao.') }
+    } catch { setLegendaMsg('Erro de conexão.') }
     finally { setGerandoLegenda(false) }
   }
 
@@ -642,7 +642,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             pauta.formato ? `FORMATO: ${pauta.formato}` : '',
             pauta.dataAgendada ? `DATA: ${new Date(pauta.dataAgendada).toLocaleString('pt-BR')}` : '',
           ].filter(Boolean).join('\n\n')
-          navigator.clipboard.writeText(txt).then(() => toast('Instrucoes copiadas para a area de transferencia!', 'sucesso')).catch(() => toast('Nao foi possivel copiar. Selecione e copie manualmente.', 'erro'))
+          navigator.clipboard.writeText(txt).then(() => toast('Instrucoes copiadas para a area de transferencia!', 'sucesso')).catch(() => toast('Não foi possível copiar. Selecione e copie manualmente.', 'erro'))
         }} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#555', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Copiar instrucoes para producao
         </button>

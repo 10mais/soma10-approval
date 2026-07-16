@@ -21,9 +21,9 @@ const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julh
 function faixaStatus(qtd: number): { label: string; cor: string; bg: string } {
   if (qtd >= META_EXC) return { label: 'Destaque', cor: '#92400e', bg: '#fef3c7' }
   if (qtd >= META_BOA) return { label: 'Excelente', cor: '#166534', bg: '#dcfce7' }
-  if (qtd >= META_MIN) return { label: 'Saudavel', cor: '#16a34a', bg: '#f0fdf4' }
-  if (qtd >= 8) return { label: 'Atencao', cor: '#a16207', bg: '#fffbeb' }
-  return { label: 'Critico', cor: '#b91c1c', bg: '#fef2f2' }
+  if (qtd >= META_MIN) return { label: 'Saudável', cor: '#16a34a', bg: '#f0fdf4' }
+  if (qtd >= 8) return { label: 'Atenção', cor: '#a16207', bg: '#fffbeb' }
+  return { label: 'Crítico', cor: '#b91c1c', bg: '#fef2f2' }
 }
 
 function barPct(qtd: number): number { return Math.min(100, Math.round((qtd / META_EXC) * 100)) }
@@ -373,7 +373,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
         {[
           { label: 'Clientes ativos', valor: clientes.filter(c => c.tipo !== 'interno').length, cor: '#111' },
-          { label: 'Posts no mes', valor: postsMes.length, cor: '#16a34a' },
+          { label: 'Posts no mês', valor: postsMes.length, cor: '#16a34a' },
           { label: 'Pautas na esteira', valor: pautasEsteira, cor: '#1d4ed8' },
           { label: 'Falhas pendentes', valor: falhasPendentes, cor: falhasPendentes > 0 ? '#b91c1c' : '#16a34a' },
         ].map(kpi => (
@@ -495,7 +495,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {temAlertas && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, marginBottom: 20, overflow: 'hidden' }}>
           <button onClick={() => setAlertasAberto(v => !v)} style={{ width: '100%', padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#991b1b' }}>Precisa de atencao</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#991b1b' }}>Precisa de atenção</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: alertasAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {alertasAberto && (

@@ -80,7 +80,7 @@ export default function MinhaConta() {
     const r = await fetch('/api/meu-perfil', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome: perfil.nome, cargo: perfil.cargo, foto: perfil.foto, telefone: perfil.telefone, bio: perfil.bio, fusoHorario: perfil.fusoHorario }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
+    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
     setSalvando(false)
     if (r?.ok) { setMsg('Perfil atualizado!'); setTimeout(() => setMsg(''), 4000) }
     else setErro(r?.error || 'Erro ao salvar.')
@@ -91,7 +91,7 @@ export default function MinhaConta() {
     const r = await fetch('/api/meu-perfil', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ senhaAtual, novaSenha, confirmarSenha }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
+    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
     setSalvandoSenha(false)
     if (r?.ok) { setSenhaMsg('Senha alterada!'); setSenhaAtual(''); setNovaSenha(''); setConfirmarSenha(''); setTimeout(() => setSenhaMsg(''), 4000) }
     else setSenhaErro(r?.error || 'Erro ao alterar senha.')
@@ -116,14 +116,14 @@ export default function MinhaConta() {
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configuracoes da conta</p>
+      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações da conta</p>
       <h2 style={{ margin: '0 0 24px', fontSize: 20, color: '#111' }}>Minha Conta</h2>
 
       {/* PERFIL */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Meu perfil</h3>
-          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>{ehCliente ? 'Seus dados de acesso ao portal.' : 'Informacoes visiveis para sua equipe e clientes.'}</p>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>{ehCliente ? 'Seus dados de acesso ao portal.' : 'Informações visíveis para sua equipe e clientes.'}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16 }}>
@@ -163,7 +163,7 @@ export default function MinhaConta() {
           {!ehCliente && (
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Biografia</label>
-              <textarea value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre voce..."
+              <textarea value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre você..."
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
           )}
@@ -199,7 +199,7 @@ export default function MinhaConta() {
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Alterar senha</h3>
-          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Deixe em branco caso nao queira altera-la.</p>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Deixe em branco caso não queira alterá-la.</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
@@ -287,7 +287,7 @@ export default function MinhaConta() {
       {/* INFO DA CONTA */}
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Informacoes da conta</h3>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Informações da conta</h3>
           <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Dados gerenciados pelo administrador.</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>

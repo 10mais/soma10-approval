@@ -7,6 +7,7 @@ import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import Anthropic from '@anthropic-ai/sdk'
+import { REGRA_PTBR } from '@/lib/regraPtBr'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -93,14 +94,16 @@ export async function POST(req: NextRequest) {
             const relJson = JSON.parse(rel.replace(/^\)\]\}'/, ''))
             const lista = relJson?.default?.rankedList?.[1]?.rankedKeyword || relJson?.default?.rankedList?.[0]?.rankedKeyword || []
             const termos = lista.slice(0, 8).map((k: any) => k.query).filter(Boolean)
-            if (termos.length) trendsTxt = `\nTENDENCIAS EM ALTA (Google Trends BR, ultima semana):\n${termos.join(', ')}\nUse essas tendencias como inspiracao quando fizerem sentido para o nicho.`
+            if (termos.length) trendsTxt = `\nTENDÊNCIAS EM ALTA (Google Trends BR, última semana):\n${termos.join(', ')}\nUse essas tendências como inspiração quando fizerem sentido para o nicho.`
           }
         }
       }
     }
   } catch { /* trends e best-effort */ }
 
-  const prompt = `Voce e um estrategista de conteudo de uma agencia de marketing digital. Gere exatamente ${qtd} pautas de conteudo para o mes de ${mesNome}/${ano} do cliente abaixo.
+  const prompt = `Você é um estrategista de conteúdo de uma agência de marketing digital. Gere exatamente ${qtd} pautas de conteúdo para o mês de ${mesNome}/${ano} do cliente abaixo.
+
+${REGRA_PTBR}
 
 BRAND BOARD DO CLIENTE:
 ${brand}
@@ -108,24 +111,24 @@ ${playbookTxt}
 ${trendsTxt}
 
 REGRAS:
-- Cada pauta deve ser ESPECIFICA e acionavel para este nicho (nada generico).
-- Varie os formatos: Feed (imagem estatica) e Reel (video curto). NAO sugira Stories.
-- Distribua as datas ao longo do mes (3-4x por semana, exceto domingos).
-- Sugira um HORARIO para cada postagem (entre 10h e 20h, variando).
+- Cada pauta deve ser ESPECÍFICA e acionável para este nicho (nada genérico).
+- Varie os formatos: Feed (imagem estática) e Reel (vídeo curto). NÃO sugira Stories.
+- Distribua as datas ao longo do mês (3-4x por semana, exceto domingos).
+- Sugira um HORÁRIO para cada postagem (entre 10h e 20h, variando).
 - O tom de voz deve seguir o informado acima.
-- Respeite as preferencias e restricoes da marca.
-- As legendas devem ser completas e publicaveis (com no maximo 5 hashtags relevantes no final).
+- Respeite as preferências e restrições da marca.
+- As legendas devem ser completas e publicáveis (com no máximo 5 hashtags relevantes no final).
 
-Responda APENAS com um JSON valido (sem markdown, sem explicacao, sem backticks) no formato:
+Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backticks) no formato:
 [
   {
     "briefing": "tema/ideia da pauta",
-    "sugestaoImagem": "descricao visual para o designer",
+    "sugestaoImagem": "descrição visual para o designer",
     "textoImagem": "texto que aparece na arte (ou vazio)",
     "legenda": "legenda completa com hashtags",
     "formato": "feed" | "reel",
-    "dia": numero do dia do mes (1-${new Date(ano, plano.mes, 0).getDate()}),
-    "hora": numero da hora (10-20),
+    "dia": número do dia do mês (1-${new Date(ano, plano.mes, 0).getDate()}),
+    "hora": número da hora (10-20),
     "minuto": 0 ou 30
   }
 ]`

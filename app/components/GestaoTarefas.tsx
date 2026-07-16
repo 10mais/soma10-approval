@@ -123,7 +123,7 @@ function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onC
           </div>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{mensagem}</p>
         </div>
-        <p style={{ margin: '0 0 20px', fontSize: 12, color: '#888' }}>A tarefa sera movida para a lixeira e podera ser restaurada em ate 30 dias.</p>
+        <p style={{ margin: '0 0 20px', fontSize: 12, color: '#888' }}>A tarefa será movida para a lixeira e poderá ser restaurada em até 30 dias.</p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={onCancel} style={{ padding: '9px 20px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer' }}>Cancelar</button>
           <button onClick={onConfirm} style={{ padding: '9px 20px', background: '#b91c1c', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Excluir</button>
@@ -429,7 +429,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               </select>
             )}
             <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
-              <option value="">Todos os responsaveis</option>
+              <option value="">Todos os responsáveis</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
             <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
@@ -560,7 +560,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       {view === 'lista' && (
         <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
-            <span>Tipo</span><span>Tarefa</span><span>Responsavel</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
+            <span>Tipo</span><span>Tarefa</span><span>Responsável</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
           {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
@@ -699,9 +699,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         setForm(f => ({ ...f, tipo: d.tipo.key }))
         setNovoTipoLabel(''); setNovoTipoCor('#6b7280'); setCriandoTipo(false)
       } else {
-        toast('Nao foi possivel criar o tipo: ' + (d?.error || 'erro desconhecido'), 'erro')
+        toast('Não foi possível criar o tipo: ' + (d?.error || 'erro desconhecido'), 'erro')
       }
-    } catch { toast('Nao foi possivel criar o tipo.', 'erro') } finally { setSalvandoTipo(false) }
+    } catch { toast('Não foi possível criar o tipo.', 'erro') } finally { setSalvandoTipo(false) }
   }
   useEffect(() => {
     if (!form.clienteId) { setMarcos([]); return }
@@ -724,9 +724,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         setForm(f => ({ ...f, marcoId: d.marco.id }))
         setNovaEtapaTitulo(''); setCriandoEtapa(false)
       } else {
-        toast('Nao foi possivel criar a etapa: ' + (d?.error || 'erro desconhecido'), 'erro')
+        toast('Não foi possível criar a etapa: ' + (d?.error || 'erro desconhecido'), 'erro')
       }
-    } catch { toast('Nao foi possivel criar a etapa.', 'erro') } finally { setSalvandoEtapa(false) }
+    } catch { toast('Não foi possível criar a etapa.', 'erro') } finally { setSalvandoEtapa(false) }
   }
   const [anexos, setAnexos] = useState<Anexo[]>(tarefa?.anexos || [])
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
@@ -990,7 +990,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
         {/* Historico */}
         {(tarefa.atividades || []).length > 0 && (
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Historico</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Histórico</div>
         )}
         {(tarefa.atividades || []).map((a: any) => (
           <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
@@ -1005,7 +1005,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
         {(tarefa.comentarios || []).length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Comentarios</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Comentários</div>
             {(tarefa.comentarios || []).map((c: any) => (
               <div key={c.id} style={{ background: '#fafafa', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -1070,7 +1070,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             if (!query.includes(' ') || query.length < 30) { setMencaoAberta(true); setMencaoQuery(query); setMencaoPos(arroba) }
             else setMencaoAberta(false)
           } else setMencaoAberta(false)
-        }} placeholder="Escreva um comentario... Use @ para mencionar"
+        }} placeholder="Escreva um comentário... Use @ para mencionar"
           style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mencaoAberta) { e.preventDefault(); enviarComentario() } }} />
         <button onClick={enviarComentario} disabled={enviandoComentario || !novoComentario.trim()}
@@ -1172,7 +1172,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                         <button type="button" onClick={() => { setCriandoTipo(false); setNovoTipoLabel('') }}
                           style={{ padding: '8px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                       </div>
-                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#aaa', lineHeight: 1.4 }}>Fica fixo no dropdown e disponivel em todas as tarefas.</p>
+                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#aaa', lineHeight: 1.4 }}>Fica fixo no dropdown e disponível em todas as tarefas.</p>
                     </div>
                   )}
                 </div>
@@ -1180,12 +1180,12 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS ? '1fr' : '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsavel</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsável</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <OptImg src={u.foto} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
-                    <option value="">Sem responsavel</option>
+                    <option value="">Sem responsável</option>
                     {(() => {
                       const squadEmails = ((clientes || []).find(c => c.id === form.clienteId)?.squad || [])
                       const time = (usuarios || []).filter(u => u.role !== 'cliente')
@@ -1285,7 +1285,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Ao concluir, uma nova ocorrência é criada com o prazo avançado.</p>}
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descricao</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição</label>
               <RichText value={form.descricao} onChange={d => setForm(f => ({ ...f, descricao: d }))} placeholder="Detalhes, contexto, links..." minHeight={80} />
             </div>
           </div>

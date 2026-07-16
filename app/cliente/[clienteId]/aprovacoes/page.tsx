@@ -146,7 +146,7 @@ export default function AprovacoesPagina() {
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || ''), novaLegenda, novaData }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
+    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
     if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
     if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
     setEnviando(null)
@@ -177,7 +177,7 @@ export default function AprovacoesPagina() {
 
       {pendentes.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
-          <p>Nenhuma pendencia de aprovacao no momento.</p>
+          <p>Nenhuma pendência de aprovação no momento.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -305,8 +305,8 @@ export default function AprovacoesPagina() {
         <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo. O material voltara para a equipe.</p>
-            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeicao..."
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo. O material voltará para a equipe.</p>
+            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>

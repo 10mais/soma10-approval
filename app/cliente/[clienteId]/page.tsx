@@ -31,8 +31,8 @@ export default function ClienteHome() {
       <h2 style={{ margin: '0 0 20px', fontSize: 20, color: '#111' }}>Bem-vindo, {cliente.nome}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Posts no mes', valor: stats?.mes ?? 0, cor: '#16a34a' },
-          { label: 'Pendencias de aprovacao', valor: stats?.pendentes ?? 0, cor: stats?.pendentes > 0 ? '#b91c1c' : '#16a34a' },
+          { label: 'Posts no mês', valor: stats?.mes ?? 0, cor: '#16a34a' },
+          { label: 'Pendências de aprovação', valor: stats?.pendentes ?? 0, cor: stats?.pendentes > 0 ? '#b91c1c' : '#16a34a' },
           { label: 'Total de posts', valor: stats?.total ?? 0, cor: '#111' },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>

@@ -8,7 +8,7 @@ export type Entregas = {
 
 const TAREFA_LABEL: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido' }
 const TAREFA_COR: Record<string, string> = { a_fazer: '#9ca3af', em_andamento: '#ca8a04', em_revisao: '#2563eb', concluido: '#16a34a' }
-const POST_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', aguardando_aprovacao: 'Aguardando aprovacao', aprovado: 'Aprovado', publicado: 'Publicado', falha_publicacao: 'Falha', corrigir: 'Corrigir', reprovado: 'Reprovado' }
+const POST_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', aguardando_aprovacao: 'Aguardando aprovação', aprovado: 'Aprovado', publicado: 'Publicado', falha_publicacao: 'Falha', corrigir: 'Corrigir', reprovado: 'Reprovado' }
 const POST_COR: Record<string, string> = { rascunho: '#9ca3af', agendado: '#ca8a04', publicado: '#16a34a', falha_publicacao: '#dc2626', aguardando_aprovacao: '#2563eb', aprovado: '#16a34a' }
 
 function chip(label: string, cor: string) {

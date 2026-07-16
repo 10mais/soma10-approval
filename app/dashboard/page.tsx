@@ -140,7 +140,7 @@ const ENTREGAVEIS_OPCOES = [
   { key: 'email_marketing', label: 'E-mail marketing' },
   { key: 'consultoria', label: 'Consultoria' },
   { key: 'crm', label: 'Sistema CRM' },
-  { key: 'google_meu_negocio', label: 'Google Meu Negocio' },
+  { key: 'google_meu_negocio', label: 'Google Meu Negócio' },
   { key: 'hospedagem', label: 'Hospedagem / servidor de páginas' },
 ]
 
@@ -264,7 +264,7 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexao' }))
+    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
     if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
     if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
     setEnviando(null)
@@ -344,8 +344,8 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
         <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeicao. O criativo voltara para a equipe com esta justificativa.</p>
-            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeicao..."
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeição. O criativo voltará para a equipe com esta justificativa.</p>
+            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
@@ -3090,9 +3090,9 @@ function Dashboard() {
                   {(() => {
                     const ant = analyticsData.totaisAnterior || {}
                     return [
-                      { label: 'Posts no periodo', valor: analyticsData.totais?.posts, anterior: ant.posts },
+                      { label: 'Posts no período', valor: analyticsData.totais?.posts, anterior: ant.posts },
                       { label: 'Curtidas', valor: analyticsData.totais?.curtidas, anterior: ant.curtidas },
-                      { label: 'Comentarios', valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
+                      { label: 'Comentários', valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
                       { label: 'Alcance', valor: analyticsData.totais?.alcance, anterior: ant.alcance },
                       { label: 'Impressoes', valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
                       { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos, anterior: ant.salvamentos },
@@ -3342,8 +3342,8 @@ function Dashboard() {
             {notificacoes.length === 0 ? (
               <div style={{ background: '#fff', borderRadius: 14, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
-                <p style={{ margin: 0, fontSize: 14, color: '#888', fontWeight: 500 }}>Nenhuma notificacao por enquanto.</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Voce sera notificado sobre tarefas, aprovacoes, mensagens e prazos.</p>
+                <p style={{ margin: 0, fontSize: 14, color: '#888', fontWeight: 500 }}>Nenhuma notificação por enquanto.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Você será notificado sobre tarefas, aprovações, mensagens e prazos.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -5,6 +5,7 @@ import { redis, Cliente } from '@/lib/redis'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import Anthropic from '@anthropic-ai/sdk'
+import { REGRA_PTBR } from '@/lib/regraPtBr'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -32,21 +33,23 @@ export async function POST(req: NextRequest) {
     cliente.instagram ? `Instagram: @${(cliente.instagram || '').replace(/^@/, '')}` : '',
     cliente.segmento ? `Segmento: ${cliente.segmento}` : '',
     cliente.palavrasChave ? `Palavras-chave: ${cliente.palavrasChave}` : '',
-    cliente.descricao ? `Descricao: ${cliente.descricao}` : '',
-    cliente.publicoAlvo ? `Publico-alvo: ${cliente.publicoAlvo}` : '',
+    cliente.descricao ? `Descrição: ${cliente.descricao}` : '',
+    cliente.publicoAlvo ? `Público-alvo: ${cliente.publicoAlvo}` : '',
     cliente.tomDeVoz ? `Tom de voz: ${cliente.tomDeVoz}` : '',
-    cliente.preferencias ? `Preferencias/restricoes: ${cliente.preferencias}` : '',
-    cliente.documentoMarca ? `\nDocumento de marca (referencia editorial):\n${cliente.documentoMarca.slice(0, 2000)}` : '',
+    cliente.preferencias ? `Preferências/restrições: ${cliente.preferencias}` : '',
+    cliente.documentoMarca ? `\nDocumento de marca (referência editorial):\n${cliente.documentoMarca.slice(0, 2000)}` : '',
   ].filter(Boolean).join('\n')
 
   const instrucoes = [
     briefing ? `BRIEFING DA PAUTA: ${briefing}` : '',
-    sugestaoImagem ? `SUGESTAO DE IMAGEM: ${sugestaoImagem}` : '',
+    sugestaoImagem ? `SUGESTÃO DE IMAGEM: ${sugestaoImagem}` : '',
     textoImagem ? `TEXTO NA IMAGEM: ${textoImagem}` : '',
     formato ? `FORMATO: ${formato}` : '',
   ].filter(Boolean).join('\n')
 
-  const prompt = `Voce e um copywriter de social media de uma agencia de marketing digital. Escreva UMA legenda completa e publicavel para o post descrito abaixo.
+  const prompt = `Você é um copywriter de social media de uma agência de marketing digital. Escreva UMA legenda completa e publicável para o post descrito abaixo.
+
+${REGRA_PTBR}
 
 BRAND BOARD DO CLIENTE:
 ${brand}
@@ -54,14 +57,14 @@ ${brand}
 ${instrucoes}
 
 REGRAS:
-- A legenda deve ser ESPECIFICA para o briefing/tema informado.
+- A legenda deve ser ESPECÍFICA para o briefing/tema informado.
 - Siga o tom de voz da marca (informado acima).
-- Respeite as preferencias e restricoes.
-- Inclua no maximo 5 hashtags relevantes no final.
-- Se for Reel, faca um gancho forte na primeira frase.
-- Nao use emojis em excesso (maximo 3-4 por legenda).
-- Tamanho ideal: 3 a 6 paragrafos curtos.
-- Entregue APENAS a legenda (sem explicacao, sem aspas, sem titulo).`
+- Respeite as preferências e restrições.
+- Inclua no máximo 5 hashtags relevantes no final.
+- Se for Reel, faça um gancho forte na primeira frase.
+- Não use emojis em excesso (máximo 3-4 por legenda).
+- Tamanho ideal: 3 a 6 parágrafos curtos.
+- Entregue APENAS a legenda (sem explicação, sem aspas, sem título).`
 
   try {
     const client = new Anthropic({ apiKey: KEY })

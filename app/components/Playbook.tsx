@@ -165,7 +165,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
-          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estrategia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
+          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
         )}
 
         {clientesComMarcos.map(c => {
@@ -248,19 +248,19 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div>
-              <p style={lbl}>Periodo</p>
+              <p style={lbl}>Período</p>
               <p style={val}>{fmtData(marco.dataInicio)}{marco.dataFim ? ' — ' + fmtData(marco.dataFim) : ''}</p>
             </div>
             {marco.responsavelNome && (
               <div>
-                <p style={lbl}>Responsavel</p>
+                <p style={lbl}>Responsável</p>
                 <p style={val}>{marco.responsavelNome}</p>
               </div>
             )}
           </div>
           {marco.descricao && (
             <div>
-              <p style={lbl}>Descricao</p>
+              <p style={lbl}>Descrição</p>
               <p style={{ ...val, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{marco.descricao}</p>
             </div>
           )}
@@ -318,7 +318,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descricao</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição</label>
             <textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, objetivos, KPIs..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
@@ -341,7 +341,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Data inicio</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Data início</label>
               <input type="date" value={form.dataInicio} onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
@@ -359,8 +359,8 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsavel</label>
-            <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsavel"
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsável</label>
+            <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsável"
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
         </div>

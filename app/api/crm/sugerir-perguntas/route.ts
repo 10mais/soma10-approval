@@ -10,6 +10,7 @@ import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { PLAYBOOK_CLINICA } from '@/lib/playbookClinica'
 import { parseSugestoes } from '@/lib/sugestaoPerguntas'
 import Anthropic from '@anthropic-ai/sdk'
+import { REGRA_PTBR } from '@/lib/regraPtBr'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -82,34 +83,36 @@ export async function POST(req: NextRequest) {
     negDados?.negocio.origem ? `Origem do lead: ${negDados.negocio.origem}` : '',
     negDados?.negocio.queixaPrincipal ? `Queixa principal ja registrada: ${negDados.negocio.queixaPrincipal}` : '',
     negDados?.negocio.dores ? `Dores levantadas: ${negDados.negocio.dores}` : '',
-  ].filter(Boolean).join('\n') || 'Nenhum dado cadastrado alem da conversa.'
+  ].filter(Boolean).join('\n') || 'Nenhum dado cadastrado além da conversa.'
 
-  const prompt = `Voce e um SDR experiente. Analise a conversa de WhatsApp abaixo e sugira as PROXIMAS PERGUNTAS que o atendente deve fazer para criar conexao com a pessoa e avancar a venda.
+  const prompt = `Você é um SDR experiente. Analise a conversa de WhatsApp abaixo e sugira as PRÓXIMAS PERGUNTAS que o atendente deve fazer para criar conexão com a pessoa e avançar a venda.
 
-${roteiro ? `PLAYBOOK OFICIAL (o metodo desta empresa — siga as fases e as regras a risca):\n${roteiro}\n` : ''}
-O QUE JA SABEMOS SOBRE A PESSOA:
+${REGRA_PTBR}
+
+${roteiro ? `PLAYBOOK OFICIAL (o método desta empresa — siga as fases e as regras à risca):\n${roteiro}\n` : ''}
+O QUE JÁ SABEMOS SOBRE A PESSOA:
 ${contexto}
 
-CONVERSA ATE AGORA (a ultima linha e a mais recente):
+CONVERSA ATÉ AGORA (a última linha é a mais recente):
 ${transcricao}
 
 SUA TAREFA:
-1. Identifique em que fase do playbook a conversa esta AGORA (pela ultima mensagem, nao pelo inicio).
+1. Identifique em que fase do playbook a conversa está AGORA (pela última mensagem, não pelo início).
 2. Sugira exatamente 3 perguntas para a mensagem seguinte.
 
 REGRAS:
-- PERGUNTAS, nao afirmacoes: cada sugestao termina em "?" e convida a pessoa a falar.
-- Uma pergunta de cada vez: cada sugestao e uma opcao alternativa, nao um bloco para enviar junto.
-- Nao repita o que ja foi perguntado na conversa; avance a partir da ultima resposta da pessoa.
+- PERGUNTAS, não afirmações: cada sugestão termina em "?" e convida a pessoa a falar.
+- Uma pergunta de cada vez: cada sugestão é uma opção alternativa, não um bloco para enviar junto.
+- Não repita o que já foi perguntado na conversa; avance a partir da última resposta da pessoa.
 - Ancore na fala DELA: use as palavras/queixas que ela mesma usou.
-- Respeite as regras de ouro do playbook (ex.: nao antecipar preco ou detalhe tecnico se o playbook proibir).
-- Nao invente fato algum: nem valor, nem horario, nem procedimento, nem prazo, nem resultado.
-- Tom de WhatsApp: 1 ou 2 frases, pt-BR natural e caloroso, sem parecer questionario nem robo.
-- Se a pessoa demonstrou objecao, priorize a pergunta que abre a objecao antes de reconduzir.
-- Ortografia e gramatica pt-BR impecaveis (acentuacao e pontuacao corretas) — o texto vai direto para o paciente.
+- Respeite as regras de ouro do playbook (ex.: não antecipar preço ou detalhe técnico se o playbook proibir).
+- Não invente fato algum: nem valor, nem horário, nem procedimento, nem prazo, nem resultado.
+- Tom de WhatsApp: 1 ou 2 frases, natural e caloroso, sem parecer questionário nem robô.
+- Se a pessoa demonstrou objeção, priorize a pergunta que abre a objeção antes de reconduzir.
+- O texto vai direto para o paciente: ortografia, acentuação e pontuação impecáveis.
 
-Responda APENAS com um array JSON valido, sem texto ao redor, sem markdown:
-[{"pergunta":"a pergunta pronta para enviar","porque":"o que ela destrava, em ate 12 palavras","fase":"a fase do playbook"}]`
+Responda APENAS com um array JSON válido, sem texto ao redor, sem markdown:
+[{"pergunta":"a pergunta pronta para enviar","porque":"o que ela destrava, em até 12 palavras","fase":"a fase do playbook"}]`
 
   try {
     const client = new Anthropic({ apiKey: KEY })
