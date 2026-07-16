@@ -4,14 +4,9 @@ import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
-import { ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO } from '@/lib/perfisInstanciaCatalogo'
-
 // Abas escondidas de TODOS os papéis conforme o perfil da instância (nav + guarda).
-function abasOcultas(perfil: string | null): string[] {
-  if (perfil === 'clinica') return ABAS_OCULTAS_CLINICA
-  if (perfil === 'turismo') return ABAS_OCULTAS_TURISMO
-  return []
-}
+// A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
+import { abasOcultasDoPerfil as abasOcultas } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import Calendar from '../components/Calendar'
@@ -4880,7 +4875,7 @@ function Dashboard() {
             {abaConfig === 'integracoes' && (<>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>WhatsApp (conexão)</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution (ver WHATSAPP-CLINICA.md); aqui você pareia e vê o status.</p>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.</p>
               <WhatsAppConexao />
             </div>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>

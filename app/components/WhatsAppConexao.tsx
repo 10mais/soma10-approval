@@ -64,8 +64,10 @@ export default function WhatsAppConexao() {
   if (!configurado) {
     return (
       <p style={{ margin: 0, fontSize: 12.5, color: '#888', lineHeight: 1.6 }}>
-        Conector não configurado. Suba o host do Evolution (ver <b>WHATSAPP-CLINICA.md</b>) e adicione as variáveis
-        <b> EVOLUTION_API_URL</b>, <b>EVOLUTION_INSTANCE</b> e <b>EVOLUTION_API_KEY</b> nesta instância (Vercel). O número antigo é mantido — pareia por QR.
+        Conector não configurado. Suba um host do Evolution e adicione as variáveis
+        <b> EVOLUTION_API_URL</b>, <b>EVOLUTION_INSTANCE</b> e <b>EVOLUTION_API_KEY</b> na Vercel <b>desta</b> instância. O número atual é mantido — pareia por QR.
+        <br />
+        Cada instância precisa da <b>sua própria</b> instância do Evolution (<b>EVOLUTION_INSTANCE</b> diferente): o mesmo nome em duas faria as conversas de uma cair na outra.
       </p>
     )
   }

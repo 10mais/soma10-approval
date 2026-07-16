@@ -57,6 +57,27 @@ export const ABAS_OCULTAS_TURISMO: string[] = [
   'carga', // carga da equipe (métrica de agência de conteúdo; turismo não usa)
 ]
 
+// A Agenda é tela de CLÍNICA: nasceu para marcar atendimento de paciente
+// (profissional, queixa principal, prontuário, "confirmado = pago"). Ficou
+// visível na agência e na gestão por descuido meu — lá ninguém agenda paciente,
+// e o que faz falta é a agenda de COMPROMISSOS da empresa, vinda do Google
+// Calendar (projeto à parte, decidido em 2026-07-16: agenda da empresa +
+// pessoal por cima, só leitura). Até ela existir, tela nenhuma é melhor que a
+// tela errada.
+export const ABAS_OCULTAS_AGENCIA: string[] = ['agenda']
+export const ABAS_OCULTAS_GESTAO: string[] = ['agenda']
+
+// Quais telas somem de TODOS os papéis (admin incluso) nesta instância.
+// Vive aqui, e não no dashboard, porque lá são 4.500 linhas sem teste — e
+// esconder tela por regra inline já custou caro no filtro do Planner.
+// `null`/desconhecido = agência (instância sem config:perfilInstancia).
+export function abasOcultasDoPerfil(perfil: string | null | undefined): string[] {
+  if (perfil === 'clinica') return ABAS_OCULTAS_CLINICA
+  if (perfil === 'turismo') return ABAS_OCULTAS_TURISMO
+  if (perfil === 'gestao') return ABAS_OCULTAS_GESTAO
+  return ABAS_OCULTAS_AGENCIA
+}
+
 export const PERFIS: DefPerfil[] = [
   {
     chave: 'clinica',
