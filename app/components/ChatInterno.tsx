@@ -79,7 +79,9 @@ export default function ChatInterno({ meuEmail }: { meuEmail: string }) {
       {/* Lista de contatos */}
       <div style={{ borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 18px', borderBottom: '1px solid #f0f0f0' }}>
-          <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Mensagens</h3>
+          {/* "Chat interno" e não "Mensagens": Mensagens é a caixa de entrada do
+              CLIENTE no CRM (WhatsApp/Instagram). Aqui é a conversa da EQUIPE. */}
+          <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Chat interno</h3>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {contatos.map(c => (

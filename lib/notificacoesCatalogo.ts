@@ -4,7 +4,7 @@
 // e mensagens no privado.
 
 export const NOTIF_TIPOS: { tipo: string; label: string; categoria: string; obrigatorio?: boolean }[] = [
-  { tipo: 'mensagem_privada', label: 'Mensagens no privado', categoria: 'Mensagens', obrigatorio: true },
+  { tipo: 'mensagem_privada', label: 'Mensagem no privado (equipe)', categoria: 'Chat interno', obrigatorio: true },
   { tipo: 'tarefa_atribuida', label: 'Tarefa atribuída a você', categoria: 'Tarefas', obrigatorio: true },
   { tipo: 'post_aprovado', label: 'Post aprovado pelo cliente', categoria: 'Conteúdo' },
   { tipo: 'post_corrigir', label: 'Correção de post solicitada', categoria: 'Conteúdo' },

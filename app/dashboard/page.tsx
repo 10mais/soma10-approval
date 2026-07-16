@@ -2018,7 +2018,7 @@ function Dashboard() {
               <NavBtn chave="conversao" label="Conversão & Retenção" />
               <NavBtn chave="meu-dia" label="Meu dia" />
               <NavBtn chave="lista-pessoal" label="Personal list" />
-              <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
+              <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
             </nav>
           )}
 
@@ -2055,7 +2055,7 @@ function Dashboard() {
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
-                <NavBtn chave="mensagens" label="Mensagens" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
+                <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
                 <NavBtn chave="solicitacoes" label="Solicitações do cliente" onClick={() => setAba('solicitacoes' as any)} />
               </nav>
               {([
@@ -2152,7 +2152,7 @@ function Dashboard() {
         {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
         {mobile && !ehCliente && (
           <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-            {[{ k: 'home', label: 'Início' }, { k: 'meu-dia', label: 'Meu dia' }, { k: 'mensagens', label: 'Mensagens' }].map(it => {
+            {[{ k: 'home', label: 'Início' }, { k: 'meu-dia', label: 'Meu dia' }, { k: 'mensagens', label: 'Chat' }].map(it => {
               const ativo = aba === it.k && !menuMobile
               return (
                 <button key={it.k} onClick={() => { setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? '#111' : '#9aa0a6' }}>

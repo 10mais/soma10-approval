@@ -32,7 +32,7 @@ export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?
   { key: 'crm', label: 'CRM', categoria: 'Vendas' },
   { key: 'conversao', label: 'Conversão & Retenção', categoria: 'Vendas' },
   { key: 'inbox', label: 'Inbox', categoria: 'Comunicação' },
-  { key: 'mensagens', label: 'Mensagens', categoria: 'Comunicação' },
+  { key: 'mensagens', label: 'Chat interno', categoria: 'Comunicação' },
   { key: 'solicitacoes', label: 'Solicitações do cliente', categoria: 'Comunicação' },
   { key: 'agenda', label: 'Agenda', categoria: 'Clínica', perfil: 'clinica' },
   { key: 'procedimentos', label: 'Procedimentos e Métodos', categoria: 'Clínica', perfil: 'clinica' },
