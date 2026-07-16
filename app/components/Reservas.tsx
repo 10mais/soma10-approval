@@ -16,6 +16,7 @@ type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string;
 // Passageiro vem de lib/reservas: é o mesmo que a rota grava e que vira a LISTA
 // oficial. Redeclarar aqui já deixou a tela para trás dos campos do manifesto.
 import type { Passageiro } from '@/lib/reservas'
+import { fecharFora } from '@/lib/fecharModal'
 type Reserva = { id: string; viagemId: string; contratanteNome: string; passageiros: Passageiro[]; desconto?: number; status: string; vendedorNome?: string; financeiro?: FinanceiroReserva }
 type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; passageiros: Passageiro[]; desconto: string; financeiro?: FinanceiroReserva }
 
@@ -256,7 +257,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
 
       {/* Modal criar/editar reserva */}
       {form && viagem && (
-        <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
+        <div onClick={fecharFora(() => setForm(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', margin: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar reserva' : 'Nova reserva'}</h3>
             <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{viagem.titulo} · {fmtData(viagem.dataIda)} · {fmtBRL(viagem.valorPacote)}/pessoa</p>

@@ -1,10 +1,12 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
 import { copiarPacoteParaViagem, dataVoltaSugerida, type PacoteLite } from '@/lib/pacoteViagem'
 import RoteiroViagem, { type Parada } from './RoteiroViagem'
+import PacotesViagem from './PacotesViagem'
 import { v4 as uuid } from 'uuid'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Viagens (turismo): uma saída com veículo, motoristas, valor e inclusos.
 // As reservas (poltronas + passageiros) vivem no módulo Reservas.
@@ -58,6 +60,10 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   const [roteiroDe, setRoteiroDe] = useState<Viagem | null>(null)
   const [pacotes, setPacotes] = useState<PacoteLite[]>([])
   const [salvando, setSalvando] = useState(false)
+  // Os dois negócios viram divisão da tela — não duas abas no menu (eram
+  // redundantes). O catálogo de MODELOS abre por dentro de Pacotes.
+  const [aba, setAba] = useState<TipoViagem>('pacote')
+  const [modelosAberto, setModelosAberto] = useState(false)
 
   const carregar = useCallback(() => {
     setCarregando(true)
@@ -111,6 +117,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
     })
   }
 
+  // Viagem sem tipo é do tempo em que só existia pacote (a base antiga toda).
+  const visiveis = useMemo(() => lista.filter(v => (v.tipo || 'pacote') === aba), [lista, aba])
+
   const vagasDe = (veiculoId?: string) => { const v = veiculos.find(x => x.id === veiculoId); return v?.layout ? capacidadeLayout(v.layout) : 0 }
 
   // Lista oficial de passageiros (DAER/ANTT ou internacional). Confere as
@@ -133,7 +142,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   }
 
   const snap = (f: Form | null) => f ? JSON.stringify({ ...f, inclusoNovo: '' }) : ''
-  function abrirNovo() { const f = vazio(); setForm(f); setFormInicial(snap(f)) }
+  // Nasce no tipo da divisão em que o dono está — quem clica "+ Fretamento" quer
+  // um fretamento, não ter que trocar o seletor depois.
+  function abrirNovo() { const f = { ...vazio(), tipo: aba }; setForm(f); setFormInicial(snap(f)) }
   function abrirEditar(e: Viagem) {
     const f: Form = { id: e.id, titulo: e.titulo, tipo: e.tipo || 'pacote', pacoteId: e.pacoteId || '', roteiro: e.roteiro || '', internacional: !!e.internacional, dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', veiculoId: e.veiculoId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), valorFechado: e.valorFechado ? String(e.valorFechado) : '', contratante: e.contratante || '', descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], paradas: e.paradas || [], status: e.status, observacoes: e.observacoes || '', inclusoNovo: '' }
     setForm(f); setFormInicial(snap(f))
@@ -185,18 +196,41 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Viagens</h2>
         <span style={{ flex: 1 }} />
-        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Viagem</button>}
+        {aba === 'pacote' && podeEditar && (
+          <button onClick={() => setModelosAberto(true)} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 10, color: '#555', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            Modelos de pacote{pacotes.length ? ` (${pacotes.length})` : ''}
+          </button>
+        )}
+        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ {aba === 'fretamento' ? 'Fretamento' : 'Viagem'}</button>}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#999' }}>Saídas da operadora. Defina veículo, motoristas, valor do pacote e o que está incluso.</p>
+
+      {/* Os dois negócios da operadora, lado a lado */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6, background: '#f6f6f6', borderRadius: 10, padding: 3, width: 'fit-content' }}>
+        {TIPOS.map(t => {
+          const on = aba === t.key
+          const n = lista.filter(v => (v.tipo || 'pacote') === t.key).length
+          return (
+            <button key={t.key} type="button" onClick={() => setAba(t.key)}
+              style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: on ? '#111' : 'transparent', color: on ? '#fff' : '#777', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              {t.label}{n ? ` (${n})` : ''}
+            </button>
+          )
+        })}
+      </div>
+      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#bbb' }}>{TIPOS.find(t => t.key === aba)?.ajuda}</p>
 
       {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
-        : lista.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma viagem cadastrada.</p>
+        : visiveis.length === 0 ? (
+          <p style={{ color: '#aaa', fontSize: 13 }}>
+            {aba === 'fretamento' ? 'Nenhum fretamento cadastrado.' : 'Nenhuma viagem de pacote cadastrada.'}
+          </p>
+        )
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {lista.map(e => {
+            {visiveis.map(e => {
               const st = stInfo(e.status); const vagas = vagasDe(e.veiculoId); const o = veiculos.find(x => x.id === e.veiculoId)
               return (
                 <div key={e.id} onClick={() => podeEditar && abrirEditar(e)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', cursor: podeEditar ? 'pointer' : 'default' }}>
@@ -231,7 +265,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
         )}
 
       {form && (
-        <div onClick={fecharForm} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(fecharForm, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={ev => ev.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 540, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar viagem' : 'Nova viagem'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -366,6 +400,23 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
       )}
       {roteiroDe && (
         <RoteiroViagem viagem={roteiroDe} podeEditar={podeEditar} onClose={() => setRoteiroDe(null)} onSaved={carregar} />
+      )}
+
+      {/* Catálogo de MODELOS — o que era a aba "Pacotes" na esquerda. Fica aqui
+          dentro porque é onde ele é usado: cadastra "Rio e Paraty" uma vez e cada
+          saída do ano nasce dele. Ao fechar, recarrega o seletor de pacote. */}
+      {modelosAberto && (
+        <div onClick={fecharFora(() => { setModelosAberto(false); carregar() }, { perguntar: false })}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 900, padding: 20, overflowY: 'auto' }}>
+          <div onClick={ev => ev.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 1000, width: '100%', padding: 22, marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ flex: 1 }} />
+              <button onClick={() => { setModelosAberto(false); carregar() }}
+                style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Fechar</button>
+            </div>
+            <PacotesViagem podeEditar={podeEditar} podeExcluir={podeExcluir} />
+          </div>
+        </div>
       )}
     </div>
   )

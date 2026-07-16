@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Reuniões internas (Pessoas e Cultura): pauta antes, ata depois, e decisões
 // que viram tarefas com responsável e prazo — pra reunião não morrer na sala.
@@ -117,7 +118,7 @@ function NovaReuniaoModal({ onCriar, onClose, salvando }: { onCriar: (f: any) =>
   const amanha = new Date(); amanha.setDate(amanha.getDate() + 1); amanha.setHours(9, 0, 0, 0)
   const [f, setF] = useState({ titulo: '', data: toLocalInput(amanha), participantes: '', pauta: '' })
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>Nova reunião</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -161,7 +162,7 @@ function ReuniaoModal({ reuniao, usuarios, salvando, podeEditar, onSalvar, onExc
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 620, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <input value={r.titulo} onChange={e => setR({ ...r, titulo: e.target.value })} disabled={!podeEditar}

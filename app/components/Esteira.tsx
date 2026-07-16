@@ -4,6 +4,7 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast, confirmar } from '@/lib/toast'
 import UploadProgress from './UploadProgress'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string }
 type Plano = { id: string; clienteId: string; clienteNome: string; mes: number; ano: number; titulo?: string }
@@ -351,7 +352,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 
       {/* Modal de nova pauta */}
       {novaPautaModal && (
-        <div onClick={fecharNovaPauta} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(fecharNovaPauta, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Nova pauta</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -540,7 +541,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>Pauta — {pauta.clienteNome}</h3>
 

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { RelatorioMensalModelo } from '@/lib/relatorioMensal'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Editor do relatório mensal: ajusta o conteúdo antes de exportar o PDF.
 export default function RelatorioMensalEditor({ cliente, inicial, onClose }: { cliente: any; inicial: RelatorioMensalModelo; onClose: () => void }) {
@@ -25,7 +26,7 @@ export default function RelatorioMensalEditor({ cliente, inicial, onClose }: { c
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Relatório mensal — {cliente?.nome}</h3>

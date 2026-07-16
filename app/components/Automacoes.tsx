@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { GATILHOS, ACOES, OPERADORES } from '@/lib/automacoesCatalogo'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Cond = { campo: string; operador: string; valor?: string }
 type Passo = { id: string; atrasoDias: number; acao: string; params: Record<string, any> }
@@ -86,7 +87,7 @@ function Editor({ regra, setRegra, clientes, salvar, salvando, categorias, onClo
   const campos = gat?.campos || []
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 620, maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{regra.id ? 'Editar automação' : 'Nova automação'}</h3>
 

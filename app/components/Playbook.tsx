@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import EntregasMarco, { Entregas } from './EntregasMarco'
 import AvatarCliente from './AvatarCliente'
 import { confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -236,7 +237,7 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
   const lbl: React.CSSProperties = { margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }
   const val: React.CSSProperties = { margin: 0, fontSize: 14, color: '#222' }
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, background: cat?.cor || '#888' }} />
@@ -307,7 +308,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

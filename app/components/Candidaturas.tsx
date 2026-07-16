@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Candidatura = {
   id: string; nome: string; email: string; telefone?: string; vaga?: string; mensagem?: string
@@ -82,7 +83,7 @@ export default function Candidaturas() {
 
       {/* Detalhe */}
       {aberta && (
-        <div onClick={() => setAberta(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setAberta(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>{aberta.nome}</h3>

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { confirmar, toast } from '@/lib/toast'
 import AvatarCliente from './AvatarCliente'
+import { fecharFora } from '@/lib/fecharModal'
 
 type No = { id: string; texto: string; x: number; y: number; cor?: string; colapsado?: boolean }
 type Conexao = { id: string; de: string; para: string }
@@ -91,7 +92,7 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
       )}
 
       {novoModal && (
-        <div onClick={() => !gerando && setNovoModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => !gerando && setNovoModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo mapa mental</h3>
             {!modoIA ? (

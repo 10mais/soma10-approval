@@ -4,6 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { LayoutVeiculo, capacidadeLayout, layoutVazio, validarLayout } from '@/lib/layoutVeiculo'
 import EditorLayoutVeiculo from './EditorLayoutVeiculo'
 import { v4 as uuid } from 'uuid'
+import { fecharFora } from '@/lib/fecharModal'
 
 // FROTA (turismo). Cada veículo tem o PRÓPRIO croqui (editável) — a capacidade é
 // contada dele, nunca digitada, para não divergir do mapa de poltronas das reservas.
@@ -190,7 +191,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
         )}
 
       {form && (
-        <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setForm(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 760, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar veículo' : 'Novo veículo'}</h3>
 

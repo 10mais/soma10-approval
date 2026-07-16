@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Playbook operacional da marca (camada de conhecimento IA-First, por cliente).
 // Humano cura as regras; a IA pode DESTILAR um rascunho do contexto da marca —
@@ -75,7 +76,7 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
   const ta: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', minHeight: 64, resize: 'vertical', lineHeight: 1.5 }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
           <div>

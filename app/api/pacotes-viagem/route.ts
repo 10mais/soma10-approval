@@ -34,15 +34,14 @@ function limparHoteis(arr: any): HotelPacote[] {
   })).filter((h: HotelPacote) => h.nome).slice(0, 20)
 }
 
+// Só a TABELA de preço. Entrada/parcelas do corpo são ignoradas de propósito:
+// negociação é da Reserva (por contratante), não do produto.
 function limparPrecos(o: any): PrecosViagem | undefined {
   if (!o || typeof o !== 'object') return undefined
   const n = (v: any) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v) || 0))
   const p: PrecosViagem = {
     valorCrianca: n(o.valorCrianca),
     valorMeia: n(o.valorMeia),
-    entrada: n(o.entrada),
-    parcelas: o.parcelas ? Math.max(1, Math.floor(Number(o.parcelas) || 1)) : undefined,
-    valorParcela: n(o.valorParcela),
     formasAceitas: Array.isArray(o.formasAceitas) ? o.formasAceitas.filter((f: any) => FORMAS.includes(f)) : undefined,
   }
   return Object.values(p).some(v => v !== undefined && !(Array.isArray(v) && !v.length)) ? p : undefined

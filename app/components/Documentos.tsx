@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { confirmar, toast } from '@/lib/toast'
 import RichText from './RichText'
 import AvatarCliente from './AvatarCliente'
+import { fecharFora } from '@/lib/fecharModal'
 
 type ClienteLite = { id: string; nome: string; logo?: string }
 type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
@@ -126,7 +127,7 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
 
       {/* Editor em modal */}
       {aberto && (
-        <div onClick={fechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(fechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
               <input value={aberto.titulo} onChange={e => editar({ titulo: e.target.value })} placeholder="Título do documento" autoFocus

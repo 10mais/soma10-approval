@@ -6,6 +6,7 @@ import { isViewAsClient, setViewAsClient } from '@/lib/modoCliente'
 import { temModulo } from '@/lib/modulos'
 import AvatarCliente from '@/app/components/AvatarCliente'
 import SystemName from '@/app/components/SystemName'
+import { fecharFora } from '@/lib/fecharModal'
 
 // `perm` liga o item a uma flag de permissao do cliente (cliente.permissoes).
 // Ausente/undefined = liberado. Itens sem `perm` (Início) ficam sempre visíveis.
@@ -174,7 +175,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
       {/* Backdrop do drawer no mobile */}
       {mobile && menuAberto && (
-        <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 'calc(56px + env(safe-area-inset-top))', background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
+        <div onClick={fecharFora(() => setMenuAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, top: 'calc(56px + env(safe-area-inset-top))', background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
       )}
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>

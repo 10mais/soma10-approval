@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Procedimentos e Métodos (perfil clínica): catálogo do que a clínica atende.
 // A Agenda (tipo de atendimento) e o pós-atendimento consomem esta lista.
@@ -86,7 +87,7 @@ export default function Procedimentos({ podeEditar = false }: { podeEditar?: boo
         )}
 
       {form && (
-        <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setForm(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={ev => ev.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar procedimento' : 'Novo procedimento'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

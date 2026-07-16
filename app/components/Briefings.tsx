@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { confirmar } from '@/lib/toast'
 import AvatarCliente from './AvatarCliente'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; segmento?: string; palavrasChave?: string }
 type Briefing = {
@@ -262,7 +263,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
         const q = buscaTarefa.trim().toLowerCase()
         const filtradas = q ? tarefasCliente.filter(t => (t.titulo || '').toLowerCase().includes(q)) : tarefasCliente
         return (
-          <div onClick={() => !relacionando && setRelModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={fecharFora(() => !relacionando && setRelModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 20 }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Relacionar a tarefa</h3>
               <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>O briefing completo vai para a descrição da tarefa. Crie uma nova ou vincule a uma existente deste cliente.</p>

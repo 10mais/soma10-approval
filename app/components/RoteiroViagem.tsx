@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Editor de ROTEIRO (itinerário) de uma viagem — modal dedicado. Monta a linha
 // do tempo dia-a-dia entre dataIda e dataVolta; cada parada entra num dia + hora.
@@ -66,7 +67,7 @@ export default function RoteiroViagem({ viagem, podeEditar = true, onClose, onSa
   const inputStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
   return (
-    <div onClick={fechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+    <div onClick={fecharFora(fechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 680, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Roteiro</h3>

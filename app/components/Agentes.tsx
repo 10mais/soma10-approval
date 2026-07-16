@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Conhecimento = { nome: string; url: string; tipo: string; texto: string; em: string }
 type Agente = { id: string; nome: string; funcao?: string; descricao?: string; instrucoes: string; ferramentas: string[]; conhecimento?: Conhecimento[]; cor?: string; ativo: boolean }
@@ -115,7 +116,7 @@ function AgenteModal({ agente, onClose, onSalvo }: { agente: Agente | null; onCl
   const input: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{agente ? 'Editar agente' : 'Novo agente'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

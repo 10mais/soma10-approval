@@ -40,12 +40,11 @@ export type HotelLite = {
   checkoutHora?: string
 }
 
+// Tabela de preço do produto. Entrada/parcelamento são NEGOCIAÇÃO e vivem em
+// Reserva.financeiro (por contratante) — ver lib/financeiroReserva.
 export type PrecosLite = {
   valorCrianca?: number
   valorMeia?: number
-  entrada?: number
-  parcelas?: number
-  valorParcela?: number
   formasAceitas?: string[]
 }
 
@@ -91,6 +90,25 @@ export function somarDias(ymd: string, dias: number): string {
 export function dataVoltaSugerida(dataIda: string, dias?: number): string | undefined {
   if (!ehData(dataIda) || !dias || dias < 1) return undefined
   return somarDias(dataIda, dias - 1)
+}
+
+// ── Dia relativo ↔ data real ─────────────────────────────────────────────────
+// A tela mostra CALENDÁRIO (data de verdade); o pacote guarda DIA RELATIVO. É o
+// que concilia as duas coisas: preencher data é natural, e guardar relativo é o
+// que faz o mesmo pacote sair em julho e em dezembro sem recadastro.
+
+// Dia 1 = data da ida. Sem ida de referência não há âncora — devolve ''.
+export function diaParaData(dataIda: string | undefined, dia: number | undefined): string {
+  if (!ehData(dataIda) || !dia || dia < 1) return ''
+  return somarDias(dataIda!, dia - 1)
+}
+
+// Volta da data escolhida para o dia relativo. Data antes da ida seria dia < 1:
+// devolve undefined em vez de inventar dia zero ou negativo.
+export function dataParaDia(dataIda: string | undefined, data: string | undefined): number | undefined {
+  if (!ehData(dataIda) || !ehData(data)) return undefined
+  const dias = Math.round((new Date(data! + 'T00:00').getTime() - new Date(dataIda! + 'T00:00').getTime()) / 86400000)
+  return dias < 0 ? undefined : dias + 1
 }
 
 // Dias e noites a partir das datas — o dono preenche ida/volta e o sistema conta.
@@ -184,18 +202,6 @@ export function valorDaReserva(viagem: ViagemLite, passageiros: PaxLite[] | numb
     ? (passageiros || 0) * (viagem?.valorPacote || 0)
     : (passageiros || []).reduce((s, p) => s + precoDaFaixa(viagem, p?.faixa), 0)
   return Math.max(0, bruto - (desconto || 0))
-}
-
-// "R$ 500 + 10x de R$ 120" — o que a equipe fala ao cliente. Devolve '' quando o
-// pacote não tem parcelamento configurado.
-export function resumoParcelamento(p?: PrecosLite): string {
-  if (!p) return ''
-  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  const partes: string[] = []
-  if (p.entrada) partes.push(`${brl(p.entrada)} de entrada`)
-  if (p.parcelas && p.parcelas > 1 && p.valorParcela) partes.push(`${p.parcelas}x de ${brl(p.valorParcela)}`)
-  else if (p.parcelas && p.parcelas > 1) partes.push(`em ${p.parcelas}x`)
-  return partes.join(' + ')
 }
 
 // Fretamento não vende poltrona: o contratante leva o veículo inteiro. A tela usa

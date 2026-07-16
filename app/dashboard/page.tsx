@@ -24,6 +24,7 @@ import SaudeSistema from '../components/SaudeSistema'
 import LgpdCliente from '../components/LgpdCliente'
 import AvatarCliente from '../components/AvatarCliente'
 import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
+import { fecharFora } from '@/lib/fecharModal'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -54,7 +55,6 @@ const Agenda = dynamic(() => import('../components/Agenda'), { ssr: false, loadi
 const Reunioes = dynamic(() => import('../components/Reunioes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Frota = dynamic(() => import('../components/Frota'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Viagens = dynamic(() => import('../components/Viagens'), { ssr: false, loading: () => <LoadingPlaceholder /> })
-const PacotesViagem = dynamic(() => import('../components/PacotesViagem'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
@@ -216,7 +216,6 @@ const ICONE_ABA: Record<string, string> = {
   crm: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
   frota: 'M4 17V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11M4 17h16M4 17v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 17v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M5 8h14M5 12h14M9 8v4M15 8v4',
   viagens: 'M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zM12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-  pacotes: 'M3 8h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3M3 13h18',
   reservas: 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4zM14 5v14',
   default: 'M5 12h14',
 }
@@ -345,7 +344,7 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
 
       {/* Modal de rejeicao */}
       {rejeitar && (
-        <div onClick={() => setRejeitar(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
             <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeicao. O criativo voltara para a equipe com esta justificativa.</p>
@@ -420,7 +419,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'pacotes' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -945,7 +944,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', pacotes: 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -1799,7 +1798,7 @@ function Dashboard() {
 
             {inboxAberto && (
               <>
-                <div onClick={() => setInboxAberto(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                <div onClick={fecharFora(() => setInboxAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: '#fff', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff' }}>
                     <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
@@ -1875,7 +1874,7 @@ function Dashboard() {
       )}
       {/* Backdrop do drawer (mobile) */}
       {mobile && menuMobile && (
-        <div onClick={() => setMenuMobile(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
+        <div onClick={fecharFora(() => setMenuMobile(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 150 }} />
       )}
 
       <div style={{ display: 'flex', alignItems: 'flex-start', ...(mobile ? {} : { height: '100vh', overflow: 'hidden' }) }}>
@@ -2043,7 +2042,6 @@ function Dashboard() {
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
                   <NavBtn chave="viagens" label="Viagens" />
-                  <NavBtn chave="pacotes" label="Pacotes" />
                   <NavBtn chave="reservas" label="Reservas" />
                   <NavBtn chave="frota" label="Frota" />
                 </nav>
@@ -3313,9 +3311,6 @@ function Dashboard() {
         )}
 
         {/* Operação turismo — Viagens / Ônibus */}
-        {aba === 'pacotes' && perfilTurismo && role !== 'cliente' && (
-          <PacotesViagem podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
-        )}
         {aba === 'viagens' && perfilTurismo && role !== 'cliente' && (
           <Viagens podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
@@ -3404,7 +3399,7 @@ function Dashboard() {
 
         {/* Modal da notificacao aberta (abre dentro do Inbox, sem navegar) */}
         {notifAberta && (
-          <div onClick={() => setNotifAberta(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={fecharFora(() => setNotifAberta(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 17, color: '#111', lineHeight: 1.3 }}>{notifAberta.titulo}</h3>
@@ -3433,7 +3428,7 @@ function Dashboard() {
         {/* Tarefa aberta a partir de uma notificação (sobreposto, sem trocar de aba) */}
         {/* Modal de compartilhamento do link de aprovação (após "Enviar para aprovação") */}
         {linkAprovModal && (
-          <div onClick={() => setLinkAprovModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+          <div onClick={fecharFora(() => setLinkAprovModal(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -3852,7 +3847,7 @@ function Dashboard() {
                     const igIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/></svg>
                     const fbIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     return (
-                    <div onClick={() => setEditandoCliente(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1200, padding: '5vh 16px', overflowY: 'auto' }}>
+                    <div onClick={fecharFora(() => setEditandoCliente(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1200, padding: '5vh 16px', overflowY: 'auto' }}>
                       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 800, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
                         {/* Cabeçalho do modal */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', borderBottom: '1px solid #eef0f2', flexShrink: 0 }}>
@@ -4983,7 +4978,7 @@ function Dashboard() {
 
       {/* Modal: resumo semanal do cliente */}
       {resumoCliente && (
-        <div onClick={() => setResumoCliente(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
+        <div onClick={fecharFora(() => setResumoCliente(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Resumo da semana</h3>
             <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>

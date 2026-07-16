@@ -6,6 +6,7 @@ import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
 import { atrasada, emRisco } from '@/lib/entregas'
 import ProducaoBoard from './ProducaoBoard'
+import { fecharFora } from '@/lib/fecharModal'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -982,7 +983,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const inp: any = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }
         const ghost: any = { padding: '5px 10px', background: '#f5f5f5', border: 'none', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
         return (
-          <div onClick={() => !editorAplicando && setEditorPost(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div onClick={fecharFora(() => !editorAplicando && setEditorPost(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Editar arte</h3>
@@ -1149,7 +1150,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {gerarModal && (() => {
         const p = gerarModal
         return (
-          <div onClick={() => setGerarModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={fecharFora(() => setGerarModal(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>A IA usa a imagem de referência + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
@@ -1233,7 +1234,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Modal de compartilhamento do link de aprovação */}
       {linkModal && (
-        <div onClick={() => setLinkModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+        <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22, animation: 'stFade .18s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1265,7 +1266,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const img = (preview.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (preview.imagens || [])[0]
         const inicial = (preview.clienteNome || '?').trim().charAt(0).toUpperCase()
         return (
-          <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'stFade .18s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--marca, #ffc00f)', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{inicial}</div>

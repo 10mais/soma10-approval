@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  somarDias, dataVoltaSugerida, diasENoites, materializarRoteiro, copiarPacoteParaViagem,
-  valorDaReserva, precoDaFaixa, vendePoltrona, resumoParcelamento,
+  somarDias, dataVoltaSugerida, diasENoites, diaParaData, dataParaDia, materializarRoteiro, copiarPacoteParaViagem,
+  valorDaReserva, precoDaFaixa, vendePoltrona,
   type PacoteLite, type ParadaModeloLite,
 } from '@/lib/pacoteViagem'
 
@@ -154,6 +154,38 @@ describe('diasENoites — o dono preenche datas, o sistema conta', () => {
   it('data mal formada não quebra', () => {
     expect(diasENoites('', '2026-07-22')).toEqual({})
     expect(diasENoites('20/07/2026', '22/07/2026')).toEqual({})
+  })
+})
+
+describe('diaParaData / dataParaDia — a tela mostra calendário, o pacote guarda dia', () => {
+  it('Dia 1 é a ida; Dia 3 é ida+2', () => {
+    expect(diaParaData('2026-07-27', 1)).toBe('2026-07-27')
+    expect(diaParaData('2026-07-27', 3)).toBe('2026-07-29')
+    expect(diaParaData('2026-07-27', 7)).toBe('2026-08-02') // atravessa o mês
+  })
+
+  it('volta da data para o dia relativo', () => {
+    expect(dataParaDia('2026-07-27', '2026-07-27')).toBe(1)
+    expect(dataParaDia('2026-07-27', '2026-07-29')).toBe(3)
+    expect(dataParaDia('2026-07-27', '2026-08-02')).toBe(7)
+  })
+
+  it('ida e volta são inversas uma da outra (é o que mantém o pacote reutilizável)', () => {
+    for (const dia of [1, 2, 5, 10, 40]) {
+      expect(dataParaDia('2026-12-28', diaParaData('2026-12-28', dia))).toBe(dia)
+    }
+  })
+
+  it('data ANTES da ida não vira dia zero nem negativo', () => {
+    expect(dataParaDia('2026-07-27', '2026-07-26')).toBeUndefined()
+  })
+
+  it('sem âncora ou com data inválida, não inventa', () => {
+    expect(diaParaData(undefined, 1)).toBe('')
+    expect(diaParaData('2026-07-27', 0)).toBe('')
+    expect(diaParaData('27/07/2026', 1)).toBe('')
+    expect(dataParaDia(undefined, '2026-07-27')).toBeUndefined()
+    expect(dataParaDia('2026-07-27', '')).toBeUndefined()
   })
 })
 

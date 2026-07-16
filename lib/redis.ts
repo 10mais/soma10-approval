@@ -407,15 +407,17 @@ export type HotelPacote = {
 
 export type FormaPagamento = 'pix' | 'cartao' | 'boleto' | 'dinheiro' | 'transferencia'
 
-// Preço de viagem não é um número só: tem à vista, parcelado, entrada e faixa
-// (adulto/criança/meia). Compartilhado entre PacoteViagem (o modelo) e Viagem (a
-// saída real, que copia). `valorBase`/`valorPacote` = À VISTA, ADULTO.
+// TABELA de preço do produto: o valor FECHADO por faixa (adulto/criança/meia) +
+// os meios que a operadora aceita. Compartilhado entre PacoteViagem (o modelo) e
+// Viagem (a saída real, que copia). `valorBase`/`valorPacote` = adulto.
+//
+// ⚠️ Entrada, sinal e parcelamento NÃO moram aqui: são NEGOCIAÇÃO, variam por
+// cliente ou família e vivem em `Reserva.financeiro` (lib/financeiroReserva), que
+// é por contratante. Guardar aqui daria a impressão de que o parcelamento é do
+// produto — e aí duas famílias na mesma viagem não poderiam ter acordos diferentes.
 export type PrecosViagem = {
   valorCrianca?: number
   valorMeia?: number
-  entrada?: number        // sinal; o saldo é que parcela
-  parcelas?: number       // nº de vezes do saldo
-  valorParcela?: number
   formasAceitas?: FormaPagamento[]
 }
 

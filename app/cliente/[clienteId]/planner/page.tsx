@@ -5,6 +5,7 @@ import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -270,7 +271,7 @@ export default function PlannerPage() {
 
       {/* Modal de preview */}
       {preview && (
-        <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             {preview.imagens?.[0] && (() => {
               const imgs: string[] = preview.imagens

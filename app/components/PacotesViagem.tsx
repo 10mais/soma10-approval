@@ -1,8 +1,9 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
-import { diasENoites, resumoParcelamento } from '@/lib/pacoteViagem'
+import { diasENoites, diaParaData, dataParaDia } from '@/lib/pacoteViagem'
 import { v4 as uuid } from 'uuid'
+import { fecharFora } from '@/lib/fecharModal'
 
 // PACOTES DE VIAGEM (turismo): o modelo reutilizável — "Foz do Iguaçu 3 dias" sai
 // 5x no ano. A Viagem COPIA o pacote; mexer aqui depois não reescreve viagem já
@@ -16,7 +17,10 @@ import { v4 as uuid } from 'uuid'
 
 type ParadaModelo = { id: string; dia: number; hora?: string; titulo: string; local?: string; tipo?: string; observacoes?: string }
 type Hotel = { id: string; nome: string; checkinDia?: number; checkinHora?: string; checkoutDia?: number; checkoutHora?: string }
-type Precos = { valorCrianca?: number; valorMeia?: number; entrada?: number; parcelas?: number; valorParcela?: number; formasAceitas?: string[] }
+// O pacote guarda o VALOR FECHADO (tabela: adulto/criança/meia) e nada mais.
+// Entrada, sinal e parcelamento são NEGOCIAÇÃO — variam por cliente ou família, e
+// vivem no financeiro da Reserva (lib/financeiroReserva), que é por contratante.
+type Precos = { valorCrianca?: number; valorMeia?: number; formasAceitas?: string[] }
 type Pacote = {
   id: string; nome: string; destino?: string
   dataIdaRef?: string; dataVoltaRef?: string; horaSaida?: string; horaRetorno?: string
@@ -27,8 +31,7 @@ type Pacote = {
 type Form = {
   id?: string; nome: string; destino: string
   dataIdaRef: string; dataVoltaRef: string; horaSaida: string; horaRetorno: string
-  valorBase: string; valorCrianca: string; valorMeia: string
-  entrada: string; parcelas: string; valorParcela: string; formasAceitas: string[]
+  valorBase: string; valorCrianca: string; valorMeia: string; formasAceitas: string[]
   inclusos: string[]; roteiroPadrao: ParadaModelo[]; hoteis: Hotel[]
   observacoes: string; ativo: boolean
 }
@@ -42,7 +45,7 @@ const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 
 
 const vazio = (): Form => ({
   nome: '', destino: '', dataIdaRef: '', dataVoltaRef: '', horaSaida: '', horaRetorno: '',
-  valorBase: '', valorCrianca: '', valorMeia: '', entrada: '', parcelas: '', valorParcela: '', formasAceitas: [],
+  valorBase: '', valorCrianca: '', valorMeia: '', formasAceitas: [],
   inclusos: [], roteiroPadrao: [], hoteis: [], observacoes: '', ativo: true,
 })
 
@@ -66,6 +69,9 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
   // viagem de 20 a 25/07.
   const dn = useMemo(() => diasENoites(form?.dataIdaRef, form?.dataVoltaRef), [form?.dataIdaRef, form?.dataVoltaRef])
   const dataInvertida = !!form?.dataIdaRef && !!form?.dataVoltaRef && dn.dias === undefined
+  // Sem data de ida não existe âncora: Dia 1 É a ida. Os calendários de roteiro e
+  // hotel ficam desligados até ela ser preenchida.
+  const semAncora = !form?.dataIdaRef
 
   function abrirNovo() { setForm(vazio()) }
   function abrirEditar(p: Pacote) {
@@ -75,9 +81,6 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
       valorBase: p.valorBase ? String(p.valorBase) : '',
       valorCrianca: p.precos?.valorCrianca !== undefined ? String(p.precos.valorCrianca) : '',
       valorMeia: p.precos?.valorMeia !== undefined ? String(p.precos.valorMeia) : '',
-      entrada: p.precos?.entrada ? String(p.precos.entrada) : '',
-      parcelas: p.precos?.parcelas ? String(p.precos.parcelas) : '',
-      valorParcela: p.precos?.valorParcela ? String(p.precos.valorParcela) : '',
       formasAceitas: p.precos?.formasAceitas || [],
       inclusos: p.inclusos || [], roteiroPadrao: p.roteiroPadrao || [], hoteis: p.hoteis || [],
       observacoes: p.observacoes || '', ativo: p.ativo !== false,
@@ -116,7 +119,6 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
       valorBase: Number(form.valorBase) || 0,
       precos: {
         valorCrianca: num(form.valorCrianca), valorMeia: num(form.valorMeia),
-        entrada: num(form.entrada), parcelas: num(form.parcelas), valorParcela: num(form.valorParcela),
         formasAceitas: form.formasAceitas,
       },
       inclusos: form.inclusos.map(s => s.trim()).filter(Boolean),
@@ -171,7 +173,6 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                   {p.destino || 'sem destino'}
                   {p.dias ? ` · ${p.dias} dia(s)` : ''}{p.noites ? ` / ${p.noites} noite(s)` : ''}
                 </div>
-                {resumoParcelamento(p.precos) && <div style={{ fontSize: 11.5, color: '#166534', marginTop: 3 }}>ou {resumoParcelamento(p.precos)}</div>}
                 <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>
                   {[p.roteiroPadrao?.length ? `${p.roteiroPadrao.length} parada(s)` : '', p.hoteis?.length ? `${p.hoteis.length} hotel(is)` : '', p.inclusos?.length ? `${p.inclusos.length} incluso(s)` : ''].filter(Boolean).join(' · ')}
                 </div>
@@ -181,7 +182,7 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
         )}
 
       {form && (
-        <div onClick={() => setForm(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => setForm(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar pacote' : 'Novo pacote'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -217,16 +218,9 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                   <div style={{ flex: 1, minWidth: 110 }}><label style={labelStyle}>Meia</label><input type="number" min={0} step="0.01" value={form.valorMeia} onChange={e => setForm(f => f && ({ ...f, valorMeia: e.target.value }))} placeholder="igual adulto" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
                 </div>
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>Criança/meia em branco = cobra o valor de adulto. Zero é respeitado (colo não paga).</p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  <div style={{ flex: 1, minWidth: 110 }}><label style={labelStyle}>Entrada / sinal</label><input type="number" min={0} step="0.01" value={form.entrada} onChange={e => setForm(f => f && ({ ...f, entrada: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-                  <div style={{ flex: 1, minWidth: 90 }}><label style={labelStyle}>Parcelas</label><input type="number" min={1} value={form.parcelas} onChange={e => setForm(f => f && ({ ...f, parcelas: e.target.value }))} placeholder="10" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-                  <div style={{ flex: 1, minWidth: 110 }}><label style={labelStyle}>Valor da parcela</label><input type="number" min={0} step="0.01" value={form.valorParcela} onChange={e => setForm(f => f && ({ ...f, valorParcela: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-                </div>
-                {resumoParcelamento({ entrada: Number(form.entrada) || undefined, parcelas: Number(form.parcelas) || undefined, valorParcela: Number(form.valorParcela) || undefined }) && (
-                  <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: '#166534' }}>
-                    {fmtBRL(Number(form.valorBase) || 0)} à vista, ou {resumoParcelamento({ entrada: Number(form.entrada) || undefined, parcelas: Number(form.parcelas) || undefined, valorParcela: Number(form.valorParcela) || undefined })}
-                  </p>
-                )}
+                <p style={{ margin: '8px 0 0', fontSize: 11.5, color: '#888', background: '#f8fafc', border: '1px solid #eee', borderRadius: 8, padding: '8px 10px' }}>
+                  O pacote guarda o <strong>valor fechado</strong>. Entrada, sinal e parcelamento são negociação e variam por cliente — ficam no financeiro da <strong>reserva</strong>, que é por contratante (cliente ou família).
+                </p>
                 <div style={{ marginTop: 10 }}>
                   <label style={{ ...labelStyle, marginBottom: 6 }}>Formas aceitas</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -245,13 +239,20 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={addParada} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Parada</button>
                 </div>
-                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Dia 1 = dia da ida. Ao criar a viagem, isto vira data de verdade.</p>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: semAncora ? '#b45309' : '#bbb' }}>
+                  {semAncora
+                    ? 'Preencha a data de ida acima para montar o roteiro no calendário.'
+                    : 'Escolha a data de cada parada. O pacote guarda como dia da viagem, então serve qualquer saída.'}
+                </p>
                 {form.roteiroPadrao.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Sem roteiro — a viagem começa em branco.</p>}
                 {form.roteiroPadrao.map(p => (
                   <div key={p.id} style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#888' }}>Dia</span>
-                    <input type="number" min={1} value={p.dia} onChange={e => setParada(p.id, { dia: Math.max(1, Number(e.target.value) || 1) })} style={{ ...inputStyle, width: 62 }} />
-                    <input type="time" value={p.hora || ''} onChange={e => setParada(p.id, { hora: e.target.value })} style={{ ...inputStyle, width: 110 }} />
+                    <input type="date" disabled={semAncora}
+                      min={form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
+                      value={diaParaData(form.dataIdaRef, p.dia)}
+                      onChange={e => setParada(p.id, { dia: dataParaDia(form.dataIdaRef, e.target.value) || p.dia })}
+                      style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
+                    <input type="time" value={p.hora || ''} onChange={e => setParada(p.id, { hora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
                     <input value={p.titulo} onChange={e => setParada(p.id, { titulo: e.target.value })} placeholder="O que acontece" style={{ ...inputStyle, flex: 2, minWidth: 140 }} />
                     <input value={p.local || ''} onChange={e => setParada(p.id, { local: e.target.value })} placeholder="Local" style={{ ...inputStyle, flex: 1, minWidth: 100 }} />
                     <select value={p.tipo || ''} onChange={e => setParada(p.id, { tipo: e.target.value })} style={{ ...inputStyle, background: '#fff', minWidth: 110 }}>
@@ -280,7 +281,11 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={addHotel} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Hotel</button>
                 </div>
-                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Check-in e check-out também em dias — viram data real junto com a viagem.</p>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: semAncora ? '#b45309' : '#bbb' }}>
+                  {semAncora
+                    ? 'Preencha a data de ida acima para escolher check-in e check-out no calendário.'
+                    : 'Escolha as datas no calendário. O pacote guarda como dia da viagem (Dia 1, Dia 2…), então ele continua servindo qualquer saída.'}
+                </p>
                 {form.hoteis.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Nenhum hotel previsto.</p>}
                 {form.hoteis.map(h => (
                   <div key={h.id} style={{ border: '1px solid #eee', borderRadius: 10, padding: 10, marginBottom: 8 }}>
@@ -290,15 +295,24 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#166534', width: 62 }}>Check-in</span>
-                      <span style={{ fontSize: 11, color: '#888' }}>Dia</span>
-                      <input type="number" min={1} value={h.checkinDia ?? ''} onChange={e => setHotel(h.id, { checkinDia: Number(e.target.value) || undefined })} style={{ ...inputStyle, width: 58 }} />
-                      <input type="time" value={h.checkinHora || ''} onChange={e => setHotel(h.id, { checkinHora: e.target.value })} style={{ ...inputStyle, width: 110 }} />
-                      <span style={{ width: 12 }} />
+                      <input type="date" disabled={semAncora}
+                        min={form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
+                        value={diaParaData(form.dataIdaRef, h.checkinDia)}
+                        onChange={e => setHotel(h.id, { checkinDia: dataParaDia(form.dataIdaRef, e.target.value) })}
+                        style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
+                      <input type="time" value={h.checkinHora || ''} onChange={e => setHotel(h.id, { checkinHora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
+                      <span style={{ width: 10 }} />
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#b45309', width: 68 }}>Check-out</span>
-                      <span style={{ fontSize: 11, color: '#888' }}>Dia</span>
-                      <input type="number" min={1} value={h.checkoutDia ?? ''} onChange={e => setHotel(h.id, { checkoutDia: Number(e.target.value) || undefined })} style={{ ...inputStyle, width: 58 }} />
-                      <input type="time" value={h.checkoutHora || ''} onChange={e => setHotel(h.id, { checkoutHora: e.target.value })} style={{ ...inputStyle, width: 110 }} />
+                      <input type="date" disabled={semAncora}
+                        min={diaParaData(form.dataIdaRef, h.checkinDia) || form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
+                        value={diaParaData(form.dataIdaRef, h.checkoutDia)}
+                        onChange={e => setHotel(h.id, { checkoutDia: dataParaDia(form.dataIdaRef, e.target.value) })}
+                        style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
+                      <input type="time" value={h.checkoutHora || ''} onChange={e => setHotel(h.id, { checkoutHora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
                     </div>
+                    {h.checkinDia && h.checkoutDia && h.checkoutDia < h.checkinDia && (
+                      <p style={{ margin: '6px 0 0', fontSize: 11, fontWeight: 700, color: '#b91c1c' }}>O check-out está antes do check-in.</p>
+                    )}
                   </div>
                 ))}
               </div>

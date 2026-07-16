@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 
 type Cliente = { id: string; nome: string; tipo?: string }
 type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
@@ -70,7 +71,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
 
       {/* Editor */}
       {editor && (
-        <div onClick={() => setEditor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
+        <div onClick={fecharFora(() => setEditor(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 680, padding: 22, margin: '20px 0' }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{editor.id ? 'Editar modelo' : 'Novo modelo'}</h3>
             <input value={editor.nome} onChange={e => setEditor({ ...editor, nome: e.target.value })} placeholder="Nome do modelo (ex.: Onboarding Social Media)" style={{ ...inp, width: '100%', marginBottom: 8 }} />
@@ -141,7 +142,7 @@ function AplicarModal({ template, clientes, onClose, onOk }: { template: Templat
   }
   const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 420, padding: 22 }}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Aplicar modelo</h3>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: '#888' }}>"{template.nome}" — cria {(template.marcos || []).length} etapa(s) e {(template.tarefas || []).length} tarefa(s) para o cliente.</p>
