@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { enviarWhatsApp, enviarMidiaWhatsApp, editarMensagemWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
+import { apagarMensagemDaConversa } from '@/lib/apagarMensagem'
 
 export const runtime = 'nodejs'
 
@@ -147,6 +148,16 @@ export async function DELETE(req: NextRequest) {
   }
   const tel = (req.nextUrl.searchParams.get('tel') || '').replace(/\D/g, '')
   if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
+
+  // Com msgId: apaga UMA mensagem (só do Soma10 — segue no celular do cliente).
+  // Sem msgId: apaga a conversa inteira, como já era.
+  const msgId = req.nextUrl.searchParams.get('msgId') || ''
+  if (msgId) {
+    const ok = await apagarMensagemDaConversa(`wa:msgs:${tel}`, `wa:conversa:${tel}`, msgId)
+    if (!ok) return NextResponse.json({ error: 'mensagem não encontrada' }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  }
+
   await redis.del(`wa:msgs:${tel}`)
   await redis.del(`wa:conversa:${tel}`)
   await redis.srem('wa:conversas', tel)

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import type { Cliente } from '@/lib/redis'
 import { enviarDMInstagram, salvarMensagemIg, resolverContaIg, listarContasMensagemIg, IgConversa, IgMensagem } from '@/lib/instagramDM'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { apagarMensagemDaConversa } from '@/lib/apagarMensagem'
 
 export const runtime = 'nodejs'
 
@@ -79,5 +81,21 @@ export async function PUT(req: NextRequest) {
   if (!igId) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
   const atual = (await redis.get<IgConversa>(`ig:conversa:${igId}`)) || { id: igId }
   await redis.set(`ig:conversa:${igId}`, { ...atual, id: igId, ...(contatoId !== undefined ? { contatoId } : {}), ...(nome !== undefined ? { nome } : {}) })
+  return NextResponse.json({ ok: true })
+}
+
+// Apaga UMA mensagem da conversa — só do Soma10; no Direct do cliente ela fica.
+// Mesma permissão do excluir do WhatsApp (CRM/excluir).
+export async function DELETE(req: NextRequest) {
+  const session = await autorizado()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const igId = (req.nextUrl.searchParams.get('id') || '').trim()
+  const msgId = (req.nextUrl.searchParams.get('msgId') || '').trim()
+  if (!igId || !msgId) return NextResponse.json({ error: 'id e msgId obrigatórios' }, { status: 400 })
+  const ok = await apagarMensagemDaConversa(`ig:msgs:${igId}`, `ig:conversa:${igId}`, msgId)
+  if (!ok) return NextResponse.json({ error: 'mensagem não encontrada' }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

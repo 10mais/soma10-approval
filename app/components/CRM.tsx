@@ -252,7 +252,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')}
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} podeExcluir={podeExcluir} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')}
           onAbrirOportunidade={podeEditar ? (contatoId => { setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
@@ -1959,6 +1959,7 @@ const CANAL_CFG: Record<CanalMsg, {
   enviar: (id: string, texto: string) => Promise<any>
   vincular: (id: string, contatoId: string) => Promise<any>
   excluir?: (id: string) => Promise<any>
+  excluirMensagem?: (id: string, msgId: string) => Promise<any>
   buscar?: (q: string) => Promise<{ tel: string; snippet: string }[]>
   norm: (c: any) => MsgConversa
   subId: (c: MsgConversa | undefined, id: string) => string
@@ -1974,6 +1975,7 @@ const CANAL_CFG: Record<CanalMsg, {
     enviar: (id, texto) => fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, texto }) }).then(x => x.json()).catch(() => null),
     vincular: (id, contatoId) => fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: id, contatoId }) }).catch(() => {}),
     excluir: id => fetch(`/api/crm/mensagens?tel=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
+    excluirMensagem: (id, msgId) => fetch(`/api/crm/mensagens?tel=${id}&msgId=${encodeURIComponent(msgId)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c, id: c.telefone }),
     subId: (c, id) => (c as any)?.grupo ? 'Grupo do WhatsApp' : `+${id}`,
     matchContato: (c, contatos) => contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.id)?.nome,
@@ -1985,6 +1987,7 @@ const CANAL_CFG: Record<CanalMsg, {
     historico: id => fetch(`/api/crm/mensagens-instagram?id=${id}`).then(r => r.json()).catch(() => null),
     enviar: (id, texto) => fetch('/api/crm/mensagens-instagram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, texto }) }).then(x => x.json()).catch(() => null),
     vincular: (id, contatoId) => fetch('/api/crm/mensagens-instagram', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, contatoId }) }).catch(() => {}),
+    excluirMensagem: (id, msgId) => fetch(`/api/crm/mensagens-instagram?id=${encodeURIComponent(id)}&msgId=${encodeURIComponent(msgId)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c }),
     subId: (c, id) => c?.username ? `@${c.username}` : id,
     matchContato: () => undefined,
@@ -1992,7 +1995,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abrirTel = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, onContatosMudou, abrirTel = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; podeExcluir?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -2041,6 +2044,23 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
     if (d) { setConversas(Array.isArray(d.conversas) ? d.conversas.map(cfg.norm) : []); setConfigurado(!!d.configurado); setContas(Array.isArray(d.contas) ? d.contas : []) }
     setCarregando(false)
   }
+  // Excluir UMA mensagem: some do Soma10, continua no aparelho do cliente. O
+  // texto do aviso diz isso — prometer "apagou" o que não apagou lá é pior que
+  // não ter o botão.
+  async function excluirMensagem(m: MsgItem) {
+    if (!cfg.excluirMensagem) return
+    const ok = await confirmar('Ela sai do Soma10 para toda a equipe. No aparelho do cliente a mensagem continua — isto não apaga no WhatsApp/Instagram dele.', {
+      titulo: 'Excluir esta mensagem?', okLabel: 'Excluir', cancelLabel: 'Cancelar', perigo: true,
+    })
+    if (!ok) return
+    const r = await cfg.excluirMensagem(sel, m.id)
+    if (r?.error) { toast(r.error, 'erro'); return }
+    setMensagens(ms => ms.filter(x => x.id !== m.id))
+    if (encaminhar?.id === m.id) setEncaminhar(null)
+    if (editando?.id === m.id) { setEditando(null); setTexto('') }
+    carregarConversas() // a prévia na lista pode ser a mensagem que acabou de sair
+  }
+
   async function abrir(id: string) {
     setSel(id)
     setSugestoes([]); setSugestoesAbertas(false) // sugestão é da conversa anterior
@@ -2362,13 +2382,19 @@ function MensagensInbox({ contatos, perfilClinica = false, onContatosMudou, abri
                     {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: '#999' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
                     {textoVisivel && (!m.tipo || m.midiaUrl) && comLinks(textoVisivel)}
                     <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                    {canal === 'whatsapp' && (m.texto || m.midiaUrl) && (
+                    {(m.texto || m.midiaUrl) && (
                       <span style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
-                        <button onClick={() => { setEditando(null); setEncaminhar(m) }} title="Encaminhar para outra conversa"
-                          style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Encaminhar</button>
-                        {m.de === 'agente' && !m.tipo && (Date.now() - new Date(m.em).getTime()) < 15 * 60 * 1000 && (
+                        {canal === 'whatsapp' && (
+                          <button onClick={() => { setEditando(null); setEncaminhar(m) }} title="Encaminhar para outra conversa"
+                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Encaminhar</button>
+                        )}
+                        {canal === 'whatsapp' && m.de === 'agente' && !m.tipo && (Date.now() - new Date(m.em).getTime()) < 15 * 60 * 1000 && (
                           <button onClick={() => { setEncaminhar(null); setEditando(m); setTexto(m.texto) }} title="Editar (até ~15 min após o envio)"
                             style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Editar</button>
+                        )}
+                        {podeExcluir && cfg.excluirMensagem && (
+                          <button onClick={() => excluirMensagem(m)} title="Excluir do Soma10 (não apaga no aparelho do cliente)"
+                            style={{ background: 'none', border: 'none', color: '#c88', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Excluir</button>
                         )}
                       </span>
                     )}
