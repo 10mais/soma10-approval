@@ -74,17 +74,10 @@ export type ViagemLite = {
 
 export type PaxLite = { faixa?: 'adulto' | 'crianca' | 'meia' }
 
-const ehData = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s)
-
-// Soma dias a uma data YYYY-MM-DD. Meia-noite local nos dois lados: usar UTC aqui
-// erraria o dia em fuso negativo (o Brasil inteiro).
-export function somarDias(ymd: string, dias: number): string {
-  const d = new Date(ymd + 'T00:00')
-  d.setDate(d.getDate() + dias)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${mm}-${dd}`
-}
+// A matemática de data mora em lib/datas (casa canônica). Reexportado porque a
+// tela e os testes já importam `somarDias` daqui.
+export { somarDias } from './datas'
+import { somarDias, diasEntre, ehData } from './datas'
 
 // Data de volta sugerida: dias=3 a partir de 20/07 → 22/07 (ida conta como dia 1).
 export function dataVoltaSugerida(dataIda: string, dias?: number): string | undefined {
@@ -107,7 +100,7 @@ export function diaParaData(dataIda: string | undefined, dia: number | undefined
 // devolve undefined em vez de inventar dia zero ou negativo.
 export function dataParaDia(dataIda: string | undefined, data: string | undefined): number | undefined {
   if (!ehData(dataIda) || !ehData(data)) return undefined
-  const dias = Math.round((new Date(data! + 'T00:00').getTime() - new Date(dataIda! + 'T00:00').getTime()) / 86400000)
+  const dias = diasEntre(dataIda!, data!)
   return dias < 0 ? undefined : dias + 1
 }
 
@@ -117,7 +110,7 @@ export function dataParaDia(dataIda: string | undefined, data: string | undefine
 export function diasENoites(dataIda?: string, dataVolta?: string): { dias?: number; noites?: number } {
   if (!ehData(dataIda)) return {}
   if (!ehData(dataVolta)) return { dias: 1, noites: 0 } // bate-volta
-  const noites = Math.round((new Date(dataVolta! + 'T00:00').getTime() - new Date(dataIda! + 'T00:00').getTime()) / 86400000)
+  const noites = diasEntre(dataIda!, dataVolta!)
   if (noites < 0) return {}
   return { dias: noites + 1, noites }
 }
