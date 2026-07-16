@@ -352,7 +352,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined}
+        onAbrirWhatsApp={abrirWhatsAppInterno}
+        onAbrirOportunidade={podeEditar ? (contatoId => { setContatoModal(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined}
+        onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir} onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
@@ -1079,7 +1082,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImporta
 // `prefill` só vale na criação (contato null) — é como o inbox abre a ficha já
 // com o telefone e o nome que vieram do WhatsApp. `onSalvo` devolve o contato
 // recém-criado para quem precisa do id (o inbox vincula a conversa a ele).
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
@@ -1162,15 +1165,31 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   // Frequência: a partir dos atendimentos CONCLUÍDOS do paciente
   const freq = frequenciaPaciente((historico || []).filter(h => h.status === 'atendido').map(h => h.dataInicio))
 
+  function corpoDoForm() {
+    const { etiquetasTxt, ...resto } = f
+    return { ...resto, etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
+  }
+
   async function salvar() {
     if (!f.nome.trim()) return
     setSalvando(true)
-    const { etiquetasTxt, ...resto } = f
-    const corpo = { ...resto, etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
+    const corpo = corpoDoForm()
     let criado: Contato | undefined
     if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...corpo }) }).catch(() => {})
     else criado = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).then(d => d?.contato).catch(() => undefined)
     setSalvando(false); onSalvo(criado)
+  }
+
+  // Os atalhos do topo (WhatsApp / Oportunidade) SAEM da ficha. Salvam antes de
+  // ir: quem corrigiu o telefone e clicou em WhatsApp perderia a correção — e
+  // ainda abriria a conversa do número velho.
+  async function salvarEIr(ir: () => void) {
+    if (contato?.id && f.nome.trim()) {
+      setSalvando(true)
+      await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...corpoDoForm() }) }).catch(() => {})
+      setSalvando(false)
+    }
+    ir()
   }
   async function excluir() {
     if (!contato?.id || !(await confirmar('Excluir este contato?', { titulo: 'Excluir contato', okLabel: 'Excluir', perigo: true }))) return
@@ -1180,8 +1199,18 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
+          {/* Atalhos só na ficha JÁ SALVA: a oportunidade precisa do id do contato,
+              e a conversa precisa do telefone. Em contato novo eles não existem. */}
+          {contato && String(f.telefone || '').trim() && onAbrirWhatsApp && (
+            <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone))} disabled={salvando} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+              style={{ padding: '7px 14px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+          )}
+          {contato && onAbrirOportunidade && (
+            <button onClick={() => salvarEIr(() => onAbrirOportunidade(contato.id))} disabled={salvando} title="Abrir uma oportunidade no funil para este contato"
+              style={{ padding: '7px 14px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Oportunidade</button>
+          )}
           {perfilClinica && contato && onAgendar && (
             <button onClick={() => onAgendar({ pacienteNome: contato.nome, pacienteTelefone: contato.telefone, contatoId: contato.id })}
               style={{ padding: '7px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
