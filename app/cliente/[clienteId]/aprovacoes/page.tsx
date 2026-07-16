@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
+import { podeNivel } from '@/lib/permissoesCatalogo'
+import { podeAcaoGranular } from '@/lib/permissoesGranular'
 
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
@@ -59,6 +61,9 @@ export default function AprovacoesPagina() {
   const [aprovandoTodos, setAprovandoTodos] = useState(false)
   // Permissao de aprovar (default true). So restringe o proprio cliente; equipe nao.
   const [permAprovar, setPermAprovar] = useState(true)
+  // Config de permissao (papel + granular) para saber se a equipe pode EXCLUIR material.
+  const [permPapel, setPermPapel] = useState<Record<string, any>>({})
+  const [permGranular, setPermGranular] = useState<Record<string, any>>({})
   // Visualizador de midia em tela cheia (clicar para ampliar o criativo antes de aprovar)
   const [viewer, setViewer] = useState<{ midias: string[]; idx: number } | null>(null)
 
@@ -87,6 +92,34 @@ export default function AprovacoesPagina() {
     if (!ehCliente) { setPermAprovar(true); return }
     fetch(`/api/clientes?id=${clienteId}`).then(r => r.json()).then(c => { if (c && !c.error) setPermAprovar(c.permissoes?.aprovar !== false) }).catch(() => {})
   }, [clienteId, session])
+
+  // Só a equipe exclui material — o cliente nem vê o X (a rota já barraria com 403).
+  const role = (session?.user as any)?.role || ''
+  useEffect(() => {
+    if (!role || role === 'cliente') return
+    fetch('/api/permissoes-papel').then(r => r.json()).then(d => { if (d && !d.error) setPermPapel(d) }).catch(() => {})
+    fetch('/api/permissoes-granular').then(r => r.json()).then(d => { if (d && !d.error) setPermGranular(d) }).catch(() => {})
+  }, [role])
+
+  // Mesma regra da rota DELETE /api/posts: matriz do papel + ação granular "excluir".
+  const podeExcluir = !!role && role !== 'cliente'
+    && podeNivel(role, 'producao', 'excluir', (session?.user as any)?.permissoes, permPapel as any)
+    && podeAcaoGranular(role, 'excluir', (session?.user as any)?.permissoesGranular, permGranular as any)
+
+  async function excluirPost(p: any) {
+    const nome = (p.legenda || '').trim().slice(0, 60)
+    const ok = await confirmar(
+      `${nome ? `"${nome}${(p.legenda || '').length > 60 ? '…' : ''}"` : 'Este material'} sai da aprovação e do sistema, junto com o histórico da pauta. Não dá para desfazer.`,
+      { titulo: 'Excluir material', okLabel: 'Excluir', cancelLabel: 'Cancelar', perigo: true },
+    )
+    if (!ok) return
+    setEnviando(p.id)
+    const r = await fetch(`/api/posts?id=${p.id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
+    setEnviando(null)
+    if (r?.error) { toast(r.error, 'erro'); return }
+    setPosts(lista => lista.filter(x => x.id !== p.id))
+    toast('Material excluído.', 'sucesso')
+  }
 
   const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
   // "aguardando" = os que precisam da decisão do cliente; EM AJUSTE (corrigir) ficam visíveis mas não contam no banner/lote.
@@ -152,7 +185,15 @@ export default function AprovacoesPagina() {
             const ehCopy = p.etapa === 'aprovacao_copy'
             const capa = capaDoPost(p)
             return (
-              <div key={p.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '16px 18px' }}>
+              <div key={p.id} style={{ position: 'relative', background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '16px 18px' }}>
+                {podeExcluir && (
+                  <button onClick={() => excluirPost(p)} disabled={enviando === p.id} title="Excluir material"
+                    style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 8, background: 'transparent', border: 'none', color: '#c4c4c4', cursor: enviando === p.id ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#b91c1c' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c4c4c4' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                )}
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   {capa && (
                     <div onClick={() => abrirViewer(p, 0)} title="Clique para ampliar" style={{ position: 'relative', width: 96, height: 96, borderRadius: 10, overflow: 'hidden', background: '#eee', flexShrink: 0, cursor: 'zoom-in' }}>
