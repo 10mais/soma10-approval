@@ -61,6 +61,10 @@ export type LancamentoFuturo = {
   data: string // YYYY-MM-DD prevista
   clienteId?: string
   recebido?: boolean // marcado quando efetivado
+  // Lançamento GERADO da venda de uma viagem (turismo): parcela ou pagamento da
+  // reserva. A rota /api/reservas cria/atualiza/remove junto com a reserva —
+  // a tela mostra a origem e não deixa apagar à mão (apagaria só a cópia).
+  reservaId?: string
   criadoPor?: string
   criadoEm: string
 }
@@ -849,6 +853,7 @@ export type CrmContato = {
   cargo?: string
   tipo?: CrmContatoTipo // ausente = contato comum (compatível com a base existente)
   nascimento?: string // YYYY-MM-DD — aniversariantes do mês (clínicas)
+  preferenciasViagem?: string // turismo: desejos e preferências (destinos dos sonhos, tipo de viagem…) — vira oportunidade futura
   etiquetas?: string[]
   ativo?: boolean // ausente = ativo
   observacoes?: string
@@ -928,6 +933,12 @@ export type CrmNegocio = {
   previsaoFechamento?: string // ISO date
   proximoFollowUp?: string // ISO date — lembrete do próximo contato (cron avisa o dono)
   queixaPrincipal?: string // clínica: queixa principal relatada pela paciente (espelha o campo da Agenda)
+  // Turismo: a qualificação é DA VIAGEM, não de marketing — destino, quantas
+  // pessoas, quando e o que o cliente deseja. Campos de agência ficam vazios lá.
+  destinoDesejado?: string   // destino ou viagem de interesse
+  qtdPassageiros?: number    // quantas pessoas pretendem viajar
+  epocaDesejada?: string     // quando querem viajar (texto livre: "setembro", "férias")
+  preferencias?: string      // preferências e desejos (leito, hotel, passeios…)
   // Qualificação da oportunidade (quanto mais rico, melhor a venda e o handoff)
   empresa?: string
   segmento?: string

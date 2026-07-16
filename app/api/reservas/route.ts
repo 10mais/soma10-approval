@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Viagem, Veiculo } from '@/lib/redis'
+import { redis, Viagem, Veiculo, LancamentoFuturo } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { lancamentosDaReserva } from '@/lib/lancamentosReserva'
 import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
 import { valorDaReserva } from '@/lib/pacoteViagem'
 import { reservarAssentos, liberarAssentos, reatribuirAssentos } from '@/lib/assentos'
@@ -32,6 +33,37 @@ async function carregarTodas(): Promise<Reserva[]> {
 }
 
 const ymd = (s: any) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? String(s) : undefined)
+
+// VENDA CONCRETIZADA → FINANCEIRO. As parcelas/pagamentos da reserva viram
+// lançamentos (entradas) na aba Financeiro, com id determinístico: re-salvar a
+// reserva ATUALIZA os lançamentos em vez de duplicar, e o que saiu da reserva
+// (parcela removida, reserva cancelada) sai do financeiro junto.
+async function sincronizarLancamentos(r: Reserva, autor?: string) {
+  const viagem = await redis.get<Viagem>(`viagem:${r.viagemId}`).catch(() => null)
+  const novos = lancamentosDaReserva(r, viagem?.titulo || 'Viagem')
+  const chaveIdx = `reserva:${r.id}:lancamentos`
+  const antigos = await redis.smembers(chaveIdx)
+  const idsNovos = new Set(novos.map(l => l.id))
+  const remover = antigos.filter(id => !idsNovos.has(id))
+  for (const id of remover) { await redis.del(`lancamento:${id}`); await redis.srem('lancamentos', id) }
+  if (remover.length) await redis.srem(chaveIdx, ...remover)
+  const agora = new Date().toISOString()
+  for (const l of novos) {
+    const lanc: LancamentoFuturo = { ...l, criadoPor: autor, criadoEm: agora }
+    await redis.set(`lancamento:${lanc.id}`, lanc)
+    await redis.sadd('lancamentos', lanc.id)
+    await redis.sadd(chaveIdx, lanc.id)
+  }
+}
+
+// Exclusão de reserva leva os lançamentos dela junto — lançamento derivado sem a
+// reserva viraria entrada fantasma no caixa.
+async function removerLancamentos(reservaId: string) {
+  const chaveIdx = `reserva:${reservaId}:lancamentos`
+  const ids = await redis.smembers(chaveIdx)
+  for (const id of ids) { await redis.del(`lancamento:${id}`); await redis.srem('lancamentos', id) }
+  await redis.del(chaveIdx)
+}
 
 // Os dados do passageiro viram a LISTA do DAER/ANTT (ou a internacional), então
 // são gravados por inteiro. A POLTRONA é opcional DE PROPÓSITO: o passageiro é
@@ -201,6 +233,8 @@ export async function PUT(req: NextRequest) {
   }
   r.atualizadoEm = new Date().toISOString()
   await redis.set(`reserva:${r.id}`, r)
+  // Espelha o financeiro da reserva nos lançamentos (parcelas/pagamentos/status).
+  await sincronizarLancamentos(r, session.user?.name || session.user?.email || undefined)
   return NextResponse.json({ ok: true, reserva: r })
 }
 
@@ -216,6 +250,7 @@ export async function DELETE(req: NextRequest) {
   // Solta as poltronas ANTES de apagar: sem isso o assento fica travado por uma
   // reserva que não existe mais e some do mapa para sempre.
   if (r) await liberarAssentos(r.viagemId, poltronasPedidas(r.passageiros), r.id)
+  await removerLancamentos(id)
   await redis.del(`reserva:${id}`)
   await redis.srem('reservas', id)
   if (r) await redis.srem(`viagem:${r.viagemId}:reservas`, id)

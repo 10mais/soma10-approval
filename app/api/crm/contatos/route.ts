@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
+      ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),
       ...(Array.isArray(d.etiquetas) ? { etiquetas: d.etiquetas.map((e: any) => String(e).trim()).filter(Boolean).slice(0, 20) } : {}),
       ...(d.ativo === false ? { ativo: false } : {}),
     }
@@ -177,7 +178,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, contato: atualizado })
   }
 
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'etiquetas', 'ativo']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra

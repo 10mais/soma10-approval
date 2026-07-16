@@ -7,6 +7,7 @@ import {
   adicionarPoltrona, removerPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, limparCelula, alternarCorredor, definirColunas, adicionarPiso, removerPiso,
   normalizarLayout, ehLayoutAntigo,
+  deslocarPoltrona, zerarDesloc, deslocPoltrona, DESLOC_MAX,
   type LayoutVeiculo,
 } from '@/lib/layoutVeiculo'
 
@@ -253,6 +254,35 @@ describe('operações do editor', () => {
     const p = pisoPorId(l, 'unico')!
     expect(assentoEm(p, 0, 0)![3]).toBe('executivo')
     expect(assentoEm(p, 0, 1)![3]).toBe('leito')
+  })
+
+  // Mover livre: o carro real não é 100% em grade — o desloc é só DESENHO; a
+  // poltrona segue dona da célula (reserva e validação não mudam).
+  it('deslocarPoltrona acumula, respeita o teto e some quando volta a zero', () => {
+    let l = deslocarPoltrona(base(), '01', 0.25, 0)
+    l = deslocarPoltrona(l, '01', 0.25, -0.5)
+    expect(deslocPoltrona(assentoEm(pisoPorId(l, 'unico')!, 0, 0)!)).toEqual([0.5, -0.5])
+    // teto: não sai voando pra fora do casco
+    for (let i = 0; i < 30; i++) l = deslocarPoltrona(l, '01', 1, 0)
+    expect(deslocPoltrona(assentoEm(pisoPorId(l, 'unico')!, 0, 0)!)[0]).toBe(DESLOC_MAX)
+    // volta exata a zero: o 5º item some (croqui igual ao de antes do recurso)
+    const zerado = deslocarPoltrona(deslocarPoltrona(base(), '01', 0.5, 0), '01', -0.5, 0)
+    expect(assentoEm(pisoPorId(zerado, 'unico')!, 0, 0)!.length).toBe(4)
+  })
+
+  it('desloc NÃO muda a célula lógica nem quebra a validação, e sobrevive a renumerar/tipo', () => {
+    let l = deslocarPoltrona(base(), '01', 0.75, 0.25)
+    expect(celulaOcupada(l, cel(0, 0))).toBe('poltrona') // segue dona da célula
+    expect(validarLayout(l)).toEqual([])
+    l = renumerarPoltrona(l, '01', '07')!
+    l = alterarTipoPoltrona(l, '07', 'executivo')
+    expect(deslocPoltrona(assentoEm(pisoPorId(l, 'unico')!, 0, 0)!)).toEqual([0.75, 0.25])
+    expect(deslocPoltrona(assentoEm(pisoPorId(zerarDesloc(l, '07'), 'unico')!, 0, 0)!)).toEqual([0, 0])
+  })
+
+  it('mudar de CÉLULA zera o ajuste fino (o desloc era da posição antiga)', () => {
+    const l = moverPoltrona(deslocarPoltrona(base(), '01', 0.5, 0), '01', cel(3, 2))!
+    expect(deslocPoltrona(assentoEm(pisoPorId(l, 'unico')!, 3, 2)!)).toEqual([0, 0])
   })
 
   it('adicionarElemento aceita span, rowSpan e largura total', () => {

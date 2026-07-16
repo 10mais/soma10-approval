@@ -23,7 +23,11 @@ export type TipoPoltrona = 'leito' | 'leito-cama' | 'semi-leito' | 'executivo' |
 
 // [linha, coluna, número] + tipo opcional (o croqui da Deny é leito; o formato
 // original não previa tipo e perder isso seria regressão).
-export type Assento = [number, number, string, TipoPoltrona?]
+// O 5º item é o AJUSTE FINO ("mover livre"): [dx, dy] em frações de célula,
+// só visual. A poltrona continua DONA da célula [linha, col] — reserva,
+// validação e unicidade não mudam; o desenho é que desloca (poltrona do fundo
+// no meio do corredor, fileira desalinhada etc.).
+export type Assento = [number, number, string, TipoPoltrona?, [number, number]?]
 
 export type TipoElemento = 'bar' | 'banheiro' | 'escada' | 'porta' | 'volante' | 'amenidade'
 
@@ -375,6 +379,7 @@ export function moverPoltrona(layout: LayoutVeiculo, numero: string, destino: Ce
   const naPropria = origem.id === destino.pisoId && mesmaCelula(a[0], a[1], destino)
   if (celulaOcupada(layout, destino) && !naPropria) return null
   const semEla = removerPoltrona(layout, numero)
+  // Mudou de célula = o ajuste fino antigo não faz mais sentido; zera.
   return comPiso(semEla, destino.pisoId, p => ({ ...p, assentos: [...p.assentos, [destino.linha, destino.col, numero, a[3]]] }))
 }
 
@@ -382,11 +387,47 @@ export function renumerarPoltrona(layout: LayoutVeiculo, de: string, para: strin
   const novo = String(para || '').trim()
   if (!novo || !poltronaExiste(layout, de)) return null
   if (novo !== de && poltronaExiste(layout, novo)) return null
-  return { ...layout, pisos: layout.pisos.map(p => ({ ...p, assentos: p.assentos.map(a => a[2] === de ? [a[0], a[1], novo, a[3]] as Assento : a) })) }
+  return { ...layout, pisos: layout.pisos.map(p => ({ ...p, assentos: p.assentos.map(a => a[2] === de ? [a[0], a[1], novo, a[3], a[4]] as Assento : a) })) }
 }
 
 export function alterarTipoPoltrona(layout: LayoutVeiculo, numero: string, tipo: TipoPoltrona): LayoutVeiculo {
-  return { ...layout, pisos: layout.pisos.map(p => ({ ...p, assentos: p.assentos.map(a => a[2] === numero ? [a[0], a[1], a[2], tipo] as Assento : a) })) }
+  return { ...layout, pisos: layout.pisos.map(p => ({ ...p, assentos: p.assentos.map(a => a[2] === numero ? [a[0], a[1], a[2], tipo, a[4]] as Assento : a) })) }
+}
+
+// ── Mover livre (ajuste fino) ────────────────────────────────────────────────
+// O croqui real não é 100% em grade: a fileira do fundo tem 5 poltronas e a do
+// meio ocupa o corredor. O desloc [dx, dy] em FRAÇÕES de célula desloca só o
+// DESENHO — a poltrona segue dona da célula dela (reserva/validação intactas).
+export const DESLOC_MAX = 2      // até 2 células de deslocamento em cada eixo
+export const DESLOC_PASSO = 0.25 // um clique = ¼ de célula
+
+export function deslocPoltrona(a: Assento): [number, number] {
+  const d = a[4]
+  return Array.isArray(d) ? [Number(d[0]) || 0, Number(d[1]) || 0] : [0, 0]
+}
+
+const clampDesloc = (v: number) => Math.max(-DESLOC_MAX, Math.min(DESLOC_MAX, Math.round(v * 100) / 100))
+
+// Soma (ddx, ddy) ao ajuste fino da poltrona. [0,0] volta a ser "sem desloc"
+// (o 5º item some — croqui igual ao de antes do recurso).
+export function deslocarPoltrona(layout: LayoutVeiculo, numero: string, ddx: number, ddy: number): LayoutVeiculo {
+  return {
+    ...layout,
+    pisos: layout.pisos.map(p => ({
+      ...p,
+      assentos: p.assentos.map(a => {
+        if (a[2] !== numero) return a
+        const [dx, dy] = deslocPoltrona(a)
+        const nx = clampDesloc(dx + ddx)
+        const ny = clampDesloc(dy + ddy)
+        return (nx === 0 && ny === 0 ? [a[0], a[1], a[2], a[3]] : [a[0], a[1], a[2], a[3], [nx, ny]]) as Assento
+      }),
+    })),
+  }
+}
+
+export function zerarDesloc(layout: LayoutVeiculo, numero: string): LayoutVeiculo {
+  return { ...layout, pisos: layout.pisos.map(p => ({ ...p, assentos: p.assentos.map(a => a[2] === numero ? [a[0], a[1], a[2], a[3]] as Assento : a) })) }
 }
 
 export function adicionarElemento(layout: LayoutVeiculo, celula: Celula, rotulo: string, tipo: TipoElemento = 'amenidade', opcoes: { span?: number; rowSpan?: number; largura?: 'total' } = {}): LayoutVeiculo | null {

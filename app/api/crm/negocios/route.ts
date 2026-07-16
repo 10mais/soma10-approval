@@ -71,10 +71,11 @@ export async function POST(req: NextRequest) {
   if (!String(b.titulo || '').trim()) return NextResponse.json({ error: 'informe o título' }, { status: 400 })
   // #5 — toda oportunidade precisa estar atribuida a um contato
   if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
-  // #2 — empresa obrigatoria (exceto profissional autonomo). Regra de AGÊNCIA: no
-  // perfil clínica não existe "empresa" (são pacientes), então não se exige.
+  // #2 — empresa obrigatoria (exceto profissional autonomo). Regra de AGÊNCIA
+  // apenas: clínica vende para pacientes e turismo vende VIAGEM para pessoa
+  // física — exigir "empresa" nesses perfis é a regra de marketing vazando.
   const perfil = await getPerfilInstancia()
-  if (perfil !== 'clinica' && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
+  if (perfil !== 'clinica' && perfil !== 'turismo' && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
     return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
   }
 
@@ -100,6 +101,11 @@ export async function POST(req: NextRequest) {
     empresa: b.empresa || '', segmento: b.segmento || '', faturamentoEstimado: b.faturamentoEstimado || '',
     instagram: b.instagram || '', dores: b.dores || '', solucoes: b.solucoes || '',
     ...(b.queixaPrincipal ? { queixaPrincipal: String(b.queixaPrincipal).slice(0, 300) } : {}),
+    // Turismo: qualificação da VIAGEM (destino, pessoas, época, desejos)
+    ...(b.destinoDesejado ? { destinoDesejado: String(b.destinoDesejado).slice(0, 140) } : {}),
+    ...(Number(b.qtdPassageiros) >= 1 ? { qtdPassageiros: Math.floor(Number(b.qtdPassageiros)) } : {}),
+    ...(b.epocaDesejada ? { epocaDesejada: String(b.epocaDesejada).slice(0, 80) } : {}),
+    ...(b.preferencias ? { preferencias: String(b.preferencias).slice(0, 600) } : {}),
     handoff: b.handoff || {},
     atividades: [atividade('criacao', 'Negócio criado', autor)],
     criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
@@ -168,7 +174,7 @@ export async function PUT(req: NextRequest) {
     if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 

@@ -8,6 +8,7 @@ import {
   adicionarPoltrona, moverPoltrona, renumerarPoltrona, alterarTipoPoltrona,
   adicionarElemento, limparCelula, alternarCorredor, definirColunas,
   adicionarPiso, removerPiso, MODELOS_LAYOUT, expandirModelo,
+  deslocarPoltrona, zerarDesloc, deslocPoltrona, DESLOC_PASSO,
 } from '@/lib/layoutVeiculo'
 import { CorpoVeiculo, CroquiPiso, ElementoBox, poltronaBase, vazioBase, colunaVisual, CELULA, CORREDOR_W, GAP } from './CroquiVeiculo'
 
@@ -266,6 +267,22 @@ export default function EditorLayoutVeiculo({ layout, onChange, poltronasBloquea
                 style={{ padding: '6px 11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>Excluir poltrona</button>}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={() => setSel(null)} style={{ background: 'none', border: 'none', color: '#999', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>Fechar</button>
+
+          {/* Mover livre: o carro real não é 100% em grade (fileira do fundo com 5,
+              poltrona no corredor). As setas empurram só o DESENHO, ¼ de célula por
+              clique — a poltrona segue na célula dela para reserva e validação. */}
+          <div style={{ width: '100%', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px dashed #e6e6e6', paddingTop: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#888' }}>Mover livre</span>
+            {([['◀', -DESLOC_PASSO, 0], ['▶', DESLOC_PASSO, 0], ['▲', 0, -DESLOC_PASSO], ['▼', 0, DESLOC_PASSO]] as const).map(([rotulo, ddx, ddy]) => (
+              <button key={rotulo} type="button" title={`Deslocar ${rotulo} (¼ de célula)`}
+                onClick={() => onChange(deslocarPoltrona(layout, selecionada[2], ddx, ddy))}
+                style={{ width: 30, height: 26, padding: 0, background: '#fff', border: '1px solid #e6e6e6', borderRadius: 7, color: '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{rotulo}</button>
+            ))}
+            {(() => { const [dx, dy] = deslocPoltrona(selecionada); return (dx || dy) ? (
+              <button type="button" onClick={() => onChange(zerarDesloc(layout, selecionada[2]))}
+                style={{ padding: '5px 10px', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 7, color: '#2563eb', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Voltar à grade</button>
+            ) : <span style={{ fontSize: 10.5, color: '#bbb' }}>para poltrona fora do alinhamento (ex.: fundo com 5, poltrona no corredor)</span> })()}
+          </div>
         </div>
       )}
 

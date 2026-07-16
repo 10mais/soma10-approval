@@ -3478,7 +3478,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} onIrAgenda={() => setAba('agenda' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} onIrAgenda={() => setAba('agenda' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (

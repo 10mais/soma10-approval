@@ -17,7 +17,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [salvandoContas, setSalvandoContas] = useState(false)
   const [periodoFluxo, setPeriodoFluxo] = useState(6) // meses no gráfico de fluxo de caixa
   const [saudeDias, setSaudeDias] = useState(60) // meta da Saúde do Caixa (configurável)
-  const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string }[]>([])
+  const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string; recebido?: boolean; reservaId?: string }[]>([])
   const [lTipo, setLTipo] = useState<'entrada' | 'saida'>('saida')
   const [lDesc, setLDesc] = useState('')
   const [lValor, setLValor] = useState('')
@@ -385,8 +385,13 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#fafafa', borderRadius: 8, fontSize: 12.5 }}>
                     <span style={{ width: 52, flexShrink: 0, color: '#888', fontWeight: 700 }}>{new Date(l.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                     <span style={{ flex: 1, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.descricao}</span>
+                    {l.reservaId && <span title="Gerado da reserva — atualiza junto com ela" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>reserva</span>}
+                    {l.recebido && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '2px 8px' }}>recebido</span>}
                     <span style={{ flexShrink: 0, fontWeight: 700, color: l.tipo === 'entrada' ? '#16a34a' : '#dc2626' }}>{l.tipo === 'entrada' ? '+' : '−'}{brl(Number(l.valor) || 0)}</span>
-                    <button onClick={() => delLancamento(l.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>
+                    {/* Lançamento de reserva não sai daqui: apagar só a cópia mentiria o caixa — cancele/edite a reserva. */}
+                    {l.reservaId
+                      ? <span style={{ width: 15, flexShrink: 0 }} />
+                      : <button onClick={() => delLancamento(l.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>}
                   </div>
                 ))}
               </div>

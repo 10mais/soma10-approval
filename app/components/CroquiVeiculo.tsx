@@ -1,5 +1,5 @@
 'use client'
-import { Piso, Assento, ElementoLayout, elementoInfo, totalLinhas } from '@/lib/layoutVeiculo'
+import { Piso, Assento, ElementoLayout, elementoInfo, totalLinhas, deslocPoltrona } from '@/lib/layoutVeiculo'
 
 // DESENHO do croqui. Compartilhado pelo editor da Frota e pelo mapa das Reservas —
 // os dois desenhavam a própria grade, e era por isso que o croqui saía diferente
@@ -132,7 +132,14 @@ export function CroquiPiso({ piso, extraLinhas = 0, renderAssento, renderVazio, 
         Array.from({ length: piso.colunas }, (_, c) => c).map(col => {
           if (ocupadaPorElemento(linha, col)) return null // o elemento já cobre
           const a = (piso.assentos || []).find(x => x[0] === linha && x[1] === col)
-          const estilo = { gridColumn: colunaVisual(col, piso.corredorApos), gridRow: linha + 1 }
+          // Ajuste fino ("mover livre"): o desloc [dx, dy] em frações de célula
+          // desloca só o DESENHO — a célula lógica (grid) segue a mesma. É o que
+          // faz a poltrona do fundo ficar no meio do corredor, como no carro real.
+          const [dx, dy] = a ? deslocPoltrona(a) : [0, 0]
+          const estilo: React.CSSProperties = {
+            gridColumn: colunaVisual(col, piso.corredorApos), gridRow: linha + 1,
+            ...(dx || dy ? { transform: `translate(${dx * (CELULA + GAP)}px, ${dy * (ALTURA + GAP)}px)`, position: 'relative', zIndex: 1 } : {}),
+          }
           return (
             <div key={`${linha}-${col}`} style={estilo}>
               {a ? renderAssento(a) : renderVazio?.(linha, col) ?? <span style={vazioBase} />}
