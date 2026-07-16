@@ -1267,10 +1267,18 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
 }
 
 function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
+  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
   const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
+  // Catálogo de Procedimentos (mesma fonte da Agenda) para sugerir no campo.
+  const [procedimentos, setProcedimentos] = useState<string[]>([])
+  useEffect(() => {
+    if (!perfilClinica) return
+    fetch('/api/procedimentos').then(r => r.json())
+      .then(d => setProcedimentos(Array.isArray(d?.procedimentos) ? d.procedimentos.map((p: any) => p.nome).filter(Boolean) : []))
+      .catch(() => {})
+  }, [perfilClinica])
   useEffect(() => {
     if (!perfilClinica || !contato?.id) return
     fetch(`/api/agenda?contatoId=${contato.id}`).then(r => r.json())
@@ -1442,6 +1450,33 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                   Ativo
                 </label>
               )}
+            </div>
+          )}
+          {perfilClinica && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
+              <div>
+                <label style={labelStyle}>Último procedimento</label>
+                {/* À mão porque a base veio de outro sistema: o histórico da
+                    Agenda só existe para quem foi atendido AQUI. A lista sugere
+                    o catálogo de Procedimentos (o mesmo da Agenda), mas aceita
+                    texto livre — procedimento antigo pode nem estar no catálogo. */}
+                <input list="lista-procedimentos" value={f.ultimoProcedimento} disabled={f.nuncaVeio}
+                  onChange={e => setF({ ...f, ultimoProcedimento: e.target.value })}
+                  placeholder={f.nuncaVeio ? 'Nunca veio à clínica' : 'Ex.: Botox, Preenchimento labial...'}
+                  style={{ ...inputStyle, background: f.nuncaVeio ? '#f7f7f7' : '#fff', color: f.nuncaVeio ? '#aaa' : '#111' }} />
+                <datalist id="lista-procedimentos">
+                  {procedimentos.map(p => <option key={p} value={p} />)}
+                </datalist>
+              </div>
+              {/* "Nunca veio" é a resposta honesta para lead que nunca sentou na
+                  cadeira: sem ela, campo vazio é ambíguo — nunca veio, ou
+                  ninguém anotou? Marcar limpa o campo (não pode dizer os dois). */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600, paddingBottom: 10, whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={!!f.nuncaVeio}
+                  onChange={e => setF({ ...f, nuncaVeio: e.target.checked, ...(e.target.checked ? { ultimoProcedimento: '' } : {}) })}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                Nunca veio
+              </label>
             </div>
           )}
           {perfilTurismo && (

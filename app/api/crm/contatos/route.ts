@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const novo = (d: any): CrmContato => {
     const agora = new Date().toISOString()
     return {
-      id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+      id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', ultimoProcedimento: d.ultimoProcedimento || '', nuncaVeio: !!d.nuncaVeio, criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
       ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),
@@ -178,7 +178,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, contato: atualizado })
   }
 
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo', 'ultimoProcedimento', 'nuncaVeio']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra
