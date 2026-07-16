@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { evolutionConfigurado, normalizarUrlEvolution } from '@/lib/whatsapp'
+import { evolutionConfigurado, normalizarUrlEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -68,8 +68,13 @@ export async function POST(req: NextRequest) {
     const d = await r.json().catch(() => ({} as any))
     const base64 = d?.base64 || d?.qrcode?.base64 || null
     const codigo = d?.code || d?.qrcode?.code || d?.pairingCode || null
-    return NextResponse.json({ ok: true, base64, codigo })
+    if (base64 || codigo) return NextResponse.json({ ok: true, base64, codigo })
+    // Sem QR = erro. Devolver o motivo do Evolution em vez de "tente de novo":
+    // 404 aqui quase sempre é instância que não existe no host (esta rota pede o
+    // QR de uma instância, nunca a cria), e 401 é apikey errada. Sem isto, cada
+    // pareamento novo vira caça ao tesouro.
+    return NextResponse.json({ error: explicaFalhaConexao(r.status, d, inst()) }, { status: 502 })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || String(e) }, { status: 502 })
+    return NextResponse.json({ error: `Não deu para falar com o Evolution (${e?.message || e}). Confira a EVOLUTION_API_URL desta instância.` }, { status: 502 })
   }
 }

@@ -42,6 +42,22 @@ export function whatsappConfigurado(): boolean {
 
 const soDigitos = (t: string) => (t || '').replace(/\D/g, '')
 
+// Por que o QR não veio? Traduz a resposta do Evolution para algo acionável na
+// tela de conexão. A rota /instance/connect PEDE o QR de uma instância que já
+// existe — ela nunca cria — então 404 aqui é quase sempre instância ausente no
+// host (ou EVOLUTION_INSTANCE com outro nome). Sem esta tradução, a tela dizia
+// só "não foi possível gerar o QR", e cada pareamento virava caça ao tesouro.
+export function explicaFalhaConexao(status: number, corpo: any, instancia: string): string {
+  const detalhe = [corpo?.response?.message, corpo?.message, corpo?.error]
+    .flat()
+    .filter((x: any) => typeof x === 'string' && x.trim())
+    .join(' · ')
+  if (status === 404) return `A instância "${instancia}" não existe neste host do Evolution. Crie-a no /manager do host (ou corrija a EVOLUTION_INSTANCE) e tente de novo.`
+  if (status === 401 || status === 403) return 'O Evolution recusou a chave: confira se a EVOLUTION_API_KEY é a AUTHENTICATION_API_KEY DESTE host.'
+  if (detalhe) return `O Evolution respondeu: ${detalhe}`
+  return `O Evolution não devolveu QR (HTTP ${status}). Se a instância já estiver conectada, clique em Desconectar antes de parear outro número.`
+}
+
 // Normaliza a URL do Evolution: aceita com ou sem https:// (o fetch exige protocolo)
 // e remove a barra final. Ex.: "xxx.up.railway.app/" -> "https://xxx.up.railway.app".
 export function normalizarUrlEvolution(u?: string): string {
