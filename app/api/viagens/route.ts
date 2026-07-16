@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Viagem, MotoristaViagem, ParadaRoteiro, TipoViagem, PacoteViagem, Veiculo } from '@/lib/redis'
+import { redis, Viagem, MotoristaViagem, ParadaRoteiro, TipoViagem, PacoteViagem, Veiculo, DespesaViagem } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { copiarPacoteParaViagem } from '@/lib/pacoteViagem'
+import { conflitosDeVeiculo } from '@/lib/conflitoVeiculo'
+import { fmtDataBR } from '@/lib/datas'
 import { normalizarLayout, poltronaExiste, LayoutVeiculo } from '@/lib/layoutVeiculo'
 import { Reserva, poltronasOcupadas } from '@/lib/reservas'
 import { v4 as uuid } from 'uuid'
@@ -62,6 +64,29 @@ function limparInclusos(arr: any): string[] {
 }
 const dataOk = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
 const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
+
+// Despesas previstas → break-even da viagem (lib/precificacaoViagem). Linha sem
+// descrição E sem valor é lixo de formulário — cai fora.
+function limparDespesas(arr: any): DespesaViagem[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((d: any) => ({
+    id: String(d?.id || uuid()),
+    descricao: String(d?.descricao || '').trim().slice(0, 120),
+    valor: Math.max(0, Number(d?.valor) || 0),
+  })).filter((d: DespesaViagem) => d.descricao || d.valor > 0).slice(0, 60)
+}
+
+// O MESMO ônibus não sai em duas viagens ao mesmo tempo. A trava de verdade é
+// esta (a tela só desliga a opção no seletor — dá para contornar). Devolve a
+// mensagem pronta, ou null se o veículo está livre.
+async function veiculoOcupado(veiculoId: string | undefined, dataIda: string, dataVolta: string | undefined, ignorarViagemId?: string): Promise<string | null> {
+  if (!veiculoId) return null
+  const conf = conflitosDeVeiculo(await carregarTodas(), veiculoId, dataIda, dataVolta, ignorarViagemId)
+  if (!conf.length) return null
+  const c = conf[0]
+  const quando = c.dataVolta && c.dataVolta !== c.dataIda ? `${fmtDataBR(c.dataIda)} a ${fmtDataBR(c.dataVolta)}` : fmtDataBR(c.dataIda)
+  return `Este veículo já está na viagem "${c.titulo}" (${quando}). Escolha outro veículo ou ajuste as datas.`
+}
 function limparParadas(arr: any): ParadaRoteiro[] {
   if (!Array.isArray(arr)) return []
   return arr.map((p: any) => ({
@@ -113,6 +138,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no fretamento, informe quem contratou o veículo' }, { status: 400 })
   }
 
+  // Agenda do veículo: o mesmo ônibus não sai em duas viagens ao mesmo tempo.
+  const veiculoId = (b.veiculoId || '').toString() || undefined
+  const dataVolta = dataOk(String(b.dataVolta || '')) ? String(b.dataVolta) : (doPacote.dataVolta || undefined)
+  const status = STATUS.includes(b.status) ? b.status : 'aberta'
+  if (status !== 'cancelada') {
+    const ocupado = await veiculoOcupado(veiculoId, dataIda, dataVolta)
+    if (ocupado) return NextResponse.json({ error: ocupado }, { status: 409 })
+  }
+
   const agora = new Date().toISOString()
   const viagem: Viagem = {
     id: uuid(),
@@ -122,11 +156,11 @@ export async function POST(req: NextRequest) {
     roteiro: (b.roteiro ?? doPacote.roteiro ?? '').toString().slice(0, 500) || undefined,
     internacional: !!b.internacional,
     dataIda,
-    dataVolta: dataOk(String(b.dataVolta || '')) ? String(b.dataVolta) : (doPacote.dataVolta || undefined),
+    dataVolta,
     horaSaida: horaOk(String(b.horaSaida || '')) ? String(b.horaSaida) : undefined,
     horaRetorno: horaOk(String(b.horaRetorno || '')) ? String(b.horaRetorno) : undefined,
-    veiculoId: (b.veiculoId || '').toString() || undefined,
-    layoutSnap: await snapDoVeiculo((b.veiculoId || '').toString() || undefined),
+    veiculoId,
+    layoutSnap: await snapDoVeiculo(veiculoId),
     motoristas: limparMotoristas(b.motoristas),
     // Fretamento não cobra por cliente: valorPacote fica zerado de propósito.
     valorPacote: tipo === 'fretamento' ? 0 : Math.max(0, Number(b.valorPacote ?? doPacote.valorPacote) || 0),
@@ -136,8 +170,9 @@ export async function POST(req: NextRequest) {
     contratante: tipo === 'fretamento' ? String(b.contratante).trim().slice(0, 140) : undefined,
     descontoPadrao: b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined,
     inclusos: b.inclusos !== undefined ? limparInclusos(b.inclusos) : (doPacote.inclusos || []),
+    despesas: b.despesas !== undefined ? limparDespesas(b.despesas) : (doPacote.despesas || []),
     paradas: b.paradas !== undefined ? limparParadas(b.paradas) : (doPacote.paradas || []),
-    status: STATUS.includes(b.status) ? b.status : 'aberta',
+    status,
     observacoes: (b.observacoes ?? doPacote.observacoes ?? '').toString().slice(0, 800) || undefined,
     criadoPor: session.user?.name || session.user?.email || undefined,
     criadoEm: agora,
@@ -204,9 +239,17 @@ export async function PUT(req: NextRequest) {
   if (b.contratante !== undefined) v.contratante = String(b.contratante).trim().slice(0, 140) || undefined
   if (b.descontoPadrao !== undefined) v.descontoPadrao = b.descontoPadrao ? Math.max(0, Number(b.descontoPadrao)) : undefined
   if (b.inclusos !== undefined) v.inclusos = limparInclusos(b.inclusos)
+  if (b.despesas !== undefined) v.despesas = limparDespesas(b.despesas)
   if (b.paradas !== undefined) v.paradas = limparParadas(b.paradas)
   if (b.status !== undefined && STATUS.includes(b.status)) v.status = b.status
   if (b.observacoes !== undefined) v.observacoes = String(b.observacoes).slice(0, 800) || undefined
+
+  // Agenda do veículo, com os campos JÁ aplicados (datas/veículo/status finais).
+  // Cancelar uma viagem nunca é barrado — cancelada LIBERA o ônibus.
+  if (v.status !== 'cancelada') {
+    const ocupado = await veiculoOcupado(v.veiculoId, v.dataIda, v.dataVolta, v.id)
+    if (ocupado) return NextResponse.json({ error: ocupado }, { status: 409 })
+  }
 
   // Coerência do tipo: virar fretamento zera o valor por cliente e exige
   // contratante; virar pacote descarta o valor fechado. Sem isto, um campo do

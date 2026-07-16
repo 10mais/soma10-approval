@@ -363,6 +363,7 @@ export type Viagem = {
   contratante?: string  // tipo='fretamento': quem contratou o veículo
   descontoPadrao?: number
   inclusos?: string[]
+  despesas?: DespesaViagem[]  // despesas previstas → break-even da viagem (lib/precificacaoViagem)
   paradas?: ParadaRoteiro[]   // itinerário dia-a-dia (timeline)
   status: StatusViagem
   observacoes?: string
@@ -407,6 +408,16 @@ export type HotelPacote = {
 
 export type FormaPagamento = 'pix' | 'cartao' | 'boleto' | 'dinheiro' | 'transferencia'
 
+// Despesa prevista da viagem (combustível, pedágio, hotel do motorista…).
+// OPCIONAL de propósito — serve para o break-even (lib/precificacaoViagem), não
+// é contabilidade. Compartilhada entre PacoteViagem (planejamento) e Viagem
+// (a saída real, que copia e ajusta).
+export type DespesaViagem = {
+  id: string
+  descricao: string
+  valor: number
+}
+
 // TABELA de preço do produto: o valor FECHADO por faixa (adulto/criança/meia) +
 // os meios que a operadora aceita. Compartilhado entre PacoteViagem (o modelo) e
 // Viagem (a saída real, que copia). `valorBase`/`valorPacote` = adulto.
@@ -439,6 +450,12 @@ export type PacoteViagem = {
   inclusos?: string[]
   roteiroPadrao?: ParadaModelo[]
   hoteis?: HotelPacote[]
+  // Precificação (opcional): despesas previstas + passageiros previstos dão o
+  // break-even e os preços mínimo/aceitável/ideal — lib/precificacaoViagem.
+  despesas?: DespesaViagem[]
+  passageirosPrevistos?: number
+  margemAceitavel?: number // %, sobre o custo por passageiro (padrão da tela: 20)
+  margemIdeal?: number     // %, idem (padrão da tela: 35)
   observacoes?: string
   ativo?: boolean     // ausente = ativo
   criadoPor?: string

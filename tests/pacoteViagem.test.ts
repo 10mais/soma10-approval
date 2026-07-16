@@ -121,10 +121,19 @@ describe('copiarPacoteParaViagem', () => {
     expect(pacote.inclusos).toEqual(['Hospedagem', 'Café'])
   })
 
+  it('as despesas do modelo vêm junto, também como CÓPIA', () => {
+    const comDespesas: PacoteLite = { ...pacote, despesas: [{ id: 'd1', descricao: 'Combustível', valor: 2000 }] }
+    const c = copiarPacoteParaViagem(comDespesas, '2026-07-20', id)
+    expect(c.despesas).toEqual([{ id: 'd1', descricao: 'Combustível', valor: 2000 }])
+    c.despesas[0].valor = 9999
+    expect(comDespesas.despesas![0].valor).toBe(2000)
+  })
+
   it('pacote mínimo não quebra', () => {
     const c = copiarPacoteParaViagem({ id: 'p', nome: 'Simples', valorBase: 0 }, '2026-07-20', id)
     expect(c.valorPacote).toBe(0)
     expect(c.inclusos).toEqual([])
+    expect(c.despesas).toEqual([])
     expect(c.paradas).toEqual([])
     expect(c.dataVolta).toBeUndefined()
   })

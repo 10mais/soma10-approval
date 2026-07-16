@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, PacoteViagem, ParadaModelo, HotelPacote, PrecosViagem, FormaPagamento } from '@/lib/redis'
+import { redis, PacoteViagem, ParadaModelo, HotelPacote, PrecosViagem, FormaPagamento, DespesaViagem } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { diasENoites } from '@/lib/pacoteViagem'
 import { v4 as uuid } from 'uuid'
@@ -76,6 +76,19 @@ function limparLista(arr: any, max = 40): string[] {
   return arr.map((s: any) => String(s).trim().slice(0, 120)).filter(Boolean).slice(0, max)
 }
 const numOpc = (v: any) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v) || 0))
+// Passageiros/margens: inteiro ≥ 1 e % ≥ 0. Vazio = não usa a precificação.
+const intOpc = (v: any) => { const n = numOpc(v); return n !== undefined && n >= 1 ? Math.floor(n) : undefined }
+
+// Despesas previstas (precificação/break-even). Linha sem descrição E sem valor
+// é lixo de formulário — cai fora.
+function limparDespesas(arr: any): DespesaViagem[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((d: any) => ({
+    id: String(d?.id || uuid()),
+    descricao: String(d?.descricao || '').trim().slice(0, 120),
+    valor: Math.max(0, Number(d?.valor) || 0),
+  })).filter((d: DespesaViagem) => d.descricao || d.valor > 0).slice(0, 60)
+}
 
 export async function GET(req: NextRequest) {
   const session = await sessaoEquipe()
@@ -121,6 +134,10 @@ export async function POST(req: NextRequest) {
     inclusos: limparLista(b.inclusos),
     roteiroPadrao: limparRoteiro(b.roteiroPadrao),
     hoteis: limparHoteis(b.hoteis),
+    despesas: limparDespesas(b.despesas),
+    passageirosPrevistos: intOpc(b.passageirosPrevistos),
+    margemAceitavel: numOpc(b.margemAceitavel),
+    margemIdeal: numOpc(b.margemIdeal),
     observacoes: (b.observacoes || '').toString().slice(0, 800) || undefined,
     ativo: b.ativo !== false,
     criadoPor: session.user?.name || session.user?.email || undefined,
@@ -161,6 +178,10 @@ export async function PUT(req: NextRequest) {
   if (b.inclusos !== undefined) p.inclusos = limparLista(b.inclusos)
   if (b.roteiroPadrao !== undefined) p.roteiroPadrao = limparRoteiro(b.roteiroPadrao)
   if (b.hoteis !== undefined) p.hoteis = limparHoteis(b.hoteis)
+  if (b.despesas !== undefined) p.despesas = limparDespesas(b.despesas)
+  if (b.passageirosPrevistos !== undefined) p.passageirosPrevistos = intOpc(b.passageirosPrevistos)
+  if (b.margemAceitavel !== undefined) p.margemAceitavel = numOpc(b.margemAceitavel)
+  if (b.margemIdeal !== undefined) p.margemIdeal = numOpc(b.margemIdeal)
   if (b.observacoes !== undefined) p.observacoes = String(b.observacoes).slice(0, 800) || undefined
   if (b.ativo !== undefined) p.ativo = !!b.ativo
   p.atualizadoEm = new Date().toISOString()

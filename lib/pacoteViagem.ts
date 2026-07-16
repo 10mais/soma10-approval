@@ -48,6 +48,14 @@ export type PrecosLite = {
   formasAceitas?: string[]
 }
 
+// Despesa prevista (combustível, pedágio…) — alimenta o break-even em
+// lib/precificacaoViagem. A viagem COPIA as despesas do pacote e ajusta as suas.
+export type DespesaLite = {
+  id: string
+  descricao: string
+  valor: number
+}
+
 export type PacoteLite = {
   id: string
   nome: string
@@ -62,6 +70,8 @@ export type PacoteLite = {
   inclusos?: string[]
   roteiroPadrao?: ParadaModeloLite[]
   hoteis?: HotelLite[]
+  despesas?: DespesaLite[]
+  passageirosPrevistos?: number
   observacoes?: string
 }
 
@@ -149,6 +159,7 @@ export type CopiaDoPacote = {
   precos?: PrecosLite
   inclusos: string[]
   hoteis: HotelLite[]
+  despesas: DespesaLite[]
   paradas: ParadaRoteiroLite[]
   pacoteId: string
   observacoes?: string
@@ -167,6 +178,7 @@ export function copiarPacoteParaViagem(pacote: PacoteLite, dataIda: string, novo
     ...(pacote.precos ? { precos: { ...pacote.precos, formasAceitas: [...(pacote.precos.formasAceitas || [])] } } : {}),
     inclusos: [...(pacote.inclusos || [])],
     hoteis: (pacote.hoteis || []).map(h => ({ ...h })),
+    despesas: (pacote.despesas || []).map(d => ({ ...d })),
     paradas: materializarRoteiro(pacote.roteiroPadrao, dataIda, novoId),
     pacoteId: pacote.id,
     ...(pacote.observacoes ? { observacoes: pacote.observacoes } : {}),

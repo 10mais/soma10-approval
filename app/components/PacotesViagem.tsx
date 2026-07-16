@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { diasENoites, diaParaData, dataParaDia } from '@/lib/pacoteViagem'
+import { breakEvenPorPassageiro, precosSugeridos, resultadoPrevisto } from '@/lib/precificacaoViagem'
 import { v4 as uuid } from 'uuid'
 import { fecharFora } from '@/lib/fecharModal'
 
@@ -17,6 +18,9 @@ import { fecharFora } from '@/lib/fecharModal'
 
 type ParadaModelo = { id: string; dia: number; hora?: string; titulo: string; local?: string; tipo?: string; observacoes?: string }
 type Hotel = { id: string; nome: string; checkinDia?: number; checkinHora?: string; checkoutDia?: number; checkoutHora?: string }
+type Despesa = { id: string; descricao: string; valor: number }
+// No formulário o valor fica como TEXTO (deixa digitar "1200,5" pela metade).
+type DespesaForm = { id: string; descricao: string; valor: string }
 // O pacote guarda o VALOR FECHADO (tabela: adulto/criança/meia) e nada mais.
 // Entrada, sinal e parcelamento são NEGOCIAÇÃO — variam por cliente ou família, e
 // vivem no financeiro da Reserva (lib/financeiroReserva), que é por contratante.
@@ -26,6 +30,7 @@ type Pacote = {
   dataIdaRef?: string; dataVoltaRef?: string; horaSaida?: string; horaRetorno?: string
   dias?: number; noites?: number; valorBase: number; precos?: Precos
   inclusos?: string[]; roteiroPadrao?: ParadaModelo[]; hoteis?: Hotel[]
+  despesas?: Despesa[]; passageirosPrevistos?: number; margemAceitavel?: number; margemIdeal?: number
   observacoes?: string; ativo?: boolean
 }
 type Form = {
@@ -33,6 +38,7 @@ type Form = {
   dataIdaRef: string; dataVoltaRef: string; horaSaida: string; horaRetorno: string
   valorBase: string; valorCrianca: string; valorMeia: string; formasAceitas: string[]
   inclusos: string[]; roteiroPadrao: ParadaModelo[]; hoteis: Hotel[]
+  despesas: DespesaForm[]; passageirosPrevistos: string; margemAceitavel: string; margemIdeal: string
   observacoes: string; ativo: boolean
 }
 
@@ -46,12 +52,41 @@ const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 
 const vazio = (): Form => ({
   nome: '', destino: '', dataIdaRef: '', dataVoltaRef: '', horaSaida: '', horaRetorno: '',
   valorBase: '', valorCrianca: '', valorMeia: '', formasAceitas: [],
-  inclusos: [], roteiroPadrao: [], hoteis: [], observacoes: '', ativo: true,
+  inclusos: [], roteiroPadrao: [], hoteis: [],
+  despesas: [], passageirosPrevistos: '', margemAceitavel: '', margemIdeal: '',
+  observacoes: '', ativo: true,
 })
 
 const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }
 const secaoStyle: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: '#111' }
+
+// <input type="date"> controlado que faz ida-e-volta por DIA RELATIVO quebra a
+// digitação: ao digitar o ano ("2…"), o navegador emite datas intermediárias
+// ("0002-07-20"), que caem ANTES da ida → dataParaDia devolve undefined → o value
+// controlado vira '' e apaga o dia e o mês que o usuário já tinha digitado.
+// Este input guarda o TEXTO local enquanto edita e só COMITA quando a data vira
+// um dia válido (≥ ida). Ao sair do campo, volta ao último valor comitado.
+function InputDataDia({ dataIda, dia, min, max, disabled, onDia, style }: {
+  dataIda: string; dia?: number; min?: string; max?: string; disabled?: boolean
+  onDia: (dia: number) => void; style?: React.CSSProperties
+}) {
+  const externo = diaParaData(dataIda, dia)
+  const [texto, setTexto] = useState(externo)
+  const [base, setBase] = useState(externo)
+  // O valor de fora mudou (ex.: trocou a data de ida) → re-sincroniza o texto.
+  if (externo !== base) { setBase(externo); setTexto(externo) }
+  return (
+    <input type="date" disabled={disabled} min={min} max={max} value={texto}
+      onChange={e => {
+        setTexto(e.target.value)
+        const d = dataParaDia(dataIda, e.target.value)
+        if (d) onDia(d)
+      }}
+      onBlur={() => setTexto(diaParaData(dataIda, dia))}
+      style={style} />
+  )
+}
 
 export default function PacotesViagem({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
   const [lista, setLista] = useState<Pacote[]>([])
@@ -73,6 +108,18 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
   // hotel ficam desligados até ela ser preenchida.
   const semAncora = !form?.dataIdaRef
 
+  // Precificação ao vivo: despesas + passageiros → break-even e preço mínimo/
+  // aceitável/ideal. Margens em branco usam o padrão da tela (20% / 35%).
+  const calc = useMemo(() => {
+    if (!form) return null
+    const despesas = form.despesas.map(d => ({ valor: Number(d.valor) || 0 }))
+    const pax = Math.floor(Number(form.passageirosPrevistos)) || 0
+    const mAceit = form.margemAceitavel === '' ? 20 : Math.max(0, Number(form.margemAceitavel) || 0)
+    const mIdeal = form.margemIdeal === '' ? 35 : Math.max(0, Number(form.margemIdeal) || 0)
+    const be = breakEvenPorPassageiro(despesas, pax)
+    return { pax, mAceit, mIdeal, be, sugeridos: precosSugeridos(be, mAceit, mIdeal), resultado: resultadoPrevisto(despesas, pax, Number(form.valorBase) || 0) }
+  }, [form])
+
   function abrirNovo() { setForm(vazio()) }
   function abrirEditar(p: Pacote) {
     setForm({
@@ -83,6 +130,10 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
       valorMeia: p.precos?.valorMeia !== undefined ? String(p.precos.valorMeia) : '',
       formasAceitas: p.precos?.formasAceitas || [],
       inclusos: p.inclusos || [], roteiroPadrao: p.roteiroPadrao || [], hoteis: p.hoteis || [],
+      despesas: (p.despesas || []).map(d => ({ id: d.id, descricao: d.descricao, valor: d.valor ? String(d.valor) : '' })),
+      passageirosPrevistos: p.passageirosPrevistos ? String(p.passageirosPrevistos) : '',
+      margemAceitavel: p.margemAceitavel !== undefined ? String(p.margemAceitavel) : '',
+      margemIdeal: p.margemIdeal !== undefined ? String(p.margemIdeal) : '',
       observacoes: p.observacoes || '', ativo: p.ativo !== false,
     })
   }
@@ -92,6 +143,10 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
   const addIncluso = () => setForm(f => f && ({ ...f, inclusos: [...f.inclusos, ''] }))
   const setIncluso = (i: number, v: string) => setForm(f => f && ({ ...f, inclusos: f.inclusos.map((x, j) => j === i ? v : x) }))
   const rmIncluso = (i: number) => setForm(f => f && ({ ...f, inclusos: f.inclusos.filter((_, j) => j !== i) }))
+
+  const addDespesa = () => setForm(f => f && ({ ...f, despesas: [...f.despesas, { id: uuid(), descricao: '', valor: '' }] }))
+  const setDespesa = (id: string, patch: Partial<DespesaForm>) => setForm(f => f && ({ ...f, despesas: f.despesas.map(d => d.id === id ? { ...d, ...patch } : d) }))
+  const rmDespesa = (id: string) => setForm(f => f && ({ ...f, despesas: f.despesas.filter(d => d.id !== id) }))
 
   const addHotel = () => setForm(f => f && ({ ...f, hoteis: [...f.hoteis, { id: uuid(), nome: '', checkinDia: 1, checkoutDia: Math.max(1, dn.dias || 1) }] }))
   const setHotel = (id: string, patch: Partial<Hotel>) => setForm(f => f && ({ ...f, hoteis: f.hoteis.map(h => h.id === id ? { ...h, ...patch } : h) }))
@@ -124,6 +179,10 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
       inclusos: form.inclusos.map(s => s.trim()).filter(Boolean),
       roteiroPadrao: form.roteiroPadrao.filter(p => p.titulo.trim()),
       hoteis: form.hoteis.filter(h => h.nome.trim()),
+      despesas: form.despesas.map(d => ({ id: d.id, descricao: d.descricao.trim(), valor: Number(d.valor) || 0 })).filter(d => d.descricao || d.valor > 0),
+      passageirosPrevistos: num(form.passageirosPrevistos),
+      margemAceitavel: num(form.margemAceitavel),
+      margemIdeal: num(form.margemIdeal),
     }
     const r = await fetch('/api/pacotes-viagem', {
       method: form.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo),
@@ -174,8 +233,20 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                   {p.dias ? ` · ${p.dias} dia(s)` : ''}{p.noites ? ` / ${p.noites} noite(s)` : ''}
                 </div>
                 <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>
-                  {[p.roteiroPadrao?.length ? `${p.roteiroPadrao.length} parada(s)` : '', p.hoteis?.length ? `${p.hoteis.length} hotel(is)` : '', p.inclusos?.length ? `${p.inclusos.length} incluso(s)` : ''].filter(Boolean).join(' · ')}
+                  {[p.roteiroPadrao?.length ? `${p.roteiroPadrao.length} parada(s)` : '', p.hoteis?.length ? `${p.hoteis.length} hotel(is)` : '', p.inclusos?.length ? `${p.inclusos.length} incluso(s)` : '', p.despesas?.length ? `${p.despesas.length} despesa(s)` : ''].filter(Boolean).join(' · ')}
                 </div>
+                {(podeEditar || podeExcluir) && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    {podeEditar && (
+                      <button type="button" onClick={ev => { ev.stopPropagation(); abrirEditar(p) }}
+                        style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Editar</button>
+                    )}
+                    {podeExcluir && (
+                      <button type="button" onClick={ev => { ev.stopPropagation(); excluir(p) }}
+                        style={{ fontSize: 11.5, fontWeight: 700, color: '#b91c1c', background: '#fee2e2', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Excluir</button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -247,10 +318,9 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                 {form.roteiroPadrao.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Sem roteiro — a viagem começa em branco.</p>}
                 {form.roteiroPadrao.map(p => (
                   <div key={p.id} style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input type="date" disabled={semAncora}
+                    <InputDataDia dataIda={form.dataIdaRef} dia={p.dia} disabled={semAncora}
                       min={form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
-                      value={diaParaData(form.dataIdaRef, p.dia)}
-                      onChange={e => setParada(p.id, { dia: dataParaDia(form.dataIdaRef, e.target.value) || p.dia })}
+                      onDia={dia => setParada(p.id, { dia })}
                       style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
                     <input type="time" value={p.hora || ''} onChange={e => setParada(p.id, { hora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
                     <input value={p.titulo} onChange={e => setParada(p.id, { titulo: e.target.value })} placeholder="O que acontece" style={{ ...inputStyle, flex: 2, minWidth: 140 }} />
@@ -295,18 +365,16 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#166534', width: 62 }}>Check-in</span>
-                      <input type="date" disabled={semAncora}
+                      <InputDataDia dataIda={form.dataIdaRef} dia={h.checkinDia} disabled={semAncora}
                         min={form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
-                        value={diaParaData(form.dataIdaRef, h.checkinDia)}
-                        onChange={e => setHotel(h.id, { checkinDia: dataParaDia(form.dataIdaRef, e.target.value) })}
+                        onDia={checkinDia => setHotel(h.id, { checkinDia })}
                         style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
                       <input type="time" value={h.checkinHora || ''} onChange={e => setHotel(h.id, { checkinHora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
                       <span style={{ width: 10 }} />
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#b45309', width: 68 }}>Check-out</span>
-                      <input type="date" disabled={semAncora}
+                      <InputDataDia dataIda={form.dataIdaRef} dia={h.checkoutDia} disabled={semAncora}
                         min={diaParaData(form.dataIdaRef, h.checkinDia) || form.dataIdaRef || undefined} max={form.dataVoltaRef || undefined}
-                        value={diaParaData(form.dataIdaRef, h.checkoutDia)}
-                        onChange={e => setHotel(h.id, { checkoutDia: dataParaDia(form.dataIdaRef, e.target.value) })}
+                        onDia={checkoutDia => setHotel(h.id, { checkoutDia })}
                         style={{ ...inputStyle, width: 150, background: semAncora ? '#f8fafc' : '#fff' }} />
                       <input type="time" value={h.checkoutHora || ''} onChange={e => setHotel(h.id, { checkoutHora: e.target.value })} style={{ ...inputStyle, width: 108 }} />
                     </div>
@@ -334,6 +402,61 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                     <button type="button" onClick={() => rmIncluso(i)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
+              </div>
+
+              {/* ── Custos e break-even (opcional): a partir de que preço a viagem se paga ── */}
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={secaoStyle}>Custos e preço de venda</span>
+                  <span style={{ flex: 1 }} />
+                  <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Despesa</button>
+                </div>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Opcional, mas recomendado: lance as despesas previstas (combustível, pedágio, hotel, guia…) e quantos passageiros espera levar. O sistema mostra o break-even e sugere o preço mínimo, aceitável e ideal.</p>
+                {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Nenhuma despesa lançada.</p>}
+                {form.despesas.map(d => (
+                  <div key={d.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                    <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder="Ex.: Combustível" style={{ ...inputStyle, flex: 1, minWidth: 140 }} />
+                    <input type="number" min={0} step="0.01" value={d.valor} onChange={e => setDespesa(d.id, { valor: e.target.value })} placeholder="R$ 0,00" style={{ ...inputStyle, width: 120 }} />
+                    <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Passageiros previstos</label><input type="number" min={1} step={1} value={form.passageirosPrevistos} onChange={e => setForm(f => f && ({ ...f, passageirosPrevistos: e.target.value }))} placeholder="Ex.: 40" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                  <div style={{ flex: 1, minWidth: 120 }}><label style={labelStyle}>Margem aceitável (%)</label><input type="number" min={0} step="1" value={form.margemAceitavel} onChange={e => setForm(f => f && ({ ...f, margemAceitavel: e.target.value }))} placeholder="20" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                  <div style={{ flex: 1, minWidth: 120 }}><label style={labelStyle}>Margem ideal (%)</label><input type="number" min={0} step="1" value={form.margemIdeal} onChange={e => setForm(f => f && ({ ...f, margemIdeal: e.target.value }))} placeholder="35" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                </div>
+                {calc && calc.resultado.custo > 0 && (
+                  <div style={{ marginTop: 10, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #eee' }}>
+                    <div style={{ fontSize: 12.5, color: '#333', marginBottom: 6 }}>
+                      Custo total: <strong>{fmtBRL(calc.resultado.custo)}</strong>
+                      {calc.be !== undefined && <> · Break-even: <strong>{fmtBRL(calc.be)}</strong> por passageiro (com {calc.pax})</>}
+                    </div>
+                    {calc.sugeridos ? (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                        {[
+                          { rotulo: 'Mínimo (empata)', valor: calc.sugeridos.minimo, cor: '#b45309', bg: '#fef9c3' },
+                          { rotulo: `Aceitável (+${calc.mAceit}%)`, valor: calc.sugeridos.aceitavel, cor: '#1d4ed8', bg: '#eff6ff' },
+                          { rotulo: `Ideal (+${calc.mIdeal}%)`, valor: calc.sugeridos.ideal, cor: '#166534', bg: '#dcfce7' },
+                        ].map(x => (
+                          <div key={x.rotulo} style={{ flex: 1, minWidth: 120, background: x.bg, borderRadius: 8, padding: '8px 10px' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: x.cor }}>{x.rotulo}</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: x.cor }}>{fmtBRL(x.valor)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ margin: '0 0 6px', fontSize: 11.5, fontWeight: 700, color: '#b45309' }}>Informe os passageiros previstos para calcular o break-even e os preços sugeridos.</p>
+                    )}
+                    {calc.pax > 0 && Number(form.valorBase) > 0 && (
+                      <div style={{ fontSize: 12, color: '#555' }}>
+                        Com o valor atual ({fmtBRL(Number(form.valorBase))} × {calc.pax}): receita <strong>{fmtBRL(calc.resultado.receita)}</strong> · resultado{' '}
+                        <strong style={{ color: calc.resultado.resultado >= 0 ? '#166534' : '#b91c1c' }}>
+                          {fmtBRL(calc.resultado.resultado)}{calc.resultado.margem !== undefined ? ` (margem ${calc.resultado.margem}%)` : ''}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <textarea value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
