@@ -8,6 +8,7 @@ import { WaConversa, WaMensagem } from '@/lib/whatsapp'
 import { ESTAGIOS_KEY } from '@/lib/crmPipelines'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { PLAYBOOK_CLINICA } from '@/lib/playbookClinica'
+import { BibliotecaVendas, CHAVE_BIBLIOTECA, bibliotecaParaPrompt } from '@/lib/bibliotecaVendas'
 import { parseSugestoes } from '@/lib/sugestaoPerguntas'
 import Anthropic from '@anthropic-ai/sdk'
 import { REGRA_PTBR } from '@/lib/regraPtBr'
@@ -23,11 +24,19 @@ export const maxDuration = 120
 
 const MAX_MSGS = 40 // histórico recente que vai no prompt
 
-// Playbook: mesma chave/shape da rota /api/crm/playbook (só o roteiro importa aqui).
+// O método da casa vem da BIBLIOTECA DE VENDAS (roteiro + objeções). Antes vinha
+// do Playbook antigo; depois da migração ninguém mais edita aquela chave, então
+// ler de lá faria a IA sugerir pergunta fora do método vigente.
+// A ordem é: Biblioteca > Playbook antigo (instância que ainda não abriu a aba)
+// > seed do perfil.
 async function carregarRoteiro(): Promise<string> {
+  const bib = await redis.get<BibliotecaVendas>(CHAVE_BIBLIOTECA)
+  if (bib) {
+    const txt = bibliotecaParaPrompt(bib)
+    if (txt.trim()) return txt
+  }
   const pb = await redis.get<{ roteiro?: string }>('crm:playbookQualificacao')
   if (pb?.roteiro?.trim()) return pb.roteiro
-  // Instância que nunca abriu a aba Playbook ainda não tem a chave semeada.
   return (await getPerfilInstancia()) === 'clinica' ? PLAYBOOK_CLINICA.roteiro : ''
 }
 
