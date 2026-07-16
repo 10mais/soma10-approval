@@ -341,7 +341,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       )}
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={perfilClinica ? abrirWhatsAppInterno : undefined} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined} onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
       {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
@@ -1604,7 +1604,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string) => void }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string) => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -1735,10 +1735,11 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{contato.nome}</p>
               {contato.telefone && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>{contato.telefone}</p>}
             </div>
+            {/* Conversa SEMPRE no inbox (aba Mensagens), em toda instância: o
+                atendimento fica registrado e visível ao time. O wa.me abria o
+                WhatsApp Web e o histórico morria no celular de quem atendeu. */}
             {contato.telefone && (
-              onAbrirWhatsApp
-                ? <button onClick={() => onAbrirWhatsApp(contato.telefone!)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
-                : <a href={`https://wa.me/${(contato.telefone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>WhatsApp</a>
+              <button onClick={() => onAbrirWhatsApp(contato.telefone!)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
             )}
           </div>
         )}
