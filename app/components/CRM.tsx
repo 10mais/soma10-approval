@@ -122,6 +122,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   }
 
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
+  // Abordagem rápida (primeira mensagem sem sair da lista de contatos)
+  const [abordar, setAbordar] = useState<Contato | null>(null)
   const [empresaModal, setEmpresaModal] = useState<Empresa | null | 'novo'>(null)
   const [bulkModal, setBulkModal] = useState(false)
   // Pipelines (múltiplos funis)
@@ -365,8 +367,19 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
       {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {abordar && <AbordagemModal contato={abordar} podeEditar={podeEditar}
+        onClose={() => setAbordar(null)}
+        onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
+        onAbrirOportunidade={podeEditar ? (contatoId => { setAbordar(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />}
       {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined}
-        onAbrirWhatsApp={abrirWhatsAppInterno}
+        onAbrirWhatsApp={(telefone, contatoId) => {
+          // `telefone` vem do formulário (a ficha acabou de salvar): a lista em
+          // memória ainda tem o número antigo e abordaria o número errado.
+          const c = contatos.find(x => x.id === contatoId)
+          setContatoModal(null)
+          if (c) setAbordar({ ...c, telefone })
+          carregar()
+        }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setContatoModal(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined}
         onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
       {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
@@ -1095,6 +1108,89 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImporta
 // `prefill` só vale na criação (contato null) — é como o inbox abre a ficha já
 // com o telefone e o nome que vieram do WhatsApp. `onSalvo` devolve o contato
 // recém-criado para quem precisa do id (o inbox vincula a conversa a ele).
+// Abordagem em série: dispara a PRIMEIRA mensagem sem sair da lista de contatos.
+// Ir para a aba Mensagens a cada contato obrigava a voltar, achar onde parou e
+// abrir o próximo — o trabalho é percorrer a lista, não conversar (para
+// conversar existe "Abrir conversa completa" aqui dentro).
+function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrirOportunidade }: {
+  contato: Contato
+  podeEditar: boolean
+  onClose: () => void
+  onAbrirConversa: (telefone: string, contatoId?: string) => void
+  onAbrirOportunidade?: (contatoId: string) => void
+}) {
+  const [texto, setTexto] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [templates, setTemplates] = useState<{ id: string; titulo: string; texto: string }[]>([])
+  useEffect(() => {
+    fetch('/api/crm/msg-templates').then(r => r.json()).then(d => { if (Array.isArray(d?.templates)) setTemplates(d.templates) }).catch(() => {})
+  }, [])
+
+  const tel = telefoneWhatsApp(contato.telefone)
+  const primeiro = (contato.nome || '').trim().split(/\s+/)[0] || ''
+  // Mesmos placeholders do inbox: abordagem em série é o mesmo script com o nome trocado.
+  const aplicar = (t: string) => t.replace(/\{nome\}/gi, contato.nome || '').replace(/\{primeiro\}/gi, primeiro)
+
+  async function enviar() {
+    if (!texto.trim() || !tel || enviando) return
+    setEnviando(true)
+    const r = await fetch('/api/crm/mensagens', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telefone: tel, texto: texto.trim() }),
+    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
+    // Vincula mesmo quando o envio falha: o número é dele de qualquer jeito.
+    await fetch('/api/crm/mensagens', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telefone: tel, contatoId: contato.id }),
+    }).catch(() => {})
+    setEnviando(false)
+    if (r?.error) { toast(r.error, 'erro'); return }
+    toast(`Mensagem enviada para ${primeiro || contato.nome}.`, 'sucesso')
+    onClose()
+  }
+
+  return (
+    <div onClick={fecharFora(onClose, { temAlteracoes: () => !!texto.trim() })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+        <h3 style={{ margin: '0 0 2px', fontSize: 16, color: '#111' }}>Abordar {contato.nome}</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: '#999' }}>
+          {tel ? `WhatsApp +${tel}` : 'Contato sem telefone válido — corrija o número na ficha (com DDD).'}
+        </p>
+
+        {tel && (<>
+          {templates.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {templates.slice(0, 6).map(t => (
+                <button key={t.id} onClick={() => setTexto(prev => (prev.trim() ? prev.replace(/\s*$/, '') + '\n' : '') + aplicar(t.texto))}
+                  style={{ padding: '5px 10px', background: '#f4f4f5', border: '1px solid #e5e7eb', borderRadius: 999, fontSize: 11.5, fontWeight: 700, color: '#444', cursor: 'pointer' }}>{t.titulo}</button>
+              ))}
+            </div>
+          )}
+          <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={5} autoFocus
+            placeholder={`Primeira mensagem para ${primeiro || 'o contato'}...`}
+            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+        </>)}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14, flexWrap: 'wrap' }}>
+          <button onClick={onClose} style={{ padding: '9px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Fechar</button>
+          {podeEditar && onAbrirOportunidade && (
+            <button onClick={() => onAbrirOportunidade(contato.id)}
+              style={{ padding: '9px 14px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Nova oportunidade</button>
+          )}
+          {tel && (<>
+            <button onClick={() => onAbrirConversa(tel, contato.id)} title="Ver o histórico e conversar na aba Mensagens"
+              style={{ padding: '9px 14px', background: '#fff', color: '#166534', border: '1.5px solid #bbf7d0', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Abrir conversa</button>
+            <button onClick={enviar} disabled={!texto.trim() || enviando}
+              style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#25D366' : '#e5e7eb', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
+              {enviando ? 'Enviando...' : 'Enviar'}
+            </button>
+          </>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
