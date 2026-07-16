@@ -295,6 +295,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroPrioridade, setFiltroPrioridade] = useState('')
   const [busca, setBusca] = useState('')
   const [quickSubId, setQuickSubId] = useState<string | null>(null)
   const [quickSubTexto, setQuickSubTexto] = useState('')
@@ -356,6 +357,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
     if (filtroCliente && t.clienteId !== filtroCliente) return false
     if (filtroResponsavel && t.responsavelEmail !== filtroResponsavel) return false
     if (filtroTipo && (t.tipo || 'tarefa') !== filtroTipo) return false
+    // Tarefa antiga sem prioridade conta como "Media" — é o padrão de quem cria hoje.
+    if (filtroPrioridade && (t.prioridade || 'media') !== filtroPrioridade) return false
     if (busca.trim() && !((t.titulo || '') + ' ' + (t.descricao || '').replace(/<[^>]+>/g, ' ')).toLowerCase().includes(busca.toLowerCase())) return false
     if (!mostrarConcluidas && t.status === 'concluido') return false
     return true
@@ -433,8 +436,13 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <option value="">Todos os tipos</option>
               {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
             </select>
-            {(filtroCliente || filtroResponsavel || filtroTipo || busca) && (
-              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setBusca('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
+            <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} title="Filtrar por urgência"
+              style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', fontWeight: filtroPrioridade ? 700 : 400, color: filtroPrioridade ? corPrioridade(filtroPrioridade) : '#111', border: `1px solid ${filtroPrioridade ? corPrioridade(filtroPrioridade) : '#e0e0e0'}` }}>
+              <option value="">Todas as urgências</option>
+              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+            </select>
+            {(filtroCliente || filtroResponsavel || filtroTipo || filtroPrioridade || busca) && (
+              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setFiltroPrioridade(''); setBusca('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
             )}
             {/* Mostrar/ocultar concluídas */}
             <button onClick={() => setMostrarConcluidas(v => !v)} title={mostrarConcluidas ? 'Ocultar concluídas' : 'Mostrar concluídas'} style={{
