@@ -5,6 +5,7 @@ import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
 import { valorDaReserva as calcularValorReserva } from '@/lib/pacoteViagem'
 import { saldoDevedor } from '@/lib/financeiroReserva'
 import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
+import { pedirConversaWhatsApp } from '@/lib/conversaInterna'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }
 type Post = { id: string; clienteId: string; clienteNome: string; status: string; dataAgendada?: string; criadoEm: string; atualizadoEm?: string; etapa?: string; erroPublicacao?: string; imagens: string[] }
@@ -154,7 +155,9 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   const aniversariantes = useMemo(() => contatos
     .filter(c => c.ativo !== false && c.nascimento && Number(c.nascimento.slice(5, 7)) === mesAtual + 1)
     .sort((a, b) => Number(a.nascimento!.slice(8, 10)) - Number(b.nascimento!.slice(8, 10))), [contatos, mesAtual])
-  const linkZap = (tel?: string) => tel ? `https://wa.me/${tel.replace(/\D/g, '')}` : ''
+  // Parabenizar abre a conversa no inbox do CRM (aba Mensagens), não o wa.me:
+  // o toque fica registrado e o time vê. Ver lib/conversaInterna.
+  const abrirConversa = (tel?: string) => { if (pedirConversaWhatsApp(tel)) onIr?.('crm') }
 
   // Risco de atraso: meta do mês (postsMensais) ainda não coberta por publicado+agendado
   const clientesEmRisco = useMemo(() => agora.getDate() < 5 ? [] : clientesSM.filter(c => {
@@ -326,7 +329,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
                 <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
                 {c.telefone && (
-                  <a href={linkZap(c.telefone)} target="_blank" rel="noreferrer" title="Chamar no WhatsApp" style={{ display: 'inline-flex', alignItems: 'center' }}><IconWhats /></a>
+                  <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+                    style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><IconWhats /></button>
                 )}
               </div>
             ))}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
+import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -58,6 +59,14 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     setAbrirConversaTel(telefone)
     setVista('mensagens')
   }
+  // Vindo de FORA do CRM (ex.: aniversariantes na home): a outra tela deixa o
+  // telefone no sessionStorage e navega pra cá — mesmo padrão do agenda_prefill.
+  // Chave consumida na leitura: recarregar não pode reabrir a conversa sozinho.
+  useEffect(() => {
+    const tel = consumirConversaWhatsApp()
+    if (tel) abrirWhatsAppInterno(tel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
   // em Ganho/Perdido). Só rola quando o card está perto da borda; no meio, não rola.
