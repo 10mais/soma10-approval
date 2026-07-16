@@ -5,6 +5,7 @@ import { redis } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { enviarWhatsApp, enviarMidiaWhatsApp, editarMensagemWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
 import { apagarMensagemDaConversa } from '@/lib/apagarMensagem'
+import { telefoneWhatsApp, soDigitos } from '@/lib/telefoneBR'
 
 export const runtime = 'nodejs'
 
@@ -75,19 +76,22 @@ export async function POST(req: NextRequest) {
   }
 
   // Grupo: o destino precisa ser o JID completo (@g.us), não o número.
-  const telDest = String(telefone).replace(/\D/g, '')
+  // telefoneWhatsApp acrescenta o 55 do país quando falta (contato digitado como
+  // "55 99976-6707" iria para OUTRO número). Grupo/estrangeiro não normalizam:
+  // caem no fallback e seguem como estavam.
+  const telDest = telefoneWhatsApp(telefone) || soDigitos(String(telefone))
   const conv = await redis.get<WaConversa>(`wa:conversa:${telDest}`)
   const destinoJid = conv?.grupo && conv?.jid ? conv.jid : undefined
 
   if (!whatsappConfigurado()) {
     // Sem credenciais: registra como rascunho local para não perder o histórico
-    await salvarMensagem(telefone, { id: crypto.randomUUID(), de: 'agente', texto: String(texto || (temMidia ? `[${midia.tipo || 'mídia'}]` : '')), em: new Date().toISOString(), autor: session.user?.name || '' })
+    await salvarMensagem(telDest, { id: crypto.randomUUID(), de: 'agente', texto: String(texto || (temMidia ? `[${midia.tipo || 'mídia'}]` : '')), em: new Date().toISOString(), autor: session.user?.name || '' })
     return NextResponse.json({ ok: false, error: 'WhatsApp ainda não configurado — mensagem registrada localmente, mas não enviada.', registrado: true })
   }
 
   // Encaminhar/enviar mídia (URL já no nosso Blob)
   if (temMidia) {
-    const r = await enviarMidiaWhatsApp(String(telefone), {
+    const r = await enviarMidiaWhatsApp(telDest, {
       tipo: midia.tipo || 'documento', url: String(midia.url),
       ...(midia.mimetype ? { mimetype: String(midia.mimetype) } : {}),
       ...(midia.fileName ? { fileName: String(midia.fileName) } : {}),
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const r = await enviarWhatsApp(String(telefone), String(texto), session.user?.name || '', destinoJid)
+  const r = await enviarWhatsApp(telDest, String(texto), session.user?.name || '', destinoJid)
   if (!r.ok) return NextResponse.json({ error: r.erro || 'falha ao enviar' }, { status: 502 })
   return NextResponse.json({ ok: true })
 }
@@ -108,7 +112,7 @@ export async function PUT(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const { telefone, contatoId, nome, editarMsgId, novoTexto } = await req.json()
-  const tel = String(telefone || '').replace(/\D/g, '')
+  const tel = telefoneWhatsApp(telefone) || soDigitos(String(telefone || ''))
   if (!tel) return NextResponse.json({ error: 'telefone obrigatório' }, { status: 400 })
 
   // Edição de mensagem enviada (só nossas, texto puro, dentro de ~15 min)

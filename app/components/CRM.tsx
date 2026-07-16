@@ -4,6 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
+import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -53,11 +54,23 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     try { sessionStorage.setItem('agenda_prefill', JSON.stringify(prefill)) } catch {}
     onIrAgenda?.()
   }
-  // Abrir a conversa de WhatsApp interna (aba Mensagens) de um telefone
+  // Abrir a conversa de WhatsApp interna (aba Mensagens) de um telefone.
+  // `contatoId` (quando vem da ficha/oportunidade) VINCULA a conversa a ele: nós
+  // sabemos de quem é o número — deixar o atendente vincular à mão seria pedir
+  // que ele repita o que o sistema já sabe.
   const [abrirConversaTel, setAbrirConversaTel] = useState('')
-  function abrirWhatsAppInterno(telefone: string) {
+  const [abrirConversaContatoId, setAbrirConversaContatoId] = useState('')
+  function abrirWhatsAppInterno(telefone: string, contatoId?: string) {
+    const tel = telefoneWhatsApp(telefone) || telefone
+    if (!telefoneWhatsApp(telefone)) {
+      // Sem número reconhecível não há conversa: abrir uma thread com número
+      // inválido mandaria mensagem para sabe-se lá quem.
+      toast('Telefone inválido para o WhatsApp. Corrija o número na ficha do contato (com DDD).', 'erro')
+      return
+    }
     setAberto(null); setContatoModal(null)
-    setAbrirConversaTel(telefone)
+    setAbrirConversaTel(tel)
+    setAbrirConversaContatoId(contatoId || '')
     setVista('mensagens')
   }
   // Vindo de FORA do CRM (ex.: aniversariantes na home): a outra tela deixa o
@@ -253,7 +266,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} podeExcluir={podeExcluir} onContatosMudou={carregar} abrirTel={abrirConversaTel} onAbriuTel={() => setAbrirConversaTel('')}
+        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} podeExcluir={podeExcluir} onContatosMudou={carregar} abrirTel={abrirConversaTel} abrirContatoId={abrirConversaContatoId} onAbriuTel={() => { setAbrirConversaTel(''); setAbrirConversaContatoId('') }}
           onAbrirOportunidade={podeEditar ? (contatoId => { setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />
       ) : vista === 'playbook' ? (
         <PlaybookVendas podeEditar={podeEditar} />
@@ -1082,7 +1095,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImporta
 // `prefill` só vale na criação (contato null) — é como o inbox abre a ficha já
 // com o telefone e o nome que vieram do WhatsApp. `onSalvo` devolve o contato
 // recém-criado para quem precisa do id (o inbox vincula a conversa a ele).
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
@@ -1204,7 +1217,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           {/* Atalhos só na ficha JÁ SALVA: a oportunidade precisa do id do contato,
               e a conversa precisa do telefone. Em contato novo eles não existem. */}
           {contato && String(f.telefone || '').trim() && onAbrirWhatsApp && (
-            <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone))} disabled={salvando} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+            <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone, contato.id))} disabled={salvando} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
               style={{ padding: '7px 14px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
           )}
           {contato && onAbrirOportunidade && (
@@ -1664,7 +1677,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string) => void }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -1799,7 +1812,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
                 atendimento fica registrado e visível ao time. O wa.me abria o
                 WhatsApp Web e o histórico morria no celular de quem atendeu. */}
             {contato.telefone && (
-              <button onClick={() => onAbrirWhatsApp(contato.telefone!)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+              <button onClick={() => onAbrirWhatsApp(contato.telefone!, contato.id)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
             )}
           </div>
         )}
@@ -2051,7 +2064,7 @@ const CANAL_CFG: Record<CanalMsg, {
     excluirMensagem: (id, msgId) => fetch(`/api/crm/mensagens?tel=${id}&msgId=${encodeURIComponent(msgId)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c, id: c.telefone }),
     subId: (c, id) => (c as any)?.grupo ? 'Grupo do WhatsApp' : `+${id}`,
-    matchContato: (c, contatos) => contatos.find(ct => (ct.telefone || '').replace(/\D/g, '') === c.id)?.nome,
+    matchContato: (c, contatos) => contatos.find(ct => mesmoTelefone(ct.telefone, c.id))?.nome,
   },
   instagram: {
     cor: '#d6249f', bolha: '#fce7f3',
@@ -2068,7 +2081,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, onContatosMudou, abrirTel = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; podeExcluir?: boolean; onContatosMudou?: () => void; abrirTel?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, onContatosMudou, abrirTel = '', abrirContatoId = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; podeExcluir?: boolean; onContatosMudou?: () => void; abrirTel?: string; abrirContatoId?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -2259,17 +2272,24 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     setSugestoesAbertas(false)
   }
 
-  // Abrir uma conversa específica (vindo do CRM "WhatsApp" da oportunidade)
+  // Abrir uma conversa específica (vindo da ficha do contato ou da oportunidade).
+  // `abrirContatoId` = já sabemos de quem é o número, então a conversa nasce
+  // VINCULADA: sem isso a tela mostrava o número cru e pedia "Vincular
+  // contato..." para uma pessoa que estava cadastrada o tempo todo.
   useEffect(() => {
     if (!abrirTel) return
-    const tel = abrirTel.replace(/\D/g, '')
+    const tel = telefoneWhatsApp(abrirTel)
     if (!tel) { onAbriuTel?.(); return }
     if (canal !== 'whatsapp') { setCanal('whatsapp'); return }
-    setConversas(cs => cs.some(c => c.id === tel) ? cs : [{ telefone: tel, id: tel } as any, ...cs])
+    setConversas(cs => cs.some(c => c.id === tel) ? cs : [{ telefone: tel, id: tel, ...(abrirContatoId ? { contatoId: abrirContatoId } : {}) } as any, ...cs])
     abrir(tel)
+    if (abrirContatoId) {
+      const ja = conversas.find(c => c.id === tel)?.contatoId
+      if (ja !== abrirContatoId) cfg.vincular(tel, abrirContatoId).then(() => carregarConversas()).catch(() => {})
+    }
     onAbriuTel?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abrirTel, canal])
+  }, [abrirTel, abrirContatoId, canal])
 
   // Busca de conversas: por nome/telefone/última mensagem (instantâneo, no cliente)
   // + busca full-text no histórico inteiro (no servidor, com debounce).
