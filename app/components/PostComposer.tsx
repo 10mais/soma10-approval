@@ -38,6 +38,7 @@ export default function PostComposer({
   valorInicial,
   onSubmit,
   onSalvarRascunho,
+  aoMudar,
   enviando,
   salvandoRascunho,
   textoBotao = 'Salvar',
@@ -48,6 +49,10 @@ export default function PostComposer({
   valorInicial?: Partial<ComposerValue>
   onSubmit: (valor: ComposerValue) => void
   onSalvarRascunho?: (valor: ComposerValue) => void
+  // Espelha o que está na tela AGORA. Quem hospeda o compositor usa isto para
+  // salvar sozinho ao fechar — trabalho começado não se perde por um clique no
+  // "Voltar". Só reporta; não salva nada por conta própria.
+  aoMudar?: (valor: ComposerValue) => void
   enviando?: boolean
   salvandoRascunho?: boolean
   textoBotao?: string
@@ -308,6 +313,12 @@ export default function PostComposer({
   }
 
   const videosSemCapa = midias.filter(m => m.tipo === 'video' && !m.capa).length
+
+  // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
+  useEffect(() => {
+    aoMudar?.({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteId, marcoId, legenda, midias, dataAgendada, formato, colaboradores, redes])
 
   async function submeter(acao: ComposerValue['acao']) {
     // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)

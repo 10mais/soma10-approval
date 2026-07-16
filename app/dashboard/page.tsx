@@ -427,6 +427,9 @@ function Dashboard() {
   })
   // Guarda a aba de onde o editor (novo-post) foi aberto, p/ o "Voltar" retornar lá.
   const abaAntesComposer = useRef<typeof aba>('planner')
+  // Espelho do que está no compositor AGORA (PostComposer > aoMudar). Ref, não
+  // state: isto muda a cada tecla e não pode re-renderizar o dashboard inteiro.
+  const composerValor = useRef<any>(null)
   const setAba = (a: typeof aba) => {
     if (a === 'novo-post' && aba !== 'novo-post') abaAntesComposer.current = aba
     setAbaRaw(a); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_aba', a)
@@ -1244,6 +1247,28 @@ function Dashboard() {
       setPostPreview(null)
       toast(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`, 'sucesso')
     } else toast('Não foi possível reaproveitar o post.', 'erro')
+  }
+
+  // Fechar o compositor NUNCA joga trabalho fora (pedido do dono, 16/07): salva
+  // sozinho, em qualquer fase do preenchimento.
+  // - post novo -> rascunho (rascunhoInterno: não vai para o cliente);
+  // - editando -> "salvar", que preserva o status (publicado continua publicado,
+  //   com data segue agendado). Salvar como rascunho DESAGENDARIA o post.
+  // "Cancelar edição" continua descartando: ali a intenção é explícita.
+  function fecharComposer() {
+    const v = composerValor.current
+    const temConteudo = !!(v && (String(v.legenda || '').trim() || (v.imagens || []).length || v.dataAgendada))
+    const voltar = () => setAba(abaAntesComposer.current || (verComoClienteId ? 'planner' : 'home'))
+
+    if (!temConteudo) { if (editandoPostId) cancelarEdicaoPost(); voltar(); return }
+    if (!v.clienteId) {
+      // Sem cliente não há onde guardar: o rascunho ficaria órfão, invisível no
+      // Planner. Melhor segurar aqui do que "salvar" no vazio.
+      toast('Escolha o cliente para eu salvar seu rascunho — sem ele o material se perde.', 'erro')
+      return
+    }
+    if (editandoPostId) salvarEdicaoPost({ ...v, acao: 'salvar' })
+    else criarPost({ ...v, acao: 'rascunho' })
   }
 
   async function salvarEdicaoPost(valor: any) {
@@ -3237,7 +3262,7 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={() => { if (editandoPostId) cancelarEdicaoPost(); setAba(abaAntesComposer.current || (verComoClienteId ? 'planner' : 'home')) }} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={fecharComposer} title="Volta salvando o que já foi preenchido" style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={14} /> Voltar
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -3260,6 +3285,7 @@ function Dashboard() {
               clientes={clientes}
               valorInicial={composerPrefill || (verComoClienteId ? { clienteId: verComoClienteId } : undefined)}
               onSubmit={editandoPostId ? salvarEdicaoPost : criarPost}
+              aoMudar={v => { composerValor.current = v }}
               salvandoRascunho={salvandoRascunho}
               enviando={criandoPost}
               travarCliente={!!verComoClienteId}
