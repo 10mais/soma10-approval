@@ -5,11 +5,16 @@ import { redis, Viagem, Veiculo } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { Reserva, Passageiro, poltronasOcupadas, poltronasEmConflito } from '@/lib/reservas'
 import { valorDaReserva } from '@/lib/pacoteViagem'
+import { reservarAssentos, liberarAssentos, reatribuirAssentos } from '@/lib/assentos'
 import { poltronaExiste } from '@/lib/layoutVeiculo'
 import { passageiroSalvavel } from '@/lib/manifesto'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
+
+// Poltronas efetivamente pedidas (passageiro sem assento é permitido — o assento
+// é atribuído depois).
+const poltronasPedidas = (pax: { poltrona?: string }[]) => (pax || []).map(p => p.poltrona).filter(Boolean) as string[]
 
 // Reservas de viagem. Regra crítica: JAMAIS duas pessoas na mesma poltrona.
 // Equipe lê; escrita exige CRM/editar.
@@ -52,14 +57,12 @@ function limparPassageiros(arr: any): Passageiro[] {
 async function validarPoltronas(viagem: Viagem, passageiros: Passageiro[], reservaId?: string): Promise<string | null> {
   const pedidas = passageiros.map(p => p.poltrona).filter(Boolean) as string[]
   if (!pedidas.length) return null // reserva sem poltrona definida ainda é permitida
-  // Assentos existem no croqui do veículo?
-  if (viagem.veiculoId) {
-    const veiculo = await redis.get<Veiculo>(`veiculo:${viagem.veiculoId}`)
-    const layout = veiculo?.layout
-    if (layout) {
-      const inexistente = pedidas.find(n => !poltronaExiste(layout, n))
-      if (inexistente) return `Poltrona ${inexistente} não existe no croqui do veículo.`
-    }
+  // Assentos existem no croqui? Confere contra o SNAPSHOT da viagem, não contra o
+  // croqui do veículo ao vivo — reformar o carro não muda o mapa já vendido.
+  const layout = viagem.layoutSnap
+  if (layout) {
+    const inexistente = pedidas.find(n => !poltronaExiste(layout, n))
+    if (inexistente) return `Poltrona ${inexistente} não existe no croqui desta viagem.`
   }
   const ocupadas = poltronasOcupadas(await carregarTodas(), viagem.id, reservaId)
   const conflitos = poltronasEmConflito(pedidas, ocupadas)
@@ -96,6 +99,7 @@ export async function POST(req: NextRequest) {
   const passageiros = limparPassageiros(b.passageiros)
   if (!passageiros.length) return NextResponse.json({ error: 'informe ao menos um passageiro' }, { status: 400 })
 
+  // 1ª barreira: confere contra as reservas existentes e dá mensagem boa.
   const erro = await validarPoltronas(viagem, passageiros)
   if (erro) return NextResponse.json({ error: erro, conflito: true }, { status: 409 })
 
@@ -117,6 +121,17 @@ export async function POST(req: NextRequest) {
     criadoEm: agora,
     atualizadoEm: agora,
   }
+  // 2ª barreira, e a que de fato vale: TRAVA ATÔMICA (SET NX). A conferência
+  // acima não segura corrida — dois atendentes clicam no mesmo segundo, os dois
+  // leem a poltrona livre e os dois passam. Aqui só um ganha.
+  const pedidas = poltronasPedidas(passageiros)
+  if (pedidas.length) {
+    const trava = await reservarAssentos(viagem.id, pedidas, reserva.id)
+    if (trava.ok === false) {
+      return NextResponse.json({ error: `Poltrona ${trava.conflitos.join(', ')} acabou de ser vendida por outra pessoa. Escolha outra.`, conflito: true }, { status: 409 })
+    }
+  }
+
   await redis.set(`reserva:${reserva.id}`, reserva)
   await redis.sadd('reservas', reserva.id)
   await redis.sadd(`viagem:${viagem.id}:reservas`, reserva.id)
@@ -166,7 +181,23 @@ export async function PUT(req: NextRequest) {
       const erro = await validarPoltronas(viagem, passageiros, r.id)
       if (erro) return NextResponse.json({ error: erro, conflito: true }, { status: 409 })
     }
+    // Trocar de poltrona = soltar a antiga e pegar a nova, atomicamente.
+    const trava = await reatribuirAssentos(r.viagemId, poltronasPedidas(atual.passageiros), poltronasPedidas(passageiros), r.id)
+    if (trava.ok === false) {
+      return NextResponse.json({ error: `Poltrona ${trava.conflitos.join(', ')} acabou de ser vendida por outra pessoa. Escolha outra.`, conflito: true }, { status: 409 })
+    }
     r.passageiros = passageiros
+  }
+  // Cancelar LIBERA as poltronas: senão o assento fica preso a uma reserva morta
+  // e ninguém consegue vendê-lo de novo.
+  if (atual.status !== 'cancelada' && r.status === 'cancelada') {
+    await liberarAssentos(r.viagemId, poltronasPedidas(r.passageiros), r.id)
+  } else if (atual.status === 'cancelada' && r.status !== 'cancelada') {
+    // Reabrir uma cancelada: as poltronas dela podem ter sido vendidas no meio.
+    const trava = await reservarAssentos(r.viagemId, poltronasPedidas(r.passageiros), r.id)
+    if (trava.ok === false) {
+      return NextResponse.json({ error: `Não dá para reabrir: a poltrona ${trava.conflitos.join(', ')} já foi vendida para outra pessoa.`, conflito: true }, { status: 409 })
+    }
   }
   r.atualizadoEm = new Date().toISOString()
   await redis.set(`reserva:${r.id}`, r)
@@ -182,6 +213,9 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
   const r = await redis.get<Reserva>(`reserva:${id}`)
+  // Solta as poltronas ANTES de apagar: sem isso o assento fica travado por uma
+  // reserva que não existe mais e some do mapa para sempre.
+  if (r) await liberarAssentos(r.viagemId, poltronasPedidas(r.passageiros), r.id)
   await redis.del(`reserva:${id}`)
   await redis.srem('reservas', id)
   if (r) await redis.srem(`viagem:${r.viagemId}:reservas`, id)

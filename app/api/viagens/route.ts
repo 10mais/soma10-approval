@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Viagem, MotoristaViagem, ParadaRoteiro, TipoViagem, PacoteViagem } from '@/lib/redis'
+import { redis, Viagem, MotoristaViagem, ParadaRoteiro, TipoViagem, PacoteViagem, Veiculo } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { copiarPacoteParaViagem } from '@/lib/pacoteViagem'
+import { normalizarLayout, poltronaExiste, LayoutVeiculo } from '@/lib/layoutVeiculo'
+import { Reserva, poltronasOcupadas } from '@/lib/reservas'
 import { v4 as uuid } from 'uuid'
+
+// Tira a CÓPIA do croqui do veículo. A viagem não lê o croqui ao vivo: reformar o
+// carro não pode mudar o mapa de quem já comprou.
+async function snapDoVeiculo(veiculoId?: string): Promise<LayoutVeiculo | undefined> {
+  if (!veiculoId) return undefined
+  const v = await redis.get<Veiculo>(`veiculo:${veiculoId}`)
+  return v ? normalizarLayout(v.layout) : undefined
+}
+
+// Poltronas já vendidas nesta viagem (reservas não canceladas).
+async function vendidasNaViagem(viagemId: string): Promise<string[]> {
+  const ids = await redis.smembers('reservas')
+  if (!ids.length) return []
+  const reservas = (await redis.mget<(Reserva | null)[]>(...ids.map(i => `reserva:${i}`))).filter(Boolean) as Reserva[]
+  return Array.from(poltronasOcupadas(reservas, viagemId))
+}
 
 export const runtime = 'nodejs'
 
@@ -108,6 +126,7 @@ export async function POST(req: NextRequest) {
     horaSaida: horaOk(String(b.horaSaida || '')) ? String(b.horaSaida) : undefined,
     horaRetorno: horaOk(String(b.horaRetorno || '')) ? String(b.horaRetorno) : undefined,
     veiculoId: (b.veiculoId || '').toString() || undefined,
+    layoutSnap: await snapDoVeiculo((b.veiculoId || '').toString() || undefined),
     motoristas: limparMotoristas(b.motoristas),
     // Fretamento não cobra por cliente: valorPacote fica zerado de propósito.
     valorPacote: tipo === 'fretamento' ? 0 : Math.max(0, Number(b.valorPacote ?? doPacote.valorPacote) || 0),
@@ -147,7 +166,36 @@ export async function PUT(req: NextRequest) {
   if (b.dataVolta !== undefined) v.dataVolta = dataOk(String(b.dataVolta)) ? String(b.dataVolta) : undefined
   if (b.horaSaida !== undefined) v.horaSaida = horaOk(String(b.horaSaida)) ? String(b.horaSaida) : undefined
   if (b.horaRetorno !== undefined) v.horaRetorno = horaOk(String(b.horaRetorno)) ? String(b.horaRetorno) : undefined
-  if (b.veiculoId !== undefined) v.veiculoId = String(b.veiculoId) || undefined
+  // Trocar o veículo re-tira o snapshot. Se a poltrona já vendida não existir no
+  // croqui novo, RECUSA: o passageiro compraria um assento que sumiu.
+  if (b.veiculoId !== undefined) {
+    const novoId = String(b.veiculoId) || undefined
+    if (novoId !== atual.veiculoId) {
+      const snap = await snapDoVeiculo(novoId)
+      const vendidas = await vendidasNaViagem(atual.id)
+      if (snap && vendidas.length) {
+        const somem = vendidas.filter(n => !poltronaExiste(snap, n))
+        if (somem.length) {
+          return NextResponse.json({
+            error: `Este veículo não tem a(s) poltrona(s) ${somem.join(', ')}, que já está(ão) vendida(s) nesta viagem. Cancele essas reservas antes de trocar o veículo.`,
+          }, { status: 409 })
+        }
+      }
+      v.veiculoId = novoId
+      v.layoutSnap = snap
+    }
+  }
+  // Re-tirar o snapshot de propósito: veículo reformado depois que a viagem foi
+  // montada, e o dono quer o croqui novo (só passa se nada vendido sumir).
+  if (b.resnaparCroqui && v.veiculoId) {
+    const snap = await snapDoVeiculo(v.veiculoId)
+    const vendidas = await vendidasNaViagem(atual.id)
+    const somem = snap ? vendidas.filter(n => !poltronaExiste(snap, n)) : []
+    if (somem.length) {
+      return NextResponse.json({ error: `O croqui novo não tem a(s) poltrona(s) ${somem.join(', ')}, já vendida(s). Cancele essas reservas antes.` }, { status: 409 })
+    }
+    v.layoutSnap = snap
+  }
   if (b.motoristas !== undefined) v.motoristas = limparMotoristas(b.motoristas)
   if (b.valorPacote !== undefined) v.valorPacote = Math.max(0, Number(b.valorPacote) || 0)
   if (b.precos !== undefined) v.precos = b.precos || undefined

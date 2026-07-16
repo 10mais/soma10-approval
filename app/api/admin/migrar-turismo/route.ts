@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Veiculo, Viagem, CondicaoVeiculo } from '@/lib/redis'
 import { Reserva } from '@/lib/reservas'
-import { expandirModelo, layoutVazio, capacidadeLayout } from '@/lib/layoutVeiculo'
+import { expandirModelo, layoutVazio, capacidadeLayout, normalizarLayout } from '@/lib/layoutVeiculo'
+import { semearTravas } from '@/lib/assentos'
 
 export const runtime = 'nodejs'
 
@@ -113,6 +114,37 @@ export async function POST(req: NextRequest) {
     }
     reservasAjustadas++
   }
+
+  // ── layoutSnap + travas de assento ───────────────────────────────────────
+  // Viagem sem snapshot lia o croqui do veículo AO VIVO: reformar o carro mudaria
+  // o mapa de quem já comprou. E reserva criada antes da trava atômica não tem
+  // chave `viagem:{id}:assento:{n}` — sem semear, a poltrona dela pareceria livre
+  // e seria vendida de novo.
+  const todasIds = await redis.smembers('viagens')
+  const todasViagens = todasIds.length
+    ? (await redis.mget<(Viagem | null)[]>(...todasIds.map(i => `viagem:${i}`))).filter(Boolean) as Viagem[]
+    : []
+  const todasReservasIds = await redis.smembers('reservas')
+  const todasReservas = todasReservasIds.length
+    ? (await redis.mget<(any | null)[]>(...todasReservasIds.map(i => `reserva:${i}`))).filter(Boolean) as any[]
+    : []
+
+  let snaps = 0
+  let travas = 0
+  for (const v of todasViagens) {
+    if (!v.layoutSnap && v.veiculoId) {
+      const veic = await redis.get<Veiculo>(`veiculo:${v.veiculoId}`)
+      if (veic) {
+        log.push(`viagem "${v.titulo}": snapshot do croqui de ${veic.nome}`)
+        if (!dry) await redis.set(`viagem:${v.id}`, { ...v, layoutSnap: normalizarLayout(veic.layout), atualizadoEm: new Date().toISOString() })
+        snaps++
+      }
+    }
+    const daViagem = todasReservas.filter(r => (r.viagemId || r.excursaoId) === v.id)
+    if (daViagem.length && !dry) travas += await semearTravas(v.id, daViagem)
+  }
+  if (snaps) log.push(`${snaps} viagem(ns) ganharam layoutSnap`)
+  if (travas) log.push(`${travas} trava(s) de assento semeada(s)`)
 
   const total = `${migrados} veículo(s), ${viagensMigradas} viagem(ns) e ${reservasAjustadas} reserva(s)`
   return NextResponse.json({

@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid'
 // poltrona (o servidor recusa; aqui as ocupadas ficam travadas).
 
 type Veiculo = { id: string; nome: string; layout: LayoutVeiculo }
-type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string; internacional?: boolean; precos?: { valorCrianca?: number; valorMeia?: number } }
+type Viagem = { id: string; titulo: string; dataIda: string; veiculoId?: string; layoutSnap?: LayoutVeiculo; valorPacote: number; status: string; tipo?: 'pacote' | 'fretamento'; valorFechado?: number; contratante?: string; internacional?: boolean; precos?: { valorCrianca?: number; valorMeia?: number } }
 // Passageiro vem de lib/reservas: é o mesmo que a rota grava e que vira a LISTA
 // oficial. Redeclarar aqui já deixou a tela para trás dos campos do manifesto.
 import type { Passageiro } from '@/lib/reservas'
@@ -92,9 +92,12 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
   // Fretamento não vende poltrona: o contratante leva o veículo inteiro, e o valor
   // é fechado. Sem isto, o mapa apareceria e o total sairia × passageiro.
   const comPoltrona = !viagem || vendePoltrona(viagem)
+  // O mapa vem do SNAPSHOT da viagem, não do croqui do veículo ao vivo: reformar o
+  // carro não pode mudar o mapa de quem já comprou. Viagem antiga (sem snap) cai no
+  // croqui do veículo.
   const layout = useMemo(() => {
     if (viagem && !vendePoltrona(viagem)) return null
-    return veiculos.find(x => x.id === viagem?.veiculoId)?.layout || null
+    return viagem?.layoutSnap || veiculos.find(x => x.id === viagem?.veiculoId)?.layout || null
   }, [veiculos, viagem, comPoltrona])
   // Ocupadas = poltronas das reservas não canceladas (ignorando a que está sendo editada)
   const ocupadas = useMemo(() => {

@@ -350,6 +350,11 @@ export type Viagem = {
   horaSaida?: string   // HH:MM — horário de saída
   horaRetorno?: string // HH:MM — horário previsto de retorno
   veiculoId?: string
+  // CÓPIA do croqui do veículo no momento em que a viagem foi montada. Não é
+  // cache: é o mapa que o passageiro comprou. A viagem NUNCA lê o croqui do
+  // veículo ao vivo — reformar um carro mudaria o mapa de quem já comprou, e um
+  // dia a poltrona 43 sumiria sem ninguém entender por quê.
+  layoutSnap?: LayoutVeiculo
   motoristas?: MotoristaViagem[]
   valorPacote: number  // tipo='pacote': À VISTA, por cliente ADULTO
   precos?: PrecosViagem // criança/meia, entrada, parcelamento, formas aceitas
