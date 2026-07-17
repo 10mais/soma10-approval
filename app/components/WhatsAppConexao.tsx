@@ -23,6 +23,10 @@ export default function WhatsAppConexao() {
   const [qr, setQr] = useState<string | null>(null)
   const [codigo, setCodigo] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  // Pareamento por CÓDIGO: o Evolution só gera o código se souber o número. É a
+  // saída quando o celular recusa o QR com "Não foi possível conectar o
+  // dispositivo" (aconteceu na Norah e na Deny).
+  const [numero, setNumero] = useState('')
 
   const carregar = useCallback(async () => {
     const d = await fetch('/api/whatsapp/conexao').then(r => r.json()).catch(() => null)
@@ -41,13 +45,18 @@ export default function WhatsAppConexao() {
     return () => clearInterval(id)
   }, [qr, estado])
 
-  async function conectar() {
+  async function conectar(comNumero = false) {
+    if (comNumero && numero.replace(/\D/g, '').length < 12) { toast('Informe o número com DDI e DDD (ex.: 55 55 99999-9999).', 'erro'); return }
     setOcupado(true); setQr(null); setCodigo(null)
-    const d = await fetch('/api/whatsapp/conexao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'conectar' }) }).then(r => r.json()).catch(() => null)
+    const d = await fetch('/api/whatsapp/conexao', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'conectar', ...(comNumero ? { numero } : {}) }),
+    }).then(r => r.json()).catch(() => null)
     setOcupado(false)
     if (d?.base64) setQr(d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`)
     if (d?.codigo) setCodigo(d.codigo)
     if (!d?.base64 && !d?.codigo) toast(d?.error || 'Não foi possível gerar o QR. Tente de novo.', 'erro')
+    if (comNumero && d?.base64 && !d?.codigo) toast('O Evolution não devolveu o código — veio só QR. Confira o número (com DDI) e tente de novo.', 'erro')
     carregar()
   }
 
@@ -80,8 +89,21 @@ export default function WhatsAppConexao() {
         <span style={{ flex: 1 }} />
         {estado === 'open'
           ? <button onClick={desconectar} disabled={ocupado} style={{ padding: '8px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
-          : <button onClick={conectar} disabled={ocupado} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Conectar / gerar QR'}</button>}
+          : <button onClick={() => conectar()} disabled={ocupado} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Conectar / gerar QR'}</button>}
       </div>
+
+      {/* Pareamento por CÓDIGO — a saída quando o celular recusa o QR com "Não
+          foi possível conectar o dispositivo". Precisa do número porque o
+          Evolution só gera o código sabendo para quem é. */}
+      {estado !== 'open' && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', background: '#f8fafc', border: '1px solid #eee', borderRadius: 10 }}>
+          <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>QR deu &quot;Não foi possível conectar&quot;? Pareie por código:</span>
+          <input value={numero} onChange={e => setNumero(e.target.value)} placeholder="Número com DDI (ex.: 5555999999999)" inputMode="tel"
+            style={{ flex: 1, minWidth: 200, padding: '8px 11px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+          <button onClick={() => conectar(true)} disabled={ocupado}
+            style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Gerar código'}</button>
+        </div>
+      )}
 
       {estado === 'open' && !qr && (
         <p style={{ margin: 0, fontSize: 12.5, color: '#166534' }}>WhatsApp conectado e recebendo mensagens no CRM (aba Mensagens). Para trocar de número, clique em Desconectar e conecte o novo pelo QR.</p>
@@ -92,9 +114,9 @@ export default function WhatsAppConexao() {
           {qr && <img src={qr} alt="QR Code do WhatsApp" style={{ width: 220, height: 220, borderRadius: 12, border: '1px solid #eee' }} />}
           <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.7, maxWidth: 320 }}>
             <b>Como parear:</b><br />
-            No celular: WhatsApp → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> → escaneie o QR.
-            {codigo && <><br /><br />Ou conecte <b>por código</b>: em &quot;Conectar com número de telefone&quot;, digite: <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, letterSpacing: 1 }}>{codigo}</span></>}
-            <br /><br /><span style={{ color: '#999' }}>O status atualiza sozinho quando conectar. O número segue normal no celular.</span>
+            No celular: WhatsApp → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b>{qr ? <> → escaneie o QR.</> : <>.</>}
+            {codigo && <><br /><br />Por <b>código</b>: na mesma tela, toque em <b>&quot;Conectar com número de telefone&quot;</b> e digite: <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, letterSpacing: 1 }}>{codigo}</span></>}
+            <br /><br /><span style={{ color: '#999' }}>O status atualiza sozinho quando conectar. O número segue normal no celular. O código expira rápido — se passar de ~1 min, gere outro.</span>
           </div>
         </div>
       )}

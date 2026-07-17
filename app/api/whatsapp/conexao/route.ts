@@ -39,15 +39,16 @@ async function registrarWebhook(): Promise<boolean> {
 // devolve o QR/código de pareamento na própria resposta.
 // Corpo v2 (integration BAILEYS = WhatsApp Web/QR); se o host for v1 e rejeitar,
 // tenta o corpo mínimo antigo.
-async function criarInstancia(): Promise<{ ok: boolean; base64?: string | null; codigo?: string | null; erro?: string }> {
+async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: string | null; codigo?: string | null; erro?: string }> {
   const tentar = async (corpo: any) => {
     const r = await fetch(`${base()}/instance/create`, { method: 'POST', headers: headers(), body: JSON.stringify(corpo) })
     const d = await r.json().catch(() => ({} as any))
     return { r, d }
   }
   try {
-    let { r, d } = await tentar({ instanceName: inst(), qrcode: true, integration: 'WHATSAPP-BAILEYS' })
-    if (!r.ok) ({ r, d } = await tentar({ instanceName: inst(), qrcode: true }))
+    // `number` no create faz o Evolution devolver o CÓDIGO de pareamento junto.
+    let { r, d } = await tentar({ instanceName: inst(), qrcode: true, integration: 'WHATSAPP-BAILEYS', ...(numero ? { number: numero } : {}) })
+    if (!r.ok) ({ r, d } = await tentar({ instanceName: inst(), qrcode: true, ...(numero ? { number: numero } : {}) }))
     if (!r.ok) {
       const detalhe = [d?.response?.message, d?.message, d?.error].flat().filter((x: any) => typeof x === 'string' && x.trim()).join(' · ')
       return { ok: false, erro: `O Evolution não deixou criar a instância "${inst()}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
@@ -76,7 +77,11 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   if (!evolutionConfigurado()) return NextResponse.json({ error: 'Evolution não configurado (faltam as variáveis EVOLUTION_* na Vercel).' }, { status: 400 })
-  const { acao } = await req.json().catch(() => ({} as any))
+  const { acao, numero } = await req.json().catch(() => ({} as any))
+  // Número do WhatsApp a parear (com DDI). Com ele, o Evolution gera o CÓDIGO de
+  // pareamento — o caminho que funciona quando o celular recusa o QR com "Não
+  // foi possível conectar o dispositivo" (aconteceu na Norah e na Deny).
+  const num = String(numero || '').replace(/\D/g, '')
 
   if (acao === 'desconectar') {
     try { await fetch(`${base()}/instance/logout/${inst()}`, { method: 'DELETE', headers: headers() }) } catch {}
@@ -88,9 +93,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Conectar: garante o webhook e devolve o QR (base64) / código de pareamento.
+  // Com `numero`, o connect leva ?number= e o Evolution devolve o pairingCode.
+  const conectarUrl = `${base()}/instance/connect/${inst()}${num ? `?number=${num}` : ''}`
   await registrarWebhook()
   try {
-    const r = await fetch(`${base()}/instance/connect/${inst()}`, { headers: headers() })
+    const r = await fetch(conectarUrl, { headers: headers() })
     const d = await r.json().catch(() => ({} as any))
     const base64 = d?.base64 || d?.qrcode?.base64 || null
     const codigo = d?.code || d?.qrcode?.code || d?.pairingCode || null
@@ -99,12 +106,12 @@ export async function POST(req: NextRequest) {
     // 404 = a instância ainda não existe no host (o connect nunca cria). Em vez
     // de mandar o dono ao /manager do Railway, CRIA aqui e segue o pareamento.
     if (r.status === 404) {
-      const criada = await criarInstancia()
+      const criada = await criarInstancia(num || undefined)
       if (!criada.ok) return NextResponse.json({ error: criada.erro }, { status: 502 })
       await registrarWebhook() // agora a instância existe; o webhook cola
       if (criada.base64 || criada.codigo) return NextResponse.json({ ok: true, base64: criada.base64, codigo: criada.codigo })
       // Criou mas o create não trouxe QR — pede pelo caminho normal.
-      const r2 = await fetch(`${base()}/instance/connect/${inst()}`, { headers: headers() })
+      const r2 = await fetch(conectarUrl, { headers: headers() })
       const d2 = await r2.json().catch(() => ({} as any))
       const b2 = d2?.base64 || d2?.qrcode?.base64 || null
       const c2 = d2?.code || d2?.qrcode?.code || d2?.pairingCode || null
