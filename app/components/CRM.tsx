@@ -1843,7 +1843,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
   const tl = [...(neg.atividades || [])].reverse()
 
   return (
-    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
           <input value={neg.titulo} onChange={e => setNeg({ ...neg, titulo: e.target.value })} onBlur={() => patch({ titulo: neg.titulo })}
@@ -2527,7 +2527,7 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M6 9l6 6 6-6" /></svg>
                 </button>
                 {vincularAberto && (<>
-                  <div onClick={fecharFora(() => setVincularAberto(false))} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+                  <div onClick={fecharFora(() => setVincularAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
                   <div style={{ position: 'absolute', top: 'calc(100% + 5px)', right: 0, width: 260, background: '#fff', border: '1px solid #e6e6e6', borderRadius: 11, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', zIndex: 31, overflow: 'hidden' }}>
                     <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0' }}>
                       <input autoFocus value={buscaVinculo} onChange={e => setBuscaVinculo(e.target.value)} placeholder="Buscar por nome ou telefone…"
