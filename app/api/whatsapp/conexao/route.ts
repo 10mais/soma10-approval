@@ -32,6 +32,32 @@ async function registrarWebhook(): Promise<boolean> {
   } catch { return false }
 }
 
+// CRIA a instância no host do Evolution. Instância nova (ex.: denyturismo) não
+// existe no host até alguém criá-la — e /instance/connect nunca cria, só pede o
+// QR. Sem isto, toda instância provisionada obrigava o dono a abrir o /manager
+// do Railway e criar à mão (foi o caso da Deny). O create com qrcode:true já
+// devolve o QR/código de pareamento na própria resposta.
+// Corpo v2 (integration BAILEYS = WhatsApp Web/QR); se o host for v1 e rejeitar,
+// tenta o corpo mínimo antigo.
+async function criarInstancia(): Promise<{ ok: boolean; base64?: string | null; codigo?: string | null; erro?: string }> {
+  const tentar = async (corpo: any) => {
+    const r = await fetch(`${base()}/instance/create`, { method: 'POST', headers: headers(), body: JSON.stringify(corpo) })
+    const d = await r.json().catch(() => ({} as any))
+    return { r, d }
+  }
+  try {
+    let { r, d } = await tentar({ instanceName: inst(), qrcode: true, integration: 'WHATSAPP-BAILEYS' })
+    if (!r.ok) ({ r, d } = await tentar({ instanceName: inst(), qrcode: true }))
+    if (!r.ok) {
+      const detalhe = [d?.response?.message, d?.message, d?.error].flat().filter((x: any) => typeof x === 'string' && x.trim()).join(' · ')
+      return { ok: false, erro: `O Evolution não deixou criar a instância "${inst()}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
+    }
+    return { ok: true, base64: d?.qrcode?.base64 || d?.base64 || null, codigo: d?.qrcode?.code || d?.qrcode?.pairingCode || d?.pairingCode || null }
+  } catch (e: any) {
+    return { ok: false, erro: `Falha ao criar a instância no Evolution (${e?.message || e}).` }
+  }
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
@@ -69,10 +95,26 @@ export async function POST(req: NextRequest) {
     const base64 = d?.base64 || d?.qrcode?.base64 || null
     const codigo = d?.code || d?.qrcode?.code || d?.pairingCode || null
     if (base64 || codigo) return NextResponse.json({ ok: true, base64, codigo })
+
+    // 404 = a instância ainda não existe no host (o connect nunca cria). Em vez
+    // de mandar o dono ao /manager do Railway, CRIA aqui e segue o pareamento.
+    if (r.status === 404) {
+      const criada = await criarInstancia()
+      if (!criada.ok) return NextResponse.json({ error: criada.erro }, { status: 502 })
+      await registrarWebhook() // agora a instância existe; o webhook cola
+      if (criada.base64 || criada.codigo) return NextResponse.json({ ok: true, base64: criada.base64, codigo: criada.codigo })
+      // Criou mas o create não trouxe QR — pede pelo caminho normal.
+      const r2 = await fetch(`${base()}/instance/connect/${inst()}`, { headers: headers() })
+      const d2 = await r2.json().catch(() => ({} as any))
+      const b2 = d2?.base64 || d2?.qrcode?.base64 || null
+      const c2 = d2?.code || d2?.qrcode?.code || d2?.pairingCode || null
+      if (b2 || c2) return NextResponse.json({ ok: true, base64: b2, codigo: c2 })
+      return NextResponse.json({ error: `Instância "${inst()}" criada, mas o Evolution não devolveu o QR — clique em Conectar de novo.` }, { status: 502 })
+    }
+
     // Sem QR = erro. Devolver o motivo do Evolution em vez de "tente de novo":
-    // 404 aqui quase sempre é instância que não existe no host (esta rota pede o
-    // QR de uma instância, nunca a cria), e 401 é apikey errada. Sem isto, cada
-    // pareamento novo vira caça ao tesouro.
+    // 401 é apikey errada; o resto sai traduzido. Sem isto, cada pareamento novo
+    // vira caça ao tesouro.
     return NextResponse.json({ error: explicaFalhaConexao(r.status, d, inst()) }, { status: 502 })
   } catch (e: any) {
     return NextResponse.json({ error: `Não deu para falar com o Evolution (${e?.message || e}). Confira a EVOLUTION_API_URL desta instância.` }, { status: 502 })
