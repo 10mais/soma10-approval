@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Plano, Post } from '@/lib/redis'
-import { indexarPost } from '@/lib/postsIndex'
+import { indexarPost, getPostsDoCliente } from '@/lib/postsIndex'
+import { dataDaPauta, diaMinimo } from '@/lib/dataPauta'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'IA não configurada. Defina ANTHROPIC_API_KEY na Vercel.' }, { status: 500 })
   }
 
-  const { planoId, quantidade } = await req.json()
+  const { planoId, quantidade, pilares } = await req.json()
   if (!planoId) return NextResponse.json({ error: 'planoId é obrigatório' }, { status: 400 })
 
   const plano = await redis.get<Plano>(`plano:${planoId}`)
@@ -43,9 +44,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Preencha o Brand Board deste cliente antes de gerar o plano (segmento e palavras-chave).' }, { status: 400 })
   }
 
-  const qtd = Math.min(Math.max(Number(quantidade) || 12, 4), 30)
+  // Mínimo 1: o dono pede "me dá 3 pautas de X" no meio do mês, não só o mês fechado.
+  const qtd = Math.min(Math.max(Number(quantidade) || 12, 1), 30)
   const mesNome = MESES[plano.mes - 1] || String(plano.mes)
   const ano = plano.ano
+  // Plano do mês corrente começa HOJE (ver lib/dataPauta): pauta não nasce atrasada.
+  const diaMin = diaMinimo(ano, plano.mes, new Date())
 
   // Monta o contexto do Brand Board
   const brand = [
@@ -101,6 +105,39 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* trends e best-effort */ }
 
+  // REGRA ABSOLUTA (dono, 17/07): conteúdo usado NÃO volta. A IA não tem memória
+  // entre chamadas — todo mês ela recebia só o Brand Board e, claro, propunha os
+  // mesmos temas "com variações". A memória tem que vir daqui: a lista do que
+  // esta marca já publicou/planejou. Sem isto, pedir "não repita" é decorativo.
+  let jaUsadoTxt = ''
+  try {
+    const anteriores = await getPostsDoCliente(plano.clienteId)
+    const temas = anteriores
+      .filter(p => p && (p.briefing || p.headline || p.legenda))
+      .sort((a, b) => new Date(b.dataAgendada || b.criadoEm || 0).getTime() - new Date(a.dataAgendada || a.criadoEm || 0).getTime())
+      .slice(0, 180) // teto: prompt tem limite, e tema de 2 anos atrás pesa pouco
+      .map(p => {
+        const quando = p.dataAgendada ? new Date(p.dataAgendada).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }) : ''
+        const tema = (p.briefing || p.headline || p.legenda || '').replace(/\s+/g, ' ').trim().slice(0, 110)
+        return `- ${tema}${quando ? ` (${quando})` : ''}`
+      })
+    if (temas.length) {
+      jaUsadoTxt = [
+        '',
+        '',
+        'JÁ FOI USADO POR ESTA MARCA — REGRA ABSOLUTA: NÃO REPITA NENHUM DESTES TEMAS, nem versão levemente diferente do mesmo assunto (mesma ideia com outras palavras É repetição). Traga ângulo NOVO:',
+        ...temas,
+      ].join('\n')
+    }
+  } catch { /* sem histórico: segue sem a lista (não vale travar a geração) */ }
+
+  // Pilares pedidos na hora (opcional): quando vazio, a IA equilibra sozinha.
+  const pilaresTxt = String(pilares || '').trim()
+    ? `
+
+PILARES PEDIDOS PARA ESTAS PAUTAS (obrigatório respeitar): ${String(pilares).trim()}`
+    : ''
+
   const prompt = `Você é um estrategista de conteúdo de uma agência de marketing digital. Gere exatamente ${qtd} pautas de conteúdo para o mês de ${mesNome}/${ano} do cliente abaixo.
 
 ${REGRA_PTBR}
@@ -108,12 +145,15 @@ ${REGRA_PTBR}
 BRAND BOARD DO CLIENTE:
 ${brand}
 ${playbookTxt}
-${trendsTxt}
+${trendsTxt}${jaUsadoTxt}${pilaresTxt}
 
 REGRAS:
+- NÃO REPETIR é a regra mais importante: nenhum tema da lista "JÁ FOI USADO" pode voltar, nem disfarçado de variação. Prefira um ângulo novo, mesmo que menos óbvio.
 - Cada pauta deve ser ESPECÍFICA e acionável para este nicho (nada genérico).
+- HEADLINE obrigatória em toda pauta: a frase que vai NA ARTE (feed) ou como texto principal na abertura do vídeo (reel). Curta (até 60 caracteres), concreta, que faça o dedo parar. Não é o briefing nem o título do tema.
 - Varie os formatos: Feed (imagem estática) e Reel (vídeo curto). NÃO sugira Stories.
 - Distribua as datas ao longo do mês (3-4x por semana, exceto domingos).
+- DATAS: só a partir do dia ${diaMin} (é a data de hoje quando o plano é do mês corrente). NUNCA proponha dia anterior a esse — conteúdo não nasce atrasado.
 - Sugira um HORÁRIO para cada postagem (entre 10h e 20h, variando).
 - O tom de voz deve seguir o informado acima.
 - Respeite as preferências e restrições da marca.
@@ -123,11 +163,12 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
 [
   {
     "briefing": "tema/ideia da pauta",
+    "headline": "a frase da arte / abertura do vídeo (até 60 caracteres)",
     "sugestaoImagem": "descrição visual para o designer",
     "textoImagem": "texto que aparece na arte (ou vazio)",
     "legenda": "legenda completa com hashtags",
     "formato": "feed" | "reel",
-    "dia": número do dia do mês (1-${new Date(ano, plano.mes, 0).getDate()}),
+    "dia": número do dia do mês (${diaMin}-${new Date(ano, plano.mes, 0).getDate()}),
     "hora": número da hora (10-20),
     "minuto": 0 ou 30
   }
@@ -167,10 +208,9 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
     const criadoEm = new Date().toISOString()
     const postsCriados: Post[] = []
     for (const p of pautasGeradas) {
-      const dia = Math.min(Math.max(Number(p.dia) || 1, 1), new Date(ano, plano.mes, 0).getDate())
-      const hora = Math.min(Math.max(Number(p.hora) || 17, 6), 23)
-      const minuto = [0, 30].includes(Number(p.minuto)) ? Number(p.minuto) : 0
-      const dataAgendada = new Date(ano, plano.mes - 1, dia, hora, minuto, 0).toISOString()
+      // A IA pode ignorar a instrução de data; quem garante o "nunca para trás"
+      // é o servidor (lib/dataPauta, testada). Prompt pede, código impõe.
+      const dataAgendada = dataDaPauta({ ano, mes: plano.mes, dia: Number(p.dia), hora: Number(p.hora), minuto: Number(p.minuto) })
       const formato = ['feed', 'reel', 'story'].includes(p.formato) ? p.formato : 'feed'
       const post: Post = {
         id: uuid(),
@@ -189,12 +229,14 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
         planoId,
         etapa: 'briefing',
         briefing: (p.briefing || '').trim(),
+        headline: (p.headline || '').trim(),
         sugestaoImagem: (p.sugestaoImagem || '').trim(),
         textoImagem: (p.textoImagem || '').trim(),
         sugestaoLegenda: (p.legenda || '').trim(),
         // Studio Fase 0 — captura a matéria-prima da IA para medir a taxa de edição
         iaGerado: {
           briefing: (p.briefing || '').trim(),
+          headline: (p.headline || '').trim(),
           sugestaoImagem: (p.sugestaoImagem || '').trim(),
           textoImagem: (p.textoImagem || '').trim(),
           legenda: (p.legenda || '').trim(),

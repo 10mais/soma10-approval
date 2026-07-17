@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
-  const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
+  const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
     ...(planoId ? { planoId } : {}),
     ...(etapa ? { etapa } : {}),
     ...(briefing ? { briefing } : {}),
+    ...(headline ? { headline } : {}),
     ...(sugestaoImagem ? { sugestaoImagem } : {}),
     ...(textoImagem ? { textoImagem } : {}),
     ...(sugestaoLegenda ? { sugestaoLegenda } : {}),
@@ -153,6 +154,7 @@ export async function PUT(req: NextRequest) {
     const norm = (v: any) => (v || '').toString().trim()
     if (
       norm(atualizado.briefing) !== norm(g.briefing) ||
+      norm(atualizado.headline) !== norm(g.headline) ||
       norm(atualizado.legenda) !== norm(g.legenda) ||
       norm(atualizado.sugestaoImagem) !== norm(g.sugestaoImagem) ||
       norm(atualizado.textoImagem) !== norm(g.textoImagem) ||

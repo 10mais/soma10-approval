@@ -769,6 +769,9 @@ export type Post = {
   planoId?: string // plano mensal a que a pauta pertence
   etapa?: EtapaCriativo // posição na esteira (ausente = post avulso, fora da esteira)
   briefing?: string // ideia/ângulo/objetivo da pauta
+  // A FRASE da peça: vai no layout do criativo ou como texto principal do vídeo.
+  // Toda pauta tem a sua — é o que prende o dedo antes de qualquer legenda.
+  headline?: string
   sugestaoImagem?: string // descrição visual sugerida (opcional)
   textoImagem?: string // texto que deve aparecer na arte
   sugestaoLegenda?: string // rascunho de legenda sugerido no briefing
@@ -783,6 +786,7 @@ export type Post = {
   // Studio Fase 0 — matéria-prima da IA e medição da taxa de edição
   iaGerado?: {
     briefing?: string
+    headline?: string
     sugestaoImagem?: string
     textoImagem?: string
     legenda?: string

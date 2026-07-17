@@ -18,12 +18,12 @@ type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; 
 type Plano = { id: string; clienteId: string; clienteNome: string; mes: number; ano: number; titulo?: string }
 type Pauta = {
   id: string; clienteId: string; clienteNome: string; imagens: string[]; legenda: string
-  status: string; formato?: string; etapa?: string; briefing?: string; planoId?: string
+  status: string; formato?: string; etapa?: string; briefing?: string; headline?: string; planoId?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
   criadoEm?: string; atualizadoEm?: string
-  iaGerado?: { briefing?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; formato?: string; geradoEm: string }
+  iaGerado?: { briefing?: string; headline?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; formato?: string; geradoEm: string }
   editadoAposIA?: boolean
   criativoGerado?: boolean
   criativoData?: any // receita do criativo (para reabrir no editor)
@@ -300,14 +300,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     carregarPautas(planoSel)
   }
 
-  async function gerarPlanoIA() {
+  // Quantas pautas e com quais pilares — o dono pede "me dá 3 de bastidor" no
+  // meio do mês, não só o mês fechado de 12. As pautas ENTRAM no plano atual
+  // (a rota acrescenta, não substitui).
+  const [planoModal, setPlanoModal] = useState(false)
+  const [gerarQtd, setGerarQtd] = useState(12)
+  const [gerarPilares, setGerarPilares] = useState('')
+
+  async function gerarPlanoIA(qtd: number, pilares: string) {
     if (!planoSel) return
-    if (!(await confirmar('A IA vai gerar as pautas do mês com base no Brand Board + Brand Playbook do cliente. Isso consome créditos da IA. Continuar?', { titulo: 'Gerar plano com IA', okLabel: 'Continuar' }))) return
-    setGerandoIA(true); setIaMsg('Gerando pautas com IA... (pode levar até 1 minuto)')
+    setPlanoModal(false)
+    setGerandoIA(true); setIaMsg(`Gerando ${qtd} ${qtd === 1 ? 'pauta' : 'pautas'} com IA... (pode levar até 1 minuto)`)
     try {
       const r = await fetch('/api/esteira/gerar-plano', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planoId: planoSel, quantidade: 12 }),
+        body: JSON.stringify({ planoId: planoSel, quantidade: qtd, pilares: pilares.trim() || undefined }),
       })
       const d = await r.json()
       if (!r.ok) { setIaMsg(d?.error || 'Falha ao gerar o plano.'); return }
@@ -423,7 +430,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // Abre o modal de geração — carrega os ativos do cliente p/ escolher a referência.
   async function abrirGerarModal(p: Pauta) {
     setGerarModal(p); setRefSel('sem'); setModalAssets([]); setModalCarregando(true)
-    setRefHeadline((p.textoImagem || p.briefing || '').trim())
+    // A HEADLINE da pauta manda: é a frase pensada para a arte. textoImagem e
+    // briefing viram reserva (pauta antiga, de antes do campo existir).
+    setRefHeadline((p.headline || p.textoImagem || p.briefing || '').trim())
     // Prefill do brief rico (se a pauta já tem receita salva)
     const cd = p.criativoData || {}
     setBriefObj(cd.objetivo || '')
@@ -468,7 +477,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       // 2) Criativo do briefing usando a foto como FUNDO (template "foto" + headline)
       const rc = await fetch('/api/studio/gerar-criativo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: p.id, template: 'foto', fundoUrl: fotoBlob.url, headline: (p.textoImagem || p.briefing || '').trim() || undefined }),
+        body: JSON.stringify({ postId: p.id, template: 'foto', fundoUrl: fotoBlob.url, headline: (p.headline || p.textoImagem || p.briefing || '').trim() || undefined }),
       }).then(x => x.json()).catch(() => null)
 
       if (rc && !rc.error && rc.imagemBase64) {
@@ -725,7 +734,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
-          {podeGerarIA && <button className="st-btn st-cta" onClick={gerarPlanoIA} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+          {podeGerarIA && <button className="st-btn st-cta" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
             {gerandoIA ? 'Gerando…' : 'Gerar plano com IA'}
           </button>}
@@ -912,6 +921,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       <div style={{ flexBasis: '100%' }}><PipelinePauta p={p} /></div>
                       <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
+                        <div><CampoLabel>Headline (arte / abertura do vídeo)</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
                         <div><CampoLabel>Copy (legenda)</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
                         <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
                         <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
@@ -1145,6 +1155,47 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         )
       })()}
+
+      {/* Quantas pautas gerar e com quais pilares. Entram NO PLANO ATUAL. */}
+      {planoModal && (
+        <div onClick={fecharFora(() => setPlanoModal(false), { temAlteracoes: () => !!gerarPilares.trim() })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Gerar pautas com IA</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999', lineHeight: 1.5 }}>
+              Elas entram no plano aberto, a partir de hoje. A IA recebe o que esta marca já publicou e não repete tema usado.
+            </p>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Quantas pautas</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {[1, 2, 3, 5, 8, 12].map(n => (
+                <button key={n} onClick={() => setGerarQtd(n)} style={{
+                  minWidth: 40, padding: '7px 12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  background: gerarQtd === n ? '#111' : '#fff', color: gerarQtd === n ? '#fff' : '#555',
+                  border: gerarQtd === n ? '1px solid #111' : '1px solid #e5e7eb',
+                }}>{n}</button>
+              ))}
+              <input type="number" min={1} max={30} value={gerarQtd}
+                onChange={e => setGerarQtd(Math.min(Math.max(Number(e.target.value) || 1, 1), 30))}
+                style={{ width: 74, padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: 11, color: '#bbb' }}>De 1 a 30. O mês fechado costuma ser 12.</p>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Pilares (opcional)</label>
+            <input value={gerarPilares} onChange={e => setGerarPilares(e.target.value)}
+              placeholder="Ex.: bastidor, prova social, educativo"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+            <p style={{ margin: '5px 0 16px', fontSize: 11, color: '#bbb' }}>Em branco, a IA equilibra os pilares da marca sozinha.</p>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPlanoModal(false)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => gerarPlanoIA(gerarQtd, gerarPilares)} style={{ padding: '9px 18px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
+                Gerar {gerarQtd} {gerarQtd === 1 ? 'pauta' : 'pautas'}
+              </button>
+            </div>
+            <p style={{ margin: '10px 0 0', fontSize: 11, color: '#bbb' }}>Consome créditos da IA.</p>
+          </div>
+        </div>
+      )}
 
       {/* Modal "Gerar arte" — escolher imagem de referência */}
       {gerarModal && (() => {
