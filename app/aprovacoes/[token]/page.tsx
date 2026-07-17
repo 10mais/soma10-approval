@@ -158,7 +158,11 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
     <div style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
-        <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
+        <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0,
+          // Amarelo SÓ atrás da inicial (fallback). Com logo, o fundo fica NEUTRO:
+          // logo com cantos transparentes (como a da Sua Dupla) mostrava o amarelo
+          // vazando pelas beiradas.
+          background: logoErro ? '#ffc00f' : '#f0f0f0' }}>
           {!logoErro
             ? <img src={`/api/foto-cliente?token=${encodeURIComponent(token)}`} alt="" onError={() => setLogoErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : inicial}

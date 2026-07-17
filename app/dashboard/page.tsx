@@ -2193,8 +2193,11 @@ function Dashboard() {
           </nav>
         )}
 
-        {/* Conteúdo principal — paddingTop reserva a faixa do cluster flutuante (evita sobrepor toolbars) */}
-        <div style={{ flex: 1, minWidth: 0, padding: mobile ? '64px 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
+        {/* Conteúdo principal — o topo reserva a faixa do cluster flutuante. No
+            mobile o cluster fica em (12px + safe-area) + ~46px de altura; em
+            aparelho com notch a safe-area cresce e o título passava POR BAIXO do
+            cluster. Por isso o topo acompanha a mesma safe-area (não é 64px fixo). */}
+        <div style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
 
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (
