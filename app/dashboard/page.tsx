@@ -52,6 +52,7 @@ const Frota = dynamic(() => import('../components/Frota'), { ssr: false, loading
 const Viagens = dynamic(() => import('../components/Viagens'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CalendarioViagens = dynamic(() => import('../components/CalendarioViagens'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Processos = dynamic(() => import('../components/Processos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -416,7 +417,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -602,6 +603,7 @@ function Dashboard() {
   const [perfilInstancia, setPerfilInstancia] = useState<string | null>(null)
   const perfilClinica = perfilInstancia === 'clinica'
   const perfilTurismo = perfilInstancia === 'turismo'
+  const perfilCidadania = perfilInstancia === 'cidadania'
   const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
@@ -944,7 +946,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -2074,6 +2076,13 @@ function Dashboard() {
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Clínica</span>}
                   <NavBtn chave="procedimentos" label="Procedimentos e Métodos" />
+                </nav>
+              )}
+              {/* Assessoria (cidadania) — esteira de processos (brick do perfil cidadania) */}
+              {perfilCidadania && podeGrupo('crm') && (
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Assessoria</span>}
+                  <NavBtn chave="processos" label="Processos" />
                 </nav>
               )}
               {/* Comunicação — acima de Estratégia */}
@@ -3349,6 +3358,11 @@ function Dashboard() {
         )}
         {aba === 'frota' && perfilTurismo && role !== 'cliente' && (
           <Frota podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+        )}
+
+        {/* Assessoria cidadania — esteira de Processos */}
+        {aba === 'processos' && perfilCidadania && role !== 'cliente' && (
+          <Processos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
 
         {/* Reuniões internas — Pessoas e Cultura (admin) */}

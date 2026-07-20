@@ -1,0 +1,331 @@
+'use client'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
+import {
+  ETAPAS_PROCESSO, ETAPAS_FLUXO, progressoProcesso,
+  proximaEtapa, etapaAnterior, ehFinal, type EtapaProcesso,
+} from '@/lib/processoCidadania'
+
+// PROCESSOS (perfil cidadania) — a esteira pós-venda de cada caso/família rumo à
+// cidadania estrangeira. Kanban por etapa (avançar/voltar rápido) + cadastro.
+// Requerentes (linhagem) e o checklist de documentos entram nas próximas fases.
+
+type StatusProcesso = 'ativo' | 'pausado' | 'concluido' | 'arquivado'
+type Processo = {
+  id: string; titulo: string; clienteId?: string; paisAlvo: string
+  ascendente?: string; requerentes?: string[]; etapa: EtapaProcesso; status: StatusProcesso
+  responsavelEmail?: string; numeroProcesso?: string; valorContrato?: number
+  prazoEstimado?: string; observacoes?: string; criadoEm?: string; atualizadoEm?: string
+}
+// No formulário o valor fica como TEXTO (deixa digitar "1200,5" pela metade).
+type Form = Omit<Processo, 'id' | 'valorContrato'> & { id?: string; valorContrato: string }
+
+type Contato = { id: string; nome: string }
+type Usuario = { nome?: string; email: string; role?: string }
+
+const STATUS: { key: StatusProcesso; label: string; cor: string; bg: string }[] = [
+  { key: 'ativo', label: 'Ativo', cor: '#166534', bg: '#dcfce7' },
+  { key: 'pausado', label: 'Pausado', cor: '#a16207', bg: '#fef9c3' },
+  { key: 'concluido', label: 'Concluído', cor: '#1e3a8a', bg: '#dbeafe' },
+  { key: 'arquivado', label: 'Arquivado', cor: '#9ca3af', bg: '#f4f4f5' },
+]
+const stInfo = (s?: string) => STATUS.find(x => x.key === s) || STATUS[0]
+const fmtBRL = (v?: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtData = (s?: string) => (s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : '')
+
+const vazio = (): Form => ({
+  titulo: '', clienteId: '', paisAlvo: 'Luxemburgo', ascendente: '', requerentes: [],
+  etapa: 'viabilidade', status: 'ativo', responsavelEmail: '', numeroProcesso: '',
+  valorContrato: '', prazoEstimado: '', observacoes: '',
+})
+
+const paraForm = (p: Processo): Form => ({
+  ...p, clienteId: p.clienteId || '', ascendente: p.ascendente || '', responsavelEmail: p.responsavelEmail || '',
+  numeroProcesso: p.numeroProcesso || '', prazoEstimado: p.prazoEstimado || '', observacoes: p.observacoes || '',
+  valorContrato: p.valorContrato ? String(p.valorContrato) : '',
+})
+
+export default function Processos({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
+  const [lista, setLista] = useState<Processo[]>([])
+  const [contatos, setContatos] = useState<Contato[]>([])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [form, setForm] = useState<Form | null>(null)
+  const [formInicial, setFormInicial] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [verFinais, setVerFinais] = useState(false)
+
+  const carregar = useCallback(() => {
+    setCarregando(true)
+    Promise.all([
+      fetch('/api/processos').then(r => r.json()).catch(() => ({ processos: [] })),
+      fetch('/api/crm/contatos').then(r => r.json()).catch(() => []),
+      fetch('/api/usuarios').then(r => r.json()).catch(() => []),
+    ]).then(([pr, ct, us]) => {
+      setLista(Array.isArray(pr?.processos) ? pr.processos : [])
+      setContatos(Array.isArray(ct) ? ct.map((c: any) => ({ id: c.id, nome: c.nome })) : [])
+      setUsuarios(Array.isArray(us) ? us.filter((u: any) => u.role !== 'cliente') : [])
+    }).finally(() => setCarregando(false))
+  }, [])
+  useEffect(() => { carregar() }, [carregar])
+
+  const nomeContato = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const c of contatos) m[c.id] = c.nome
+    return m
+  }, [contatos])
+  const nomeUsuario = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const u of usuarios) m[u.email] = u.nome || u.email
+    return m
+  }, [usuarios])
+
+  function abrirNovo() { const f = vazio(); setForm(f); setFormInicial(JSON.stringify(f)) }
+  function abrirEdicao(p: Processo) { const f = paraForm(p); setForm(f); setFormInicial(JSON.stringify(f)) }
+  function fecharForm() {
+    if (form && JSON.stringify(form) !== formInicial) {
+      confirmar('Descartar as alterações deste processo?').then(ok => { if (ok) setForm(null) })
+      return
+    }
+    setForm(null)
+  }
+
+  async function salvar() {
+    if (!form) return
+    const titulo = (form.titulo || '').trim()
+    if (!titulo) { toast('Informe o nome do caso/família.', 'erro'); return }
+    setSalvando(true)
+    const corpo = {
+      id: form.id,
+      titulo,
+      clienteId: form.clienteId || '',
+      paisAlvo: (form.paisAlvo || 'Luxemburgo').trim(),
+      ascendente: (form.ascendente || '').trim(),
+      requerentes: form.requerentes || [],
+      etapa: form.etapa,
+      status: form.status,
+      responsavelEmail: form.responsavelEmail || '',
+      numeroProcesso: (form.numeroProcesso || '').trim(),
+      valorContrato: form.valorContrato ? Number(String(form.valorContrato).replace(',', '.')) : undefined,
+      prazoEstimado: form.prazoEstimado || '',
+      observacoes: (form.observacoes || '').trim(),
+    }
+    const r = await fetch('/api/processos', {
+      method: form.id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível salvar.', 'erro'); return }
+    toast(form.id ? 'Processo atualizado.' : 'Processo criado.', 'sucesso')
+    setForm(null)
+    carregar()
+  }
+
+  async function excluir(p: Processo) {
+    if (!(await confirmar(`Excluir o processo "${p.titulo}"? Esta ação não pode ser desfeita.`))) return
+    const r = await fetch('/api/processos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id }) }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível excluir.', 'erro'); return }
+    toast('Processo excluído.', 'sucesso')
+    carregar()
+  }
+
+  // Move de etapa via PUT — otimista: atualiza a lista na hora e reverte se falhar.
+  async function moverEtapa(p: Processo, destino: EtapaProcesso | null) {
+    if (!destino || destino === p.etapa) return
+    setLista(prev => prev.map(x => x.id === p.id ? { ...x, etapa: destino } : x))
+    const r = await fetch('/api/processos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, etapa: destino }) }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível mover.', 'erro'); carregar() }
+  }
+
+  // Colunas do kanban: o fluxo sempre; os desfechos (deferido/arquivado) só quando pedidos.
+  const colunas = useMemo(() => {
+    const chaves: EtapaProcesso[] = verFinais ? ETAPAS_PROCESSO.map(e => e.chave) : [...ETAPAS_FLUXO]
+    return chaves.map(chave => ({ chave, itens: lista.filter(p => p.etapa === chave) }))
+  }, [lista, verFinais])
+
+  const totalFinais = lista.filter(p => ehFinal(p.etapa)).length
+
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', margin: '0 0 4px' }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Processos</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#6b7280' }}>Cada caso/família da viabilidade ao deferimento.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={() => setVerFinais(v => !v)} style={{ padding: '8px 12px', background: verFinais ? '#eef2ff' : '#fff', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+            {verFinais ? 'Ocultar encerrados' : `Ver encerrados${totalFinais ? ` (${totalFinais})` : ''}`}
+          </button>
+          {podeEditar && (
+            <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Novo processo</button>
+          )}
+        </div>
+      </div>
+
+      {carregando ? (
+        <p style={{ color: '#9ca3af', fontSize: 13 }}>Carregando…</p>
+      ) : lista.length === 0 ? (
+        <div style={{ border: '1px dashed #d1d5db', borderRadius: 12, padding: 40, textAlign: 'center', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: 14 }}>Nenhum processo ainda.</p>
+          {podeEditar && <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>Clique em <strong>+ Novo processo</strong> para começar o primeiro caso.</p>}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
+          {colunas.map(({ chave, itens }) => {
+            const def = ETAPAS_PROCESSO.find(e => e.chave === chave)!
+            const finalCol = ehFinal(chave)
+            return (
+              <div key={chave} style={{ minWidth: 250, width: 250, flexShrink: 0, background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 12, padding: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: def.ganho ? '#166534' : def.perdido ? '#9ca3af' : '#374151' }}>{def.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', background: '#fff', border: '1px solid #eef0f2', borderRadius: 999, padding: '1px 7px' }}>{itens.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {itens.map(p => {
+                    const prox = proximaEtapa(p.etapa)
+                    const ant = etapaAnterior(p.etapa)
+                    const prog = progressoProcesso(p.etapa)
+                    const st = stInfo(p.status)
+                    return (
+                      <div key={p.id} style={{ background: '#fff', border: '1px solid #eef0f2', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                        <div onClick={() => abrirEdicao(p)} style={{ cursor: 'pointer' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <strong style={{ fontSize: 13, color: '#111' }}>{p.titulo}</strong>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: st.cor, background: st.bg, borderRadius: 999, padding: '1px 7px', whiteSpace: 'nowrap' }}>{st.label}</span>
+                          </div>
+                          <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#6b7280' }}>
+                            {p.paisAlvo}{p.ascendente ? ` · ${p.ascendente}` : ''}
+                          </p>
+                          {p.clienteId && nomeContato[p.clienteId] && (
+                            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#6b7280' }}>Cliente: {nomeContato[p.clienteId]}</p>
+                          )}
+                          {p.responsavelEmail && (
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Resp.: {nomeUsuario[p.responsavelEmail] || p.responsavelEmail}</p>
+                          )}
+                          {!finalCol && (
+                            <div style={{ marginTop: 7, height: 4, background: '#eef0f2', borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.round(prog * 100)}%`, height: '100%', background: '#111' }} />
+                            </div>
+                          )}
+                          {typeof p.valorContrato === 'number' && p.valorContrato > 0 && (
+                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#374151', fontWeight: 600 }}>{fmtBRL(p.valorContrato)}</p>
+                          )}
+                        </div>
+                        {podeEditar && (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                            <button title="Voltar etapa" disabled={!ant} onClick={() => moverEtapa(p, ant)} style={{ flex: 1, padding: '4px 0', background: ant ? '#f3f4f6' : '#fafafa', border: '1px solid #eef0f2', borderRadius: 6, fontSize: 12, color: ant ? '#374151' : '#d1d5db', cursor: ant ? 'pointer' : 'default' }}>◀</button>
+                            <button title="Avançar etapa" disabled={!prox} onClick={() => moverEtapa(p, prox)} style={{ flex: 1, padding: '4px 0', background: prox ? '#111' : '#fafafa', border: '1px solid ' + (prox ? '#111' : '#eef0f2'), borderRadius: 6, fontSize: 12, color: prox ? '#fff' : '#d1d5db', cursor: prox ? 'pointer' : 'default' }}>▶</button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {itens.length === 0 && <p style={{ margin: 0, fontSize: 11.5, color: '#c4c8cc', textAlign: 'center', padding: '8px 0' }}>—</p>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {form && (
+        <div onMouseDown={fecharFora(fecharForm)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: 24, width: '100%', maxWidth: 560, margin: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{form.id ? 'Editar processo' : 'Novo processo'}</h3>
+              <button onClick={fecharForm} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Caso / família *</label>
+                <input value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ex.: Família Muller" style={inputStyle} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>País de destino</label>
+                  <input value={form.paisAlvo} onChange={e => setForm({ ...form, paisAlvo: e.target.value })} placeholder="Luxemburgo" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Ascendente estrangeiro</label>
+                  <input value={form.ascendente} onChange={e => setForm({ ...form, ascendente: e.target.value })} placeholder="Nome da raiz da linhagem" style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Cliente (responsável)</label>
+                  <select value={form.clienteId} onChange={e => setForm({ ...form, clienteId: e.target.value })} style={inputStyle}>
+                    <option value="">— nenhum —</option>
+                    {contatos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Responsável (equipe)</label>
+                  <select value={form.responsavelEmail} onChange={e => setForm({ ...form, responsavelEmail: e.target.value })} style={inputStyle}>
+                    <option value="">— ninguém —</option>
+                    {usuarios.map(u => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Etapa</label>
+                  <select value={form.etapa} onChange={e => setForm({ ...form, etapa: e.target.value as EtapaProcesso })} style={inputStyle}>
+                    {ETAPAS_PROCESSO.map(e => <option key={e.chave} value={e.chave}>{e.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Situação</label>
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as StatusProcesso })} style={inputStyle}>
+                    {STATUS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Valor do contrato</label>
+                  <input value={form.valorContrato} onChange={e => setForm({ ...form, valorContrato: e.target.value })} placeholder="0,00" inputMode="decimal" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Previsão de conclusão</label>
+                  <input type="date" value={form.prazoEstimado} onChange={e => setForm({ ...form, prazoEstimado: e.target.value })} style={inputStyle} />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Nº do processo (protocolo)</label>
+                <input value={form.numeroProcesso} onChange={e => setForm({ ...form, numeroProcesso: e.target.value })} placeholder="Quando protocolado no órgão" style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Observações</label>
+                <textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
+              <div>
+                {form.id && podeExcluir && (
+                  <button onClick={() => { const p = lista.find(x => x.id === form.id); if (p) { setForm(null); excluir(p) } }} style={{ padding: '9px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Excluir</button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={fecharForm} style={{ padding: '9px 16px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={salvar} disabled={salvando} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1 }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

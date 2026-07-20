@@ -467,6 +467,33 @@ export type PacoteViagem = {
   atualizadoEm: string
 }
 
+// PROCESSO DE CIDADANIA (assessoria) — o caso de uma família rumo à cidadania
+// estrangeira por descendência. Chaves: `processo:{id}`, set `processos`.
+// O funil COMERCIAL (lead → contrato) vive no CRM; aqui é a ENTREGA pós-venda:
+// da viabilidade ao deferimento. As ETAPAS e a matemática de progresso vivem em
+// lib/processoCidadania.ts (puro, testado) — o tipo EtapaProcesso é reexportado
+// de lá; não repetir a lista aqui.
+export type { EtapaProcesso } from './processoCidadania'
+export type StatusProcesso = 'ativo' | 'pausado' | 'concluido' | 'arquivado'
+export type Processo = {
+  id: string
+  titulo: string             // nome da família / caso — ex.: "Família Muller"
+  clienteId?: string         // CrmContato pagante (responsável pelo contrato)
+  paisAlvo: string           // 'Luxemburgo' por padrão; genérico p/ outros países
+  ascendente?: string        // nome do ascendente estrangeiro (raiz da linhagem)
+  requerentes?: string[]     // ids de CrmContato com selo tipo:'requerente' (Fase 2)
+  etapa: import('./processoCidadania').EtapaProcesso
+  status: StatusProcesso
+  responsavelEmail?: string  // membro da equipe dono da carteira do caso
+  numeroProcesso?: string    // protocolo/nº no órgão estrangeiro, quando houver
+  valorContrato?: number     // valor fechado do contrato (Financeiro na Fase 4)
+  prazoEstimado?: string     // YYYY-MM-DD — previsão de conclusão (opcional)
+  observacoes?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.
 export type NpsResposta = {
   id: string

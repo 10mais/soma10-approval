@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { abasOcultasDoPerfil, ABAS_OCULTAS_CLINICA } from '@/lib/perfisInstanciaCatalogo'
+import { abasOcultasDoPerfil, ABAS_OCULTAS_CLINICA, PERFIS } from '@/lib/perfisInstanciaCatalogo'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 
 // Um código, N instâncias: o que decide quais telas existem em cada uma é o
@@ -10,7 +10,7 @@ import { ABAS_PERM } from '@/lib/permissoesGranular'
 describe('abasOcultasDoPerfil', () => {
   it('a Agenda é de clínica: só a clínica enxerga', () => {
     expect(abasOcultasDoPerfil('clinica')).not.toContain('agenda')
-    for (const perfil of [null, undefined, 'gestao', 'turismo']) {
+    for (const perfil of [null, undefined, 'gestao', 'turismo', 'cidadania']) {
       expect(abasOcultasDoPerfil(perfil)).toContain('agenda')
     }
   })
@@ -41,8 +41,10 @@ describe('abasOcultasDoPerfil', () => {
   })
 
   it('toda aba de perfil declara um perfil que existe', () => {
+    // Deriva do catálogo: perfil novo (ex.: cidadania) não precisa editar este teste.
+    const chaves = PERFIS.map(p => p.chave)
     for (const a of ABAS_PERM) {
-      if (a.perfil) expect(['clinica', 'turismo']).toContain(a.perfil)
+      if (a.perfil) expect(chaves).toContain(a.perfil)
     }
   })
 })

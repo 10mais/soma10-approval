@@ -9,7 +9,7 @@ import { PermissoesPapel } from './permissoesCatalogo'
 import { PermGranularPapel } from './permissoesGranular'
 import { PLAYBOOK_CLINICA, PlaybookSeed } from './playbookClinica'
 
-export type PerfilInstancia = 'clinica' | 'gestao' | 'turismo'
+export type PerfilInstancia = 'clinica' | 'gestao' | 'turismo' | 'cidadania'
 
 export type DefPerfil = {
   chave: PerfilInstancia
@@ -57,6 +57,21 @@ export const ABAS_OCULTAS_TURISMO: string[] = [
   'carga', // carga da equipe (métrica de agência de conteúdo; turismo não usa)
 ]
 
+// Abas que o modo CIDADANIA (assessoria de cidadania por descendência) esconde de
+// TODOS os papéis. É um perfil de GESTÃO especializado: mantém CRM + Financeiro +
+// Projetos (Playbook/Tarefas/Modelos) e ganha a esteira de Processos própria.
+// Não usa produção de conteúdo/social, Estratégia de agência, Agenda clínica nem
+// "Trabalhe Conosco".
+export const ABAS_OCULTAS_CIDADANIA: string[] = [
+  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', // produção de conteúdo/social
+  'campanhas', 'automacoes', // Estratégia de agência (Playbook/Modelos ficam)
+  'conversao', // Conversão & Retenção (agência)
+  'candidaturas', 'recrutamento', // Trabalhe Conosco
+  'solicitacoes', // Solicitações do cliente (agência)
+  'clientes', // gestão de clientes B2B — cidadania usa Contatos do CRM + Processos
+  'agenda', // agenda clínica
+]
+
 // A Agenda é tela de CLÍNICA: nasceu para marcar atendimento de paciente
 // (profissional, queixa principal, prontuário, "confirmado = pago"). Ficou
 // visível na agência e na gestão por descuido meu — lá ninguém agenda paciente,
@@ -74,6 +89,7 @@ export const ABAS_OCULTAS_GESTAO: string[] = ['agenda']
 export function abasOcultasDoPerfil(perfil: string | null | undefined): string[] {
   if (perfil === 'clinica') return ABAS_OCULTAS_CLINICA
   if (perfil === 'turismo') return ABAS_OCULTAS_TURISMO
+  if (perfil === 'cidadania') return ABAS_OCULTAS_CIDADANIA
   if (perfil === 'gestao') return ABAS_OCULTAS_GESTAO
   return ABAS_OCULTAS_AGENCIA
 }
@@ -192,6 +208,46 @@ export const PERFIS: DefPerfil[] = [
       },
     ],
   },
+  {
+    chave: 'cidadania',
+    label: 'Cidadania',
+    descricao: 'Assessoria de cidadania por descendência: CRM (funil comercial) + Financeiro + Projetos + esteira de Processos (viabilidade → deferimento). Ex.: Sua Dupla Cidadania.',
+    // Espelha o perfil gestão: CRM + Projetos (Produção/Estratégia) ligados,
+    // clientes B2B desligado (usa Contatos do CRM + Processos).
+    permissoesPapel: {
+      gerente: {
+        producao: { ver: true, editar: true, excluir: true },
+        estrategia: { ver: true, editar: true, excluir: true },
+        crm: { ver: true, editar: true, excluir: true },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+      usuario: {
+        producao: { ver: true, editar: true, excluir: false },
+        estrategia: { ver: true, editar: true, excluir: false },
+        crm: { ver: true, editar: true, excluir: false },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+    },
+    permissoesGranular: {
+      gerente: { abas: { ...ABAS_SOCIAL_OFF, agenda: false, campanhas: false, automacoes: false } },
+      usuario: { abas: { ...ABAS_SOCIAL_OFF, agenda: false, campanhas: false, automacoes: false } },
+    },
+    // Funil COMERCIAL (lead → contrato assinado). A ENTREGA do processo (viabilidade
+    // → deferimento) vive na esteira de Processos, não no CRM.
+    pipelines: [
+      {
+        nome: 'Comercial',
+        estagios: [
+          { nome: 'Lead novo' },
+          { nome: 'Contato feito' },
+          { nome: 'Análise de viabilidade' },
+          { nome: 'Proposta enviada' },
+          { nome: 'Contrato assinado', ganho: true },
+          { nome: 'Sem viabilidade', perdido: true },
+        ],
+      },
+    ],
+  },
 ]
 
 export function perfilDef(chave?: string | null): DefPerfil | null {
@@ -204,12 +260,12 @@ export function perfilDef(chave?: string | null): DefPerfil | null {
 // clinica → Soma10 Clinic · turismo/gestao → Soma10 App · agência/padrão → Soma10 Agency.
 export function nomeSistema(perfil?: string | null): string {
   if (perfil === 'clinica') return 'Soma10 Clinic'
-  if (perfil === 'turismo' || perfil === 'gestao') return 'Soma10 App'
+  if (perfil === 'turismo' || perfil === 'gestao' || perfil === 'cidadania') return 'Soma10 App'
   return 'Soma10 Agency'
 }
 
 // Perfis que NÃO usam "Trabalhe Conosco"/recrutamento (clínica, turismo). Usado
 // para 404 nas rotas públicas de candidaturas/recrutamento nessas instâncias.
 export function perfilSemRecrutamento(perfil?: string | null): boolean {
-  return perfil === 'clinica' || perfil === 'turismo'
+  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania'
 }
