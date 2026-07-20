@@ -6,6 +6,8 @@ import {
   ETAPAS_PROCESSO, ETAPAS_FLUXO, progressoProcesso,
   proximaEtapa, etapaAnterior, ehFinal, type EtapaProcesso,
 } from '@/lib/processoCidadania'
+import { resumoLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
+import EditorLinhagem from './EditorLinhagem'
 
 // PROCESSOS (perfil cidadania) — a esteira pós-venda de cada caso/família rumo à
 // cidadania estrangeira. Kanban por etapa (avançar/voltar rápido) + cadastro.
@@ -14,7 +16,8 @@ import {
 type StatusProcesso = 'ativo' | 'pausado' | 'concluido' | 'arquivado'
 type Processo = {
   id: string; titulo: string; clienteId?: string; paisAlvo: string
-  ascendente?: string; requerentes?: string[]; etapa: EtapaProcesso; status: StatusProcesso
+  ascendente?: string; requerentes?: string[]; linhagem?: PessoaLinhagem[]
+  etapa: EtapaProcesso; status: StatusProcesso
   responsavelEmail?: string; numeroProcesso?: string; valorContrato?: number
   prazoEstimado?: string; observacoes?: string; criadoEm?: string; atualizadoEm?: string
 }
@@ -35,13 +38,14 @@ const fmtBRL = (v?: number) => (Number(v) || 0).toLocaleString('pt-BR', { style:
 const fmtData = (s?: string) => (s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : '')
 
 const vazio = (): Form => ({
-  titulo: '', clienteId: '', paisAlvo: 'Luxemburgo', ascendente: '', requerentes: [],
+  titulo: '', clienteId: '', paisAlvo: 'Luxemburgo', ascendente: '', requerentes: [], linhagem: [],
   etapa: 'viabilidade', status: 'ativo', responsavelEmail: '', numeroProcesso: '',
   valorContrato: '', prazoEstimado: '', observacoes: '',
 })
 
 const paraForm = (p: Processo): Form => ({
   ...p, clienteId: p.clienteId || '', ascendente: p.ascendente || '', responsavelEmail: p.responsavelEmail || '',
+  requerentes: p.requerentes || [], linhagem: p.linhagem || [],
   numeroProcesso: p.numeroProcesso || '', prazoEstimado: p.prazoEstimado || '', observacoes: p.observacoes || '',
   valorContrato: p.valorContrato ? String(p.valorContrato) : '',
 })
@@ -55,6 +59,8 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
   const [formInicial, setFormInicial] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [verFinais, setVerFinais] = useState(false)
+  const [novoReqNome, setNovoReqNome] = useState('')
+  const [criandoReq, setCriandoReq] = useState(false)
 
   const carregar = useCallback(() => {
     setCarregando(true)
@@ -103,6 +109,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
       paisAlvo: (form.paisAlvo || 'Luxemburgo').trim(),
       ascendente: (form.ascendente || '').trim(),
       requerentes: form.requerentes || [],
+      linhagem: form.linhagem || [],
       etapa: form.etapa,
       status: form.status,
       responsavelEmail: form.responsavelEmail || '',
@@ -137,6 +144,26 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
     setLista(prev => prev.map(x => x.id === p.id ? { ...x, etapa: destino } : x))
     const r = await fetch('/api/processos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, etapa: destino }) }).then(x => x.json()).catch(() => null)
     if (!r?.ok) { toast(r?.error || 'Não foi possível mover.', 'erro'); carregar() }
+  }
+
+  function toggleRequerente(id: string) {
+    if (!form) return
+    const atuais = form.requerentes || []
+    setForm({ ...form, requerentes: atuais.includes(id) ? atuais.filter(x => x !== id) : [...atuais, id] })
+  }
+  // Cria um contato JÁ com o selo requerente e o vincula ao processo aberto.
+  async function criarRequerente() {
+    if (!form) return
+    const nome = novoReqNome.trim()
+    if (!nome) return
+    setCriandoReq(true)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, tipo: 'requerente' }) }).then(x => x.json()).catch(() => null)
+    setCriandoReq(false)
+    if (!r?.ok || !r?.contato?.id) { toast(r?.error || 'Não foi possível criar o requerente.', 'erro'); return }
+    setContatos(prev => [...prev, { id: r.contato.id, nome: r.contato.nome }])
+    setForm(f => f ? { ...f, requerentes: [...(f.requerentes || []), r.contato.id] } : f)
+    setNovoReqNome('')
+    toast('Requerente criado e vinculado.', 'sucesso')
   }
 
   // Colunas do kanban: o fluxo sempre; os desfechos (deferido/arquivado) só quando pedidos.
@@ -306,7 +333,44 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                 <input value={form.numeroProcesso} onChange={e => setForm({ ...form, numeroProcesso: e.target.value })} placeholder="Quando protocolado no órgão" style={inputStyle} />
               </div>
 
-              <div>
+              {/* Requerentes — quem vai obter a cidadania (contatos com selo requerente) */}
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                <label style={labelStyle}>Requerentes ({(form.requerentes || []).length})</label>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>As pessoas da família que vão obter a cidadania.</p>
+                {(form.requerentes || []).length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {(form.requerentes || []).map(id => (
+                      <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 999, padding: '3px 8px 3px 10px', fontSize: 12, color: '#3730a3' }}>
+                        {nomeContato[id] || 'Requerente'}
+                        <button type="button" onClick={() => toggleRequerente(id)} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                  <select value="" onChange={e => { if (e.target.value) toggleRequerente(e.target.value) }} style={inputStyle}>
+                    <option value="">+ Vincular contato existente…</option>
+                    {contatos.filter(c => !(form.requerentes || []).includes(c.id)).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input value={novoReqNome} onChange={e => setNovoReqNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarRequerente() } }} placeholder="Ou criar novo requerente pelo nome" style={{ ...inputStyle, flex: 1 }} />
+                    <button type="button" onClick={criarRequerente} disabled={criandoReq || !novoReqNome.trim()} style={{ padding: '0 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: criandoReq || !novoReqNome.trim() ? 'default' : 'pointer', opacity: criandoReq || !novoReqNome.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>{criandoReq ? '…' : 'Criar'}</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Linhagem — a prova de descendência (cadeia até o ascendente) */}
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                <label style={labelStyle}>Linhagem (prova de descendência)</label>
+                {(() => { const r = resumoLinhagem(form.linhagem || []); return (
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>
+                    {r.total === 0 ? 'Monte a cadeia do requerente até o ascendente estrangeiro.' : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
+                  </p>
+                ) })()}
+                <EditorLinhagem value={form.linhagem || []} onChange={l => setForm({ ...form, linhagem: l })} />
+              </div>
+
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
                 <label style={labelStyle}>Observações</label>
                 <textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>

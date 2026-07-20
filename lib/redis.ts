@@ -474,6 +474,8 @@ export type PacoteViagem = {
 // lib/processoCidadania.ts (puro, testado) — o tipo EtapaProcesso é reexportado
 // de lá; não repetir a lista aqui.
 export type { EtapaProcesso } from './processoCidadania'
+// Linhagem (árvore genealógica) — o tipo vive na lib pura; aqui só reexporta.
+export type { PessoaLinhagem } from './linhagem'
 export type StatusProcesso = 'ativo' | 'pausado' | 'concluido' | 'arquivado'
 export type Processo = {
   id: string
@@ -481,7 +483,8 @@ export type Processo = {
   clienteId?: string         // CrmContato pagante (responsável pelo contrato)
   paisAlvo: string           // 'Luxemburgo' por padrão; genérico p/ outros países
   ascendente?: string        // nome do ascendente estrangeiro (raiz da linhagem)
-  requerentes?: string[]     // ids de CrmContato com selo tipo:'requerente' (Fase 2)
+  requerentes?: string[]     // ids de CrmContato com selo tipo:'requerente'
+  linhagem?: import('./linhagem').PessoaLinhagem[] // prova de descendência (cadeia até o ascendente)
   etapa: import('./processoCidadania').EtapaProcesso
   status: StatusProcesso
   responsavelEmail?: string  // membro da equipe dono da carteira do caso
@@ -870,8 +873,9 @@ export type CrmEmpresa = {
   atualizadoEm: string
 }
 
-// Tipo do contato (perfil clínica trata 'paciente' como cadastro de pacientes).
-export type CrmContatoTipo = 'paciente' | 'profissional' | 'fornecedor' | 'lead' | 'outro'
+// Tipo do contato (perfil clínica trata 'paciente' como cadastro de pacientes;
+// perfil cidadania marca 'requerente' quem vai obter a cidadania).
+export type CrmContatoTipo = 'paciente' | 'profissional' | 'fornecedor' | 'lead' | 'outro' | 'requerente'
 
 export type CrmContato = {
   id: string
