@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
       ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),
+      ...(d.sobrenomeLinhagem ? { sobrenomeLinhagem: String(d.sobrenomeLinhagem).trim().slice(0, 60) } : {}),
       ...(Array.isArray(d.etiquetas) ? { etiquetas: d.etiquetas.map((e: any) => String(e).trim()).filter(Boolean).slice(0, 20) } : {}),
       ...(d.ativo === false ? { ativo: false } : {}),
     }
@@ -178,7 +179,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, contato: atualizado })
   }
 
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo', 'ultimoProcedimento', 'nuncaVeio']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo', 'ultimoProcedimento', 'nuncaVeio', 'sobrenomeLinhagem']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra

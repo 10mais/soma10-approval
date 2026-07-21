@@ -18,7 +18,7 @@ import OperacionalConfig from '../components/OperacionalConfig'
 import SaudeSistema from '../components/SaudeSistema'
 import LgpdCliente from '../components/LgpdCliente'
 import AvatarCliente from '../components/AvatarCliente'
-import { podeNivel, normalizaNivel, GRUPOS as PERM_GRUPOS, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
+import { podeNivel, normalizaNivel, gruposDoPerfil, NIVEIS as PERM_NIVEIS } from '@/lib/permissoesCatalogo'
 import { fecharFora } from '@/lib/fecharModal'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -873,7 +873,7 @@ function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 6, columnGap: 12, alignItems: 'center' }}>
           <span />
           <div style={{ display: 'flex', gap: 6 }}>{PERM_NIVEIS.map(n => <span key={n.chave} style={{ width: 52, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#aaa' }}>{n.label}</span>)}</div>
-          {PERM_GRUPOS.map(g => (
+          {gruposDoPerfil(perfilInstancia).map(g => (
             <div key={g.chave} style={{ display: 'contents' }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: '#333' }}>{g.label}</span>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -3515,7 +3515,7 @@ function Dashboard() {
         )}
 
         {aba === 'tarefas' && (
-          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
+          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
         )}
 
         {aba === 'campanhas' && (
@@ -4265,7 +4265,7 @@ function Dashboard() {
                     <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   </div>
-                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
+                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : perfilCidadania ? 'Função / Cargo (ex.: Analista de processos, Genealogista, Comercial)' : perfilTurismo ? 'Função / Cargo (ex.: Atendimento, Motorista, Guia)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
                   {perfilTurismo && (
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>

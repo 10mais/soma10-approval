@@ -63,8 +63,13 @@ export const ABAS_OCULTAS_TURISMO: string[] = [
 // Não usa produção de conteúdo/social, Estratégia de agência, Agenda clínica nem
 // "Trabalhe Conosco".
 export const ABAS_OCULTAS_CIDADANIA: string[] = [
-  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', // produção de conteúdo/social
-  'campanhas', 'automacoes', // Estratégia de agência (Playbook/Modelos ficam)
+  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção de conteúdo/social
+  // Estratégia INTEIRA sai: Playbook e Modelos foram removidos a pedido do dono,
+  // e Marca/Listening/Analytics são instrumentos de marketing. Sem nada atrás
+  // dele, o grupo 'estrategia' também some da matriz de permissões
+  // (ver gruposDoPerfil em permissoesCatalogo) — linha que não controla nada
+  // só ensina a equipe a ignorar a tela de permissões.
+  'playbook', 'modelos', 'campanhas', 'automacoes', 'marca', 'listening', 'analytics',
   'conversao', // Conversão & Retenção (agência)
   'candidaturas', 'recrutamento', // Trabalhe Conosco
   'solicitacoes', // Solicitações do cliente (agência)

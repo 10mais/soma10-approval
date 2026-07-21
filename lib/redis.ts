@@ -890,6 +890,7 @@ export type CrmContato = {
   tipo?: CrmContatoTipo // ausente = contato comum (compatível com a base existente)
   nascimento?: string // YYYY-MM-DD — aniversariantes do mês (clínicas)
   preferenciasViagem?: string // turismo: desejos e preferências (destinos dos sonhos, tipo de viagem…) — vira oportunidade futura
+  sobrenomeLinhagem?: string // cidadania: família imigrante de origem (lista fechada — ver lib/sobrenomesLinhagem)
   // Clínica: o que a pessoa fez da última vez. Preenchido À MÃO porque a base
   // veio de outro sistema — o histórico da Agenda só existe para quem foi
   // atendido AQUI. `nuncaVeio` é a resposta honesta para lead que nunca sentou

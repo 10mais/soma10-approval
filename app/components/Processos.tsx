@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import {
-  ETAPAS_PROCESSO, ETAPAS_FLUXO, progressoProcesso,
-  proximaEtapa, etapaAnterior, ehFinal, type EtapaProcesso,
+  ETAPAS_PROCESSO, ETAPAS_FLUXO, progressoProcesso, ehFinal, type EtapaProcesso,
 } from '@/lib/processoCidadania'
 import { resumoLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import EditorLinhagem from './EditorLinhagem'
@@ -61,6 +60,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
   const [verFinais, setVerFinais] = useState(false)
   const [novoReqNome, setNovoReqNome] = useState('')
   const [criandoReq, setCriandoReq] = useState(false)
+  // Arrastar entre etapas (mesmo gesto do funil do CRM — as setas do card eram
+  // um jeito pior de fazer a mesma coisa e não pareciam com o resto do sistema).
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overCol, setOverCol] = useState<string | null>(null)
 
   const carregar = useCallback(() => {
     setCarregando(true)
@@ -202,52 +205,56 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
           {podeEditar && <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>Clique em <strong>+ Novo processo</strong> para começar o primeiro caso.</p>}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 260px)' }}>
           {colunas.map(({ chave, itens }) => {
             const def = ETAPAS_PROCESSO.find(e => e.chave === chave)!
             const finalCol = ehFinal(chave)
+            const ativa = overCol === chave
             return (
-              <div key={chave} style={{ minWidth: 250, width: 250, flexShrink: 0, background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 12, padding: 10 }}>
+              <div key={chave}
+                onDragOver={e => { if (podeEditar) { e.preventDefault(); setOverCol(chave) } }}
+                onDragLeave={() => setOverCol(c => (c === chave ? null : c))}
+                onDrop={() => {
+                  const p = lista.find(x => x.id === dragId)
+                  if (p) moverEtapa(p, chave)
+                  setDragId(null); setOverCol(null)
+                }}
+                style={{ flex: '0 0 250px', width: 250, background: ativa ? '#fff8e1' : '#f9fafb', border: ativa ? '1.5px dashed #ffc00f' : '1.5px solid #eef0f2', borderRadius: 12, padding: 10, minHeight: 120 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: def.ganho ? '#166534' : def.perdido ? '#9ca3af' : '#374151' }}>{def.label}</span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', background: '#fff', border: '1px solid #eef0f2', borderRadius: 999, padding: '1px 7px' }}>{itens.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {itens.map(p => {
-                    const prox = proximaEtapa(p.etapa)
-                    const ant = etapaAnterior(p.etapa)
                     const prog = progressoProcesso(p.etapa)
                     const st = stInfo(p.status)
                     return (
-                      <div key={p.id} style={{ background: '#fff', border: '1px solid #eef0f2', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                        <div onClick={() => abrirEdicao(p)} style={{ cursor: 'pointer' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                            <strong style={{ fontSize: 13, color: '#111' }}>{p.titulo}</strong>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: st.cor, background: st.bg, borderRadius: 999, padding: '1px 7px', whiteSpace: 'nowrap' }}>{st.label}</span>
-                          </div>
-                          <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#6b7280' }}>
-                            {p.paisAlvo}{p.ascendente ? ` · ${p.ascendente}` : ''}
-                          </p>
-                          {p.clienteId && nomeContato[p.clienteId] && (
-                            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#6b7280' }}>Cliente: {nomeContato[p.clienteId]}</p>
-                          )}
-                          {p.responsavelEmail && (
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Resp.: {nomeUsuario[p.responsavelEmail] || p.responsavelEmail}</p>
-                          )}
-                          {!finalCol && (
-                            <div style={{ marginTop: 7, height: 4, background: '#eef0f2', borderRadius: 999, overflow: 'hidden' }}>
-                              <div style={{ width: `${Math.round(prog * 100)}%`, height: '100%', background: '#111' }} />
-                            </div>
-                          )}
-                          {typeof p.valorContrato === 'number' && p.valorContrato > 0 && (
-                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#374151', fontWeight: 600 }}>{fmtBRL(p.valorContrato)}</p>
-                          )}
+                      <div key={p.id}
+                        draggable={podeEditar}
+                        onDragStart={() => setDragId(p.id)}
+                        onDragEnd={() => { setDragId(null); setOverCol(null) }}
+                        onClick={() => abrirEdicao(p)}
+                        style={{ background: '#fff', border: '1px solid #eef0f2', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: dragId === p.id ? 0.5 : 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                          <strong style={{ fontSize: 13, color: '#111' }}>{p.titulo}</strong>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: st.cor, background: st.bg, borderRadius: 999, padding: '1px 7px', whiteSpace: 'nowrap' }}>{st.label}</span>
                         </div>
-                        {podeEditar && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                            <button title="Voltar etapa" disabled={!ant} onClick={() => moverEtapa(p, ant)} style={{ flex: 1, padding: '4px 0', background: ant ? '#f3f4f6' : '#fafafa', border: '1px solid #eef0f2', borderRadius: 6, fontSize: 12, color: ant ? '#374151' : '#d1d5db', cursor: ant ? 'pointer' : 'default' }}>◀</button>
-                            <button title="Avançar etapa" disabled={!prox} onClick={() => moverEtapa(p, prox)} style={{ flex: 1, padding: '4px 0', background: prox ? '#111' : '#fafafa', border: '1px solid ' + (prox ? '#111' : '#eef0f2'), borderRadius: 6, fontSize: 12, color: prox ? '#fff' : '#d1d5db', cursor: prox ? 'pointer' : 'default' }}>▶</button>
+                        <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#6b7280' }}>
+                          {p.paisAlvo}{p.ascendente ? ` · ${p.ascendente}` : ''}
+                        </p>
+                        {p.clienteId && nomeContato[p.clienteId] && (
+                          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#6b7280' }}>Cliente: {nomeContato[p.clienteId]}</p>
+                        )}
+                        {p.responsavelEmail && (
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Resp.: {nomeUsuario[p.responsavelEmail] || p.responsavelEmail}</p>
+                        )}
+                        {!finalCol && (
+                          <div style={{ marginTop: 7, height: 4, background: '#eef0f2', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.round(prog * 100)}%`, height: '100%', background: '#111' }} />
                           </div>
+                        )}
+                        {typeof p.valorContrato === 'number' && p.valorContrato > 0 && (
+                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#374151', fontWeight: 600 }}>{fmtBRL(p.valorContrato)}</p>
                         )}
                       </div>
                     )

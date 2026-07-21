@@ -7,6 +7,7 @@ import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
+import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
 import BibliotecaVendasTela from './BibliotecaVendas'
 import EditorLinhagem from './EditorLinhagem'
 
@@ -377,7 +378,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         onClose={() => setAbordar(null)}
         onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setAbordar(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={perfilCidadania ? 'requerente' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} tipoPadrao={perfilCidadania ? 'lead' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
         onAbrirWhatsApp={(telefone, contatoId) => {
           // `telefone` vem do formulário (a ficha acabou de salvar): a lista em
           // memória ainda tem o número antigo e abordaria o número errado.
@@ -1186,8 +1187,8 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
   )
 }
 
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false })
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
   const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
@@ -1340,13 +1341,31 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>
             </div>
           )}
-          {perfilClinica || perfilTurismo ? (
-            // Clínica e turismo: sem empresa/área/cargo/autônomo — a venda é para pessoa física
+          {perfilClinica || perfilTurismo || perfilCidadania ? (
+            // Clínica, turismo e cidadania: sem empresa/área/cargo/autônomo — a venda é para pessoa física
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
               <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
               {perfilTurismo && <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
               {perfilTurismo && <div><label style={labelStyle}>Etiquetas (vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: VIP, grupo igreja" style={inputStyle} /></div>}
+              {perfilCidadania && (
+                <div>
+                  <label style={labelStyle}>Sobrenome da linhagem</label>
+                  {/* Lista fechada quando os sobrenomes estiverem cadastrados: digitado
+                      à mão, a mesma família entra como "Lunkes"/"Lunques"/"lunkes" e não
+                      dá para agrupar os leads por linhagem. Enquanto a lista não chega,
+                      aceita texto livre — dropdown vazio seria uma tela quebrada. */}
+                  {temListaSobrenomes() ? (
+                    <select value={f.sobrenomeLinhagem} onChange={e => setF({ ...f, sobrenomeLinhagem: e.target.value })} style={inputStyle}>
+                      <option value="">— selecione —</option>
+                      {sobrenomesOrdenados().map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <input value={f.sobrenomeLinhagem} onChange={e => setF({ ...f, sobrenomeLinhagem: e.target.value })} placeholder="Ex.: Lunkes" style={inputStyle} />
+                  )}
+                </div>
+              )}
+              {perfilCidadania && <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
             </div>
           ) : (<>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>

@@ -34,6 +34,27 @@ export const NIVEIS: { chave: Nivel; label: string }[] = [
   { chave: 'excluir', label: 'Excluir' },
 ]
 
+// A matriz de permissões fala a língua da instância. "Produção"/"Estratégia" são
+// termos de agência de marketing; numa assessoria de cidadania ninguém "produz
+// conteúdo". E grupo que não tem NENHUMA tela atrás dele sai da matriz: linha
+// que não controla nada só ensina a equipe a ignorar a tela de permissões
+// (na cidadania, Estratégia e Clientes ficaram vazios — ver ABAS_OCULTAS_CIDADANIA).
+export function gruposDoPerfil(perfil?: string | null): { chave: GrupoPermissao; label: string }[] {
+  if (perfil === 'cidadania') return [
+    { chave: 'producao', label: 'Operação (tarefas)' },
+    { chave: 'crm', label: 'CRM e Processos' },
+  ]
+  if (perfil === 'turismo') return [
+    { chave: 'producao', label: 'Operação' },
+    { chave: 'crm', label: 'CRM e Reservas' },
+  ]
+  if (perfil === 'clinica') return [
+    { chave: 'producao', label: 'Atendimento' },
+    { chave: 'crm', label: 'CRM e Pacientes' },
+  ]
+  return GRUPOS
+}
+
 // Aceita valor antigo (boolean por módulo) ou novo (objeto {ver,editar,excluir}).
 export function normalizaNivel(v: any): NivelPerm {
   if (typeof v === 'boolean') return { ver: v, editar: v, excluir: v }
