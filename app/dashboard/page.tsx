@@ -4599,6 +4599,24 @@ function Dashboard() {
             }
             if (p) iniciarEdicaoPost(p as any)
             else toast('Post não encontrado — pode ter sido excluído.', 'erro')
+          }} onVerNoPlanner={async (postId: string) => {
+            // Já aprovado: não há o que corrigir. Leva para o Planner (Lista, filtrado no cliente)
+            // e abre a pré-visualização da peça.
+            let p = posts.find(x => x.id === postId)
+            if (!p) {
+              const todos = await fetch('/api/posts?tudo=1').then(r => r.json()).catch(() => null)
+              if (Array.isArray(todos)) p = todos.find((x: any) => x.id === postId)
+            }
+            if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
+            if (apareceNoPlanner(p as any)) {
+              setBibCliente(p.clienteNome || '')
+              setPlannerView('lista')
+              setAba('planner')
+            } else {
+              // Copy aprovada segue para o criativo: a peça vive no Studio até a arte ficar pronta.
+              toast('Copy aprovada — a arte ainda está sendo produzida no Studio. Abaixo, a peça como o cliente aprovou.', 'info')
+            }
+            setPostPreview(p as any)
           }} />
         )}
 
