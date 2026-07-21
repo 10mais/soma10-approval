@@ -4614,7 +4614,7 @@ function Dashboard() {
               setAba('planner')
             } else {
               // Copy aprovada segue para o criativo: a peça vive no Studio até a arte ficar pronta.
-              toast('Copy aprovada — a arte ainda está sendo produzida no Studio. Abaixo, a peça como o cliente aprovou.', 'info')
+              toast('Esta peça ainda não está no Planner — a arte está sendo produzida no Studio. Abaixo, o post como o cliente deixou.', 'info')
             }
             setPostPreview(p as any)
           }} />
