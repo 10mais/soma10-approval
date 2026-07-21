@@ -8,6 +8,7 @@ import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
+import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
 import BibliotecaVendasTela from './BibliotecaVendas'
 import EditorLinhagem from './EditorLinhagem'
 
@@ -90,22 +91,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   }, [])
 
   // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
-  // em Ganho/Perdido). Só rola quando o card está perto da borda; no meio, não rola.
-  const funilRef = useRef<HTMLDivElement>(null)
-  const scrollTimer = useRef<any>(null)
-  function autoScrollDrag(e: React.DragEvent) {
-    e.preventDefault()
-    const el = funilRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const EDGE = 90, VEL = 18
-    const dir = e.clientX > rect.right - EDGE ? 1 : e.clientX < rect.left + EDGE ? -1 : 0
-    if (scrollTimer.current) { clearInterval(scrollTimer.current); scrollTimer.current = null }
-    if (dir !== 0) scrollTimer.current = setInterval(() => { el.scrollLeft += dir * VEL }, 16)
-  }
-  function pararAutoScroll() {
-    if (scrollTimer.current) { clearInterval(scrollTimer.current); scrollTimer.current = null }
-  }
+  // em Ganho/Perdido). Regra compartilhada com a esteira de Processos — ver
+  // lib/autoScrollKanban (era daqui que ela vinha; virou hook para não existir
+  // em duas versões, e o hook ainda limpa o timer se a tela sair no meio do arraste).
+  const { ref: funilRef, aoArrastar: autoScrollDrag, parar: pararAutoScroll } = useAutoScrollKanban<HTMLDivElement>()
   // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
   // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
   // Sai dos contatos já carregados; nada de chamada extra.

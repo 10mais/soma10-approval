@@ -6,6 +6,7 @@ import {
   ETAPAS_PROCESSO, ETAPAS_FLUXO, progressoProcesso, ehFinal, type EtapaProcesso,
 } from '@/lib/processoCidadania'
 import { resumoLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
+import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
 import EditorLinhagem from './EditorLinhagem'
 
 // PROCESSOS (perfil cidadania) — a esteira pós-venda de cada caso/família rumo à
@@ -64,6 +65,8 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
   // um jeito pior de fazer a mesma coisa e não pareciam com o resto do sistema).
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
+  // Encostar o card na borda puxa o quadro para o lado (mesmo hook do funil do CRM)
+  const { ref: kanbanRef, aoArrastar, parar: pararScroll } = useAutoScrollKanban<HTMLDivElement>()
 
   const carregar = useCallback(() => {
     setCarregando(true)
@@ -205,7 +208,8 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
           {podeEditar && <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>Clique em <strong>+ Novo processo</strong> para começar o primeiro caso.</p>}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 260px)' }}>
+        <div ref={kanbanRef} onDragOver={aoArrastar} onDrop={pararScroll} onDragEnd={pararScroll}
+          style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 260px)' }}>
           {colunas.map(({ chave, itens }) => {
             const def = ETAPAS_PROCESSO.find(e => e.chave === chave)!
             const finalCol = ehFinal(chave)
@@ -213,11 +217,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
             return (
               <div key={chave}
                 onDragOver={e => { if (podeEditar) { e.preventDefault(); setOverCol(chave) } }}
-                onDragLeave={() => setOverCol(c => (c === chave ? null : c))}
                 onDrop={() => {
                   const p = lista.find(x => x.id === dragId)
                   if (p) moverEtapa(p, chave)
-                  setDragId(null); setOverCol(null)
+                  setDragId(null); setOverCol(null); pararScroll()
                 }}
                 style={{ flex: '0 0 250px', width: 250, background: ativa ? '#fff8e1' : '#f9fafb', border: ativa ? '1.5px dashed #ffc00f' : '1.5px solid #eef0f2', borderRadius: 12, padding: 10, minHeight: 120 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -232,7 +235,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                       <div key={p.id}
                         draggable={podeEditar}
                         onDragStart={() => setDragId(p.id)}
-                        onDragEnd={() => { setDragId(null); setOverCol(null) }}
+                        onDragEnd={() => { setDragId(null); setOverCol(null); pararScroll() }}
                         onClick={() => abrirEdicao(p)}
                         style={{ background: '#fff', border: '1px solid #eef0f2', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: dragId === p.id ? 0.5 : 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
