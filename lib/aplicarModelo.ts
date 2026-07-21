@@ -19,12 +19,12 @@ export const UNIDADES: { chave: UnidadeDuracao; label: string; abrev: string }[]
 
 // `duracao` + `unidade` é o formato atual. `diasDuracao` é o de antes (sempre em
 // dias) e continua valendo nos modelos já salvos — sem unidade, o número é dia.
-export type EtapaModelo = { titulo: string; categoria?: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: UnidadeDuracao }
-export type TarefaModelo = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
+export type EtapaModelo = { titulo: string; categoria?: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: UnidadeDuracao; responsavelEmail?: string }
+export type TarefaModelo = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number; responsavelEmail?: string }
 export type ModeloAplicavel = { marcos?: EtapaModelo[]; tarefas?: TarefaModelo[] }
 
-export type EtapaPlanejada = { titulo: string; categoria: string; descricao: string; dataInicio: string; dataFim: string }
-export type TarefaPlanejada = { titulo: string; tipo: string; prioridade: string; etapaIndice?: number }
+export type EtapaPlanejada = { titulo: string; categoria: string; descricao: string; dataInicio: string; dataFim: string; responsavelEmail: string }
+export type TarefaPlanejada = { titulo: string; tipo: string; prioridade: string; etapaIndice?: number; responsavelEmail: string }
 export type PlanoModelo = { etapas: EtapaPlanejada[]; tarefas: TarefaPlanejada[] }
 
 const DIA_MS = 24 * 60 * 60 * 1000
@@ -78,20 +78,41 @@ export function planejarModelo(modelo: ModeloAplicavel, inicioBase: Date): Plano
       descricao: m.descricao || '',
       dataInicio: ini.toISOString(),
       dataFim: quantidade > 0 ? fim.toISOString() : '',
+      responsavelEmail: m.responsavelEmail || '',
     })
     if (quantidade > 0) cursor = fim
   }
 
   // `marcoIndice` apontando para etapa inexistente vira tarefa solta, não erro:
   // modelo meio editado é rascunho, e rascunho não pode derrubar a aplicação.
-  const tarefas: TarefaPlanejada[] = (modelo.tarefas || []).map(t => ({
-    titulo: t.titulo || '',
-    tipo: t.tipo || 'tarefa',
-    prioridade: t.prioridade || 'media',
-    ...(typeof t.marcoIndice === 'number' && etapas[t.marcoIndice] ? { etapaIndice: t.marcoIndice } : {}),
-  }))
+  const tarefas: TarefaPlanejada[] = (modelo.tarefas || []).map(t => {
+    const daEtapa = typeof t.marcoIndice === 'number' && etapas[t.marcoIndice] ? t.marcoIndice : undefined
+    return {
+      titulo: t.titulo || '',
+      tipo: t.tipo || 'tarefa',
+      prioridade: t.prioridade || 'media',
+      ...(daEtapa !== undefined ? { etapaIndice: daEtapa } : {}),
+      // A tarefa herda o responsável da etapa quando não tem o seu. A herança
+      // acontece AQUI, e não só no clique da tela, para valer também nos
+      // modelos que já foram salvos antes de alguém preencher a etapa.
+      responsavelEmail: t.responsavelEmail || (daEtapa !== undefined ? etapas[daEtapa].responsavelEmail : '') || '',
+    }
+  })
 
   return { etapas, tarefas }
+}
+
+// Atribuir uma pessoa à etapa e, junto, a TODAS as tarefas dela.
+//
+// É o gesto que o dono pediu: definir o responsável uma vez por etapa em vez de
+// repetir em oito tarefas. Sobrescreve o que já estava — quem quiser exceção
+// muda a tarefa depois, e a herança de planejarModelo respeita essa exceção.
+export function atribuirResponsavelNaEtapa<M extends EtapaModelo, T extends TarefaModelo>(
+  modelo: { marcos?: M[]; tarefas?: T[] }, indiceEtapa: number, email: string
+): { marcos: M[]; tarefas: T[] } {
+  const marcos = (modelo.marcos || []).map((m, i) => (i === indiceEtapa ? { ...m, responsavelEmail: email } : m))
+  const tarefas = (modelo.tarefas || []).map(t => (t.marcoIndice === indiceEtapa ? { ...t, responsavelEmail: email } : t))
+  return { marcos, tarefas }
 }
 
 // Remover a etapa `indice` REINDEXANDO as tarefas das etapas seguintes.

@@ -5,6 +5,7 @@ import { redis, Cliente, Usuario } from '@/lib/redis'
 import { getClientesRaw } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
 import { registrarAuditoria } from '@/lib/auditoria'
+import { limparSquadPapeis, squadCompleto } from '@/lib/squadPapeis'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -126,11 +127,20 @@ export async function PUT(req: NextRequest) {
   const camposPermitidos = ['nome', 'instagram', 'logo', 'corPrimaria', 'corSecundaria', 'tipo', 'entregaveis', 'postsMensais',
     'contratoValor', 'contratoInicio', 'contratoRenovacao', 'contratoCiclo', 'diaVencimento', 'receitasAvulsas',
     'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos',
-    'documentoMarca', 'documentoMarcaGeradoEm', 'permissoes', 'handoffVendas', 'referenciasVisuais', 'assetsMarca', 'squad', 'modulos', 'inadimplente', 'suspensoDesde',
+    'documentoMarca', 'documentoMarcaGeradoEm', 'permissoes', 'handoffVendas', 'referenciasVisuais', 'assetsMarca', 'squad', 'squadPapeis', 'modulos', 'inadimplente', 'suspensoDesde',
     'fontes', 'style']
   const atualizado = { ...cliente }
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]
+  }
+  // Papéis do squad: sanitiza e garante que quem ocupa um papel esteja TAMBÉM
+  // na lista `squad` — é ela que manda notificação (aprovação, esteira, cron de
+  // alertas) e alimenta o ProducaoBoard. Aqui, no servidor, para valer venha o
+  // salvamento de onde vier. Estar no papel é estar no squad.
+  if ('squadPapeis' in updates || 'squad' in updates) {
+    const papeis = limparSquadPapeis((atualizado as any).squadPapeis)
+    ;(atualizado as any).squadPapeis = papeis
+    ;(atualizado as any).squad = squadCompleto(papeis, (atualizado as any).squad)
   }
   // Higieniza: nunca manter senha em texto plano (migração de dados antigos).
   delete (atualizado as any).loginSenha

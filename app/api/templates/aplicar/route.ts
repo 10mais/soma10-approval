@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, TemplateProjeto, Cliente, Marco, Tarefa } from '@/lib/redis'
+import { redis, TemplateProjeto, Cliente, Marco, Tarefa, Usuario } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { planejarModelo } from '@/lib/aplicarModelo'
@@ -48,6 +48,18 @@ export async function POST(req: NextRequest) {
 
   const alvosInfo = clientes.map(c => ({ id: c.id, nome: c.nome, etapasAtuais: etapasPorCliente.get(c.id) || 0 }))
 
+  // e-mail -> nome, para a tarefa nascer com responsavelNome preenchido (é o que
+  // as telas exibem). E-mail que não existe mais na equipe cai como nome vazio,
+  // nunca derruba a aplicação — quadro com dono errado se conserta; lote que
+  // falha no meio deixa metade dos clientes com Playbook pela metade.
+  const nomePorEmail = new Map<string, string>()
+  const precisaNome = new Set<string>([...plano.etapas, ...plano.tarefas].map(x => x.responsavelEmail).filter(Boolean))
+  if (precisaNome.size) {
+    const emails = Array.from(precisaNome)
+    const us = (await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]
+    for (const u of us) if (u?.email) nomePorEmail.set(u.email, u.nome || '')
+  }
+
   if (preview) {
     return NextResponse.json({
       ok: true, preview: true, modelo: t.nome,
@@ -66,7 +78,8 @@ export async function POST(req: NextRequest) {
         id: uuid(), clienteId: cliente.id, clienteNome: cliente.nome,
         titulo: e.titulo, descricao: e.descricao, categoria: e.categoria as any,
         status: 'planejado', dataInicio: e.dataInicio, dataFim: e.dataFim,
-        responsavelNome: '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+        responsavelNome: nomePorEmail.get(e.responsavelEmail) || '',
+        criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       }
       marcoIds.push(marco.id)
       return marco
@@ -78,6 +91,7 @@ export async function POST(req: NextRequest) {
       id: uuid(), titulo: tr.titulo, descricao: '',
       tipo: tr.tipo as any, status: 'a_fazer', prioridade: tr.prioridade as any,
       clienteId: cliente.id, clienteNome: cliente.nome,
+      ...(tr.responsavelEmail ? { responsavelEmail: tr.responsavelEmail, responsavelNome: nomePorEmail.get(tr.responsavelEmail) || '' } : {}),
       ...(typeof tr.etapaIndice === 'number' && marcoIds[tr.etapaIndice] ? { marcoId: marcoIds[tr.etapaIndice] } : {}),
       criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       atividades: [{ id: uuid(), tipo: 'criacao', descricao: `Criada a partir do modelo "${t.nome}"`, autor, criadoEm: agora }],

@@ -192,6 +192,10 @@ export type Cliente = {
   // Squad do cliente: e-mails dos colaboradores responsáveis por atendê-lo.
   // Usado como responsável padrão sugerido ao criar tarefas do cliente.
   squad?: string[]
+  // Papéis do squad (designer, gestor de projetos, da operação e de tráfego).
+  // NÃO substituem `squad`: quem ocupa papel entra na lista ao salvar (o
+  // servidor faz a união em /api/clientes). Ver lib/squadPapeis.
+  squadPapeis?: import('./squadPapeis').SquadPapeis
   // Fontes da marca (arquivos .ttf/.otf/.woff2 no Blob) — o motor de criativos
   // embute via @font-face para a arte sair na TIPOGRAFIA real do cliente.
   fontes?: FonteMarca[]
@@ -697,8 +701,8 @@ export type Tarefa = {
 // `duracao` + `unidade` (dias/semanas/meses/anos) é o formato atual; `diasDuracao`
 // é o anterior, sempre em dias, e segue valendo nos modelos já salvos. Quem lê os
 // dois é duracaoDaEtapa() em lib/aplicarModelo.
-export type TemplateMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: 'dias' | 'semanas' | 'meses' | 'anos' }
-export type TemplateTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
+export type TemplateMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: 'dias' | 'semanas' | 'meses' | 'anos'; responsavelEmail?: string }
+export type TemplateTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number; responsavelEmail?: string }
 export type TemplateProjeto = {
   id: string
   nome: string

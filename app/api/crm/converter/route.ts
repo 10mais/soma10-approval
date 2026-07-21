@@ -95,13 +95,22 @@ export async function POST(req: NextRequest) {
       // Mesmo cálculo de /api/templates/aplicar — vive em lib/aplicarModelo para
       // que a cascata de datas não possa divergir entre a conversão e o mutirão.
       const plano = planejarModelo(t, dataInicio ? new Date(dataInicio) : new Date())
+      // e-mail -> nome do responsável definido no modelo (mesma regra da rota
+      // /api/templates/aplicar; e-mail que sumiu da equipe vira nome vazio).
+      const nomePorEmail = new Map<string, string>()
+      const precisaNome = Array.from(new Set([...plano.etapas, ...plano.tarefas].map(x => x.responsavelEmail).filter(Boolean)))
+      if (precisaNome.length) {
+        const us = (await redis.mget<any[]>(...precisaNome.map(e => `usuario:${e}`))).filter(Boolean)
+        for (const u of us) if (u?.email) nomePorEmail.set(u.email, u.nome || '')
+      }
       const marcoIds: string[] = []
       for (const e of plano.etapas) {
         const marco: Marco = {
           id: uuid(), clienteId: cliente.id, clienteNome: cliente.nome,
           titulo: e.titulo, descricao: e.descricao, categoria: e.categoria as any,
           status: 'planejado', dataInicio: e.dataInicio, dataFim: e.dataFim,
-          responsavelNome: '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+          responsavelNome: nomePorEmail.get(e.responsavelEmail) || '',
+          criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
         }
         await redis.set(`marco:${marco.id}`, marco)
         await redis.sadd('marcos', marco.id)
@@ -114,6 +123,7 @@ export async function POST(req: NextRequest) {
           id: uuid(), titulo: tr.titulo, descricao: '', tipo: tr.tipo as any,
           status: 'a_fazer', prioridade: tr.prioridade as any,
           clienteId: cliente.id, clienteNome: cliente.nome, ...(marcoId ? { marcoId } : {}),
+          ...(tr.responsavelEmail ? { responsavelEmail: tr.responsavelEmail, responsavelNome: nomePorEmail.get(tr.responsavelEmail) || '' } : {}),
           criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
           atividades: [{ id: uuid(), tipo: 'criacao', descricao: `Criada na conversão do CRM (modelo "${t.nome}")`, autor, criadoEm: agora }],
           comentarios: [],

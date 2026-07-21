@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planejarModelo, removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, avancarData, duracaoDaEtapa } from '@/lib/aplicarModelo'
+import { planejarModelo, removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, avancarData, duracaoDaEtapa, atribuirResponsavelNaEtapa, type EtapaModelo, type TarefaModelo } from '@/lib/aplicarModelo'
 
 const BASE = new Date('2026-08-03T00:00:00.000Z') // segunda-feira
 
@@ -163,7 +163,96 @@ describe('planejarModelo — vínculo das tarefas', () => {
 
   it('preenche tipo e prioridade padrão', () => {
     const { tarefas } = planejarModelo({ tarefas: [{ titulo: 'T' }] }, BASE)
-    expect(tarefas[0]).toEqual({ titulo: 'T', tipo: 'tarefa', prioridade: 'media' })
+    expect(tarefas[0]).toEqual({ titulo: 'T', tipo: 'tarefa', prioridade: 'media', responsavelEmail: '' })
+  })
+})
+
+describe('responsável — etapa manda, tarefa pode discordar', () => {
+  const modelo = {
+    marcos: [{ titulo: 'Criação', responsavelEmail: 'ana@x.com' }, { titulo: 'Tráfego' }],
+    tarefas: [
+      { titulo: 'Arte 1', marcoIndice: 0 },
+      { titulo: 'Arte 2', marcoIndice: 0, responsavelEmail: 'bruno@x.com' }, // exceção
+      { titulo: 'Campanha', marcoIndice: 1 },
+      { titulo: 'Solta' },
+    ],
+  }
+
+  it('a tarefa sem dono herda o da etapa', () => {
+    const { tarefas } = planejarModelo(modelo, BASE)
+    expect(tarefas.find(t => t.titulo === 'Arte 1')!.responsavelEmail).toBe('ana@x.com')
+  })
+
+  it('a tarefa COM dono próprio não é sobrescrita pela etapa', () => {
+    const { tarefas } = planejarModelo(modelo, BASE)
+    expect(tarefas.find(t => t.titulo === 'Arte 2')!.responsavelEmail).toBe('bruno@x.com')
+  })
+
+  it('etapa sem dono deixa a tarefa sem dono, e não quebra', () => {
+    const { tarefas } = planejarModelo(modelo, BASE)
+    expect(tarefas.find(t => t.titulo === 'Campanha')!.responsavelEmail).toBe('')
+  })
+
+  it('tarefa solta nunca herda de ninguém', () => {
+    const { tarefas } = planejarModelo(modelo, BASE)
+    expect(tarefas.find(t => t.titulo === 'Solta')!.responsavelEmail).toBe('')
+  })
+
+  it('a herança vale para modelo salvo ANTES do campo existir', () => {
+    // Modelo antigo: ninguém tem responsavelEmail. Não pode virar undefined solto.
+    const { etapas, tarefas } = planejarModelo({ marcos: [{ titulo: 'A' }], tarefas: [{ titulo: 'T', marcoIndice: 0 }] }, BASE)
+    expect(etapas[0].responsavelEmail).toBe('')
+    expect(tarefas[0].responsavelEmail).toBe('')
+  })
+})
+
+describe('atribuirResponsavelNaEtapa', () => {
+  const modelo: { marcos: EtapaModelo[]; tarefas: TarefaModelo[] } = {
+    marcos: [{ titulo: 'A' }, { titulo: 'B' }],
+    tarefas: [
+      { titulo: 'a1', marcoIndice: 0 },
+      { titulo: 'a2', marcoIndice: 0, responsavelEmail: 'antigo@x.com' },
+      { titulo: 'b1', marcoIndice: 1 },
+      { titulo: 'solta' },
+    ],
+  }
+
+  it('marca a etapa e TODAS as tarefas dela', () => {
+    const r = atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    expect(r.marcos[0].responsavelEmail).toBe('ana@x.com')
+    expect(r.tarefas.find(t => t.titulo === 'a1')!.responsavelEmail).toBe('ana@x.com')
+  })
+
+  it('sobrescreve quem já tinha outro dono na mesma etapa', () => {
+    const r = atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    expect(r.tarefas.find(t => t.titulo === 'a2')!.responsavelEmail).toBe('ana@x.com')
+  })
+
+  it('não encosta em outra etapa nem na tarefa solta', () => {
+    const r = atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    expect(r.marcos[1].responsavelEmail).toBeUndefined()
+    expect(r.tarefas.find(t => t.titulo === 'b1')!.responsavelEmail).toBeUndefined()
+    expect(r.tarefas.find(t => t.titulo === 'solta')!.responsavelEmail).toBeUndefined()
+  })
+
+  it('atribuir vazio limpa a etapa e as tarefas dela', () => {
+    const cheio = atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    const limpo = atribuirResponsavelNaEtapa(cheio, 0, '')
+    expect(limpo.marcos[0].responsavelEmail).toBe('')
+    expect(limpo.tarefas.find(t => t.titulo === 'a1')!.responsavelEmail).toBe('')
+  })
+
+  it('não muta o modelo recebido', () => {
+    atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    expect(modelo.marcos[0].responsavelEmail).toBeUndefined()
+  })
+
+  it('o responsável acompanha a etapa quando ela é movida', () => {
+    const comDono = atribuirResponsavelNaEtapa(modelo, 0, 'ana@x.com')
+    const movido = moverEtapaDoModelo(comDono, 0, 1)
+    expect(movido.marcos[1].responsavelEmail).toBe('ana@x.com')
+    const plano = planejarModelo(movido, BASE)
+    expect(plano.tarefas.find(t => t.titulo === 'a1')!.responsavelEmail).toBe('ana@x.com')
   })
 })
 

@@ -9,6 +9,7 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
+import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
@@ -4049,10 +4050,25 @@ function Dashboard() {
                         </div>
                       )}
 
-                      {/* Squad do cliente — colaboradores responsáveis pelo atendimento */}
+                      {/* Papéis do squad — quem faz O QUÊ neste cliente */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Papéis do squad</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Quem ocupa cada função neste cliente. Quem entra aqui entra no squad automaticamente.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 14 }}>
+                          {PAPEIS_SQUAD.map(p => (
+                            <div key={p.chave}>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#999', marginBottom: 4 }} title={p.descricao}>{p.label}</label>
+                              <select value={((edicaoCliente as any).squadPapeis || {})[p.chave] || ''}
+                                onChange={e => setEdicaoCliente(prev => ({ ...prev, squadPapeis: { ...((prev as any).squadPapeis || {}), [p.chave]: e.target.value } } as any))}
+                                style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box' }}>
+                                <option value="">A definir</option>
+                                {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Squad do cliente</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Colaboradores que atendem este cliente. Viram o responsável padrão sugerido ao criar tarefas.</p>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Quem mais acompanha este cliente, além dos papéis acima. É esta lista que recebe as notificações.</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => {
                             const sel = ((edicaoCliente as any).squad || []).includes(u.email)
@@ -4564,7 +4580,7 @@ function Dashboard() {
 
         {/* MODELOS DE PROJETO (equipe) */}
         {aba === 'modelos' && role !== 'cliente' && (
-          <Modelos clientes={clientes as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} perfil={perfilInstancia} />
+          <Modelos clientes={clientes as any} usuarios={usuarios as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} perfil={perfilInstancia} />
         )}
 
         {/* AUTOMAÇÕES (equipe) */}

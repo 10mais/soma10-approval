@@ -2,12 +2,13 @@
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
-import { removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, duracaoDaEtapa, UNIDADES, type EtapaPlanejada, type UnidadeDuracao } from '@/lib/aplicarModelo'
+import { removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, duracaoDaEtapa, atribuirResponsavelNaEtapa, UNIDADES, type EtapaPlanejada, type UnidadeDuracao } from '@/lib/aplicarModelo'
 import { sugestoesParaPerfil, type ModeloSugerido } from '@/lib/modelosSugeridos'
 
 type Cliente = { id: string; nome: string; tipo?: string }
-type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: UnidadeDuracao }
-type TTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
+type Usuario = { email: string; nome?: string; role?: string }
+type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: UnidadeDuracao; responsavelEmail?: string }
+type TTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number; responsavelEmail?: string }
 type Template = { id: string; nome: string; descricao?: string; marcos: TMarco[]; tarefas: TTarefa[] }
 
 const CATEGORIAS = [
@@ -37,7 +38,8 @@ function Mover({ onSubir, onDescer, primeiro, ultimo }: { onSubir: () => void; o
   )
 }
 
-export default function Modelos({ clientes, podeEditar = true, podeExcluir = true, perfil = null }: { clientes: Cliente[]; podeEditar?: boolean; podeExcluir?: boolean; perfil?: string | null }) {
+export default function Modelos({ clientes, usuarios = [], podeEditar = true, podeExcluir = true, perfil = null }: { clientes: Cliente[]; usuarios?: Usuario[]; podeEditar?: boolean; podeExcluir?: boolean; perfil?: string | null }) {
+  const equipe = usuarios.filter(u => u.role !== 'cliente')
   const [templates, setTemplates] = useState<Template[]>([])
   const [editor, setEditor] = useState<Template | null>(null)
   const [aplicar, setAplicar] = useState<Template | null>(null)
@@ -130,7 +132,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
       {/* Editor */}
       {editor && (
         <div onClick={fecharFora(() => setEditor(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 680, padding: 22, margin: '20px 0' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 860, padding: 22, margin: '20px 0' }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{editor.id ? 'Editar modelo' : 'Novo modelo'}</h3>
             <input value={editor.nome} onChange={e => setEditor({ ...editor, nome: e.target.value })} placeholder="Nome do modelo (ex.: Onboarding Social Media)" style={{ ...inp, width: '100%', marginBottom: 8 }} />
             <input value={editor.descricao || ''} onChange={e => setEditor({ ...editor, descricao: e.target.value })} placeholder="Descrição (opcional)" style={{ ...inp, width: '100%', marginBottom: 16 }} />
@@ -141,7 +143,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
               <button onClick={() => setEditor({ ...editor, marcos: [...editor.marcos, { titulo: '', categoria: 'social_media', duracao: 1, unidade: 'semanas' }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Etapa</button>
             </div>
             {editor.marcos.map((m, i) => (
-              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Reordenar remapeia o vínculo das tarefas (moverEtapaDoModelo):
                     trocar duas etapas de lugar sem isso não deixa tarefa órfã —
                     deixa a tarefa certa embaixo da etapa errada, em silêncio. */}
@@ -161,6 +163,14 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
                 <select value={duracaoDaEtapa(m).unidade} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: duracaoDaEtapa(m).quantidade, unidade: e.target.value as UnidadeDuracao }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff', width: 96 }}>
                   {UNIDADES.map(u => <option key={u.chave} value={u.chave}>{u.label}</option>)}
                 </select>
+                {/* Responsável da ETAPA: escolher aqui carimba todas as tarefas
+                    dela de uma vez (atribuirResponsavelNaEtapa). Quem precisar
+                    de exceção troca na própria tarefa depois. */}
+                <select value={m.responsavelEmail || ''} onChange={e => setEditor({ ...editor, ...atribuirResponsavelNaEtapa(editor, i, e.target.value) })}
+                  title="Responsável da etapa — aplica a todas as tarefas dela" style={{ ...inp, background: '#fff', width: 150 }}>
+                  <option value="">Sem responsável</option>
+                  {equipe.map(u => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
+                </select>
                 {/* Remoção com REINDEXAÇÃO (lib/aplicarModelo): desvincular só as
                     tarefas desta etapa deixava as de baixo apontando para a etapa
                     vizinha, calado. Vínculo tarefa->etapa é posicional. */}
@@ -174,7 +184,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
               <button onClick={() => setEditor({ ...editor, tarefas: [...editor.tarefas, { titulo: '', tipo: 'tarefa', prioridade: 'media' }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Tarefa</button>
             </div>
             {editor.tarefas.map((t, i) => (
-              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Tarefa é ordem de exibição pura: nada aponta para a posição
                     dela, então mover é só trocar de lugar na lista. */}
                 <Mover primeiro={i === 0} ultimo={i === editor.tarefas.length - 1}
@@ -191,6 +201,20 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
                   <option value="">Sem etapa</option>
                   {editor.marcos.map((m, j) => <option key={j} value={j}>{m.titulo || `Etapa ${j + 1}`}</option>)}
                 </select>
+                {/* Responsável da TAREFA. Vazio não é "ninguém": é "o mesmo da
+                    etapa" — por isso a opção vazia mostra de quem ela herda. */}
+                {(() => {
+                  const herdado = typeof t.marcoIndice === 'number' ? editor.marcos[t.marcoIndice]?.responsavelEmail : ''
+                  const nomeHerdado = herdado ? (equipe.find(u => u.email === herdado)?.nome || herdado) : ''
+                  return (
+                    <select value={t.responsavelEmail || ''} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, responsavelEmail: e.target.value }; setEditor({ ...editor, tarefas: ts }) }}
+                      title={nomeHerdado ? `Sem escolha própria, fica com ${nomeHerdado} (responsável da etapa)` : 'Responsável da tarefa'}
+                      style={{ ...inp, background: '#fff', width: 150, color: t.responsavelEmail ? '#111' : '#999' }}>
+                      <option value="">{nomeHerdado ? `Herda: ${nomeHerdado}` : 'Sem responsável'}</option>
+                      {equipe.map(u => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
+                    </select>
+                  )
+                })()}
                 <button onClick={() => setEditor({ ...editor, tarefas: editor.tarefas.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16 }}>×</button>
               </div>
             ))}
@@ -204,7 +228,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
       )}
 
       {/* Aplicar */}
-      {aplicar && <AplicarModal template={aplicar} clientes={clientes} onClose={() => setAplicar(null)} onOk={(r) => {
+      {aplicar && <AplicarModal template={aplicar} clientes={clientes} equipe={equipe} onClose={() => setAplicar(null)} onOk={(r) => {
         const nomes = (r.aplicados || []).map(a => a.nome)
         setAplicar(null)
         setMsg(`Modelo "${aplicar.nome}" aplicado a ${nomes.length || 1} cliente(s): ${r.marcos} etapa(s) e ${r.tarefas} tarefa(s) criadas.${nomes.length ? ` (${nomes.join(', ')})` : ''}`)
@@ -215,14 +239,15 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
 }
 
 type Alvo = { id: string; nome: string; etapasAtuais: number }
-type Previa = { modelo: string; etapas: EtapaPlanejada[]; tarefas: { titulo: string }[]; alvos: Alvo[] }
+type Previa = { modelo: string; etapas: EtapaPlanejada[]; tarefas: { titulo: string; responsavelEmail?: string }[]; alvos: Alvo[] }
 
 const dataBR = (iso: string) => iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : ''
 
 // MUTIRÃO: aplica o modelo a VÁRIOS clientes, com prévia obrigatória antes de gravar.
 // A prévia não é enfeite — aplicar num cliente que já tem etapas DUPLICA o Playbook
 // dele, e etapa duplicada só aparece depois, no Gantt. Por isso o alerta é na cara.
-function AplicarModal({ template, clientes, onClose, onOk }: { template: Template; clientes: Cliente[]; onClose: () => void; onOk: (r: { marcos: number; tarefas: number; aplicados?: { nome: string }[] }) => void }) {
+function AplicarModal({ template, clientes, equipe, onClose, onOk }: { template: Template; clientes: Cliente[]; equipe: Usuario[]; onClose: () => void; onOk: (r: { marcos: number; tarefas: number; aplicados?: { nome: string }[] }) => void }) {
+  const nomeDe = (email?: string) => (email ? (equipe.find(u => u.email === email)?.nome || email) : '')
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().slice(0, 10))
   const [etapasPorCliente, setEtapasPorCliente] = useState<Record<string, number>>({})
@@ -317,6 +342,7 @@ function AplicarModal({ template, clientes, onClose, onOk }: { template: Templat
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: i < previa.etapas.length - 1 ? '1px solid #f5f5f5' : 'none', fontSize: 13 }}>
                 <span style={{ color: '#ccc', fontSize: 11, fontWeight: 800, width: 16 }}>{i + 1}</span>
                 <span style={{ flex: 1, color: '#111' }}>{e.titulo || <em style={{ color: '#c00' }}>sem título</em>}</span>
+                {e.responsavelEmail && <span style={{ fontSize: 11, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{nomeDe(e.responsavelEmail)}</span>}
                 <span style={{ fontSize: 11.5, color: '#888', whiteSpace: 'nowrap' }}>
                   {dataBR(e.dataInicio)}{e.dataFim ? ` — ${dataBR(e.dataFim)}` : ' · marco pontual'}
                 </span>
@@ -337,6 +363,14 @@ function AplicarModal({ template, clientes, onClose, onOk }: { template: Templat
           <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#666' }}>
             Total: <strong>{previa.etapas.length * previa.alvos.length} etapa(s)</strong> e <strong>{previa.tarefas.length * previa.alvos.length} tarefa(s)</strong>.
           </p>
+
+          {/* Tarefa sem dono não é erro — mas some no quadro de todo mundo, e
+              ninguém vai atrás do que não é seu. Melhor avisar aqui. */}
+          {previa.tarefas.some(t => !t.responsavelEmail) && (
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#f9fafb', border: '1px solid #eee', color: '#666', fontSize: 12.5 }}>
+              <strong>{previa.tarefas.filter(t => !t.responsavelEmail).length} tarefa(s) vão nascer sem responsável.</strong> Dá para atribuir depois, uma a uma — ou voltar ao modelo e definir o responsável da etapa, que carimba todas de uma vez.
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => pedir(false)} disabled={ocupado || previa.etapas.length === 0} style={{ flex: 1, padding: '11px 0', background: previa.etapas.length ? '#111' : '#f0f0f0', color: previa.etapas.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: previa.etapas.length ? 'pointer' : 'default' }}>{ocupado ? 'Aplicando...' : `Aplicar a ${previa.alvos.length} cliente(s)`}</button>
