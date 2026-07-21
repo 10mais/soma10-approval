@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { garantirSetupCrm } from '@/lib/crmPipelines'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { perfilVendeParaPessoa } from '@/lib/perfisInstanciaCatalogo'
 import { sanitizarLinhagem } from '@/lib/linhagem'
 
 export const runtime = 'nodejs'
@@ -73,10 +74,12 @@ export async function POST(req: NextRequest) {
   // #5 — toda oportunidade precisa estar atribuida a um contato
   if (!String(b.contatoId || '').trim()) return NextResponse.json({ error: 'selecione ou crie um contato para a oportunidade' }, { status: 400 })
   // #2 — empresa obrigatoria (exceto profissional autonomo). Regra de AGÊNCIA
-  // apenas: clínica vende para pacientes e turismo vende VIAGEM para pessoa
-  // física — exigir "empresa" nesses perfis é a regra de marketing vazando.
+  // apenas: quem vende para pessoa física não tem "empresa da oportunidade".
+  // A lista de perfis vive em perfilVendeParaPessoa (catálogo) — enumerar os
+  // perfis aqui é o que fez a cidadania ser recusada pelo servidor mesmo com o
+  // campo já removido da tela.
   const perfil = await getPerfilInstancia()
-  if (perfil !== 'clinica' && perfil !== 'turismo' && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
+  if (!perfilVendeParaPessoa(perfil) && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
     return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
   }
 

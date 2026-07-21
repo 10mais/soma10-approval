@@ -274,3 +274,16 @@ export function nomeSistema(perfil?: string | null): string {
 export function perfilSemRecrutamento(perfil?: string | null): boolean {
   return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania'
 }
+
+// Este perfil vende para PESSOA FÍSICA? Clínica atende paciente, turismo vende
+// viagem para o passageiro e a assessoria de cidadania vende para CPF — em
+// nenhum deles existe "empresa da oportunidade": exigir isso é a regra de
+// agência de marketing vazando.
+//
+// Regra NOMEADA e única de propósito: ela mora na tela (esconder o campo) E na
+// rota (não exigir no POST). Quando só a tela foi corrigida para a cidadania, o
+// formulário não pedia empresa mas o servidor recusava a oportunidade — o campo
+// tinha sumido e a regra continuava lá atrás. Perfil novo entra AQUI, uma vez.
+export function perfilVendeParaPessoa(perfil?: string | null): boolean {
+  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania'
+}

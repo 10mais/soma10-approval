@@ -1,4 +1,29 @@
 import { describe, it, expect } from 'vitest'
+import { perfilVendeParaPessoa, PERFIS as PERFIS_CAT } from '@/lib/perfisInstanciaCatalogo'
+
+// Regra usada pela TELA (esconder o campo empresa) e pela ROTA (não exigir no
+// POST). Quando as duas discordaram, o formulário não pedia empresa e o servidor
+// recusava a oportunidade da cidadania — bug relatado pelo dono.
+describe('perfilVendeParaPessoa', () => {
+  it('clínica, turismo e cidadania vendem para pessoa física', () => {
+    expect(perfilVendeParaPessoa('clinica')).toBe(true)
+    expect(perfilVendeParaPessoa('turismo')).toBe(true)
+    expect(perfilVendeParaPessoa('cidadania')).toBe(true)
+  })
+  it('agência (sem perfil) e gestão seguem exigindo empresa', () => {
+    expect(perfilVendeParaPessoa(null)).toBe(false)
+    expect(perfilVendeParaPessoa(undefined)).toBe(false)
+    expect(perfilVendeParaPessoa('gestao')).toBe(false)
+  })
+  it('perfil desconhecido não vira pessoa física por acidente', () => {
+    expect(perfilVendeParaPessoa('inexistente')).toBe(false)
+  })
+  it('todo perfil do catálogo tem resposta definida (perfil novo passa por aqui)', () => {
+    for (const p of PERFIS_CAT) {
+      expect(typeof perfilVendeParaPessoa(p.chave)).toBe('boolean')
+    }
+  })
+})
 import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO, perfilSemRecrutamento } from '@/lib/perfisInstanciaCatalogo'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 import { GRUPOS, NIVEIS, podeNivel } from '@/lib/permissoesCatalogo'

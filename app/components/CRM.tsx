@@ -9,6 +9,14 @@ import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
 import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
+import { perfilVendeParaPessoa } from '@/lib/perfisInstanciaCatalogo'
+
+// O CRM recebe o perfil como três booleanos (herança das telas antigas); as
+// regras compartilhadas com o servidor falam a chave do perfil. Converte aqui,
+// num lugar só, em vez de reescrever a lista de perfis em cada condição.
+function perfilAtual(p: { perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean }): string | null {
+  return p.perfilClinica ? 'clinica' : p.perfilTurismo ? 'turismo' : p.perfilCidadania ? 'cidadania' : null
+}
 import BibliotecaVendasTela from './BibliotecaVendas'
 import EditorLinhagem from './EditorLinhagem'
 
@@ -1657,10 +1665,10 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
 
 function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
-  // Clínica, turismo e cidadania vendem para PESSOA: a oportunidade nasce do
-  // contato, sem exigir empresa (regra de agência de marketing). Na cidadania a
-  // venda é sempre para CPF — não existe caso de empresa.
-  const semEmpresa = perfilClinica || perfilTurismo || perfilCidadania
+  // A oportunidade nasce do contato, sem exigir empresa. A regra é a MESMA que a
+  // rota aplica (perfilVendeParaPessoa) — repetir a lista de perfis aqui foi o
+  // que deixou a tela e o servidor discordarem na cidadania.
+  const semEmpresa = perfilVendeParaPessoa(perfilAtual({ perfilClinica, perfilTurismo, perfilCidadania }))
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
   // Vindo do inbox, o contato já chega escolhido (a conversa É o contato)
