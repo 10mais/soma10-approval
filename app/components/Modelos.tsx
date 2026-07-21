@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
-import { removerEtapaDoModelo, duracaoDaEtapa, UNIDADES, type EtapaPlanejada, type UnidadeDuracao } from '@/lib/aplicarModelo'
+import { removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, duracaoDaEtapa, UNIDADES, type EtapaPlanejada, type UnidadeDuracao } from '@/lib/aplicarModelo'
 import { sugestoesParaPerfil, type ModeloSugerido } from '@/lib/modelosSugeridos'
 
 type Cliente = { id: string; nome: string; tipo?: string }
@@ -18,6 +18,24 @@ const CATEGORIAS = [
 const TIPOS = ['tarefa', 'carrossel', 'criativo', 'video', 'reel', 'story', 'post', 'estrategia', 'planejamento']
 const PRIORIDADES = ['baixa', 'media', 'alta', 'urgente']
 const vazio: Template = { id: '', nome: '', descricao: '', marcos: [], tarefas: [] }
+
+// Setas de reordenar. SVG, não caractere — a régua da casa é ícone, não emoji.
+function Mover({ onSubir, onDescer, primeiro, ultimo }: { onSubir: () => void; onDescer: () => void; primeiro: boolean; ultimo: boolean }) {
+  const bt = (ativo: boolean): React.CSSProperties => ({
+    background: 'none', border: 'none', padding: '1px 2px', lineHeight: 0,
+    color: ativo ? '#999' : '#e8e8e8', cursor: ativo ? 'pointer' : 'default',
+  })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <button type="button" onClick={onSubir} disabled={primeiro} title="Subir" style={bt(!primeiro)}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+      </button>
+      <button type="button" onClick={onDescer} disabled={ultimo} title="Descer" style={bt(!ultimo)}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+    </div>
+  )
+}
 
 export default function Modelos({ clientes, podeEditar = true, podeExcluir = true, perfil = null }: { clientes: Cliente[]; podeEditar?: boolean; podeExcluir?: boolean; perfil?: string | null }) {
   const [templates, setTemplates] = useState<Template[]>([])
@@ -124,6 +142,12 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
             </div>
             {editor.marcos.map((m, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                {/* Reordenar remapeia o vínculo das tarefas (moverEtapaDoModelo):
+                    trocar duas etapas de lugar sem isso não deixa tarefa órfã —
+                    deixa a tarefa certa embaixo da etapa errada, em silêncio. */}
+                <Mover primeiro={i === 0} ultimo={i === editor.marcos.length - 1}
+                  onSubir={() => setEditor({ ...editor, ...moverEtapaDoModelo(editor, i, i - 1) })}
+                  onDescer={() => setEditor({ ...editor, ...moverEtapaDoModelo(editor, i, i + 1) })} />
                 <input value={m.titulo} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, titulo: e.target.value }; setEditor({ ...editor, marcos: ms }) }} placeholder={`Etapa ${i + 1}`} style={{ ...inp, flex: 1 }} />
                 <select value={m.categoria} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, categoria: e.target.value }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff' }}>
                   {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
@@ -151,6 +175,11 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
             </div>
             {editor.tarefas.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                {/* Tarefa é ordem de exibição pura: nada aponta para a posição
+                    dela, então mover é só trocar de lugar na lista. */}
+                <Mover primeiro={i === 0} ultimo={i === editor.tarefas.length - 1}
+                  onSubir={() => setEditor({ ...editor, tarefas: moverNaLista(editor.tarefas, i, i - 1) })}
+                  onDescer={() => setEditor({ ...editor, tarefas: moverNaLista(editor.tarefas, i, i + 1) })} />
                 <input value={t.titulo} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, titulo: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} placeholder={`Tarefa ${i + 1}`} style={{ ...inp, flex: 1 }} />
                 <select value={t.tipo} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, tipo: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: '#fff' }}>
                   {TIPOS.map(tp => <option key={tp} value={tp}>{tp}</option>)}

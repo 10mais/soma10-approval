@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planejarModelo, removerEtapaDoModelo, avancarData, duracaoDaEtapa } from '@/lib/aplicarModelo'
+import { planejarModelo, removerEtapaDoModelo, moverEtapaDoModelo, moverNaLista, avancarData, duracaoDaEtapa } from '@/lib/aplicarModelo'
 
 const BASE = new Date('2026-08-03T00:00:00.000Z') // segunda-feira
 
@@ -164,6 +164,97 @@ describe('planejarModelo — vínculo das tarefas', () => {
   it('preenche tipo e prioridade padrão', () => {
     const { tarefas } = planejarModelo({ tarefas: [{ titulo: 'T' }] }, BASE)
     expect(tarefas[0]).toEqual({ titulo: 'T', tipo: 'tarefa', prioridade: 'media' })
+  })
+})
+
+describe('moverEtapaDoModelo', () => {
+  const modelo = {
+    marcos: [{ titulo: 'A' }, { titulo: 'B' }, { titulo: 'C' }, { titulo: 'D' }],
+    tarefas: [
+      { titulo: 'daA', marcoIndice: 0 },
+      { titulo: 'daB', marcoIndice: 1 },
+      { titulo: 'daC', marcoIndice: 2 },
+      { titulo: 'daD', marcoIndice: 3 },
+      { titulo: 'solta' },
+    ],
+  }
+  // O que importa não é o número do índice: é a tarefa continuar embaixo da
+  // MESMA etapa depois do movimento. É isso que cada teste verifica.
+  const etapaDe = (r: { marcos: { titulo: string }[]; tarefas: { titulo: string; marcoIndice?: number }[] }, tarefa: string) => {
+    const t = r.tarefas.find(x => x.titulo === tarefa)!
+    return typeof t.marcoIndice === 'number' ? r.marcos[t.marcoIndice].titulo : undefined
+  }
+
+  it('subir a última para o topo leva as tarefas dela junto', () => {
+    const r = moverEtapaDoModelo(modelo, 3, 0)
+    expect(r.marcos.map(m => m.titulo)).toEqual(['D', 'A', 'B', 'C'])
+    expect(etapaDe(r, 'daD')).toBe('D')
+    expect(etapaDe(r, 'daA')).toBe('A')
+    expect(etapaDe(r, 'daB')).toBe('B')
+    expect(etapaDe(r, 'daC')).toBe('C')
+  })
+
+  it('descer a primeira para o fim mantém todo mundo no lugar certo', () => {
+    const r = moverEtapaDoModelo(modelo, 0, 3)
+    expect(r.marcos.map(m => m.titulo)).toEqual(['B', 'C', 'D', 'A'])
+    for (const [tarefa, etapa] of [['daA', 'A'], ['daB', 'B'], ['daC', 'C'], ['daD', 'D']]) {
+      expect(etapaDe(r, tarefa)).toBe(etapa)
+    }
+  })
+
+  it('mover uma casa para cima troca só as duas vizinhas', () => {
+    const r = moverEtapaDoModelo(modelo, 2, 1)
+    expect(r.marcos.map(m => m.titulo)).toEqual(['A', 'C', 'B', 'D'])
+    expect(etapaDe(r, 'daC')).toBe('C')
+    expect(etapaDe(r, 'daB')).toBe('B')
+  })
+
+  it('tarefa solta continua solta', () => {
+    expect(etapaDe(moverEtapaDoModelo(modelo, 3, 0), 'solta')).toBeUndefined()
+  })
+
+  it('mover para a mesma posição ou para fora da faixa não muda nada', () => {
+    for (const [de, para] of [[1, 1], [-1, 0], [0, 9], [9, 0]]) {
+      const r = moverEtapaDoModelo(modelo, de, para)
+      expect(r.marcos.map(m => m.titulo)).toEqual(['A', 'B', 'C', 'D'])
+      expect(etapaDe(r, 'daC')).toBe('C')
+    }
+  })
+
+  it('não muta o modelo recebido', () => {
+    moverEtapaDoModelo(modelo, 3, 0)
+    expect(modelo.marcos.map(m => m.titulo)).toEqual(['A', 'B', 'C', 'D'])
+    expect(modelo.tarefas[0].marcoIndice).toBe(0)
+  })
+
+  it('sobrevive a modelo vazio', () => {
+    expect(moverEtapaDoModelo({}, 0, 1)).toEqual({ marcos: [], tarefas: [] })
+  })
+
+  it('depois de mover, o modelo aplicado põe a tarefa na etapa certa', () => {
+    const r = moverEtapaDoModelo(modelo, 3, 0)
+    const plano = planejarModelo(r, BASE)
+    const daD = plano.tarefas.find(t => t.titulo === 'daD')!
+    expect(plano.etapas[daD.etapaIndice!].titulo).toBe('D')
+  })
+
+  it('uma sequência de movimentos não desalinha nada', () => {
+    let r: any = modelo
+    for (const [de, para] of [[3, 0], [1, 2], [0, 3], [2, 1]]) r = moverEtapaDoModelo(r, de, para)
+    for (const letra of ['A', 'B', 'C', 'D']) expect(etapaDe(r, `da${letra}`)).toBe(letra)
+  })
+})
+
+describe('moverNaLista', () => {
+  const l = ['a', 'b', 'c']
+  it('move para cima e para baixo', () => {
+    expect(moverNaLista(l, 2, 0)).toEqual(['c', 'a', 'b'])
+    expect(moverNaLista(l, 0, 2)).toEqual(['b', 'c', 'a'])
+  })
+  it('ignora posição igual ou fora da faixa, sem mutar', () => {
+    expect(moverNaLista(l, 1, 1)).toEqual(['a', 'b', 'c'])
+    expect(moverNaLista(l, 0, 7)).toEqual(['a', 'b', 'c'])
+    expect(l).toEqual(['a', 'b', 'c'])
   })
 })
 

@@ -100,6 +100,47 @@ export function planejarModelo(modelo: ModeloAplicavel, inicioBase: Date): Plano
 // deixava as de baixo com o índice antigo — que passa a apontar para a etapa
 // vizinha. Silencioso, e some no meio de um rascunho grande. Como o vínculo
 // tarefa->etapa é POSICIONAL, remover no meio obriga a descer todo mundo.
+// Mover a etapa `de` para a posição `para`, REMAPEANDO as tarefas.
+//
+// Mesma armadilha da remoção, e pior: reordenar sem remapear não deixa nenhuma
+// tarefa órfã — ela simplesmente passa a pertencer à etapa que caiu naquela
+// posição. Erro que não aparece na tela e só se revela no Playbook do cliente,
+// com a tarefa certa embaixo da etapa errada.
+//
+// A etapa arrastada leva as tarefas dela junto; as que ela atravessa andam uma
+// casa no sentido contrário.
+export function moverEtapaDoModelo<M extends EtapaModelo, T extends TarefaModelo>(
+  modelo: { marcos?: M[]; tarefas?: T[] }, de: number, para: number
+): { marcos: M[]; tarefas: T[] } {
+  const marcos = [...(modelo.marcos || [])]
+  const tarefas = [...(modelo.tarefas || [])]
+  // Fora da faixa ou parado no lugar: devolve como está, sem inventar movimento.
+  if (de === para || de < 0 || para < 0 || de >= marcos.length || para >= marcos.length) return { marcos, tarefas }
+
+  const [movida] = marcos.splice(de, 1)
+  marcos.splice(para, 0, movida)
+
+  const novoIndice = (i: number) => {
+    if (i === de) return para
+    if (de < para) return i > de && i <= para ? i - 1 : i
+    return i >= para && i < de ? i + 1 : i
+  }
+  return {
+    marcos,
+    tarefas: tarefas.map(t => (typeof t.marcoIndice === 'number' ? { ...t, marcoIndice: novoIndice(t.marcoIndice) } : t)),
+  }
+}
+
+// Reordenar itens de uma lista simples (as tarefas). Sem remapeamento: nada
+// aponta para a posição de uma tarefa — o vínculo é sempre tarefa -> etapa.
+export function moverNaLista<T>(lista: T[], de: number, para: number): T[] {
+  const copia = [...lista]
+  if (de === para || de < 0 || para < 0 || de >= copia.length || para >= copia.length) return copia
+  const [item] = copia.splice(de, 1)
+  copia.splice(para, 0, item)
+  return copia
+}
+
 export function removerEtapaDoModelo<M extends EtapaModelo, T extends TarefaModelo>(
   modelo: { marcos?: M[]; tarefas?: T[] }, indice: number
 ): { marcos: M[]; tarefas: T[] } {
