@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Processo, StatusProcesso, PessoaLinhagem } from '@/lib/redis'
+import { redis, Processo, StatusProcesso } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { etapaDef, EtapaProcesso } from '@/lib/processoCidadania'
+import { sanitizarLinhagem } from '@/lib/linhagem'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -29,32 +30,9 @@ function limparIds(arr: any): string[] {
   return Array.from(new Set(arr.map((s: any) => String(s || '').trim()).filter(Boolean))).slice(0, 60)
 }
 
-// Linhagem (árvore genealógica): datas são TEXTO livre (certidão antiga tem data
-// parcial). Nó sem nome é lixo de formulário — cai fora. Só um ascendente marcado.
-function limparLinhagem(arr: any): PessoaLinhagem[] {
-  if (!Array.isArray(arr)) return []
-  const txt = (v: any, max = 120) => (String(v || '').trim().slice(0, max) || undefined)
-  let jaTemAsc = false
-  return arr.map((p: any): PessoaLinhagem => {
-    const asc = !!p?.ascendente && !jaTemAsc
-    if (asc) jaTemAsc = true
-    return {
-      id: String(p?.id || uuid()),
-      nome: String(p?.nome || '').trim().slice(0, 120),
-      papel: txt(p?.papel, 40),
-      geracao: Number.isFinite(Number(p?.geracao)) ? Math.max(0, Math.floor(Number(p.geracao))) : 0,
-      sexo: p?.sexo === 'M' || p?.sexo === 'F' ? p.sexo : undefined,
-      nascimento: txt(p?.nascimento, 40),
-      nascimentoLocal: txt(p?.nascimentoLocal),
-      casamento: txt(p?.casamento, 40),
-      casamentoLocal: txt(p?.casamentoLocal),
-      obito: txt(p?.obito, 40),
-      obitoLocal: txt(p?.obitoLocal),
-      ascendente: asc || undefined,
-      observacoes: txt(p?.observacoes, 500),
-    }
-  }).filter((p: PessoaLinhagem) => p.nome).slice(0, 40)
-}
+// A sanitização da linhagem é COMPARTILHADA com /api/crm/negocios (a árvore é
+// gravada nos dois: análise pré-venda no CRM, prova pós-venda no processo).
+const limparLinhagem = (arr: any) => sanitizarLinhagem(arr, uuid)
 const valorOpc = (v: any) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v) || 0))
 
 async function sessaoEquipe() {

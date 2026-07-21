@@ -6,7 +6,9 @@ import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
+import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import BibliotecaVendasTela from './BibliotecaVendas'
+import EditorLinhagem from './EditorLinhagem'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -19,7 +21,7 @@ type Negocio = {
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
-  paisInteresse?: string; ascendenteOrigem?: string; grauParentesco?: string; processoId?: string
+  paisInteresse?: string; ascendenteOrigem?: string; grauParentesco?: string; processoId?: string; linhagem?: PessoaLinhagem[]
   queixaPrincipal?: string
   destinoDesejado?: string; qtdPassageiros?: number; epocaDesejada?: string; preferencias?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
@@ -1828,6 +1830,33 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
   const [textoAtiv, setTextoAtiv] = useState('')
   const [converter, setConverter] = useState(false)
   const [abrindoProc, setAbrindoProc] = useState(false)
+  // ANÁLISE DE NACIONALIDADE (cidadania) — a árvore é montada aqui, na
+  // qualificação. Salva sozinha com um respiro de 700ms: gravar a cada tecla
+  // seria uma enxurrada de PUTs. O pendente é disparado no fechamento — quem
+  // digitou e fechou o modal não pode perder a análise (o fetch sobrevive ao
+  // unmount; por isso o flush não passa pelo patch, que mexeria em estado morto).
+  const [linhagemLocal, setLinhagemLocal] = useState<PessoaLinhagem[]>(negocio.linhagem || [])
+  const [linhagemSalvando, setLinhagemSalvando] = useState(false)
+  const timerLinhagem = useRef<any>(null)
+  const linhagemPendente = useRef<PessoaLinhagem[] | null>(null)
+  function mudarLinhagem(v: PessoaLinhagem[]) {
+    setLinhagemLocal(v)
+    setLinhagemSalvando(true)
+    linhagemPendente.current = v
+    if (timerLinhagem.current) clearTimeout(timerLinhagem.current)
+    timerLinhagem.current = setTimeout(async () => {
+      await patch({ linhagem: v })
+      linhagemPendente.current = null
+      setLinhagemSalvando(false)
+    }, 700)
+  }
+  useEffect(() => () => {
+    if (timerLinhagem.current) clearTimeout(timerLinhagem.current)
+    const pend = linhagemPendente.current
+    if (pend) {
+      fetch('/api/crm/negocios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: negocio.id, linhagem: pend }) }).catch(() => {})
+    }
+  }, [negocio.id])
   // Cadência / agendamentos (Fase 2)
   const [agQuando, setAgQuando] = useState('')
   const [agCanal, setAgCanal] = useState('whatsapp')
@@ -1846,17 +1875,27 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
   async function abrirProcesso() {
     if (neg.processoId || abrindoProc) return
     setAbrindoProc(true)
+    // A árvore montada na qualificação vai JUNTO — ninguém redigita a análise.
+    // É cópia, não vínculo: mexer no negócio depois não reescreve o processo.
+    const arvore = linhagemPendente.current || linhagemLocal
+    // O ascendente digitado à mão vence; sem ele, usa quem foi marcado na árvore.
+    const ascendenteNome = neg.ascendenteOrigem || ascendenteLinhagem(arvore)?.nome || ''
+    // A análise já foi feita no CRM: o processo começa na genealogia, não na
+    // viabilidade — mandar de volta para a viabilidade seria refazer o passo 2.
+    const etapaInicial = arvore.length ? 'genealogia' : 'viabilidade'
     const r = await fetch('/api/processos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         titulo: contato?.nome || neg.titulo || 'Novo processo',
         clienteId: contato?.id || '',
         paisAlvo: neg.paisInteresse || 'Luxemburgo',
-        ascendente: neg.ascendenteOrigem || '',
+        ascendente: ascendenteNome,
+        linhagem: arvore,
+        requerentes: contato?.id ? [contato.id] : [],
         valorContrato: neg.valor || undefined,
         responsavelEmail: neg.dono || '',
         observacoes: neg.dores || '',
-        etapa: 'viabilidade',
+        etapa: etapaInicial,
       }),
     }).then(x => x.json()).catch(() => null)
     setAbrindoProc(false)
@@ -2003,7 +2042,25 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <div><label style={labelStyle}>Grau de parentesco</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder="Ex.: bisneto" style={inputStyle} /></div>
             </div>
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Ascendente / origem da família</label><input value={neg.ascendenteOrigem || ''} onChange={e => setNeg({ ...neg, ascendenteOrigem: e.target.value })} onBlur={() => patch({ ascendenteOrigem: neg.ascendenteOrigem })} placeholder="Nome do antepassado estrangeiro" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+
+            {/* ANÁLISE DE NACIONALIDADE — é ela que diz se existe viabilidade.
+                Por isso mora aqui, na qualificação, e não só no processo. */}
+            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Análise de nacionalidade</span>
+                <span style={{ fontSize: 10.5, color: linhagemSalvando ? '#a16207' : '#9ca3af', fontWeight: 600 }}>{linhagemSalvando ? 'salvando…' : 'salva sozinho'}</span>
+              </div>
+              {(() => { const r = resumoLinhagem(linhagemLocal); return (
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>
+                  {r.total === 0 ? 'Monte a árvore do lead até o ascendente estrangeiro para avaliar a viabilidade.' : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
+                </p>
+              ) })()}
+              <EditorLinhagem value={linhagemLocal} onChange={mudarLinhagem} />
+              {!neg.processoId && linhagemLocal.length > 0 && (
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9ca3af' }}>Ao concretizar a venda, esta árvore vai junto para o processo.</p>
+              )}
+            </div>
           </>) : (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>

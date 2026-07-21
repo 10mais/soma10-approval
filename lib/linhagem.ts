@@ -60,6 +60,36 @@ export function resumoLinhagem(pessoas: PessoaLinhagem[]): ResumoLinhagem {
   }
 }
 
+// Sanitiza a linhagem vinda do corpo de uma requisição. Vive AQUI, e não em cada
+// rota, porque a árvore é gravada em DOIS lugares — no negócio do CRM (a análise
+// de viabilidade, pré-venda) e no processo (a prova, pós-venda). Duas cópias da
+// mesma regra divergiriam, e campo que existe num lado e não no outro já foi bug
+// nesta base. Nó sem nome é lixo de formulário; só um ascendente marcado.
+export function sanitizarLinhagem(arr: any, novoId: () => string): PessoaLinhagem[] {
+  if (!Array.isArray(arr)) return []
+  const txt = (v: any, max = 120) => (String(v ?? '').trim().slice(0, max) || undefined)
+  let jaTemAsc = false
+  return arr.map((p: any): PessoaLinhagem => {
+    const asc = !!p?.ascendente && !jaTemAsc
+    if (asc) jaTemAsc = true
+    return {
+      id: String(p?.id || novoId()),
+      nome: String(p?.nome ?? '').trim().slice(0, 120),
+      papel: txt(p?.papel, 40),
+      geracao: Number.isFinite(Number(p?.geracao)) ? Math.max(0, Math.floor(Number(p.geracao))) : 0,
+      sexo: p?.sexo === 'M' || p?.sexo === 'F' ? p.sexo : undefined,
+      nascimento: txt(p?.nascimento, 40),
+      nascimentoLocal: txt(p?.nascimentoLocal),
+      casamento: txt(p?.casamento, 40),
+      casamentoLocal: txt(p?.casamentoLocal),
+      obito: txt(p?.obito, 40),
+      obitoLocal: txt(p?.obitoLocal),
+      ascendente: asc || undefined,
+      observacoes: txt(p?.observacoes, 500),
+    }
+  }).filter((p: PessoaLinhagem) => p.nome).slice(0, 40)
+}
+
 // Gerações AUSENTES entre a base (0) e o topo — cada lacuna é um elo da prova
 // que falta (ex.: tem requerente e bisavô, falta o avô). A UI avisa: buraco na
 // linhagem derruba o reconhecimento. Vazio = cadeia contígua (ou linhagem vazia).

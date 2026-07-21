@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { garantirSetupCrm } from '@/lib/crmPipelines'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { sanitizarLinhagem } from '@/lib/linhagem'
 
 export const runtime = 'nodejs'
 
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
     ...(b.paisInteresse ? { paisInteresse: String(b.paisInteresse).slice(0, 60) } : {}),
     ...(b.ascendenteOrigem ? { ascendenteOrigem: String(b.ascendenteOrigem).slice(0, 140) } : {}),
     ...(b.grauParentesco ? { grauParentesco: String(b.grauParentesco).slice(0, 40) } : {}),
+    ...(Array.isArray(b.linhagem) ? { linhagem: sanitizarLinhagem(b.linhagem, uuid) } : {}),
     handoff: b.handoff || {},
     atividades: [atividade('criacao', 'Negócio criado', autor)],
     criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
@@ -180,6 +182,9 @@ export async function PUT(req: NextRequest) {
 
   const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias', 'paisInteresse', 'ascendenteOrigem', 'grauParentesco', 'processoId']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
+  // Linhagem fica FORA da whitelist genérica: ela é estrutura, não texto — entra
+  // sanitizada (mesma regra da rota de processos) em vez de crua do corpo.
+  if ('linhagem' in updates) atualizado.linhagem = sanitizarLinhagem(updates.linhagem, uuid)
   atualizado.atividades = atividades
 
   await redis.set(`negocio:${id}`, atualizado)

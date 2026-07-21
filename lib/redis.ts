@@ -987,6 +987,12 @@ export type CrmNegocio = {
   paisInteresse?: string     // país da cidadania pretendida (padrão: Luxemburgo)
   ascendenteOrigem?: string  // ascendente estrangeiro / origem da família
   grauParentesco?: string    // filho, neto, bisneto, trineto…
+  // A ANÁLISE DE NACIONALIDADE acontece AQUI, na qualificação: sem montar a
+  // árvore não há como saber se existe viabilidade — ela é o instrumento da
+  // venda, não um artefato pós-venda. Ao concretizar, o processo COPIA esta
+  // linhagem (copia, não vincula: corrigir a análise depois não pode reescrever
+  // um processo já em andamento).
+  linhagem?: import('./linhagem').PessoaLinhagem[]
   // Processo ABERTO a partir desta venda (perfil cidadania). Não há passagem de
   // bastão nem criação de "cliente": concretizar a venda É abrir o processo.
   // Guardado para a abertura ser idempotente — sem ele, cada clique abriria outro.
