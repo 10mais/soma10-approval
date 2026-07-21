@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
 // Abas escondidas de TODOS os papéis conforme o perfil da instância (nav + guarda).
 // A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
-import { abasOcultasDoPerfil as abasOcultas } from '@/lib/perfisInstanciaCatalogo'
+import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import Calendar from '../components/Calendar'
@@ -4761,10 +4761,14 @@ function Dashboard() {
                   const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
                   if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null) }
                 }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+                  {/* Opções vindas do CATÁLOGO, nunca escritas à mão. Quando eram
+                      fixas aqui, o perfil `cidadania` ficou de fora: o <select>
+                      tinha value="cidadania" sem opção correspondente, o navegador
+                      exibia a primeira ("Agência (padrão)") e a instância PARECIA
+                      ser agência — pior, salvar o campo sem querer trocaria o
+                      perfil de verdade. Perfil novo agora aparece sozinho. */}
                   <option value="">Agência (padrão)</option>
-                  <option value="clinica">Clínica</option>
-                  <option value="gestao">Gestão</option>
-                  <option value="turismo">Turismo</option>
+                  {PERFIS_INSTANCIA.map(p => <option key={p.chave} value={p.chave}>{p.label}</option>)}
                 </select>
                 <span style={{ fontSize: 11.5, color: '#aaa' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
               </div>
