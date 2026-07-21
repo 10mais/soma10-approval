@@ -160,6 +160,10 @@ export type Cliente = {
   instagramUserId?: string
   instagramConectado?: boolean
   instagramTokenAtualizadoEm?: string
+  // Perfis ADICIONAIS (cliente com filiais: 3 lojas = 3 Instagram). Os campos
+  // acima seguem valendo como "conta principal" — nada foi migrado. Quem lê
+  // qualquer conta usa lib/contasSociais, nunca os campos direto.
+  contas?: import('./contasSociais').ContaSocial[]
   // Login do cliente
   loginEmail?: string
   loginSenha?: string // senha em texto plano só para reexibir ao admin (a hash fica no Usuario)
@@ -805,8 +809,13 @@ export type Post = {
   rascunhoInterno?: boolean
   colaboradores?: string[] // até 4 @usuários marcados em colab
   redes?: ('instagram' | 'facebook')[] // redes onde publicar
+  // Perfis do cliente que recebem este post. Vazio/ausente = conta principal,
+  // que é como todo post existente se comporta (lib/contasSociais.contasAlvo).
+  contaIds?: string[]
   capasVideo?: Record<string, string> // URL do vídeo -> URL da capa (thumbnail) escolhida
-  redesPublicadas?: string[] // redes em que o post JÁ foi publicado com sucesso (evita duplicação)
+  // Onde JÁ publicou com sucesso (anti-duplicação). Formato "contaId:rede"; a
+  // marca antiga ("instagram" solto) segue valendo para a conta principal.
+  redesPublicadas?: string[]
   midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
   thumbnail?: string // miniatura mantida após a limpeza (uma imagem leve por post)
   // Esteira de criativos

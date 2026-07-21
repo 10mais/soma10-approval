@@ -1,5 +1,6 @@
 import { del } from '@vercel/blob'
 import { redis, Post } from '@/lib/redis'
+import { contasAlvo, redesDaConta, jaPublicou, chavePublicacao, ID_CONTA_PRINCIPAL } from '@/lib/contasSociais'
 
 // v21+ é necessário para Reels e para a tag de colaboradores (collaborators)
 const VERSION = process.env.META_API_VERSION_PUBLISH || 'v21.0'
@@ -336,7 +337,9 @@ export async function processarPublicacao(post: Post, cliente?: any): Promise<Re
   const lockKey = `publicando:${post.id}`
   const lock = await redis.set(lockKey, Date.now().toString(), { nx: true, ex: 600 })
   if (!lock) {
-    return { ok: false, emAndamento: true, campos: {}, redesOk: (post.redesPublicadas || []).join(' e '), motivo: 'Publicação já em andamento para este post.' }
+    // Só as redes, sem o prefixo da conta: aqui não temos o nome dos perfis à mão.
+    const redesCruas = Array.from(new Set((post.redesPublicadas || []).map(k => (k.includes(':') ? k.split(':')[1] : k))))
+    return { ok: false, emAndamento: true, campos: {}, redesOk: redesCruas.join(' e '), motivo: 'Publicação já em andamento para este post.' }
   }
   try {
     await redis.set(`post:${post.id}`, { ...post, status: 'publicando', atualizadoEm: new Date().toISOString() })
@@ -349,20 +352,39 @@ export async function processarPublicacao(post: Post, cliente?: any): Promise<Re
 // Publica nas redes selecionadas do post, faz a limpeza e devolve os campos a salvar.
 // IMPORTANTE: respeita `redesPublicadas` — nunca republica numa rede que já deu certo.
 async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
-  const temFB = !!(cliente?.facebookPageToken && cliente?.facebookPageId)
-  let redes = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
-  if (!temFB) redes = redes.filter(r => r !== 'facebook')
-  if (redes.length === 0) redes = ['instagram']
-
-  // Remove redes que JÁ foram publicadas com sucesso (evita duplicação)
+  // PERFIS de destino. Post sem `contaIds` (todos os que existiam antes deste
+  // campo) resolve para a conta principal — os campos antigos do cliente.
+  const contas = contasAlvo(cliente, post.contaIds)
+  const redesPedidas = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
   const jaPublicadas = (post.redesPublicadas || []) as string[]
-  const redesPendentes = redes.filter(r => !jaPublicadas.includes(r))
 
-  // Se todas as redes já foram publicadas, não faz nada (proteção contra re-execução)
-  if (redesPendentes.length === 0) {
+  // Perfil selecionado que perdeu a conexão DEPOIS do agendamento. Não pode
+  // sumir calado: o post sai nos outros e ninguém descobre que faltou um.
+  const semConexao = contas.filter(c => redesDaConta(c).length === 0)
+
+  // Cada par (perfil, rede) é uma publicação independente, com trava própria.
+  const alvos: { conta: typeof contas[number]; rede: string }[] = []
+  for (const conta of contas) {
+    for (const rede of redesDaConta(conta)) {
+      if (!redesPedidas.includes(rede as any)) continue
+      if (jaPublicou(jaPublicadas, conta.id, rede)) continue
+      alvos.push({ conta, rede })
+    }
+  }
+
+  if (!contas.length || (!alvos.length && !jaPublicadas.length)) {
+    const agora = new Date().toISOString()
+    const motivo = !contas.length
+      ? 'Nenhum perfil de destino: o post aponta para perfis que não existem mais neste cliente.'
+      : 'Nenhum perfil conectado para publicar. Conecte o Instagram ou a Página do Facebook.'
+    return { ok: false, redesOk: '', motivo, campos: { status: 'falha_publicacao', erroPublicacao: motivo, atualizadoEm: agora } }
+  }
+
+  // Já publicou em tudo que dava: não repete (proteção contra re-execução).
+  if (alvos.length === 0) {
     const limpeza = await limparMidiasMantendoCapa(post)
     return {
-      ok: true, redesOk: jaPublicadas.join(' e '), motivo: '',
+      ok: true, redesOk: resumoPublicado(jaPublicadas, contas), motivo: '',
       campos: { status: 'publicado', erroPublicacao: undefined, redesPublicadas: jaPublicadas,
         ...(limpeza.removidas ? { midiaRemovida: true } : {}),
         ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
@@ -371,47 +393,42 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   }
 
   const novasOk: string[] = [...jaPublicadas]
+  const rotulo = (conta: { id: string; nome: string }, rede: string) =>
+    contas.length > 1 ? `${rede === 'instagram' ? 'Instagram' : 'Facebook'} de ${conta.nome}` : (rede === 'instagram' ? 'Instagram' : 'Facebook')
 
-  // Publica CADA REDE SEPARADAMENTE e salva redesPublicadas IMEDIATAMENTE
-  // para que mesmo em caso de crash/timeout, a rede ja publicada nao seja repetida
-  if (redesPendentes.includes('instagram')) {
-    const ig = await publishToInstagram(post, cliente)
-    if (ig.ok) {
-      novasOk.push('instagram')
-      // Salva imediatamente no banco — protecao anti-duplicata atomica
-      const { redis: r } = await import('@/lib/redis')
-      const curr = await r.get<Post>(`post:${post.id}`)
-      if (curr) await r.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
-    } else {
+  // Publica CADA PAR (perfil, rede) SEPARADAMENTE e salva redesPublicadas
+  // IMEDIATAMENTE: em caso de crash/timeout, o que já saiu não sai de novo.
+  // A conta é passada no lugar do cliente — os campos que publishToX lê têm
+  // os mesmos nomes na ContaSocial.
+  for (const { conta, rede } of alvos) {
+    const r = rede === 'instagram' ? await publishToInstagram(post, conta) : await publishToFacebook(post, conta)
+    if (!r.ok) {
       const agora = new Date().toISOString()
-      return { ok: false, redesOk: novasOk.join(' e '), motivo: `Instagram — ${(ig as any).error}`,
-        campos: { status: 'falha_publicacao', erroPublicacao: `Instagram — ${(ig as any).error}`, redesPublicadas: novasOk, atualizadoEm: agora } }
+      const erro = `${rotulo(conta, rede)} — ${(r as any).error}`
+      return { ok: false, redesOk: resumoPublicado(novasOk, contas), motivo: erro,
+        campos: { status: 'falha_publicacao', erroPublicacao: erro, redesPublicadas: novasOk, atualizadoEm: agora } }
     }
-  }
-
-  if (redesPendentes.includes('facebook')) {
-    const fb = await publishToFacebook(post, cliente)
-    if (fb.ok) {
-      novasOk.push('facebook')
-      const { redis: r } = await import('@/lib/redis')
-      const curr = await r.get<Post>(`post:${post.id}`)
-      if (curr) await r.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
-    } else {
-      const agora = new Date().toISOString()
-      return { ok: false, redesOk: novasOk.join(' e '), motivo: `Facebook — ${(fb as any).error}`,
-        campos: { status: 'falha_publicacao', erroPublicacao: `Facebook — ${(fb as any).error}`, redesPublicadas: novasOk, atualizadoEm: agora } }
-    }
+    novasOk.push(chavePublicacao(conta.id, rede))
+    const { redis: rd } = await import('@/lib/redis')
+    const curr = await rd.get<Post>(`post:${post.id}`)
+    if (curr) await rd.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
   }
 
   const agora = new Date().toISOString()
 
-  const todasOk = redes.every(r => novasOk.includes(r))
+  const todasOk = alvos.every(a => jaPublicou(novasOk, a.conta.id, a.rede))
 
   if (todasOk) {
     const limpeza = await limparMidiasMantendoCapa(post)
+    // Perfil escolhido que estava desconectado na hora H: o post saiu nos
+    // outros, e isso PRECISA ficar registrado. Publicado com ressalva é
+    // diferente de publicado — sem esta linha, ninguém descobre que faltou um.
+    const aviso = semConexao.length
+      ? `Publicado, mas ${semConexao.length} perfil(is) ficaram de fora por não estarem conectados: ${semConexao.map(c => c.nome).join(', ')}.`
+      : undefined
     return {
-      ok: true, redesOk: novasOk.join(' e '), motivo: '',
-      campos: { status: 'publicado', erroPublicacao: undefined, redesPublicadas: novasOk,
+      ok: true, redesOk: resumoPublicado(novasOk, contas), motivo: '',
+      campos: { status: 'publicado', erroPublicacao: aviso, redesPublicadas: novasOk,
         ...(limpeza.removidas ? { midiaRemovida: true } : {}),
         ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
         atualizadoEm: agora },
@@ -421,7 +438,20 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   // Se chegou aqui, nao houve erro (os returns de erro estao dentro de cada bloco acima)
   // Este trecho so e alcancado se nenhuma rede falhou — redundante com o todasOk abaixo, mas seguro
   return {
-    ok: false, redesOk: novasOk.join(' e '), motivo: 'erro desconhecido',
+    ok: false, redesOk: resumoPublicado(novasOk, contas), motivo: 'erro desconhecido',
     campos: { status: 'falha_publicacao', erroPublicacao: 'erro desconhecido', redesPublicadas: novasOk, atualizadoEm: agora },
   }
+}
+
+// "principal:instagram" -> "Instagram". Com mais de um perfil, diz qual:
+// "Instagram de Loja Sul". A chave crua nunca chega ao olho de ninguém.
+function resumoPublicado(chaves: string[], contas: { id: string; nome: string }[]): string {
+  const nomeDe = (id: string) => contas.find(c => c.id === id)?.nome || ''
+  const partes = (chaves || []).map(k => {
+    const [contaId, rede] = k.includes(':') ? k.split(':') : [ID_CONTA_PRINCIPAL, k]
+    const label = rede === 'instagram' ? 'Instagram' : rede === 'facebook' ? 'Facebook' : rede
+    const nome = nomeDe(contaId)
+    return contas.length > 1 && nome ? `${label} de ${nome}` : label
+  })
+  return Array.from(new Set(partes)).join(' e ')
 }
