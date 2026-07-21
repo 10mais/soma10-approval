@@ -60,6 +60,19 @@ export function explicaFalhaConexao(status: number, corpo: any, instancia: strin
 
 // Normaliza a URL do Evolution: aceita com ou sem https:// (o fetch exige protocolo)
 // e remove a barra final. Ex.: "xxx.up.railway.app/" -> "https://xxx.up.railway.app".
+// A chave sofre do mesmo mal que a URL: colada de um painel ou de um .env, vem
+// com espaço, quebra de linha ou aspas em volta — e o Evolution devolve 401 sem
+// dizer que o problema é um caractere invisível. Conservador de propósito: só
+// tira espaço/quebra e aspas que ENVOLVEM o valor. Nada de limpar o miolo — a
+// chave pode legitimamente conter pontuação.
+export function normalizarChaveEvolution(k?: string): string {
+  const s = (k || '').trim()
+  if (s.length > 1 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")) || (s.startsWith('`') && s.endsWith('`')))) {
+    return s.slice(1, -1).trim()
+  }
+  return s
+}
+
 export function normalizarUrlEvolution(u?: string): string {
   let s = (u || '').trim()
   if (!s) return ''
@@ -84,7 +97,7 @@ export async function fotoPerfilEvolution(numeroOuJid: string): Promise<string |
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${process.env.EVOLUTION_INSTANCE}`, {
       method: 'POST',
-      headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+      headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({ number: alvo }),
     })
     const d = await r.json().catch(() => ({} as any))
@@ -98,7 +111,7 @@ export async function infoGrupoEvolution(jid: string): Promise<{ nome?: string; 
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const r = await fetch(`${base}/group/findGroupInfos/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(jid)}`, {
-      headers: { apikey: process.env.EVOLUTION_API_KEY as string },
+      headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY) },
     })
     const d = await r.json().catch(() => ({} as any))
     const g = Array.isArray(d) ? d[0] : d
@@ -278,7 +291,7 @@ async function pedirBase64Evolution(corpo: any): Promise<{ b64: string; mimetype
   const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
   const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${process.env.EVOLUTION_INSTANCE}`, {
     method: 'POST',
-    headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+    headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
     body: JSON.stringify(corpo),
   })
   const d = await r.json().catch(() => ({} as any))
@@ -393,7 +406,7 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
       const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
       const r = await fetch(`${base}/message/sendText/${process.env.EVOLUTION_INSTANCE}`, {
         method: 'POST',
-        headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+        headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
         body: JSON.stringify({ number: destinoJid || tel, text: texto }),
       })
       const d = await r.json().catch(() => ({} as any))
@@ -436,7 +449,7 @@ export async function editarMensagemWhatsApp(telefone: string, msgId: string, no
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
     const r = await fetch(`${base}/chat/updateMessage/${process.env.EVOLUTION_INSTANCE}`, {
       method: 'POST',
-      headers: { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' },
+      headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({ number: remoteJid, key: { remoteJid, fromMe: true, id: msgId }, text: novoTexto }),
     })
     const d = await r.json().catch(() => ({} as any))
@@ -458,7 +471,7 @@ export async function enviarMidiaWhatsApp(
   if (!tel) return { ok: false, erro: 'telefone inválido' }
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-    const headers = { apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' }
+    const headers = { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' }
     // O Evolution não consegue baixar um Blob PRIVADO por URL (é o caso da
     // clínica). Então lemos os bytes aqui e mandamos em base64 — funciona nos
     // dois modos de store. URL externa (não-Blob) segue direto.

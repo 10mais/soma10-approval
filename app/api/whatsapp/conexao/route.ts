@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { evolutionConfigurado, normalizarUrlEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
+import { evolutionConfigurado, normalizarUrlEvolution, normalizarChaveEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 
 const base = () => normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
 const inst = () => process.env.EVOLUTION_INSTANCE || ''
-const headers = () => ({ apikey: process.env.EVOLUTION_API_KEY as string, 'Content-Type': 'application/json' })
+const headers = () => ({ apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' })
 
 function webhookUrl(): string {
   const raiz = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
@@ -51,6 +51,13 @@ async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: 
     if (!r.ok) ({ r, d } = await tentar({ instanceName: inst(), qrcode: true, ...(numero ? { number: numero } : {}) }))
     if (!r.ok) {
       const detalhe = [d?.response?.message, d?.message, d?.error].flat().filter((x: any) => typeof x === 'string' && x.trim()).join(' · ')
+      // 401 no CREATE tem causa específica e vale explicar: /instance/create é um
+      // endpoint GLOBAL do host — ele exige a AUTHENTICATION_API_KEY do Evolution,
+      // não um token de instância. Dá para consultar o estado de uma instância com
+      // token menor e mesmo assim levar 401 aqui, que foi o caso da Sua Dupla.
+      if (r.status === 401 || r.status === 403) {
+        return { ok: false, erro: `O Evolution recusou a chave ao criar a instância "${inst()}" (HTTP ${r.status}). A EVOLUTION_API_KEY precisa ser a AUTHENTICATION_API_KEY GLOBAL do host — a mesma que está no Railway, em Variables do serviço Evolution. Token de instância não cria instância.` }
+      }
       return { ok: false, erro: `O Evolution não deixou criar a instância "${inst()}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
     }
     return { ok: true, base64: d?.qrcode?.base64 || d?.base64 || null, codigo: d?.qrcode?.code || d?.qrcode?.pairingCode || d?.pairingCode || null }

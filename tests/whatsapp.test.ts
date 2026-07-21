@@ -1,5 +1,30 @@
 import { describe, it, expect } from 'vitest'
-import { textoMensagemEvolution, normalizarUrlEvolution } from '@/lib/whatsapp'
+import { textoMensagemEvolution, normalizarUrlEvolution, normalizarChaveEvolution } from '@/lib/whatsapp'
+
+// A chave colada de um painel/.env vem com espaço, quebra de linha ou aspas em
+// volta — e o Evolution devolve 401 sem dizer que o culpado é um caractere
+// invisível. Conservador: só as pontas, nunca o miolo.
+describe('normalizarChaveEvolution', () => {
+  it('tira espaço e quebra de linha das pontas', () => {
+    expect(normalizarChaveEvolution('  ABC123  ')).toBe('ABC123')
+    expect(normalizarChaveEvolution('ABC123\n')).toBe('ABC123')
+  })
+  it('tira aspas que ENVOLVEM o valor', () => {
+    expect(normalizarChaveEvolution('"ABC123"')).toBe('ABC123')
+    expect(normalizarChaveEvolution("'ABC123'")).toBe('ABC123')
+  })
+  it('NÃO mexe no miolo — chave pode ter pontuação', () => {
+    expect(normalizarChaveEvolution('AB"C-12_3!')).toBe('AB"C-12_3!')
+    expect(normalizarChaveEvolution('a1b2-c3d4-e5f6')).toBe('a1b2-c3d4-e5f6')
+  })
+  it('aspa só de um lado não é par: fica como está', () => {
+    expect(normalizarChaveEvolution('"ABC123')).toBe('"ABC123')
+  })
+  it('vazio devolve vazio', () => {
+    expect(normalizarChaveEvolution('')).toBe('')
+    expect(normalizarChaveEvolution(undefined)).toBe('')
+  })
+})
 
 // Bug real (2026-07-13): URL do Evolution colada sem https:// quebrava o fetch
 // ('Failed to parse URL') — recebia mensagens mas não enviava.
