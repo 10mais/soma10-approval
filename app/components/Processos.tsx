@@ -7,6 +7,10 @@ import {
 } from '@/lib/processoCidadania'
 import { resumoLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
+import {
+  gerarParcelas, totalPago, saldoDevedor, totalVencido, METODOS,
+  type FinanceiroContrato, type MetodoPagamento,
+} from '@/lib/financeiroContrato'
 import EditorLinhagem from './EditorLinhagem'
 
 // PROCESSOS (perfil cidadania) — a esteira pós-venda de cada caso/família rumo à
@@ -17,6 +21,7 @@ type StatusProcesso = 'ativo' | 'pausado' | 'concluido' | 'arquivado'
 type Processo = {
   id: string; titulo: string; clienteId?: string; paisAlvo: string
   ascendente?: string; requerentes?: string[]; linhagem?: PessoaLinhagem[]
+  financeiro?: FinanceiroContrato
   etapa: EtapaProcesso; status: StatusProcesso
   responsavelEmail?: string; numeroProcesso?: string; valorContrato?: number
   prazoEstimado?: string; observacoes?: string; criadoEm?: string; atualizadoEm?: string
@@ -45,7 +50,7 @@ const vazio = (): Form => ({
 
 const paraForm = (p: Processo): Form => ({
   ...p, clienteId: p.clienteId || '', ascendente: p.ascendente || '', responsavelEmail: p.responsavelEmail || '',
-  requerentes: p.requerentes || [], linhagem: p.linhagem || [],
+  requerentes: p.requerentes || [], linhagem: p.linhagem || [], financeiro: p.financeiro,
   numeroProcesso: p.numeroProcesso || '', prazoEstimado: p.prazoEstimado || '', observacoes: p.observacoes || '',
   valorContrato: p.valorContrato ? String(p.valorContrato) : '',
 })
@@ -61,6 +66,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
   const [verFinais, setVerFinais] = useState(false)
   const [novoReqNome, setNovoReqNome] = useState('')
   const [criandoReq, setCriandoReq] = useState(false)
+  // Gerador de parcelas do contrato (só controles de tela — o cálculo é da lib)
+  const [parcVezes, setParcVezes] = useState('12')
+  const [parcPrimeiro, setParcPrimeiro] = useState('')
+  const [parcMetodo, setParcMetodo] = useState<MetodoPagamento>('pix')
   // Arrastar entre etapas (mesmo gesto do funil do CRM — as setas do card eram
   // um jeito pior de fazer a mesma coisa e não pareciam com o resto do sistema).
   const [dragId, setDragId] = useState<string | null>(null)
@@ -116,6 +125,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
       ascendente: (form.ascendente || '').trim(),
       requerentes: form.requerentes || [],
       linhagem: form.linhagem || [],
+      financeiro: form.financeiro || undefined,
       etapa: form.etapa,
       status: form.status,
       responsavelEmail: form.responsavelEmail || '',
@@ -336,6 +346,79 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                   <label style={labelStyle}>Previsão de conclusão</label>
                   <input type="date" value={form.prazoEstimado} onChange={e => setForm({ ...form, prazoEstimado: e.target.value })} style={inputStyle} />
                 </div>
+              </div>
+
+              {/* COBRANÇA — parcelas do contrato. O motor (gerarParcelas/saldo) é
+                  o mesmo do turismo; aqui é só a tela. Marcar "pago" espelha no
+                  Financeiro sozinho, com id determinístico (sem duplicar). */}
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                <label style={labelStyle}>Cobrança do contrato</label>
+                {(() => {
+                  const fin: FinanceiroContrato = form.financeiro || { valorTotal: 0, parcelas: [], pagamentos: [] }
+                  const total = Number(String(form.valorContrato).replace(',', '.')) || fin.valorTotal || 0
+                  const hoje = new Date().toISOString().slice(0, 10)
+                  const pago = totalPago(fin)
+                  const saldo = saldoDevedor({ ...fin, valorTotal: total })
+                  const vencido = totalVencido(fin, hoje)
+                  const setFin = (novo: FinanceiroContrato) => setForm({ ...form, financeiro: novo })
+                  return (<>
+                    {fin.parcelas.length === 0 ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ width: 70 }}>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>Vezes</span>
+                          <input type="number" min={1} max={120} value={parcVezes} onChange={e => setParcVezes(e.target.value)} style={inputStyle} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 130 }}>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>1º vencimento</span>
+                          <input type="date" value={parcPrimeiro} onChange={e => setParcPrimeiro(e.target.value)} style={inputStyle} />
+                        </div>
+                        <div style={{ width: 120 }}>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>Método</span>
+                          <select value={parcMetodo} onChange={e => setParcMetodo(e.target.value as MetodoPagamento)} style={inputStyle}>
+                            {METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+                          </select>
+                        </div>
+                        <button type="button" disabled={!(total > 0) || !parcPrimeiro}
+                          onClick={() => setFin({ valorTotal: total, parcelas: gerarParcelas(total, Number(parcVezes) || 1, parcPrimeiro, parcMetodo), pagamentos: fin.pagamentos || [] })}
+                          style={{ padding: '9px 14px', background: total > 0 && parcPrimeiro ? '#111' : '#f3f4f6', color: total > 0 && parcPrimeiro ? '#fff' : '#c4c8cc', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: total > 0 && parcPrimeiro ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>Gerar parcelas</button>
+                      </div>
+                    ) : (<>
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8, fontSize: 11.5 }}>
+                        <span style={{ color: '#6b7280' }}>Total <strong style={{ color: '#111' }}>{fmtBRL(total)}</strong></span>
+                        <span style={{ color: '#6b7280' }}>Recebido <strong style={{ color: '#166534' }}>{fmtBRL(pago)}</strong></span>
+                        <span style={{ color: '#6b7280' }}>Saldo <strong style={{ color: '#111' }}>{fmtBRL(saldo)}</strong></span>
+                        {vencido > 0 && <span style={{ color: '#b91c1c', fontWeight: 700 }}>Vencido {fmtBRL(vencido)}</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                        {fin.parcelas.map(p => {
+                          const atrasada = p.status !== 'pago' && p.vencimento < hoje
+                          return (
+                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: p.status === 'pago' ? '#f0fdf4' : atrasada ? '#fef2f2' : '#fafafa', border: '1px solid ' + (p.status === 'pago' ? '#bbf7d0' : atrasada ? '#fecaca' : '#eef0f2'), borderRadius: 8, fontSize: 12 }}>
+                              <span style={{ width: 26, color: '#9ca3af', fontWeight: 700 }}>{p.numero}</span>
+                              <span style={{ flex: 1, color: '#111', fontWeight: 600 }}>{fmtBRL(p.valor)}</span>
+                              <span style={{ color: atrasada ? '#b91c1c' : '#6b7280', whiteSpace: 'nowrap' }}>{fmtData(p.vencimento)}</span>
+                              <button type="button" disabled={!podeEditar}
+                                onClick={() => setFin({
+                                  ...fin, valorTotal: total,
+                                  parcelas: fin.parcelas.map(x => x.id === p.id
+                                    ? (x.status === 'pago' ? { ...x, status: 'pendente' as const, pagoEm: undefined } : { ...x, status: 'pago' as const, pagoEm: hoje })
+                                    : x),
+                                })}
+                                style={{ padding: '3px 10px', background: p.status === 'pago' ? '#166534' : '#fff', color: p.status === 'pago' ? '#fff' : '#374151', border: '1px solid ' + (p.status === 'pago' ? '#166534' : '#d1d5db'), borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: podeEditar ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                                {p.status === 'pago' ? 'Pago' : 'Marcar pago'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {podeEditar && (
+                        <button type="button" onClick={() => { if (confirm('Refazer o parcelamento? As baixas de pagamento serão perdidas.')) setFin({ valorTotal: total, parcelas: [], pagamentos: fin.pagamentos || [] }) }}
+                          style={{ marginTop: 8, padding: '5px 10px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 7, fontSize: 11.5, color: '#6b7280', cursor: 'pointer' }}>Refazer parcelamento</button>
+                      )}
+                    </>)}
+                    <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9ca3af' }}>As parcelas viram lançamentos no Financeiro automaticamente.</p>
+                  </>)
+                })()}
               </div>
 
               <div>

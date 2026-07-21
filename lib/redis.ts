@@ -65,6 +65,9 @@ export type LancamentoFuturo = {
   // reserva. A rota /api/reservas cria/atualiza/remove junto com a reserva —
   // a tela mostra a origem e não deixa apagar à mão (apagaria só a cópia).
   reservaId?: string
+  // Idem para a assessoria de cidadania: parcela/pagamento do contrato de um
+  // Processo. A rota /api/processos mantém em sincronia (lancamentosProcesso).
+  processoId?: string
   criadoPor?: string
   criadoEm: string
 }
@@ -489,7 +492,11 @@ export type Processo = {
   status: StatusProcesso
   responsavelEmail?: string  // membro da equipe dono da carteira do caso
   numeroProcesso?: string    // protocolo/nº no órgão estrangeiro, quando houver
-  valorContrato?: number     // valor fechado do contrato (Financeiro na Fase 4)
+  valorContrato?: number     // valor fechado do contrato (total do parcelamento)
+  // COBRANÇA do contrato: parcelas, vencimentos e pagamentos. O motor é o mesmo
+  // do turismo (lib/financeiroContrato) — parcela e saldo não têm nicho. Vira
+  // lançamento no Financeiro via lib/lancamentosProcesso, com id determinístico.
+  financeiro?: import('./financeiroContrato').FinanceiroContrato
   prazoEstimado?: string     // YYYY-MM-DD — previsão de conclusão (opcional)
   observacoes?: string
   criadoPor?: string
