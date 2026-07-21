@@ -6,6 +6,7 @@ import { revalidateTag } from 'next/cache'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
+import { planejarModelo } from '@/lib/aplicarModelo'
 
 export const runtime = 'nodejs'
 
@@ -91,29 +92,27 @@ export async function POST(req: NextRequest) {
   if (templateId) {
     const t = await redis.get<TemplateProjeto>(`template:${templateId}`)
     if (t) {
-      let cursor = dataInicio ? new Date(dataInicio) : new Date()
+      // Mesmo cálculo de /api/templates/aplicar — vive em lib/aplicarModelo para
+      // que a cascata de datas não possa divergir entre a conversão e o mutirão.
+      const plano = planejarModelo(t, dataInicio ? new Date(dataInicio) : new Date())
       const marcoIds: string[] = []
-      for (const m of (t.marcos || [])) {
-        const ini = new Date(cursor)
-        const dur = Math.max(0, Number(m.diasDuracao) || 0)
-        const fim = new Date(ini.getTime() + dur * 24 * 60 * 60 * 1000)
+      for (const e of plano.etapas) {
         const marco: Marco = {
           id: uuid(), clienteId: cliente.id, clienteNome: cliente.nome,
-          titulo: m.titulo, descricao: m.descricao || '', categoria: (m.categoria as any) || 'outro',
-          status: 'planejado', dataInicio: ini.toISOString(), dataFim: dur > 0 ? fim.toISOString() : '',
+          titulo: e.titulo, descricao: e.descricao, categoria: e.categoria as any,
+          status: 'planejado', dataInicio: e.dataInicio, dataFim: e.dataFim,
           responsavelNome: '', criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
         }
         await redis.set(`marco:${marco.id}`, marco)
         await redis.sadd('marcos', marco.id)
         marcoIds.push(marco.id)
-        if (dur > 0) cursor = fim
       }
       marcosCriados = marcoIds.length
-      for (const tr of (t.tarefas || [])) {
-        const marcoId = (typeof tr.marcoIndice === 'number' && marcoIds[tr.marcoIndice]) ? marcoIds[tr.marcoIndice] : undefined
+      for (const tr of plano.tarefas) {
+        const marcoId = typeof tr.etapaIndice === 'number' ? marcoIds[tr.etapaIndice] : undefined
         const tarefa: Tarefa = {
-          id: uuid(), titulo: tr.titulo, descricao: '', tipo: (tr.tipo as any) || 'tarefa',
-          status: 'a_fazer', prioridade: (tr.prioridade as any) || 'media',
+          id: uuid(), titulo: tr.titulo, descricao: '', tipo: tr.tipo as any,
+          status: 'a_fazer', prioridade: tr.prioridade as any,
           clienteId: cliente.id, clienteNome: cliente.nome, ...(marcoId ? { marcoId } : {}),
           criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
           atividades: [{ id: uuid(), tipo: 'criacao', descricao: `Criada na conversão do CRM (modelo "${t.nome}")`, autor, criadoEm: agora }],
