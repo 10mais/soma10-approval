@@ -59,17 +59,39 @@ async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: 
   }
 }
 
+// Host (sem a chave) da EVOLUTION_API_URL — vai para a tela no diagnóstico.
+// A URL não é segredo (a apikey é), e mostrá-la resolve o caso real: quem
+// cadastra as envs como "Sensitive" na Vercel NÃO CONSEGUE MAIS RELÊ-LAS, então
+// errar a URL vira um erro mudo impossível de conferir pelo painel.
+function hostEvolution(): string {
+  try { return new URL(base()).host } catch { return String(process.env.EVOLUTION_API_URL || '').slice(0, 80) }
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   if (!evolutionConfigurado()) return NextResponse.json({ configurado: false, estado: 'nao_configurado' })
+  const comum = { configurado: true, instancia: inst(), host: hostEvolution() }
   try {
     const r = await fetch(`${base()}/instance/connectionState/${inst()}`, { headers: headers() })
     const d = await r.json().catch(() => ({} as any))
+    // Antes o status HTTP era ignorado: 401 (apikey errada) e 404 (instância
+    // inexistente) caíam em "desconhecido" e a pessoa ficava sem saber o motivo.
+    if (!r.ok) {
+      // 404 NÃO é erro: é o estado normal antes do primeiro pareamento — a
+      // instância só passa a existir quando alguém clica em Conectar.
+      if (r.status === 404) return NextResponse.json({ ...comum, estado: 'sem_instancia' })
+      if (r.status === 401 || r.status === 403) {
+        return NextResponse.json({ ...comum, estado: 'erro', erro: `O Evolution recusou a chave (HTTP ${r.status}). Confira a EVOLUTION_API_KEY desta instância — ela precisa ser a AUTHENTICATION_API_KEY do host ${hostEvolution()}.` })
+      }
+      const detalhe = [d?.response?.message, d?.message, d?.error].flat().filter((x: any) => typeof x === 'string' && x.trim()).join(' · ')
+      return NextResponse.json({ ...comum, estado: 'erro', erro: `O Evolution respondeu HTTP ${r.status}${detalhe ? ` — ${detalhe}` : ''}.` })
+    }
     const estado = d?.instance?.state || d?.state || 'desconhecido'
-    return NextResponse.json({ configurado: true, estado, instancia: inst() })
+    return NextResponse.json({ ...comum, estado })
   } catch (e: any) {
-    return NextResponse.json({ configurado: true, estado: 'erro', erro: e?.message || String(e) })
+    // fetch nem completou: URL errada/malformada ou host fora do ar.
+    return NextResponse.json({ ...comum, estado: 'erro', erro: `Não consegui falar com o host "${hostEvolution()}" (${e?.message || e}). Confira a EVOLUTION_API_URL desta instância — precisa começar com https:// e ser o domínio do Evolution no Railway.` })
   }
 }
 

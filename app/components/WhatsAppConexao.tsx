@@ -5,7 +5,7 @@ import { toast } from '@/lib/toast'
 // Conexão do WhatsApp (Evolution) dentro do Soma10 — admin. Mostra o status e,
 // quando desconectado, o QR pra parear (ou trocar de número) sem abrir o Railway.
 
-type Estado = 'open' | 'connecting' | 'close' | 'nao_configurado' | 'erro' | 'desconhecido'
+type Estado = 'open' | 'connecting' | 'close' | 'nao_configurado' | 'erro' | 'sem_instancia' | 'desconhecido'
 
 const INFO: Record<string, { label: string; cor: string; bg: string }> = {
   open: { label: 'Conectado', cor: '#166534', bg: '#dcfce7' },
@@ -13,6 +13,9 @@ const INFO: Record<string, { label: string; cor: string; bg: string }> = {
   close: { label: 'Desconectado', cor: '#b91c1c', bg: '#fee2e2' },
   nao_configurado: { label: 'Não configurado', cor: '#6b7280', bg: '#f4f4f5' },
   erro: { label: 'Erro ao consultar', cor: '#b91c1c', bg: '#fee2e2' },
+  // Instância ainda não existe no host: estado NORMAL antes do 1º pareamento,
+  // não erro. Pintar de vermelho aqui manda a pessoa caçar um problema que não há.
+  sem_instancia: { label: 'Aguardando pareamento', cor: '#a16207', bg: '#fef3c7' },
   desconhecido: { label: 'Desconhecido', cor: '#6b7280', bg: '#f4f4f5' },
 }
 
@@ -27,10 +30,19 @@ export default function WhatsAppConexao() {
   // saída quando o celular recusa o QR com "Não foi possível conectar o
   // dispositivo" (aconteceu na Norah e na Deny).
   const [numero, setNumero] = useState('')
+  // Motivo da falha + host consultado. A rota já mandava o `erro` e a tela
+  // jogava fora: sobrava "Erro ao consultar" sem dizer o quê — e como as envs
+  // EVOLUTION_* costumam ser salvas como Sensitive na Vercel (ilegíveis depois),
+  // não havia como conferir a URL em lugar nenhum.
+  const [erro, setErro] = useState('')
+  const [host, setHost] = useState('')
 
   const carregar = useCallback(async () => {
     const d = await fetch('/api/whatsapp/conexao').then(r => r.json()).catch(() => null)
-    if (d) { setConfigurado(!!d.configurado); setEstado(d.estado || 'desconhecido') }
+    if (d) {
+      setConfigurado(!!d.configurado); setEstado(d.estado || 'desconhecido')
+      setErro(d.erro || ''); setHost(d.host || '')
+    }
     setCarregando(false)
   }, [])
   useEffect(() => { carregar() }, [carregar])
@@ -91,6 +103,23 @@ export default function WhatsAppConexao() {
           ? <button onClick={desconectar} disabled={ocupado} style={{ padding: '8px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
           : <button onClick={() => conectar()} disabled={ocupado} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Conectar / gerar QR'}</button>}
       </div>
+
+      {/* O MOTIVO da falha, na tela. Sem isto o diagnóstico era impossível: as
+          envs EVOLUTION_* salvas como Sensitive na Vercel não podem ser relidas,
+          então URL errada virava um erro mudo sem lugar nenhum para conferir. */}
+      {erro && (
+        <div style={{ marginBottom: 12, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 9, fontSize: 12, color: '#b91c1c', lineHeight: 1.55 }}>
+          {erro}
+        </div>
+      )}
+      {estado === 'sem_instancia' && (
+        <div style={{ marginBottom: 12, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, fontSize: 12, color: '#92400e', lineHeight: 1.55 }}>
+          A instância ainda não existe no host — é o normal antes do primeiro pareamento. Clique em <b>Conectar / gerar QR</b> que ela é criada automaticamente.
+        </div>
+      )}
+      {host && (
+        <p style={{ margin: '0 0 12px', fontSize: 11, color: '#9ca3af' }}>Host: {host}</p>
+      )}
 
       {/* Pareamento por CÓDIGO — a saída quando o celular recusa o QR com "Não
           foi possível conectar o dispositivo". Precisa do número porque o
