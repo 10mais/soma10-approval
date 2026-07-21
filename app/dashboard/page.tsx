@@ -4776,8 +4776,27 @@ function Dashboard() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <select value={perfilInstancia || ''} onChange={async e => {
                   const novo = e.target.value || ''
+                  if (novo === (perfilInstancia || '')) return
+                  // TRAVA DE DUAS PORTAS. Este <select> reconfigura a instância inteira
+                  // (menu, telas, cadastros, matriz de permissões) e mora no meio de
+                  // opções corriqueiras — encostar nele sem querer já foi capaz de
+                  // trocar o perfil de uma instância no ar. Sem estado local: negando
+                  // qualquer uma das duas, o valor exibido volta sozinho (controlado).
+                  const nome = (c: string) => PERFIS_INSTANCIA.find(p => p.chave === c)?.label || 'Agência (padrão)'
+                  const de = nome(perfilInstancia || ''), para = nome(novo)
+                  const ok1 = await confirmar(
+                    `O perfil define QUAIS TELAS a instância mostra — menu, cadastros e painel inicial mudam para toda a equipe, não só para você.\n\nDe: ${de}\nPara: ${para}`,
+                    { titulo: 'Trocar o perfil da instância?', okLabel: 'Continuar', cancelLabel: 'Cancelar' }
+                  )
+                  if (!ok1) return
+                  const ok2 = await confirmar(
+                    `Confirma trocar para ${para}? A equipe vê a mudança no próximo carregamento.`,
+                    { titulo: 'Tem certeza?', okLabel: `Sim, trocar para ${para}`, cancelLabel: `Não, manter ${de}`, perigo: true }
+                  )
+                  if (!ok2) return
                   const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
-                  if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null) }
+                  if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null); toast(`Perfil da instância alterado para ${para}.`, 'sucesso') }
+                  else toast(r?.error || 'Não foi possível trocar o perfil — nada foi alterado.', 'erro')
                 }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
                   {/* Opções vindas do CATÁLOGO, nunca escritas à mão. Quando eram
                       fixas aqui, o perfil `cidadania` ficou de fora: o <select>
