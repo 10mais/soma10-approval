@@ -55,6 +55,35 @@ describe('MODELOS_SUGERIDOS — integridade do conteúdo', () => {
   }
 })
 
+describe('Onboarding — fidelidade ao ClickUp', () => {
+  const onb = MODELOS_SUGERIDOS.find(m => m.chave === 'onboarding')!
+
+  // Transcrição de PRODUTO > SUCESSO DO CLIENTE > Onboarding: 12 etapas de
+  // primeiro nível e as 81 tarefas diretas. Os números ficam fixados aqui para
+  // que apagar uma linha sem querer apareça como teste vermelho, e não como
+  // etapa faltando no Playbook de um cliente meses depois.
+  it('tem as 12 etapas do ClickUp', () => {
+    expect(onb.marcos.length).toBe(12)
+  })
+
+  it('tem as 81 tarefas de segundo nível', () => {
+    expect(onb.tarefas.length).toBe(81)
+  })
+
+  it('nenhuma etapa ficou sem tarefa', () => {
+    for (let i = 0; i < onb.marcos.length; i++) {
+      expect(onb.tarefas.some(t => t.marcoIndice === i), `etapa "${onb.marcos[i].titulo}" sem tarefa`).toBe(true)
+    }
+  })
+
+  it('fecha em 34 dias — as duas etapas pontuais não consomem prazo', () => {
+    const plano = planejarModelo(onb, new Date('2026-08-03T00:00:00.000Z'))
+    const fim = plano.etapas.filter(e => e.dataFim).slice(-1)[0].dataFim
+    expect(fim.slice(0, 10)).toBe('2026-09-06') // 03/ago + 34 dias
+    expect(plano.etapas.filter(e => !e.dataFim).length).toBe(2) // captação e go live
+  })
+})
+
 describe('sugestoesParaPerfil', () => {
   it('agência (perfil nulo) vê o ciclo mensal de social media', () => {
     const chaves = sugestoesParaPerfil(null).map(m => m.chave)
