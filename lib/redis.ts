@@ -694,7 +694,10 @@ export type Tarefa = {
 }
 
 // Modelos de projeto reutilizáveis (geram marcos do Playbook + tarefas num clique)
-export type TemplateMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
+// `duracao` + `unidade` (dias/semanas/meses/anos) é o formato atual; `diasDuracao`
+// é o anterior, sempre em dias, e segue valendo nos modelos já salvos. Quem lê os
+// dois é duracaoDaEtapa() em lib/aplicarModelo.
+export type TemplateMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: 'dias' | 'semanas' | 'meses' | 'anos' }
 export type TemplateTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
 export type TemplateProjeto = {
   id: string

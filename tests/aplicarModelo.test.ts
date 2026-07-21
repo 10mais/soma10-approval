@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planejarModelo, removerEtapaDoModelo } from '@/lib/aplicarModelo'
+import { planejarModelo, removerEtapaDoModelo, avancarData, duracaoDaEtapa } from '@/lib/aplicarModelo'
 
 const BASE = new Date('2026-08-03T00:00:00.000Z') // segunda-feira
 
@@ -59,6 +59,87 @@ describe('planejarModelo — cascata de datas', () => {
     const base = new Date(BASE.getTime())
     planejarModelo({ marcos: [{ titulo: 'A', diasDuracao: 10 }] }, base)
     expect(base.toISOString()).toBe(BASE.toISOString())
+  })
+})
+
+describe('avancarData — dias, semanas e CALENDÁRIO', () => {
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+
+  it('dias e semanas são aritmética simples', () => {
+    expect(iso(avancarData(BASE, 5, 'dias'))).toBe('2026-08-08')
+    expect(iso(avancarData(BASE, 2, 'semanas'))).toBe('2026-08-17')
+  })
+
+  it('mês é calendário, não 30 dias', () => {
+    expect(iso(avancarData(BASE, 1, 'meses'))).toBe('2026-09-03') // mesmo dia do mês seguinte
+    expect(iso(avancarData(BASE, 6, 'meses'))).toBe('2027-02-03') // vira o ano sozinho
+  })
+
+  it('ano é calendário', () => {
+    expect(iso(avancarData(BASE, 1, 'anos'))).toBe('2027-08-03')
+  })
+
+  it('FIM DE MÊS: 31/jan + 1 mês é 28/fev, não 03/mar', () => {
+    // setMonth cru transborda: fevereiro não tem dia 31 e o JS empurra para março.
+    expect(iso(avancarData(new Date('2026-01-31T00:00:00.000Z'), 1, 'meses'))).toBe('2026-02-28')
+  })
+
+  it('FIM DE MÊS em ano bissexto: 31/jan/2028 + 1 mês é 29/fev', () => {
+    expect(iso(avancarData(new Date('2028-01-31T00:00:00.000Z'), 1, 'meses'))).toBe('2028-02-29')
+  })
+
+  it('31/mar + 1 mês é 30/abr (mês de 30 dias)', () => {
+    expect(iso(avancarData(new Date('2026-03-31T00:00:00.000Z'), 1, 'meses'))).toBe('2026-04-30')
+  })
+
+  it('29/fev + 1 ano cai em 28/fev', () => {
+    expect(iso(avancarData(new Date('2028-02-29T00:00:00.000Z'), 1, 'anos'))).toBe('2029-02-28')
+  })
+
+  it('zero e lixo devolvem a mesma data, sem mutar a original', () => {
+    const base = new Date(BASE.getTime())
+    expect(avancarData(base, 0, 'meses').toISOString()).toBe(BASE.toISOString())
+    expect(avancarData(base, NaN, 'dias').toISOString()).toBe(BASE.toISOString())
+    expect(avancarData(base, -3, 'semanas').toISOString()).toBe(BASE.toISOString())
+    expect(base.toISOString()).toBe(BASE.toISOString())
+  })
+})
+
+describe('duracaoDaEtapa — formato novo e o antigo', () => {
+  it('lê duracao + unidade', () => {
+    expect(duracaoDaEtapa({ titulo: 'X', duracao: 2, unidade: 'semanas' })).toEqual({ quantidade: 2, unidade: 'semanas' })
+  })
+
+  it('modelo ANTIGO (só diasDuracao) continua valendo, em dias', () => {
+    expect(duracaoDaEtapa({ titulo: 'X', diasDuracao: 7 })).toEqual({ quantidade: 7, unidade: 'dias' })
+  })
+
+  it('etapa sem duração nenhuma é marco pontual', () => {
+    expect(duracaoDaEtapa({ titulo: 'X' })).toEqual({ quantidade: 0, unidade: 'dias' })
+  })
+
+  it('duracao sem unidade assume dias', () => {
+    expect(duracaoDaEtapa({ titulo: 'X', duracao: 4 })).toEqual({ quantidade: 4, unidade: 'dias' })
+  })
+})
+
+describe('planejarModelo — cascata com unidades', () => {
+  it('mistura semanas e meses na mesma cascata', () => {
+    const { etapas } = planejarModelo({
+      marcos: [
+        { titulo: 'Diagnóstico', duracao: 2, unidade: 'semanas' },
+        { titulo: 'Execução', duracao: 1, unidade: 'meses' },
+      ],
+    }, BASE)
+    expect(etapas[0].dataFim.slice(0, 10)).toBe('2026-08-17')
+    expect(etapas[1].dataInicio.slice(0, 10)).toBe('2026-08-17')
+    expect(etapas[1].dataFim.slice(0, 10)).toBe('2026-09-17') // mês de calendário a partir do 17
+  })
+
+  it('modelo antigo em diasDuracao produz exatamente o que produzia antes', () => {
+    const { etapas } = planejarModelo({ marcos: [{ titulo: 'A', diasDuracao: 3 }, { titulo: 'B', diasDuracao: 7 }] }, BASE)
+    expect(etapas[0].dataFim).toBe('2026-08-06T00:00:00.000Z')
+    expect(etapas[1].dataFim).toBe('2026-08-13T00:00:00.000Z')
   })
 })
 

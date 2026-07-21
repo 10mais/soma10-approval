@@ -2,11 +2,11 @@
 import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
-import { removerEtapaDoModelo, type EtapaPlanejada } from '@/lib/aplicarModelo'
+import { removerEtapaDoModelo, duracaoDaEtapa, UNIDADES, type EtapaPlanejada, type UnidadeDuracao } from '@/lib/aplicarModelo'
 import { sugestoesParaPerfil, type ModeloSugerido } from '@/lib/modelosSugeridos'
 
 type Cliente = { id: string; nome: string; tipo?: string }
-type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
+type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number; duracao?: number; unidade?: UnidadeDuracao }
 type TTarefa = { titulo: string; tipo?: string; prioridade?: string; marcoIndice?: number }
 type Template = { id: string; nome: string; descricao?: string; marcos: TMarco[]; tarefas: TTarefa[] }
 
@@ -120,7 +120,7 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
             {/* Etapas */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Etapas do Playbook</span>
-              <button onClick={() => setEditor({ ...editor, marcos: [...editor.marcos, { titulo: '', categoria: 'social_media', diasDuracao: 7 }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Etapa</button>
+              <button onClick={() => setEditor({ ...editor, marcos: [...editor.marcos, { titulo: '', categoria: 'social_media', duracao: 1, unidade: 'semanas' }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Etapa</button>
             </div>
             {editor.marcos.map((m, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
@@ -128,7 +128,15 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
                 <select value={m.categoria} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, categoria: e.target.value }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff' }}>
                   {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
-                <input type="number" min="0" value={m.diasDuracao ?? ''} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, diasDuracao: Number(e.target.value) || 0 }; setEditor({ ...editor, marcos: ms }) }} placeholder="dias" style={{ ...inp, width: 60 }} />
+                {/* Duração = número + UNIDADE. O campo era só um número, e "7"
+                    sozinho não diz se é dia, semana ou mês — o placeholder
+                    "dias" sumia no instante em que alguém digitava. Ao salvar
+                    grava-se `duracao`+`unidade`; `diasDuracao` fica só na
+                    leitura dos modelos antigos (duracaoDaEtapa). */}
+                <input type="number" min="0" value={duracaoDaEtapa(m).quantidade || ''} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: Math.max(0, Number(e.target.value) || 0), unidade: duracaoDaEtapa(m).unidade }; setEditor({ ...editor, marcos: ms }) }} placeholder="0" style={{ ...inp, width: 56 }} />
+                <select value={duracaoDaEtapa(m).unidade} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: duracaoDaEtapa(m).quantidade, unidade: e.target.value as UnidadeDuracao }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff', width: 96 }}>
+                  {UNIDADES.map(u => <option key={u.chave} value={u.chave}>{u.label}</option>)}
+                </select>
                 {/* Remoção com REINDEXAÇÃO (lib/aplicarModelo): desvincular só as
                     tarefas desta etapa deixava as de baixo apontando para a etapa
                     vizinha, calado. Vínculo tarefa->etapa é posicional. */}
