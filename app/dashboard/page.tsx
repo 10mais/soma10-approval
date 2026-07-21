@@ -4564,7 +4564,7 @@ function Dashboard() {
 
         {/* MODELOS DE PROJETO (equipe) */}
         {aba === 'modelos' && role !== 'cliente' && (
-          <Modelos clientes={clientes as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} />
+          <Modelos clientes={clientes as any} podeEditar={podeNivelDash('estrategia', 'editar')} podeExcluir={podeNivelDash('estrategia', 'excluir')} perfil={perfilInstancia} />
         )}
 
         {/* AUTOMAÇÕES (equipe) */}

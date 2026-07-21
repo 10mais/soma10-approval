@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { removerEtapaDoModelo, type EtapaPlanejada } from '@/lib/aplicarModelo'
+import { sugestoesParaPerfil, type ModeloSugerido } from '@/lib/modelosSugeridos'
 
 type Cliente = { id: string; nome: string; tipo?: string }
 type TMarco = { titulo: string; categoria: string; descricao?: string; diasDuracao?: number }
@@ -18,11 +19,22 @@ const TIPOS = ['tarefa', 'carrossel', 'criativo', 'video', 'reel', 'story', 'pos
 const PRIORIDADES = ['baixa', 'media', 'alta', 'urgente']
 const vazio: Template = { id: '', nome: '', descricao: '', marcos: [], tarefas: [] }
 
-export default function Modelos({ clientes, podeEditar = true, podeExcluir = true }: { clientes: Cliente[]; podeEditar?: boolean; podeExcluir?: boolean }) {
+export default function Modelos({ clientes, podeEditar = true, podeExcluir = true, perfil = null }: { clientes: Cliente[]; podeEditar?: boolean; podeExcluir?: boolean; perfil?: string | null }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [editor, setEditor] = useState<Template | null>(null)
   const [aplicar, setAplicar] = useState<Template | null>(null)
   const [msg, setMsg] = useState('')
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const sugestoes = sugestoesParaPerfil(perfil)
+
+  // Sugestão vai para o EDITOR, não para o banco: id vazio = ainda não existe,
+  // e só o "Salvar modelo" grava. Assim o ponto de partida é ajustável antes de
+  // virar dado — seed é começo de conversa, não decisão tomada por ninguém.
+  const usarSugestao = (s: ModeloSugerido) => setEditor({
+    id: '', nome: s.nome, descricao: s.descricao,
+    marcos: s.marcos.map(m => ({ ...m, categoria: m.categoria || 'outro' })),
+    tarefas: s.tarefas.map(t => ({ ...t })),
+  })
 
   function carregar() { fetch('/api/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => {}) }
   useEffect(() => { carregar() }, [])
@@ -49,7 +61,14 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Modelos de projeto</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Crie um modelo de etapas + tarefas e aplique a vários clientes de uma vez, com prévia antes de gravar.</p>
         </div>
-        {podeEditar && <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {podeEditar && sugestoes.length > 0 && templates.length > 0 && (
+            <button onClick={() => setMostrarSugestoes(v => !v)} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+              {mostrarSugestoes ? 'Ocultar modelos prontos' : 'Modelos prontos'}
+            </button>
+          )}
+          {podeEditar && <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>}
+        </div>
       </div>
 
       {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', fontSize: 13 }}>{msg}</div>}
@@ -67,8 +86,28 @@ export default function Modelos({ clientes, podeEditar = true, podeExcluir = tru
             </div>
           </div>
         ))}
-        {templates.length === 0 && <p style={{ color: '#bbb', fontSize: 13 }}>Nenhum modelo ainda. Crie o primeiro.</p>}
       </div>
+
+      {/* Tela vazia: em vez de "crie o primeiro" e um editor em branco, os
+          pontos de partida prontos. Montar 6 etapas na mão é justamente o
+          trabalho que o modelo existe para evitar. */}
+      {(templates.length === 0 || mostrarSugestoes) && (
+        podeEditar && sugestoes.length > 0 ? (
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>Comece de um modelo pronto</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Abre no editor já preenchido. Ajuste o que quiser — nada é salvo até você clicar em "Salvar modelo".</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+              {sugestoes.map(s => (
+                <button key={s.chave} onClick={() => usarSugestao(s)} style={{ ...card, textAlign: 'left', border: '1.5px dashed #e0e0e0', boxShadow: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111' }}>{s.nome}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>{s.descricao}</p>
+                  <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>{s.marcos.length} etapa(s) · {s.tarefas.length} tarefa(s)</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : templates.length === 0 ? <p style={{ color: '#bbb', fontSize: 13 }}>Nenhum modelo ainda.{podeEditar ? ' Crie o primeiro.' : ''}</p> : null
+      )}
 
       {/* Editor */}
       {editor && (
