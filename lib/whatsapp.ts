@@ -61,7 +61,16 @@ export function explicaFalhaConexao(status: number, corpo: any, instancia: strin
 // Normaliza a URL do Evolution: aceita com ou sem https:// (o fetch exige protocolo)
 // e remove a barra final. Ex.: "xxx.up.railway.app/" -> "https://xxx.up.railway.app".
 export function normalizarUrlEvolution(u?: string): string {
-  const s = (u || '').trim().replace(/\/+$/, '')
+  let s = (u || '').trim()
+  if (!s) return ''
+  // Lixo de COPIAR E COLAR nas DUAS pontas. A Sua Dupla colou a URL junto com o
+  // parêntese do exemplo — "...railway.app)" — e o fetch falhava sem dizer por
+  // quê; um caractere derrubava a integração inteira. Aspas, vírgula e ponto e
+  // vírgula entram pelo mesmo motivo (colar de uma frase, de .env ou de JSON).
+  // O começo importa tanto quanto o fim: aspa de abertura vira "https://"https://…".
+  s = s.replace(/^[([<'"`\s]+/, '').replace(/[)\]>,;'"`\s]+$/, '')
+  // Barra final por último: pode estar ANTES do lixo ("...app/)").
+  s = s.replace(/\/+$/, '')
   if (!s) return ''
   return /^https?:\/\//i.test(s) ? s : `https://${s}`
 }

@@ -15,6 +15,26 @@ describe('normalizarUrlEvolution', () => {
     expect(normalizarUrlEvolution('')).toBe('')
     expect(normalizarUrlEvolution(undefined)).toBe('')
   })
+  // Bug real (2026-07-21, Sua Dupla Cidadania): a URL foi colada junto com o
+  // parêntese do exemplo do runbook — "...railway.app)". O fetch falhava e a
+  // tela só dizia "Erro ao consultar"; um caractere derrubava a integração.
+  it('remove lixo de copiar-e-colar no fim da URL', () => {
+    const alvo = 'https://evolution-api-production-a6ad.up.railway.app'
+    expect(normalizarUrlEvolution('https://evolution-api-production-a6ad.up.railway.app)')).toBe(alvo)
+    expect(normalizarUrlEvolution('evolution-api-production-a6ad.up.railway.app)')).toBe(alvo)
+    expect(normalizarUrlEvolution('"https://evolution-api-production-a6ad.up.railway.app",')).toBe(alvo)
+    expect(normalizarUrlEvolution('https://evolution-api-production-a6ad.up.railway.app;')).toBe(alvo)
+  })
+  it('barra final junto com o lixo também sai', () => {
+    expect(normalizarUrlEvolution('https://x.up.railway.app/)')).toBe('https://x.up.railway.app')
+  })
+  it('espaço em volta não atrapalha', () => {
+    expect(normalizarUrlEvolution('  https://x.up.railway.app )  ')).toBe('https://x.up.railway.app')
+  })
+  it('só lixo devolve vazio (não vira "https://")', () => {
+    expect(normalizarUrlEvolution(')')).toBe('')
+    expect(normalizarUrlEvolution('  ,  ')).toBe('')
+  })
 })
 
 // Extração do texto de uma mensagem recebida do Evolution (messages.upsert).
