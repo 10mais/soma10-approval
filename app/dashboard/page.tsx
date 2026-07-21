@@ -1946,9 +1946,11 @@ function Dashboard() {
           )}
 
           {/* Seletor de visualização por cliente — primeira coisa exibida (equipe).
-              Oculto no turismo e na clínica: essas instâncias não têm "clientes"
-              de agência (sub-accounts) — a aba clientes já é oculta nos dois perfis. */}
-          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && <div style={{ marginBottom: 20 }}>
+              Oculto no turismo, na clínica e na cidadania: essas instâncias não têm
+              "clientes" de agência (sub-accounts) — a aba clientes já é oculta nos
+              três perfis. Na cidadania o cliente é PESSOA (contato do CRM) e o que
+              se acompanha é o Processo, não uma sub-conta de marca. */}
+          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
@@ -3521,7 +3523,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} onIrAgenda={() => setAba('agenda' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} onIrAgenda={() => setAba('agenda' as any)} onIrProcessos={() => setAba('processos' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (

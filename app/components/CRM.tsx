@@ -19,6 +19,7 @@ type Negocio = {
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
+  paisInteresse?: string; ascendenteOrigem?: string; grauParentesco?: string; processoId?: string
   queixaPrincipal?: string
   destinoDesejado?: string; qtdPassageiros?: number; epocaDesejada?: string; preferencias?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
@@ -29,7 +30,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, onIrAgenda }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; onIrAgenda?: () => void }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -48,9 +49,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // Clínica não tem Empresas. 'pacientes' foi unificado em Contatos — o
   // sessionStorage antigo pode trazer essa vista, que já não existe.
   useEffect(() => {
-    if (perfilClinica && vista === 'empresas') setVista('funil')
+    // Clínica e cidadania vendem para PESSOA FÍSICA — não têm Empresas.
+    if ((perfilClinica || perfilCidadania) && vista === 'empresas') setVista('funil')
     if ((vista as string) === 'pacientes') setVista('contatos')
-  }, [perfilClinica, vista])
+  }, [perfilClinica, perfilCidadania, vista])
   // "Agendar" a partir do CRM: guarda o pré-preenchimento e navega pra Agenda
   function agendarNoCrm(prefill: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) {
     try { sessionStorage.setItem('agenda_prefill', JSON.stringify(prefill)) } catch {}
@@ -210,7 +212,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: '#111', flexShrink: 0 }}>CRM</h2>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {((perfilClinica
+          {((perfilClinica || perfilCidadania
             ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
             : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
           ) as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
@@ -228,7 +230,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                 <span style={{ background: '#b45309', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
               )}
             </button>
-            {podeEditar && <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica || perfilTurismo ? 'Nova oportunidade' : 'Novo negócio'}</button>}
+            {podeEditar && <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania ? 'Nova oportunidade' : 'Novo negócio'}</button>}
           </div>
         )}
         {vista === 'contatos' && (
@@ -367,13 +369,13 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} onIrProcessos={onIrProcessos} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {abordar && <AbordagemModal contato={abordar} podeEditar={podeEditar}
         onClose={() => setAbordar(null)}
         onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setAbordar(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={vista === 'contatos' && perfilClinica ? 'lead' : 'paciente'} onAgendar={perfilClinica ? agendarNoCrm : undefined}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} tipoPadrao={perfilCidadania ? 'requerente' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
         onAbrirWhatsApp={(telefone, contatoId) => {
           // `telefone` vem do formulário (a ficha acabou de salvar): a lista em
           // memória ainda tem o número antigo e abordaria o número errado.
@@ -1643,11 +1645,12 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   )
 }
 
-function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
-  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '' })
-  // Clínica e turismo vendem para PESSOA: a oportunidade nasce do contato, sem
-  // exigir empresa (regra de agência de marketing).
-  const semEmpresa = perfilClinica || perfilTurismo
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
+  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
+  // Clínica, turismo e cidadania vendem para PESSOA: a oportunidade nasce do
+  // contato, sem exigir empresa (regra de agência de marketing). Na cidadania a
+  // venda é sempre para CPF — não existe caso de empresa.
+  const semEmpresa = perfilClinica || perfilTurismo || perfilCidadania
   // #5 — toda oportunidade precisa de um contato: existente ou novo
   const [modoContato, setModoContato] = useState<'existente' | 'novo'>((contatos || []).length ? 'existente' : 'novo')
   // Vindo do inbox, o contato já chega escolhido (a conversa É o contato)
@@ -1683,7 +1686,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, destinoDesejado: f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias }),
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, destinoDesejado: f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
@@ -1771,6 +1774,17 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
               <div><label style={labelStyle}>Época desejada</label><input value={f.epocaDesejada} onChange={e => setF({ ...f, epocaDesejada: e.target.value })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
             </div>
             <div><label style={labelStyle}>Preferências e desejos</label><textarea value={f.preferencias} onChange={e => setF({ ...f, preferencias: e.target.value })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          </>) : perfilCidadania ? (<>
+            {/* Cidadania: a qualificação é DA ELEGIBILIDADE — de qual país, por qual
+                ascendente e a que distância. Venda é sempre para CPF. */}
+            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Elegibilidade</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>País de interesse</label><input value={f.paisInteresse} onChange={e => setF({ ...f, paisInteresse: e.target.value })} placeholder="Luxemburgo" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Grau de parentesco</label><input value={f.grauParentesco} onChange={e => setF({ ...f, grauParentesco: e.target.value })} placeholder="Ex.: bisneto, trineto" style={inputStyle} /></div>
+            </div>
+            <div><label style={labelStyle}>Ascendente / origem da família</label><input value={f.ascendenteOrigem} onChange={e => setF({ ...f, ascendenteOrigem: e.target.value })} placeholder="Nome do antepassado estrangeiro, se souber" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
@@ -1799,7 +1813,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, onAgendar, onAbrirWhatsApp }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, onAgendar, onAbrirWhatsApp, onIrProcessos }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void; onIrProcessos?: () => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -1813,6 +1827,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
   const [tipoAtiv, setTipoAtiv] = useState('nota')
   const [textoAtiv, setTextoAtiv] = useState('')
   const [converter, setConverter] = useState(false)
+  const [abrindoProc, setAbrindoProc] = useState(false)
   // Cadência / agendamentos (Fase 2)
   const [agQuando, setAgQuando] = useState('')
   const [agCanal, setAgCanal] = useState('whatsapp')
@@ -1824,6 +1839,34 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
     if (r?.negocio) setNeg(r.negocio)
     onMudou()
   }
+  // CIDADANIA — concretizar a venda É abrir o processo. Não há passagem de
+  // bastão nem "criar cliente": quem vendeu acompanha, e o que nasce é o caso da
+  // família na esteira. O processoId volta para o negócio, então clicar de novo
+  // não abre um segundo processo (a idempotência mora no dado, não no botão).
+  async function abrirProcesso() {
+    if (neg.processoId || abrindoProc) return
+    setAbrindoProc(true)
+    const r = await fetch('/api/processos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titulo: contato?.nome || neg.titulo || 'Novo processo',
+        clienteId: contato?.id || '',
+        paisAlvo: neg.paisInteresse || 'Luxemburgo',
+        ascendente: neg.ascendenteOrigem || '',
+        valorContrato: neg.valor || undefined,
+        responsavelEmail: neg.dono || '',
+        observacoes: neg.dores || '',
+        etapa: 'viabilidade',
+      }),
+    }).then(x => x.json()).catch(() => null)
+    setAbrindoProc(false)
+    if (!r?.ok || !r?.processo?.id) { toast(r?.error || 'Não foi possível abrir o processo.', 'erro'); return }
+    // Marca ganho no funil E amarra o processo ao negócio, numa tacada só.
+    const g = estagiosPipe.find(e => e.ganho)
+    await patch({ processoId: r.processo.id, ...(g ? { estagioId: g.id } : { status: 'ganho' }) })
+    toast('Processo aberto na esteira.', 'sucesso')
+  }
+
   async function addAtividade() {
     if (!textoAtiv.trim()) return
     await patch({ novaAtividade: { tipo: tipoAtiv, texto: textoAtiv.trim() } })
@@ -1953,6 +1996,14 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <div><label style={labelStyle}>Época desejada</label><input value={neg.epocaDesejada || ''} onChange={e => setNeg({ ...neg, epocaDesejada: e.target.value })} onBlur={() => patch({ epocaDesejada: neg.epocaDesejada })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
             </div>
             <div><label style={labelStyle}>Preferências e desejos</label><textarea value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          </>) : perfilCidadania ? (<>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Elegibilidade</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div><label style={labelStyle}>País de interesse</label><input value={neg.paisInteresse || ''} onChange={e => setNeg({ ...neg, paisInteresse: e.target.value })} onBlur={() => patch({ paisInteresse: neg.paisInteresse })} placeholder="Luxemburgo" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Grau de parentesco</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder="Ex.: bisneto" style={inputStyle} /></div>
+            </div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Ascendente / origem da família</label><input value={neg.ascendenteOrigem || ''} onChange={e => setNeg({ ...neg, ascendenteOrigem: e.target.value })} onBlur={() => patch({ ascendenteOrigem: neg.ascendenteOrigem })} placeholder="Nome do antepassado estrangeiro" style={inputStyle} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -2007,6 +2058,20 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               Venda concretizada (ganho)
             </button>
           )
+        ) : perfilCidadania ? (
+          /* Cidadania: NÃO existe closer nem passagem de bastão. Concretizar a
+             venda É abrir o processo da família na esteira. */
+          neg.processoId ? (
+            <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span>✓ Processo aberto na esteira.</span>
+              {onIrProcessos && <button onClick={onIrProcessos} style={{ padding: '6px 12px', background: '#166534', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver processo</button>}
+            </div>
+          ) : (
+            <button onClick={abrirProcesso} disabled={abrindoProc}
+              style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: abrindoProc ? 'default' : 'pointer', marginBottom: 12, opacity: abrindoProc ? 0.6 : 1 }}>
+              {abrindoProc ? 'Abrindo processo...' : 'Concretizar venda → abrir processo'}
+            </button>
+          )
         ) : neg.clienteId ? (
           <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
         ) : (
@@ -2020,7 +2085,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
         </div>
       </div>
-      {converter && !perfilClinica && !perfilTurismo && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
+      {converter && !perfilClinica && !perfilTurismo && !perfilCidadania && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
     </div>
   )
 }

@@ -106,6 +106,10 @@ export async function POST(req: NextRequest) {
     ...(Number(b.qtdPassageiros) >= 1 ? { qtdPassageiros: Math.floor(Number(b.qtdPassageiros)) } : {}),
     ...(b.epocaDesejada ? { epocaDesejada: String(b.epocaDesejada).slice(0, 80) } : {}),
     ...(b.preferencias ? { preferencias: String(b.preferencias).slice(0, 600) } : {}),
+    // Cidadania: qualificação da elegibilidade (país, ascendente, grau)
+    ...(b.paisInteresse ? { paisInteresse: String(b.paisInteresse).slice(0, 60) } : {}),
+    ...(b.ascendenteOrigem ? { ascendenteOrigem: String(b.ascendenteOrigem).slice(0, 140) } : {}),
+    ...(b.grauParentesco ? { grauParentesco: String(b.grauParentesco).slice(0, 40) } : {}),
     handoff: b.handoff || {},
     atividades: [atividade('criacao', 'Negócio criado', autor)],
     criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
@@ -174,7 +178,7 @@ export async function PUT(req: NextRequest) {
     if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias', 'paisInteresse', 'ascendenteOrigem', 'grauParentesco', 'processoId']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   atualizado.atividades = atividades
 

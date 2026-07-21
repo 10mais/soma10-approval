@@ -981,6 +981,16 @@ export type CrmNegocio = {
   qtdPassageiros?: number    // quantas pessoas pretendem viajar
   epocaDesejada?: string     // quando querem viajar (texto livre: "setembro", "férias")
   preferencias?: string      // preferências e desejos (leito, hotel, passeios…)
+  // Cidadania: a qualificação é DA ELEGIBILIDADE — qual país, de qual ascendente
+  // vem o direito e a que distância (bisneto/trineto muda a análise). Venda é
+  // sempre para PESSOA FÍSICA: os campos de empresa ficam vazios aqui.
+  paisInteresse?: string     // país da cidadania pretendida (padrão: Luxemburgo)
+  ascendenteOrigem?: string  // ascendente estrangeiro / origem da família
+  grauParentesco?: string    // filho, neto, bisneto, trineto…
+  // Processo ABERTO a partir desta venda (perfil cidadania). Não há passagem de
+  // bastão nem criação de "cliente": concretizar a venda É abrir o processo.
+  // Guardado para a abertura ser idempotente — sem ele, cada clique abriria outro.
+  processoId?: string
   // Qualificação da oportunidade (quanto mais rico, melhor a venda e o handoff)
   empresa?: string
   segmento?: string
