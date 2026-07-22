@@ -665,7 +665,7 @@ export type Marco = {
 }
 
 // Gestao de tarefas
-export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido'
+export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido' | 'descartado'
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
 export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video' | 'briefing' | 'copy' | 'campanha'
   // Tipos do perfil clínica (catálogo em GestaoTarefas TIPOS_CLINICA)

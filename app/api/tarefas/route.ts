@@ -136,7 +136,7 @@ export async function PUT(req: NextRequest) {
   const novasAtividades = [...(tarefa.atividades || [])]
 
   // Registra mudancas no activity log
-  const statusLabels: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido' }
+  const statusLabels: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido', descartado: 'Descartado' }
   if (updates.status && updates.status !== tarefa.status) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Status alterado para ${statusLabels[updates.status] || updates.status}`, autor, criadoEm: agora })
   if (updates.responsavelNome && updates.responsavelNome !== tarefa.responsavelNome) novasAtividades.push({ id: uuid(), tipo: 'responsavel', descricao: `Responsavel alterado para ${updates.responsavelNome}`, autor, criadoEm: agora })
   if (updates.prioridade && updates.prioridade !== tarefa.prioridade) novasAtividades.push({ id: uuid(), tipo: 'prioridade', descricao: `Prioridade alterada para ${updates.prioridade}`, autor, criadoEm: agora })

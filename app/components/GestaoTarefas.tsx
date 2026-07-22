@@ -275,6 +275,7 @@ const COLUNAS: { key: string; label: string }[] = [
   { key: 'em_andamento', label: 'Em andamento' },
   { key: 'em_revisao', label: 'Em revisao' },
   { key: 'concluido', label: 'Concluido' },
+  { key: 'descartado', label: 'Descartado' },
 ]
 
 const PRIORIDADES: { key: string; label: string; cor: string }[] = [
@@ -294,7 +295,7 @@ function prazoFormatado(iso?: string) {
 }
 
 function ehAtrasado(prazo?: string, status?: string) {
-  if (!prazo || status === 'concluido') return false
+  if (!prazo || status === 'concluido' || status === 'descartado') return false
   return new Date(prazo).getTime() < Date.now()
 }
 
@@ -377,7 +378,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
     // Tarefa antiga sem prioridade conta como "Media" — é o padrão de quem cria hoje.
     if (filtroPrioridade && (t.prioridade || 'media') !== filtroPrioridade) return false
     if (busca.trim() && !((t.titulo || '') + ' ' + (t.descricao || '').replace(/<[^>]+>/g, ' ')).toLowerCase().includes(busca.toLowerCase())) return false
-    if (!mostrarConcluidas && t.status === 'concluido') return false
+    if (!mostrarConcluidas && (t.status === 'concluido' || t.status === 'descartado')) return false
     return true
   })
   const qtdConcluidas = tarefas.filter(t => t.status === 'concluido'
@@ -511,7 +512,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       {/* KANBAN */}
       {view === 'kanban' && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
-          {COLUNAS.map(col => {
+          {COLUNAS.filter(col => mostrarConcluidas || col.key !== 'descartado').map(col => {
             const cards = filtradas.filter(t => t.status === col.key && !t.tarefaPaiId)
             return (
               <div key={col.key}
@@ -582,7 +583,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
           {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
             const tp = tipoInfo(t.tipo)
-            const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || s.status !== 'concluido'))
+            const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || (s.status !== 'concluido' && s.status !== 'descartado')))
             const linha = (x: any, ehSub: boolean) => {
               const xp = tipoInfo(x.tipo)
               return (
@@ -1369,7 +1370,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
               </div>
               {(() => {
-                const COR_STATUS: Record<string, string> = { a_fazer: '#9ca3af', em_andamento: '#2563eb', em_revisao: '#ca8a04', concluido: '#16a34a' }
+                const COR_STATUS: Record<string, string> = { a_fazer: '#9ca3af', em_andamento: '#2563eb', em_revisao: '#ca8a04', concluido: '#16a34a', descartado: '#71717a' }
                 const relTarefas = relacionadas.map(rid => todasTarefas.find(t => t.id === rid)).filter(Boolean)
                 return (
                   <>
