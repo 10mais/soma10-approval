@@ -110,6 +110,18 @@ export function contaConectada(conta?: ContaSocial | null): boolean {
   return redesDaConta(conta).length > 0
 }
 
+// Forma SEGURA para o frontend: sem tokens, com flags de conexão. O frontend
+// precisa saber que a conta existe e em que redes publica, jamais o token —
+// mesmo cuidado que o GET de /api/clientes já tem com os campos escalares.
+export type ContaPublica = { id: string; nome: string; instagramUsername?: string; logo?: string; temInstagram: boolean; temFacebook: boolean }
+
+export function contasPublicas(cliente?: ClienteComContas | null): ContaPublica[] {
+  return contasDoCliente(cliente).map(c => {
+    const r = redesDaConta(c)
+    return { id: c.id, nome: c.nome, instagramUsername: c.instagramUsername, logo: c.logo, temInstagram: r.includes('instagram'), temFacebook: r.includes('facebook') }
+  })
+}
+
 // Para onde um post vai.
 //
 // `contaIds` vazio ou ausente = post antigo, de antes deste campo existir:
@@ -143,4 +155,59 @@ export function jaPublicou(redesPublicadas: string[] | undefined, contaId: strin
   if (lista.includes(chavePublicacao(contaId, rede))) return true
   // Compatibilidade: marca antiga, sem conta, vale para a principal.
   return contaId === ID_CONTA_PRINCIPAL && lista.includes(rede)
+}
+
+// Campos crus vindos da conexão (mesmos nomes que /api/clientes/conectar recebe).
+type Conexao = {
+  nome?: string
+  instagramToken?: string
+  instagramUserId?: string
+  instagramUsername?: string
+  facebookPageId?: string
+  facebookPageToken?: string
+  instagramBusinessId?: string
+  logo?: string
+}
+
+// Duas contas são a MESMA quando batem no perfil de Instagram ou na Página do
+// Facebook. Reconectar (token novo) atualiza a conta existente em vez de criar
+// uma duplicada — senão a lista enche de "Loja Sul" repetida a cada renovação.
+function mesmaConta(a: { instagramUserId?: string; facebookPageId?: string }, b: Conexao): boolean {
+  if (a.instagramUserId && b.instagramUserId && a.instagramUserId === String(b.instagramUserId)) return true
+  if (a.facebookPageId && b.facebookPageId && a.facebookPageId === b.facebookPageId) return true
+  return false
+}
+
+// Adiciona (ou atualiza) um perfil ADICIONAL em contas[]. `idNovo` é injetado
+// por quem chama — o uuid não pode nascer aqui (o módulo é importado no client).
+// Preserva o id de uma conta já existente para não invalidar posts agendados
+// que apontam para ela.
+export function upsertContaAdicional(atual: ContaSocial[] | undefined, conexao: Conexao, idNovo: string): ContaSocial[] {
+  const lista = [...(atual || [])]
+  const nova: ContaSocial = {
+    id: idNovo,
+    nome: conexao.nome || (conexao.instagramUsername ? `@${conexao.instagramUsername}` : 'Novo perfil'),
+    instagramToken: conexao.instagramToken,
+    instagramUserId: conexao.instagramUserId ? String(conexao.instagramUserId) : undefined,
+    instagramUsername: conexao.instagramUsername,
+    instagramConectado: !!(conexao.instagramToken && conexao.instagramUserId),
+    facebookPageId: conexao.facebookPageId,
+    facebookPageToken: conexao.facebookPageToken,
+    instagramBusinessId: conexao.instagramBusinessId,
+    metaConectado: !!(conexao.instagramToken || conexao.facebookPageToken),
+    logo: conexao.logo,
+    criadoEm: new Date().toISOString(),
+  }
+  const iExistente = lista.findIndex(c => mesmaConta(c, conexao))
+  if (iExistente >= 0) {
+    // Reconexão: mantém id, nome (rótulo escolhido pela equipe) e criadoEm.
+    lista[iExistente] = { ...nova, id: lista[iExistente].id, nome: lista[iExistente].nome || nova.nome, criadoEm: lista[iExistente].criadoEm }
+  } else {
+    lista.push(nova)
+  }
+  return lista
+}
+
+export function removerConta(atual: ContaSocial[] | undefined, id: string): ContaSocial[] {
+  return (atual || []).filter(c => c.id !== id)
 }

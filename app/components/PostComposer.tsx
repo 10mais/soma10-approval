@@ -6,8 +6,9 @@ import { confirmar } from '@/lib/toast'
 import DriveButton from './DriveButton'
 import AvatarCliente from './AvatarCliente'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { type ContaPublica } from '@/lib/contasSociais'
 
-type Cliente = { id: string; nome: string; instagram: string; logo?: string }
+type Cliente = { id: string; nome: string; instagram: string; logo?: string; contas?: ContaPublica[]; [k: string]: any }
 type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
 type EmEnvio = { id: string; nome: string; progresso: number }
 
@@ -21,6 +22,7 @@ export type ComposerValue = {
   colaboradores: string[]
   capasVideo: Record<string, string>
   redes: ('instagram' | 'facebook')[]
+  contaIds?: string[] // perfis de destino (cliente com mais de um). Vazio = principal.
   acao?: 'publicar' | 'agendar' | 'rascunho' | 'salvar' | 'aprovacao'
 }
 
@@ -122,6 +124,27 @@ export default function PostComposer({
 
   function alternarRede(rede: 'instagram' | 'facebook') {
     setRedes(atual => atual.includes(rede) ? atual.filter(r => r !== rede) : [...atual, rede])
+  }
+
+  // Perfis do cliente atual (forma pública do GET: flags, sem token). Só vira
+  // escolha quando há MAIS DE UM — cliente com um perfil só (a maioria) não vê
+  // nada disso e o post não carrega contaIds.
+  const clienteAtual = clientes.find(c => c.id === clienteId)
+  const contas: ContaPublica[] = clienteAtual?.contas || []
+  const multiPerfil = contas.length > 1
+  const [contaIds, setContaIds] = useState<string[]>(valorInicial?.contaIds || [])
+  // Ao entrar num cliente multi-perfil sem escolha prévia, marca todos por
+  // padrão — o comportamento antigo era "vai para a conta do cliente".
+  useEffect(() => {
+    if (!multiPerfil) { setContaIds([]); return }
+    setContaIds(prev => {
+      const validos = prev.filter(id => contas.some(c => c.id === id))
+      return validos.length ? validos : contas.map(c => c.id)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteId, contas.length])
+  function alternarConta(id: string) {
+    setContaIds(atual => atual.includes(id) ? atual.filter(c => c !== id) : [...atual, id])
   }
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
@@ -316,9 +339,9 @@ export default function PostComposer({
 
   // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
   useEffect(() => {
-    aoMudar?.({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes })
+    aoMudar?.({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId, marcoId, legenda, midias, dataAgendada, formato, colaboradores, redes])
+  }, [clienteId, marcoId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil])
 
   async function submeter(acao: ComposerValue['acao']) {
     // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
@@ -342,12 +365,13 @@ export default function PostComposer({
         if (!ok) return
       }
     }
-    onSubmit({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, acao })
+    onSubmit({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}), acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
   const marcoOk = !clienteId || !!marcoId
-  const podePublicar = !!clienteId && marcoOk && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
+  const perfilOk = !multiPerfil || contaIds.length > 0
+  const podePublicar = !!clienteId && marcoOk && perfilOk && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
@@ -376,6 +400,37 @@ export default function PostComposer({
               {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
             </select>
             {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
+          </div>
+        )}
+
+        {/* Perfis de destino — só aparece quando o cliente tem mais de um */}
+        {multiPerfil && (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Perfis</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {contas.map(conta => {
+                const ativo = contaIds.includes(conta.id)
+                const redesConta = [conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ')
+                return (
+                  <button key={conta.id} type="button" onClick={() => alternarConta(conta.id)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 13px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `1.5px solid ${ativo ? '#1877f2' : '#e0e0e0'}`, background: ativo ? '#1877f210' : '#fff' }}>
+                    <span style={{ width: 16, height: 16, borderRadius: 5, border: `1.5px solid ${ativo ? '#1877f2' : '#ccc'}`, background: ativo ? '#1877f2' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {ativo && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                    </span>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--marca, #ffc00f)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#111' }}>
+                      <AvatarCliente logo={conta.logo} nome={conta.nome} />
+                    </span>
+                    <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, textAlign: 'left' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{conta.nome}</span>
+                      {redesConta && <span style={{ fontSize: 10.5, color: '#999' }}>{redesConta}</span>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {contaIds.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ef4444' }}>Selecione ao menos um perfil.</p>}
+            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#aaa' }}>O mesmo conteúdo vai para os perfis marcados. As redes abaixo valem para cada um.</p>
           </div>
         )}
 

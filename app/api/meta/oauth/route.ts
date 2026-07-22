@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
 
   // Cliente-alvo opcional: quando a conexão parte do card de um cliente específico
   const clienteAlvo = req.nextUrl.searchParams.get('cliente') || ''
-  const state = clienteAlvo ? `soma10:${clienteAlvo}` : 'soma10'
+  // `nova=1`: conectar como PERFIL ADICIONAL (contas[]), não sobrescrever a
+  // principal. Viaja no state porque o OAuth é um redirect de página inteira.
+  const comoNova = req.nextUrl.searchParams.get('nova') === '1'
+  const state = clienteAlvo ? `soma10:${clienteAlvo}${comoNova ? ':nova' : ''}` : 'soma10'
 
   const scopes = [
     'pages_manage_posts',

@@ -621,8 +621,10 @@ function Dashboard() {
   const [vinculando, setVinculando] = useState(false)
   const [metaErro, setMetaErro] = useState('')
   const [metaClienteAlvo, setMetaClienteAlvo] = useState('')
+  const [metaComoNova, setMetaComoNova] = useState(false) // OAuth voltou pedindo perfil ADICIONAL
   const [vinculandoPagina, setVinculandoPagina] = useState('')
   const [conectarRedesCliente, setConectarRedesCliente] = useState<string | null>(null)
+  const [conectarComoNova, setConectarComoNova] = useState(false) // abrir a conexão em modo "perfil adicional"
   // Notificações
   const [notificacoes, setNotificacoes] = useState<any[]>([])
   const [inboxAberto, setInboxAberto] = useState(false)
@@ -804,6 +806,7 @@ function Dashboard() {
     if (pagesId) {
       setAba('clientes')
       setMetaClienteAlvo(searchParams.get('meta_cliente') || '')
+      setMetaComoNova(searchParams.get('meta_nova') === '1')
       fetch(`/api/meta/pages?id=${encodeURIComponent(pagesId)}`)
         .then(r => r.json())
         .then(pages => { if (Array.isArray(pages)) setMetaPages(pages) })
@@ -1155,6 +1158,7 @@ function Dashboard() {
       colaboradores: (post as any).colaboradores || [],
       capasVideo: (post as any).capasVideo || {},
       redes: (post as any).redes || ['instagram', 'facebook'],
+      ...((post as any).contaIds ? { contaIds: (post as any).contaIds } : {}),
     })
     setComposerKey(k => k + 1)
     setPostPreview(null)
@@ -1431,12 +1435,16 @@ function Dashboard() {
         instagramUsername: page.instagram.username,
         igToken: page.igToken,
         igUserId: page.igUserId,
+        // Adicionar como perfil extra (contas[]) quando a conexão partiu do
+        // botão "Adicionar perfil"; senão, sobrescreve a conta principal.
+        ...(metaComoNova ? { comoNovaConta: true, contaNome: page.instagram.username ? `@${page.instagram.username}` : page.pageName } : {}),
       }),
     })
     setVinculandoPagina('')
     setMetaPages([])
     setVinculos({})
     setMetaClienteAlvo('')
+    setMetaComoNova(false)
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
   }
 
@@ -1565,9 +1573,9 @@ function Dashboard() {
 
   function iniciarEdicaoCliente(c: Cliente) {
     setEditandoCliente(c.id)
-    setEdicaoCliente({ nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
+    setEdicaoCliente({ id: c.id, nome: c.nome, instagram: c.instagram, logo: c.logo, corPrimaria: c.corPrimaria || '#ffc00f', corSecundaria: c.corSecundaria || '#111111', tipo: c.tipo || 'cliente', entregaveis: c.entregaveis || [], postsMensais: c.postsMensais || 0,
       contratoValor: (c as any).contratoValor, contratoInicio: (c as any).contratoInicio, contratoRenovacao: (c as any).contratoRenovacao, contratoCiclo: (c as any).contratoCiclo, diaVencimento: (c as any).diaVencimento, receitasAvulsas: (c as any).receitasAvulsas || [],
-      permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '', squad: (c as any).squad || [], modulos: (c as any).modulos || {} } as any)
+      permissoes: (c as any).permissoes || {}, handoffVendas: (c as any).handoffVendas || '', squad: (c as any).squad || [], squadPapeis: (c as any).squadPapeis || {}, contas: (c as any).contas || [], modulos: (c as any).modulos || {} } as any)
   }
 
   async function uploadLogoCliente(arquivo: File) {
@@ -3320,7 +3328,8 @@ function Dashboard() {
           <ConectarRedesModal
             clienteId={conectarRedesCliente || null}
             clienteNome={clientes.find(c => c.id === conectarRedesCliente)?.nome}
-            onClose={() => setConectarRedesCliente(null)}
+            comoNovaConta={conectarComoNova}
+            onClose={() => { setConectarRedesCliente(null); setConectarComoNova(false) }}
           />
         )}
 
@@ -4083,6 +4092,48 @@ function Dashboard() {
                           {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: '#bbb' }}>Nenhum colaborador cadastrado ainda.</span>}
                         </div>
                       </div>
+
+                      {/* Perfis conectados — vários Instagram/Facebook por cliente (filiais) */}
+                      {edicaoCliente.id && (() => {
+                        const contasCli = ((edicaoCliente as any).contas || []) as { id: string; nome: string; logo?: string; temInstagram?: boolean; temFacebook?: boolean }[]
+                        return (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888' }}>Perfis conectados</label>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#bbb' }}>Cliente com mais de uma loja/perfil: adicione cada Instagram ou Facebook. No Novo Post você escolhe em quais publicar.</p>
+                              </div>
+                              <button type="button" onClick={() => { setConectarComoNova(true); setConectarRedesCliente(edicaoCliente.id!) }}
+                                style={{ flexShrink: 0, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Adicionar perfil</button>
+                            </div>
+                            {contasCli.length === 0
+                              ? <p style={{ margin: 0, fontSize: 12.5, color: '#bbb' }}>Nenhum perfil conectado ainda. Use "Conectar redes" (conta principal) ou "Adicionar perfil".</p>
+                              : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {contasCli.map(conta => (
+                                    <div key={conta.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, border: '1px solid #eee', background: '#fafafa' }}>
+                                      <span style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--marca,#ffc00f)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#111' }}>
+                                        <AvatarCliente logo={conta.logo} nome={conta.nome} />
+                                      </span>
+                                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111' }}>{conta.nome}
+                                        {conta.id === 'principal' && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>principal</span>}
+                                      </span>
+                                      <span style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap' }}>{[conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ') || 'sem rede'}</span>
+                                      {conta.id !== 'principal' && (
+                                        <button type="button" onClick={async () => {
+                                          if (!(await confirmar(`Desconectar o perfil "${conta.nome}"? Os posts já publicados não são afetados.`, { titulo: 'Desconectar perfil', okLabel: 'Desconectar', perigo: true }))) return
+                                          const r = await fetch('/api/clientes/conectar', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: edicaoCliente.id, contaId: conta.id }) }).then(x => x.json()).catch(() => null)
+                                          if (r?.ok) { setEdicaoCliente(p => ({ ...p, contas: r.contas } as any)); fetch('/api/clientes').then(x => x.json()).then(setClientes) }
+                                          else toast('Não foi possível desconectar.', 'erro')
+                                        }} style={{ flexShrink: 0, background: 'none', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                          </div>
+                        )
+                      })()}
 
                       {/* Módulos & assinatura (plano modular) */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>

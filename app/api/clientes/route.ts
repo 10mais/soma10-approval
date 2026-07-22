@@ -6,6 +6,7 @@ import { getClientesRaw } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { limparSquadPapeis, squadCompleto } from '@/lib/squadPapeis'
+import { contasPublicas } from '@/lib/contasSociais'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -29,8 +30,9 @@ export async function GET(req: NextRequest) {
     const c = await redis.get<Cliente>(`cliente:${idParam}`)
     if (!c) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
     if (role === 'cliente' && c.id !== (session.user as any).clienteId) return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
-    const { facebookPageToken, instagramToken, loginSenha, ...seguro } = c as any
-    return NextResponse.json({ ...seguro, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken })
+    const contasPub = contasPublicas(c)
+    const { facebookPageToken, instagramToken, loginSenha, contas, ...seguro } = c as any
+    return NextResponse.json({ ...seguro, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken })
   }
 
   let clientes = await getClientesRaw()
@@ -40,9 +42,14 @@ export async function GET(req: NextRequest) {
     clientes = clientes.filter(c => c.id === clienteId)
   }
 
-  // Nunca expor tokens nem a senha em texto plano ao frontend — só o status importa
+  // Nunca expor tokens nem a senha em texto plano ao frontend — nem os das
+  // contas[] extras. Cada conta vira a forma pública (flags, sem token).
   const seguros = clientes
-    .map(({ facebookPageToken, instagramToken, loginSenha, ...resto }) => resto)
+    .map(c => {
+      const contasPub = contasPublicas(c)
+      const { facebookPageToken, instagramToken, loginSenha, contas, ...resto } = c as any
+      return { ...resto, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken }
+    })
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }))
   return NextResponse.json(seguros)
 }

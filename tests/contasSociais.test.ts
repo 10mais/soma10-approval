@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   contaPrincipal, contasDoCliente, contaPorId, contasAlvo,
   redesDaConta, contaConectada, chavePublicacao, jaPublicou,
+  upsertContaAdicional, removerConta,
   ID_CONTA_PRINCIPAL, type ContaSocial,
 } from '@/lib/contasSociais'
 
@@ -133,6 +134,54 @@ describe('contasAlvo — para onde o post vai', () => {
 
   it('mantém a ordem do cliente, não a ordem do pedido', () => {
     expect(contasAlvo(cli, ['c2', ID_CONTA_PRINCIPAL]).map(c => c.id)).toEqual([ID_CONTA_PRINCIPAL, 'c2'])
+  })
+})
+
+describe('upsertContaAdicional', () => {
+  it('adiciona um perfil novo', () => {
+    const r = upsertContaAdicional([], { instagramToken: 't', instagramUserId: '99', instagramUsername: 'nova' }, 'id-1')
+    expect(r.length).toBe(1)
+    expect(r[0]).toMatchObject({ id: 'id-1', nome: '@nova', instagramUserId: '99', instagramConectado: true })
+  })
+
+  it('reconexão do MESMO Instagram atualiza o token e preserva id, nome e criadoEm', () => {
+    const antiga: ContaSocial = { id: 'fixo', nome: 'Loja Sul', instagramUserId: '99', instagramToken: 'velho', criadoEm: '2020-01-01' }
+    const r = upsertContaAdicional([antiga], { instagramToken: 'novo', instagramUserId: '99', instagramUsername: 'sul' }, 'id-ignorado')
+    expect(r.length).toBe(1) // não duplicou
+    expect(r[0].id).toBe('fixo') // id preservado — post agendado não perde a conta
+    expect(r[0].nome).toBe('Loja Sul') // rótulo da equipe mantido
+    expect(r[0].instagramToken).toBe('novo') // token renovado
+    expect(r[0].criadoEm).toBe('2020-01-01')
+  })
+
+  it('reconhece a mesma conta pela Página do Facebook', () => {
+    const antiga: ContaSocial = { id: 'fixo', nome: 'x', facebookPageId: 'pg-9', facebookPageToken: 'velho' }
+    const r = upsertContaAdicional([antiga], { facebookPageId: 'pg-9', facebookPageToken: 'novo', instagramUsername: 'y' }, 'novo-id')
+    expect(r.length).toBe(1)
+    expect(r[0].id).toBe('fixo')
+    expect(r[0].facebookPageToken).toBe('novo')
+  })
+
+  it('perfis diferentes convivem', () => {
+    let r = upsertContaAdicional([], { instagramToken: 't1', instagramUserId: '1', instagramUsername: 'a' }, 'id-a')
+    r = upsertContaAdicional(r, { instagramToken: 't2', instagramUserId: '2', instagramUsername: 'b' }, 'id-b')
+    expect(r.map(c => c.id)).toEqual(['id-a', 'id-b'])
+  })
+
+  it('usa o nome dado pela equipe quando vem', () => {
+    const r = upsertContaAdicional([], { nome: 'Loja Centro', instagramToken: 't', instagramUserId: '5' }, 'id')
+    expect(r[0].nome).toBe('Loja Centro')
+  })
+})
+
+describe('removerConta', () => {
+  it('tira só a conta pedida', () => {
+    const contas: ContaSocial[] = [{ id: 'a', nome: 'A' }, { id: 'b', nome: 'B' }]
+    expect(removerConta(contas, 'a').map(c => c.id)).toEqual(['b'])
+  })
+  it('id inexistente não muda nada e não quebra', () => {
+    expect(removerConta([{ id: 'a', nome: 'A' }], 'z').map(c => c.id)).toEqual(['a'])
+    expect(removerConta(undefined, 'a')).toEqual([])
   })
 })
 

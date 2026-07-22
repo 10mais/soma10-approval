@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
 import { copiarFotoParaBlob } from '@/lib/blobFoto'
+import { upsertContaAdicional, removerConta, contasDoCliente } from '@/lib/contasSociais'
+import { v4 as uuid } from 'uuid'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -13,6 +15,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const { clienteId, facebookPageId, facebookPageToken, instagramBusinessId, instagramUsername, igToken, igUserId } = body
+  // Perfil ADICIONAL: em vez de sobrescrever a conta principal (campos escalares
+  // do cliente), guarda em contas[]. `contaNome` é o rótulo interno ("Loja Sul").
+  const comoNovaConta = !!body.comoNovaConta
+  const contaNome = typeof body.contaNome === 'string' ? body.contaNome.trim() : ''
 
   if (!clienteId) {
     return NextResponse.json({ error: 'clienteId é obrigatório' }, { status: 400 })
@@ -28,6 +34,17 @@ export async function POST(req: NextRequest) {
       const me = await fetch(`https://graph.instagram.com/me?fields=username,profile_picture_url&access_token=${igToken}`).then(r => r.json())
       if (me?.profile_picture_url) fotoPerfil = (await copiarFotoParaBlob(me.profile_picture_url, clienteId)) || me.profile_picture_url
     } catch {}
+
+    // Perfil adicional: vai para contas[], NÃO toca na conta principal.
+    if (comoNovaConta) {
+      const contas = upsertContaAdicional(cliente.contas, {
+        nome: contaNome, instagramToken: igToken, instagramUserId: String(igUserId),
+        instagramUsername: instagramUsername || undefined, logo: fotoPerfil,
+      }, uuid())
+      await redis.set(`cliente:${clienteId}`, { ...cliente, contas })
+      revalidateTag('clientes')
+      return NextResponse.json({ ok: true, instagram: instagramUsername, tipo: 'instagram-login', conta: 'adicional', contas: contasDoCliente({ ...cliente, contas }) })
+    }
 
     const atualizado: Cliente = {
       ...cliente,
@@ -110,6 +127,17 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
+    // Perfil adicional: contas[], sem tocar na principal.
+    if (comoNovaConta) {
+      const contas = upsertContaAdicional(cliente.contas, {
+        nome: contaNome, facebookPageId, facebookPageToken: pageToken,
+        instagramBusinessId: igId, instagramUsername: igUsername || undefined, logo: fotoPerfil,
+      }, uuid())
+      await redis.set(`cliente:${clienteId}`, { ...cliente, contas })
+      revalidateTag('clientes')
+      return NextResponse.json({ ok: true, instagram: igUsername, instagramId: igId, conta: 'adicional', contas: contasDoCliente({ ...cliente, contas }) })
+    }
+
     const clienteAtualizado: Cliente = {
       ...cliente,
       facebookPageId,
@@ -135,10 +163,19 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
-  const { clienteId } = await req.json()
+  const { clienteId, contaId } = await req.json()
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
+  // Desconectar um PERFIL ADICIONAL específico: tira só de contas[], a principal fica.
+  if (contaId && contaId !== 'principal') {
+    const contas = removerConta(cliente.contas, contaId)
+    await redis.set(`cliente:${clienteId}`, { ...cliente, contas })
+    revalidateTag('clientes')
+    return NextResponse.json({ ok: true, contas: contasDoCliente({ ...cliente, contas }) })
+  }
+
+  // Sem contaId (ou 'principal'): zera a conta principal, como sempre fez.
   const clienteAtualizado: Cliente = {
     ...cliente,
     facebookPageId: undefined,
@@ -153,5 +190,5 @@ export async function DELETE(req: NextRequest) {
 
   await redis.set(`cliente:${clienteId}`, clienteAtualizado)
   revalidateTag('clientes')
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, contas: contasDoCliente(clienteAtualizado) })
 }

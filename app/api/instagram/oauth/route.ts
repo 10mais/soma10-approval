@@ -23,8 +23,10 @@ export async function GET(req: NextRequest) {
   // aprovada, então mantê-la fora do fluxo padrão evita quebrar a conexão de clientes
   // reais (não-testadores) antes do App Review.
   const comMensagens = req.nextUrl.searchParams.get('messaging') === '1'
+  // `nova=1`: perfil ADICIONAL (contas[]), viaja no state (OAuth é redirect).
+  const comoNova = req.nextUrl.searchParams.get('nova') === '1'
   // Sem cliente + mensagens = conexão da PRÓPRIA AGÊNCIA (state soma10msg)
-  const state = clienteAlvo ? `soma10:${clienteAlvo}` : (comMensagens ? 'soma10msg' : 'soma10')
+  const state = clienteAlvo ? `soma10:${clienteAlvo}${comoNova ? ':nova' : ''}` : (comMensagens ? 'soma10msg' : 'soma10')
 
   const scopeArr = ['instagram_business_basic', 'instagram_business_content_publish']
   if (comMensagens) scopeArr.push('instagram_business_manage_messages', 'instagram_business_manage_comments')

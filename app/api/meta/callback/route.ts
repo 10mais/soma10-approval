@@ -7,8 +7,11 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const state = searchParams.get('state') || ''
-  const clienteAlvo = state.startsWith('soma10:') ? state.slice('soma10:'.length) : ''
-  const sufixoCliente = clienteAlvo ? `&meta_cliente=${encodeURIComponent(clienteAlvo)}` : ''
+  // state: "soma10:<clienteId>" ou "soma10:<clienteId>:nova" (perfil adicional).
+  const partesState = state.startsWith('soma10:') ? state.slice('soma10:'.length).split(':') : []
+  const clienteAlvo = partesState[0] || ''
+  const comoNova = partesState[1] === 'nova'
+  const sufixoCliente = clienteAlvo ? `&meta_cliente=${encodeURIComponent(clienteAlvo)}${comoNova ? '&meta_nova=1' : ''}` : ''
 
   const BASE_URL = process.env.NEXTAUTH_URL || 'https://soma10-approval.vercel.app'
   const REDIRECT_URI = `${BASE_URL}/api/meta/callback`

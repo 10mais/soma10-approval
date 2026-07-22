@@ -82,10 +82,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
-  const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
+  const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
+  // Perfis de destino. Vazio/ausente = conta principal (contasAlvo trata isso).
+  // Guardado só quando há escolha explícita — post de cliente com uma conta só
+  // nunca carrega este campo, e nada muda para ele.
+  const contaIdsLimpos: string[] = Array.isArray(contaIds)
+    ? Array.from(new Set(contaIds.filter((c: any): c is string => typeof c === 'string' && !!c.trim()).map((c: string) => c.trim())))
+    : []
   const colaboradoresLimpos = Array.isArray(colaboradores)
     ? colaboradores.map((c: string) => String(c).trim().replace(/^@/, '')).filter(Boolean).slice(0, 4)
     : []
@@ -107,6 +113,7 @@ export async function POST(req: NextRequest) {
     ...(colaboradoresLimpos.length ? { colaboradores: colaboradoresLimpos } : {}),
     ...(capasVideo && typeof capasVideo === 'object' && Object.keys(capasVideo).length ? { capasVideo } : {}),
     redes: redesLimpas.length ? redesLimpas : ['instagram', 'facebook'],
+    ...(contaIdsLimpos.length ? { contaIds: contaIdsLimpos } : {}),
     ...(planoId ? { planoId } : {}),
     ...(etapa ? { etapa } : {}),
     ...(briefing ? { briefing } : {}),
