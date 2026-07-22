@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid'
 import { confirmar, toast } from '@/lib/toast'
 import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
+import { exportarSvg, exportarPng, exportarPdf } from '@/lib/exportarMapa'
 
 type No = { id: string; texto: string; x: number; y: number; cor?: string; colapsado?: boolean }
 type Conexao = { id: string; de: string; para: string }
@@ -457,6 +458,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
         </button>
         <button onClick={() => aplicarLayout(layout)} title="Organizar agora" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid #e6e6e6', background: '#fff', color: '#666', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Organizar</button>
         <button onClick={() => addNo()} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
+        <ExportarMenu titulo={titulo} nos={nos} conexoes={conexoes} layout={layout} desabilitado={nos.length === 0} />
       </div>
 
       <div ref={canvasRef}
@@ -567,6 +569,42 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
         </div>
       </div>
       <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> mantém tudo organizado · <b style={{ color: '#999' }}>Ctrl+Z</b> desfaz.</p>
+    </div>
+  )
+}
+
+// Botão "Exportar" + menu (PDF / PNG / SVG). Exporta a partir dos DADOS do mapa
+// (lib/mapaSvg), não da tela — o zoom/pan atual não afeta o arquivo gerado.
+function ExportarMenu({ titulo, nos, conexoes, layout, desabilitado }: { titulo: string; nos: No[]; conexoes: Conexao[]; layout: 'mapa' | 'organograma' | 'lista'; desabilitado: boolean }) {
+  const [aberto, setAberto] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const mapa = { titulo, nos, conexoes, layout }
+
+  async function exportar(fn: () => void | Promise<void>) {
+    setAberto(false); setOcupado(true)
+    try { await fn() } catch (e: any) { toast(e?.message || 'Não foi possível exportar o mapa.', 'erro') }
+    finally { setOcupado(false) }
+  }
+
+  const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', border: 'none', background: 'none', textAlign: 'left', fontSize: 13, color: '#111', cursor: 'pointer', fontFamily: 'inherit' }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => setAberto(v => !v)} disabled={desabilitado || ocupado}
+        title={desabilitado ? 'Adicione ao menos um nó para exportar' : 'Exportar para enviar ao cliente'}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: desabilitado ? '#bbb' : '#111', border: '1.5px solid #e6e6e6', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: desabilitado ? 'default' : 'pointer' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+        {ocupado ? 'Exportando…' : 'Exportar'}
+      </button>
+      {aberto && !desabilitado && (
+        <div onClick={fecharFora(() => setAberto(false))} style={{ position: 'fixed', inset: 0, zIndex: 40 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 12, top: 100, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', border: '1px solid #eee', overflow: 'hidden', minWidth: 180, zIndex: 41 }}>
+            <button style={item} onClick={() => exportar(() => exportarPdf(mapa))}><b>PDF</b> — uma página pronta</button>
+            <button style={item} onClick={() => exportar(() => exportarPng(mapa))}><b>PNG</b> — imagem</button>
+            <button style={item} onClick={() => exportar(() => exportarSvg(mapa))}><b>SVG</b> — vetor</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
