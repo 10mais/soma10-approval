@@ -193,6 +193,20 @@ Em **App Review → Instruções**, forneça:
   (você) chega normalmente — a de seguidor comum, não.
 - Depois da aprovação, o passo de testador deixa de ser necessário.
 
+### Vincular um cliente novo como Testador do Instagram (passo a passo)
+
+São DOIS lugares diferentes — o convite não vale até o cliente aceitar:
+
+1. **Você (admin) convida** — painel do app, aba de funções:
+   `https://developers.facebook.com/apps/1687925802347345/roles/roles/`
+   → seção **Testadores do Instagram** → Adicionar → digitar o **@ do cliente**.
+2. **O cliente aceita** — DENTRO do Instagram dele, link direto (o caminho pelo
+   menu Configurações → Apps e sites às vezes NÃO aparece; use o link):
+   `https://www.instagram.com/accounts/manage_access/`
+3. Só depois do aceite, conecte no Soma10 pelo botão **Instagram** (caminho de
+   cota barata, ~3 chamadas; ver §custo de conexão). Conectar antes do aceite
+   faz o OAuth do cliente falhar (a conta ainda não tem papel no app).
+
 ---
 
 ## 7. Depois da aprovação — o que fica esperando por ela (código)
