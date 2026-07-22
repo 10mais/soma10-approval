@@ -605,6 +605,7 @@ function Dashboard() {
   const perfilClinica = perfilInstancia === 'clinica'
   const perfilTurismo = perfilInstancia === 'turismo'
   const perfilCidadania = perfilInstancia === 'cidadania'
+  const perfilTelefonia = perfilInstancia === 'telefonia'
   const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)

@@ -9,7 +9,7 @@ import { PermissoesPapel } from './permissoesCatalogo'
 import { PermGranularPapel } from './permissoesGranular'
 import { PLAYBOOK_CLINICA, PlaybookSeed } from './playbookClinica'
 
-export type PerfilInstancia = 'clinica' | 'gestao' | 'turismo' | 'cidadania'
+export type PerfilInstancia = 'clinica' | 'gestao' | 'turismo' | 'cidadania' | 'telefonia'
 
 export type DefPerfil = {
   chave: PerfilInstancia
@@ -77,6 +77,20 @@ export const ABAS_OCULTAS_CIDADANIA: string[] = [
   'agenda', // agenda clínica
 ]
 
+// Abas que o modo TELEFONIA (varejo de eletrônicos, multi-loja) esconde de TODOS
+// os papéis. É gestão de varejo: CRM (vira Vendas) + Financeiro + módulos próprios
+// de Varejo (Produtos/Estoque/Vendas, adicionados na nav por perfilTelefonia).
+// Não usa produção de conteúdo/social, Estratégia de agência nem Agenda clínica.
+export const ABAS_OCULTAS_TELEFONIA: string[] = [
+  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção/social
+  'playbook', 'modelos', 'campanhas', 'automacoes', 'marca', 'listening', 'analytics', // Estratégia de agência
+  'conversao', // Conversão & Retenção (agência)
+  'candidaturas', 'recrutamento', // Trabalhe Conosco
+  'solicitacoes', // Solicitações do cliente (agência)
+  'clientes', // gestão de clientes B2B — varejo usa Contatos do CRM
+  'agenda', // agenda clínica
+]
+
 // A Agenda é tela de CLÍNICA: nasceu para marcar atendimento de paciente
 // (profissional, queixa principal, prontuário, "confirmado = pago"). Ficou
 // visível na agência e na gestão por descuido meu — lá ninguém agenda paciente,
@@ -95,6 +109,7 @@ export function abasOcultasDoPerfil(perfil: string | null | undefined): string[]
   if (perfil === 'clinica') return ABAS_OCULTAS_CLINICA
   if (perfil === 'turismo') return ABAS_OCULTAS_TURISMO
   if (perfil === 'cidadania') return ABAS_OCULTAS_CIDADANIA
+  if (perfil === 'telefonia') return ABAS_OCULTAS_TELEFONIA
   if (perfil === 'gestao') return ABAS_OCULTAS_GESTAO
   return ABAS_OCULTAS_AGENCIA
 }
@@ -253,6 +268,46 @@ export const PERFIS: DefPerfil[] = [
       },
     ],
   },
+  {
+    chave: 'telefonia',
+    label: 'Telefonia / Varejo',
+    descricao: 'Varejo de eletrônicos e telefonia, multi-loja: Produtos + Estoque por loja + Vendas (PDV) + Financeiro. CRM vira o funil de vendas. Ex.: Space Technology.',
+    // Espelha turismo: CRM + operação própria ligados; produção de conteúdo e
+    // Estratégia de agência desligadas. A operação de varejo (Produtos/Estoque/
+    // Vendas) entra na nav por perfilTelefonia, não pelo grupo de permissões.
+    permissoesPapel: {
+      gerente: {
+        producao: { ver: true, editar: true, excluir: true },
+        estrategia: { ver: false, editar: false, excluir: false },
+        crm: { ver: true, editar: true, excluir: true },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+      usuario: {
+        producao: { ver: true, editar: true, excluir: false },
+        estrategia: { ver: false, editar: false, excluir: false },
+        crm: { ver: true, editar: true, excluir: false },
+        clientes: { ver: false, editar: false, excluir: false },
+      },
+    },
+    permissoesGranular: {
+      gerente: { abas: { ...ABAS_SOCIAL_OFF, conversao: false, agenda: false } },
+      usuario: { abas: { ...ABAS_SOCIAL_OFF, conversao: false, agenda: false } },
+    },
+    // Funil de venda de balcão (atendimento → venda fechada). A venda com itens
+    // e baixa de estoque vive no módulo Vendas (PDV), não no CRM.
+    pipelines: [
+      {
+        nome: 'Vendas',
+        estagios: [
+          { nome: 'Atendimento' },
+          { nome: 'Orçamento' },
+          { nome: 'Negociação' },
+          { nome: 'Vendido', ganho: true },
+          { nome: 'Não fechou', perdido: true },
+        ],
+      },
+    ],
+  },
 ]
 
 export function perfilDef(chave?: string | null): DefPerfil | null {
@@ -265,14 +320,14 @@ export function perfilDef(chave?: string | null): DefPerfil | null {
 // clinica → Soma10 Clinic · turismo/gestao → Soma10 App · agência/padrão → Soma10 Agency.
 export function nomeSistema(perfil?: string | null): string {
   if (perfil === 'clinica') return 'Soma10 Clinic'
-  if (perfil === 'turismo' || perfil === 'gestao' || perfil === 'cidadania') return 'Soma10 App'
+  if (perfil === 'turismo' || perfil === 'gestao' || perfil === 'cidadania' || perfil === 'telefonia') return 'Soma10 App'
   return 'Soma10 Agency'
 }
 
 // Perfis que NÃO usam "Trabalhe Conosco"/recrutamento (clínica, turismo). Usado
 // para 404 nas rotas públicas de candidaturas/recrutamento nessas instâncias.
 export function perfilSemRecrutamento(perfil?: string | null): boolean {
-  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania'
+  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania' || perfil === 'telefonia'
 }
 
 // Este perfil vende para PESSOA FÍSICA? Clínica atende paciente, turismo vende
@@ -285,5 +340,5 @@ export function perfilSemRecrutamento(perfil?: string | null): boolean {
 // formulário não pedia empresa mas o servidor recusava a oportunidade — o campo
 // tinha sumido e a regra continuava lá atrás. Perfil novo entra AQUI, uma vez.
 export function perfilVendeParaPessoa(perfil?: string | null): boolean {
-  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania'
+  return perfil === 'clinica' || perfil === 'turismo' || perfil === 'cidadania' || perfil === 'telefonia'
 }

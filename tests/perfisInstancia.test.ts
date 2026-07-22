@@ -24,7 +24,7 @@ describe('perfilVendeParaPessoa', () => {
     }
   })
 })
-import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO, perfilSemRecrutamento } from '@/lib/perfisInstanciaCatalogo'
+import { PERFIS, perfilDef, ABAS_OCULTAS_CLINICA, ABAS_OCULTAS_TURISMO, ABAS_OCULTAS_TELEFONIA, perfilSemRecrutamento, nomeSistema } from '@/lib/perfisInstanciaCatalogo'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 import { GRUPOS, NIVEIS, podeNivel } from '@/lib/permissoesCatalogo'
 import { podeAbaGranular } from '@/lib/permissoesGranular'
@@ -213,5 +213,43 @@ describe('perfil turismo — operadora de excursões', () => {
     expect(perfilSemRecrutamento('turismo')).toBe(true)
     expect(perfilSemRecrutamento('gestao')).toBe(false)
     expect(perfilSemRecrutamento(null)).toBe(false)
+  })
+})
+
+describe('perfil telefonia — varejo multi-loja', () => {
+  const def = perfilDef('telefonia')!
+
+  it('existe no catálogo com funil "Vendas" (Vendido=ganho, Não fechou=perdido)', () => {
+    expect(def).toBeTruthy()
+    expect(def.pipelines!.map(p => p.nome)).toEqual(['Vendas'])
+    const funil = def.pipelines![0]
+    expect(funil.estagios.find(e => e.ganho)?.nome).toBe('Vendido')
+    expect(funil.estagios.find(e => e.perdido)?.nome).toBe('Não fechou')
+  })
+
+  it('CRM ligado, Estratégia desligada (varejo não usa estratégia de agência)', () => {
+    expect(podeNivel('gerente', 'crm', 'editar', undefined, def.permissoesPapel)).toBe(true)
+    expect(podeNivel('gerente', 'estrategia', 'ver', undefined, def.permissoesPapel)).toBe(false)
+    for (const papel of ['gerente', 'usuario']) {
+      expect(podeAbaGranular(papel, 'crm', undefined, def.permissoesGranular)).toBe(true)
+      expect(podeAbaGranular(papel, 'studio', undefined, def.permissoesGranular)).toBe(false)
+      expect(podeAbaGranular(papel, 'agenda', undefined, def.permissoesGranular)).toBe(false)
+    }
+  })
+
+  it('esconde agência/clínica mas mantém CRM/Tarefas/Financeiro', () => {
+    for (const oculta of ['studio', 'agenda', 'clientes', 'recrutamento', 'conversao', 'marca']) {
+      expect(ABAS_OCULTAS_TELEFONIA).toContain(oculta)
+    }
+    for (const essencial of ['crm', 'tarefas', 'home', 'mensagens']) {
+      expect(ABAS_OCULTAS_TELEFONIA).not.toContain(essencial)
+    }
+    expect(new Set(ABAS_OCULTAS_TELEFONIA).size).toBe(ABAS_OCULTAS_TELEFONIA.length)
+  })
+
+  it('vende para pessoa física, não usa recrutamento, branding "Soma10 App"', () => {
+    expect(perfilVendeParaPessoa('telefonia')).toBe(true)
+    expect(perfilSemRecrutamento('telefonia')).toBe(true)
+    expect(nomeSistema('telefonia')).toBe('Soma10 App')
   })
 })
