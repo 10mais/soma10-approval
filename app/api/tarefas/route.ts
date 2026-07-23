@@ -100,6 +100,14 @@ export async function POST(req: NextRequest) {
   }
   await redis.set(`tarefa:${tarefa.id}`, tarefa)
   await redis.sadd('tarefas', tarefa.id)
+  // Pauta vinculada (origemPostId): fecha o vínculo bidirecional — a pauta passa
+  // a apontar para esta tarefa, para os fluxos concluir->Planner e ajuste->reabrir.
+  if ((tarefa as any).origemPostId) {
+    try {
+      const post = await redis.get<any>(`post:${(tarefa as any).origemPostId}`)
+      if (post && !post.tarefaId) await redis.set(`post:${post.id}`, { ...post, tarefaId: tarefa.id, atualizadoEm: agora })
+    } catch { /* vínculo é bônus, nunca bloqueia a criação */ }
+  }
   // Notifica o responsavel se for diferente de quem criou
   if (tarefa.responsavelEmail && tarefa.responsavelEmail !== (session.user as any).email) {
     await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${new Date(tarefa.prazo).toLocaleDateString('pt-BR')}.` : ''}`, undefined, tarefa.id)

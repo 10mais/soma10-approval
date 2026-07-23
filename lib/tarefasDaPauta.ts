@@ -144,9 +144,12 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
     const u = await redis.get<{ nome?: string }>(`usuario:${designerEmail}`).catch(() => null)
     designerNome = u?.nome || ''
   }
-  const tarefaPaiId = post.planoId ? await tarefaMaeDoPlano(post.planoId, autor) : null
   const anexosSub = anexosDaPauta(post)
 
+  // TOP-LEVEL de propósito: a tarefa do designer PRECISA aparecer no kanban de
+  // produção — e o kanban esconde subtarefas (filtro !tarefaPaiId). Antes ela
+  // nascia como subtarefa da "tarefa-mãe do plano" e ficava invisível: parecia
+  // que "não chegava à produção". O vínculo com a pauta é o origemPostId.
   const sub: Tarefa = {
     id: uuid(),
     titulo: tituloSubtarefa(post),
@@ -159,7 +162,6 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
     clienteId: post.clienteId || '',
     clienteNome: post.clienteNome || '',
     marcoId: post.marcoId || '',
-    ...(tarefaPaiId ? { tarefaPaiId } : {}),
     prazo: post.dataAgendada || '',
     ...(anexosSub.length ? { anexos: anexosSub } : {}),
     origemPostId: post.id,

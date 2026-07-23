@@ -18,7 +18,7 @@ export const CAMPOS_TAREFA = [
   'titulo', 'descricao', 'tipo', 'status', 'prioridade',
   'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome',
   'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist',
-  'documentoId', 'mapaId',
+  'documentoId', 'mapaId', 'origemPostId', // origemPostId: vínculo com a pauta do Studio
 ] as const
 
 export type CampoTarefa = typeof CAMPOS_TAREFA[number]

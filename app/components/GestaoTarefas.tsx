@@ -698,8 +698,48 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     marcoId: (tarefa as any)?.marcoId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
     recorrencia: (tarefa as any)?.recorrencia || '',
+    origemPostId: (tarefa as any)?.origemPostId || '',
   })
   const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  // Vincular PAUTA do Studio: ao escolher o cliente, lista as pautas dele (da
+  // esteira) para criar a tarefa de produção já com briefing + copy + anexos.
+  const [pautasCliente, setPautasCliente] = useState<any[]>([])
+  useEffect(() => {
+    if (tarefa?.id || !form.clienteId) { setPautasCliente([]); return }
+    let vivo = true
+    fetch(`/api/posts?clienteId=${form.clienteId}`).then(r => r.json()).then(d => {
+      if (!vivo) return
+      const arr = Array.isArray(d) ? d : []
+      setPautasCliente(arr.filter((p: any) => p.etapa && p.etapa !== 'pronto'))
+    }).catch(() => { if (vivo) setPautasCliente([]) })
+    return () => { vivo = false }
+  }, [form.clienteId, tarefa?.id])
+  const ROTULO_ETAPA: Record<string, string> = { briefing: 'Briefing', copy: 'Copy', aprovacao_copy: 'Aprovação de copy', criativo: 'Criativo', aprovacao_criativo: 'Aprovação de criativo' }
+  function vincularPauta(id: string) {
+    const p = pautasCliente.find((x: any) => x.id === id)
+    if (!p) { setForm(f => ({ ...f, origemPostId: '' })); return }
+    const anx = [
+      ...(p.anexos || []),
+      ...((p.laminas || []).map((l: any, i: number) => l?.anexo ? { ...l.anexo, nome: `Lâmina ${i + 1} — ${l.anexo.nome}` } : null).filter(Boolean)),
+    ]
+    setAnexos(anx)
+    const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const linhas = [
+      p.briefing && `<strong>Briefing:</strong> ${esc(p.briefing)}`,
+      p.headline && `<strong>Headline:</strong> ${esc(p.headline)}`,
+      p.subheadline && `<strong>Sub-headline:</strong> ${esc(p.subheadline)}`,
+      p.textoImagem && `<strong>Copy do criativo:</strong> ${esc(p.textoImagem)}`,
+      p.cta && `<strong>CTA:</strong> ${esc(p.cta)}`,
+      p.legenda && `<strong>Legenda:</strong> ${esc(p.legenda)}`,
+    ].filter(Boolean).map(l => `<p>${l}</p>`).join('')
+    const vazia = (v: string) => !v || v === '<p></p>' || v === '<br>'
+    setForm(f => ({
+      ...f, origemPostId: id,
+      titulo: f.titulo.trim() || (p.briefing || p.headline || p.legenda || 'Pauta').slice(0, 80),
+      tipo: f.tipo === 'tarefa' ? 'criativo' : f.tipo,
+      descricao: vazia(f.descricao) ? linhas : f.descricao,
+    }))
+  }
   // Criar novo tipo de tarefa (padrao) direto daqui — fica fixo no dropdown e vale para tudo
   const [criandoTipo, setCriandoTipo] = useState(false)
   const [novoTipoLabel, setNovoTipoLabel] = useState('')
@@ -924,7 +964,8 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
   async function salvar() {
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
-    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
+    // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
+    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
@@ -1237,10 +1278,23 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               </div>
               )}
             </div>
+            {!PERFIL_CLINICA_TAREFAS && !tarefa?.id && form.clienteId && pautasCliente.length > 0 && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Vincular pauta do Studio <span style={{ fontWeight: 400, color: '#aaa' }}>(traz briefing, copy e anexos)</span></label>
+                <select value={form.origemPostId} onChange={e => vincularPauta(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.origemPostId ? '#1d4ed8' : '#e0e0e0'}`, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  <option value="">Nenhuma — tarefa avulsa</option>
+                  {pautasCliente.map((p: any) => (
+                    <option key={p.id} value={p.id}>{(p.briefing || p.headline || p.legenda || 'Pauta sem título').slice(0, 60)} · {ROTULO_ETAPA[p.etapa] || p.etapa}{p.tarefaId ? ' (já tem tarefa)' : ''}</option>
+                  ))}
+                </select>
+                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#1d4ed8' }}>Pauta vinculada — ao concluir esta tarefa, a pauta vai ao Planner como rascunho.</p>}
+              </div>
+            )}
             {!PERFIL_CLINICA_TAREFAS && (
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook *</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook {form.origemPostId ? '' : '*'}</label>
                   {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
                 </div>
                 {!form.clienteId && (
