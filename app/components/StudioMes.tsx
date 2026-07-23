@@ -251,10 +251,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   useEffect(() => { carregarPautas(planoSel) }, [planoSel])
 
   function ordenar(lista: Pauta[]) {
+    // Sem data = pauta em construção (nova linha): fica NO TOPO, a mais recente
+    // primeiro. Preencheu a data, entra na ordem cronológica do mês.
     return [...lista].sort((a, b) => {
-      const da = a.dataAgendada ? new Date(a.dataAgendada).getTime() : Infinity
-      const db = b.dataAgendada ? new Date(b.dataAgendada).getTime() : Infinity
+      const da = a.dataAgendada ? new Date(a.dataAgendada).getTime() : -Infinity
+      const db = b.dataAgendada ? new Date(b.dataAgendada).getTime() : -Infinity
       if (da !== db) return da - db
+      if (da === -Infinity) return (b.criadoEm || '').localeCompare(a.criadoEm || '')
       return (a.criadoEm || '').localeCompare(b.criadoEm || '')
     })
   }
@@ -388,15 +391,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     const plano = planos.find(p => p.id === planoSel)
     if (!plano) return
     setCriandoLinha(true)
-    await fetch('/api/posts', {
+    const r = await fetch('/api/posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId: plano.clienteId, clienteNome: plano.clienteNome, imagens: [], legenda: '',
         formato: 'feed', rascunhoInterno: true, planoId: plano.id, etapa: 'briefing', briefing: '',
       }),
-    }).catch(() => {})
+    }).then(x => x.json()).catch(() => null)
     setCriandoLinha(false)
-    carregarPautas(planoSel)
+    // A linha nova entra NO TOPO e o modal dela já abre — sem caçar na lista.
+    if (r?.post) {
+      setPautas(ps => ordenar([r.post, ...ps]))
+      setAbertos(new Set([r.post.id]))
+    } else {
+      carregarPautas(planoSel)
+    }
   }
 
   // Quantas pautas e com quais pilares — o dono pede "me dá 3 de bastidor" no
