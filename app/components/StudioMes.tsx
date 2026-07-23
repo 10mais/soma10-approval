@@ -303,6 +303,28 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     } finally { setAnexando(null) }
   }
 
+  // Gera a copy estruturada da pauta (headline/sub/texto na arte/CTA/legenda) a
+  // partir do briefing + DNA da marca. Preenche só os vazios; substituir é opt-in.
+  const [gerandoCopy, setGerandoCopy] = useState<string | null>(null)
+  async function gerarCopyIA(p: Pauta) {
+    if (!(p.briefing || '').trim()) { toast('Escreva o briefing da pauta primeiro — é dele que a IA parte.', 'erro'); return }
+    const temAlgo = [p.headline, p.subheadline, p.textoImagem, p.cta, p.legenda].some(v => (v || '').trim())
+    let sobrescrever = false
+    if (temAlgo) sobrescrever = await confirmar('Há campos de copy já preenchidos. Substituir pelo texto novo da IA? "Cancelar" mantém o que existe e preenche só os vazios.', { titulo: 'Gerar copy', okLabel: 'Substituir tudo', cancelLabel: 'Só os vazios' })
+    setGerandoCopy(p.id)
+    try {
+      const r = await fetch('/api/esteira/gerar-copy', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id, sobrescrever }),
+      }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha ao gerar a copy.', 'erro'); return }
+      if (r.post) setPautas(ps => ps.map(x => x.id === p.id ? { ...x, ...r.post } : x))
+      if (r.aplicados?.length) toast(`Copy gerada — ${r.aplicados.length} campo(s) preenchido(s).`, 'sucesso')
+      else toast('Todos os campos já tinham conteúdo — nada foi alterado.', 'sucesso')
+    } catch { toast('Erro de conexão ao gerar a copy.', 'erro') }
+    finally { setGerandoCopy(null) }
+  }
+
   async function salvarData(id: string, localValue: string) {
     const iso = localValue ? new Date(localValue).toISOString() : ''
     setPautas(ps => ps.map(p => p.id === id ? { ...p, dataAgendada: iso } : p))
@@ -948,6 +970,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
                       <div style={{ flexBasis: '100%' }}><PipelinePauta p={p} /></div>
                       <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {podeEditar && podeGerarIA && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -8 }}>
+                            <button className="st-btn" onClick={() => gerarCopyIA(p)} disabled={gerandoCopy === p.id}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                              {gerandoCopy === p.id ? 'Gerando copy…' : 'Gerar copy'}
+                            </button>
+                          </div>
+                        )}
                         <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
                         <div><CampoLabel>Headline (arte / abertura do vídeo)</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
                         <div><CampoLabel>Sub-headline (opcional)</CampoLabel><CelulaEditavel valor={p.subheadline} editavel={podeEditar} placeholder="Apoio da headline na arte..." onSalvar={v => salvarCampo(p.id, 'subheadline', v)} /></div>

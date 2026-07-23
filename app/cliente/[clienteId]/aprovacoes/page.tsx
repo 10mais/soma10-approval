@@ -217,6 +217,17 @@ export default function AprovacoesPagina() {
                       ) : null })()}
                     </div>
                     {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}>Briefing: {p.briefing}</p>}
+                    {/* Copy estruturada: o cliente aprova a copy INTEIRA (o que vai na arte), não só a legenda */}
+                    {ehCopy && (p.headline || p.subheadline || p.textoImagem || p.cta) && (
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Texto da arte</p>
+                        {p.headline && <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: '#111' }}>{p.headline}</p>}
+                        {p.subheadline && <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#475569' }}>{p.subheadline}</p>}
+                        {p.textoImagem && <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#334155', whiteSpace: 'pre-wrap' }}>{p.textoImagem}</p>}
+                        {p.cta && <span style={{ display: 'inline-block', marginTop: 2, background: '#111', color: '#ffc00f', borderRadius: 999, padding: '4px 12px', fontSize: 11.5, fontWeight: 800 }}>{p.cta}</span>}
+                      </div>
+                    )}
+                    {ehCopy && (p.headline || p.subheadline || p.textoImagem || p.cta) && <p style={{ margin: '0 0 2px', fontSize: 10.5, fontWeight: 800, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Legenda</p>}
                     <p style={{ margin: '0 0 6px', fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>
                     {(p.imagens || []).length > 0 && !ehCopy && (
                       <div style={{ marginBottom: 8 }}>
