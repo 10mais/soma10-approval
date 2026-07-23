@@ -215,7 +215,7 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
               ))}
               {pendente && (
                 <div style={{ position: 'absolute', left: `${pendente.x}%`, top: `${pendente.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'pulse 1s infinite' }}>?</div>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'soma-pulse 1.2s ease-in-out infinite' }}>?</div>
                   <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 10, padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 220, zIndex: 10 }}>
                     <textarea value={textoAnotacao} onChange={e => setTextoAnotacao(e.target.value)} placeholder="Descreva a correcao..."
                       autoFocus style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}

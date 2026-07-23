@@ -2423,7 +2423,7 @@ function Dashboard() {
         {aba === 'planner' && (criandoPost || rascunhoMsg) && (
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: 13, color: '#1d4ed8' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'girar 0.8s linear infinite', flexShrink: 0 }} />}
+              {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
               <span>{rascunhoMsg || 'Processando...'}</span>
             </div>
             {criandoPost && (
@@ -2431,7 +2431,7 @@ function Dashboard() {
                 <div style={{ position: 'absolute', top: 0, bottom: 0, background: '#1d4ed8', borderRadius: 999, animation: 'barraInd 1.2s ease-in-out infinite' }} />
               </div>
             )}
-            <style>{`@keyframes girar{to{transform:rotate(360deg)}}@keyframes barraInd{0%{left:-40%;width:40%}50%{left:30%;width:50%}100%{left:100%;width:40%}}`}</style>
+            <style>{`@keyframes barraInd{0%{left:-40%;width:40%}50%{left:30%;width:50%}100%{left:100%;width:40%}}`}</style>
           </div>
         )}
 

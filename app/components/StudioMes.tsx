@@ -958,9 +958,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {iaMsg && (
         <div style={{ background: iaMsg.includes('criadas') ? '#dcfce7' : iaMsg.includes('Gerando') ? '#eff6ff' : '#fef2f2', border: `1px solid ${iaMsg.includes('criadas') ? '#86efac' : iaMsg.includes('Gerando') ? '#bfdbfe' : '#fecaca'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: iaMsg.includes('criadas') ? '#166534' : iaMsg.includes('Gerando') ? '#1d4ed8' : '#b91c1c', display: 'flex', alignItems: 'center', gap: 10 }}>
-          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'girar 0.8s linear infinite', flexShrink: 0 }} />}
+          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
           {iaMsg}
-          {gerandoIA && <style>{`@keyframes girar{to{transform:rotate(360deg)}}`}</style>}
         </div>
       )}
 
