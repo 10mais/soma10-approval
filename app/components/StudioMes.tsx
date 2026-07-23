@@ -342,6 +342,23 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
+  async function enviarAoPlannerManual(p: Pauta) {
+    const ok = await confirmar('Enviar esta pauta ao Planner como rascunho, sem concluir a tarefa? A copy vai junto; a equipe revisa e envia ao cliente de lá.', { titulo: 'Enviar ao Planner', okLabel: 'Enviar' })
+    if (!ok) return
+    setAcaoPauta(p.id)
+    try {
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, etapa: 'pronto', status: 'rascunho' }),
+      })
+      if (p.tarefaId) fetch('/api/tarefas', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.tarefaId, novoComentario: 'Pauta enviada ao Planner manualmente (sem concluir a tarefa).' }),
+      }).catch(() => {})
+      toast('Pauta no Planner como rascunho.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
   async function criarTarefaManual(p: Pauta) {
     setAcaoPauta(p.id)
     try {
@@ -1084,6 +1101,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '9px 8px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
                           )}
                           {/* Controles manuais: a automação é o caminho fluido, mas quem manda é o responsável */}
+                          {podeEditar && p.etapa === 'criativo' && (
+                            <button className="st-btn" onClick={() => enviarAoPlannerManual(p)} disabled={acaoPauta === p.id}
+                              title="Mesmo destino de concluir a tarefa do designer — sem precisar concluir"
+                              style={{ padding: '9px 8px', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                              Enviar ao Planner (rascunho)
+                            </button>
+                          )}
                           {podeEditar && p.etapa === 'aprovacao_copy' && (
                             <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
                               style={{ padding: '9px 8px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>

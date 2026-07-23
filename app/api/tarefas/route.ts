@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Tarefa, Usuario } from '@/lib/redis'
+import { redis, Tarefa, Usuario, Post } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
+import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
@@ -234,6 +235,26 @@ export async function PUT(req: NextRequest) {
   atualizado.atividades = novasAtividades
   Object.assign(atualizado, camposDoCorpo(updates))
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
+
+  // Linha de montagem: concluir a tarefa do DESIGNER manda a pauta pro Planner
+  // como RASCUNHO, com a copy aprovada (regra pura em lib/esteiraFluxo, testada:
+  // só age em etapa 'criativo' — reabrir nunca regride, aprovações não são
+  // puladas). Falha no gancho nunca bloqueia a conclusão da tarefa.
+  if (updates.status === 'concluido' && tarefa.status !== 'concluido' && tarefa.origemPostId) {
+    try {
+      const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
+      const av = post ? aoConcluirTarefa(post.etapa) : null
+      if (post && av) {
+        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora })
+        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo concluído — pauta enviada ao Planner como rascunho', autor, criadoEm: agora }]
+        const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
+        if (emailCriador && emailCriador !== (session.user as any).email) {
+          await notificar(emailCriador, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} concluiu a tarefa "${atualizado.titulo}". A pauta está no Planner como rascunho, pronta para revisão e envio ao cliente.`, post.id).catch(() => {})
+        }
+      }
+    } catch { /* sync nunca bloqueia a conclusão */ }
+  }
+
   await redis.set(`tarefa:${id}`, atualizado)
 
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') {
