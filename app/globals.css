@@ -48,3 +48,73 @@ aside,
 .cliente-card:hover {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
+
+/* ============================================================
+   MOTION DESIGN — tokens, keyframes e utilitarios globais.
+   Regras da casa:
+   1) NUNCA transform em ancestral de position:fixed (containing
+      block — mesma regra do .cliente-card acima). Os utilitarios
+      .anim-* com transform terminam em transform:none (fill both):
+      o containing block existe SO durante a entrada (~200ms), janela
+      em que nenhum modal abre (modais abrem por clique, depois).
+      Uso seguro: card de modal (filho do overlay fixed), itens de
+      lista, blocos de conteudo.
+   2) Tema escuro usa filter:invert na raiz — nao animar
+      filter/backdrop-filter (compoe mal com a re-inversao).
+   3) Keyframes globais tem prefixo soma- para nunca colidir com os
+      keyframes locais dos <style> scoped (stFade, barraInd...).
+   ============================================================ */
+:root {
+  --dur-fast: 140ms;  /* micro-feedback: hover, overlay, troca de aba */
+  --dur-base: 220ms;  /* entradas padrao: modal, toast */
+  --dur-slow: 360ms;  /* listas e staggers */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);       /* curva consagrada do Studio */
+  --ease-spring: cubic-bezier(.34, 1.35, .5, 1); /* leve overshoot p/ entradas especiais */
+}
+
+@keyframes soma-fade-in  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes soma-rise-in  { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes soma-scale-in { from { opacity: 0; transform: scale(.97) } to { opacity: 1; transform: none } }
+@keyframes soma-slide-in-right  { from { opacity: 0; transform: translateX(18px) } to { opacity: 1; transform: none } }
+@keyframes soma-slide-out-right { from { opacity: 1; transform: none } to { opacity: 0; transform: translateX(18px) } }
+@keyframes soma-girar   { to { transform: rotate(360deg) } }
+@keyframes soma-pulse   { 0%, 100% { opacity: 1 } 50% { opacity: .45 } } /* so opacity: seguro em qualquer no */
+@keyframes soma-shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+
+/* Overlay do modal (fundo escuro): SO opacity — nunca transform aqui. */
+.anim-overlay { animation: soma-fade-in var(--dur-fast) ease-out both; }
+
+/* Card do modal (filho direto do overlay fixed). Transform aqui e seguro:
+   o card nao e ancestral de nenhum fixed e termina em transform:none. */
+.anim-modal { animation: soma-scale-in var(--dur-base) var(--ease-out) both; }
+
+/* Entrada generica de bloco de conteudo (fade + rise). */
+.anim-in { animation: soma-rise-in var(--dur-base) var(--ease-out) both; }
+
+/* Item de lista com stagger: style={{ ['--i' as any]: indice }}.
+   min() limita o atraso total em listas longas. */
+.anim-item {
+  animation: soma-rise-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: min(calc(var(--i, 0) * 40ms), 320ms);
+}
+
+/* Toasts */
+.anim-toast-in  { animation: soma-slide-in-right var(--dur-base) var(--ease-out) both; }
+.anim-toast-out { animation: soma-slide-out-right var(--dur-base) ease-in both; }
+
+/* Troca de aba: mais curta que o padrao (interacao mais frequente do app).
+   Fallback se o deep-link aba+modal clipar durante os 180ms (transform vira
+   containing block do modal fixed): trocar por fade puro —
+   .anim-aba { animation: soma-fade-in 180ms ease-out both; } */
+.anim-aba { animation: soma-rise-in 180ms var(--ease-out) both; }
+
+/* Acessibilidade: respeita quem pediu menos movimento no sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
