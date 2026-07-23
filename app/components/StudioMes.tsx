@@ -233,6 +233,22 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   function toggleSel(id: string) {
     setPautasSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
+  async function excluirPlano() {
+    const plano = planos.find(x => x.id === planoSel)
+    if (!plano) return
+    const n = pautas.length
+    const ok = await confirmar(
+      `Excluir o plano de ${MESES[plano.mes - 1]}/${plano.ano}${n > 0 ? ` e suas ${n} pauta(s)` : ''}? Pautas já publicadas ou agendadas são preservadas como posts avulsos.`,
+      { titulo: 'Excluir plano', okLabel: 'Excluir plano', perigo: true }
+    )
+    if (!ok) return
+    const r = await fetch(`/api/planos?id=${planoSel}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { toast(r?.error || 'Falha ao excluir o plano.', 'erro'); return }
+    toast(`Plano excluído${r.preservadas > 0 ? ` (${r.preservadas} pauta(s) publicada(s)/agendada(s) preservada(s))` : ''}.`, 'sucesso')
+    setPlanoSel('')
+    setPautas([])
+    carregarPlanos()
+  }
   async function excluirSelecionadas() {
     const ids = Array.from(pautasSel)
     if (!ids.length) return
@@ -897,11 +913,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
             {planosDoCliente.map(p => <option key={p.id} value={p.id}>{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
           </select>
         )}
+        {planoSel && podeExcluir && (
+          <button className="st-btn" onClick={excluirPlano} title="Excluir este plano"
+            style={{ width: 40, alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 11, cursor: 'pointer', padding: 0 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" /></svg>
+          </button>
+        )}
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
-          {podeGerarIA && <button className="st-btn st-cta" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+          {podeGerarIA && <button className="st-btn" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#fff', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 11, fontWeight: 500, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
             {gerandoIA ? 'Gerando…' : 'Gerar plano com IA'}
           </button>}
         </>}
@@ -1155,8 +1177,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         {podeEditar && podeGerarIA && fk !== 'grafico' && (
                           <div style={{ marginLeft: 'auto' }}>
                             <button className="st-btn" onClick={() => gerarCopyIA(p)} disabled={gerandoCopy === p.id}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', background: 'transparent', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                               {gerandoCopy === p.id ? 'Gerando copy…' : 'Gerar copy'}
                             </button>
                           </div>
