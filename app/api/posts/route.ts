@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Post } from '@/lib/redis'
+import { redis, Post, Tarefa } from '@/lib/redis'
 import { getPostsDoCliente, indexarPost, desindexarPost } from '@/lib/postsIndex'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
@@ -213,6 +213,21 @@ export async function DELETE(req: NextRequest) {
   await redis.srem('agendados', id)
   await desindexarPost(post.clienteId, id)
   if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
+
+  // Linha de montagem: a pauta morreu, a tarefa fica sabendo — atividade na
+  // tarefa vinculada e vínculo limpo (a tarefa segue viva, decisão da equipe).
+  if (post.tarefaId) {
+    try {
+      const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+      if (t && t.origemPostId === id) {
+        const agora = new Date().toISOString()
+        await redis.set(`tarefa:${t.id}`, {
+          ...t, origemPostId: undefined, atualizadoEm: agora,
+          atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Pauta de origem excluída do plano — vínculo desfeito', autor: session.user?.name || '', criadoEm: agora }],
+        })
+      }
+    } catch { /* limpeza de vínculo nunca bloqueia a exclusão */ }
+  }
 
   return NextResponse.json({ ok: true })
 }

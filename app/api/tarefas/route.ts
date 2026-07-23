@@ -323,13 +323,22 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id obrigatorio' }, { status: 400 })
   const permanente = req.nextUrl.searchParams.get('permanente') === 'true'
 
+  const tarefa = await redis.get<any>(`tarefa:${id}`)
+  // Linha de montagem: excluir a tarefa não deixa vínculo morto na pauta — a
+  // pauta volta a poder ganhar tarefa nova (automática ou manual).
+  if (tarefa?.origemPostId) {
+    try {
+      const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
+      if (post?.tarefaId === id) await redis.set(`post:${post.id}`, { ...post, tarefaId: undefined, atualizadoEm: new Date().toISOString() })
+    } catch { /* limpeza de vínculo nunca bloqueia a exclusão */ }
+  }
+
   if (permanente) {
     await redis.del(`tarefa:${id}`)
     await redis.srem('tarefas_excluidas', id)
     return NextResponse.json({ ok: true })
   }
 
-  const tarefa = await redis.get<any>(`tarefa:${id}`)
   if (tarefa) {
     tarefa.excluidoEm = new Date().toISOString()
     tarefa.excluidoPor = session.user?.name || ''
