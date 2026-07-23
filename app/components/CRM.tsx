@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
@@ -2407,12 +2408,72 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     carregarConversas() // a prévia na lista pode ser a mensagem que acabou de sair
   }
 
-  async function abrir(id: string) {
-    setSel(id)
-    setSugestoes([]); setSugestoesAbertas(false) // sugestão é da conversa anterior
+  // Só recarrega as mensagens da conversa ATUAL — sem mexer na seleção nem nas
+  // sugestões abertas. É o que o polling usa (antes o poll chamava abrir(), que
+  // fechava o popup de sugestões a cada 15s — não dava tempo de escolher).
+  async function recarregarMensagens(id: string) {
     const d = await cfg.historico(id)
     if (d) setMensagens(Array.isArray(d.mensagens) ? d.mensagens : [])
     setConversas(cs => cs.map(c => c.id === id ? { ...c, naoLidas: 0 } : c))
+  }
+  async function abrir(id: string) {
+    setSel(id)
+    setSugestoes([]); setSugestoesAbertas(false) // sugestão é da conversa anterior
+    await recarregarMensagens(id)
+  }
+
+  // Anexos (clipe) e áudio — só no WhatsApp, onde o backend envia mídia
+  // (/api/crm/mensagens → enviarMidiaWhatsApp). Sobe o arquivo no Blob e manda.
+  const [enviandoMidia, setEnviandoMidia] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  async function enviarMidia(file: File, tipoForcado?: 'audio') {
+    if (!sel || enviandoMidia) return
+    setEnviandoMidia(true)
+    try {
+      // MIME sem ";codecs=..." — o whitelist do /api/upload faz match exato.
+      const mime = (file.type || 'application/octet-stream').split(';')[0]
+      const blob = await upload(`crm/${Date.now()}-${file.name}`, file, {
+        access: 'public', handleUploadUrl: '/api/upload',
+        contentType: mime, clientPayload: mime,
+      })
+      const tipo = tipoForcado
+        || (/^image\//.test(file.type) ? 'imagem' : /^video\//.test(file.type) ? 'video' : /^audio\//.test(file.type) ? 'audio' : 'documento')
+      const r = await fetch('/api/crm/mensagens', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone: sel, midia: { tipo, url: blob.url, mimetype: mime, fileName: file.name } }),
+      }).then(x => x.json()).catch(() => null)
+      if (!r?.ok) toast(r?.error || 'Não foi possível enviar o anexo.', r?.registrado ? 'info' : 'erro')
+      else { recarregarMensagens(sel); carregarConversas() }
+    } catch (e: any) {
+      toast(e?.message || 'Falha ao enviar o anexo.', 'erro')
+    } finally { setEnviandoMidia(false) }
+  }
+
+  // Gravação de áudio (microfone) — grava, ao parar sobe e envia como áudio.
+  const [gravando, setGravando] = useState(false)
+  const mediaRec = useRef<MediaRecorder | null>(null)
+  const audioChunks = useRef<Blob[]>([])
+  async function toggleGravarAudio() {
+    if (gravando) { mediaRec.current?.stop(); return }
+    if (!sel) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      audioChunks.current = []
+      mr.ondataavailable = e => { if (e.data.size) audioChunks.current.push(e.data) }
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        setGravando(false)
+        const baseMime = (mr.mimeType || 'audio/webm').split(';')[0]
+        const blob = new Blob(audioChunks.current, { type: baseMime })
+        if (blob.size < 800) { toast('Gravação muito curta.', 'info'); return }
+        const ext = baseMime.includes('ogg') ? 'ogg' : baseMime.includes('mp4') ? 'm4a' : 'webm'
+        await enviarMidia(new File([blob], `audio-${Date.now()}.${ext}`, { type: baseMime }), 'audio')
+      }
+      mediaRec.current = mr
+      mr.start()
+      setGravando(true)
+    } catch { toast('Não foi possível acessar o microfone. Verifique a permissão do navegador.', 'erro') }
   }
   async function enviar() {
     const t = texto.trim()
@@ -2430,7 +2491,7 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     const r = await cfg.enviar(sel, t)
     setEnviando(false)
     if (!r?.ok) toast(r?.error || 'Não foi possível enviar.', r?.registrado ? 'info' : 'erro')
-    abrir(sel); carregarConversas()
+    recarregarMensagens(sel); carregarConversas()
   }
   // Encaminha a mensagem escolhida para OUTRA conversa (texto ou mídia do Blob)
   async function encaminharPara(destinoId: string) {
@@ -2479,7 +2540,7 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
   // Atualiza a conversa aberta periodicamente (recebe respostas do lead)
   useEffect(() => {
     if (!sel) return
-    const id = setInterval(() => { abrir(sel) }, 15000)
+    const id = setInterval(() => { recarregarMensagens(sel) }, 15000)
     return () => clearInterval(id)
   }, [sel])
 
@@ -2823,8 +2884,20 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
                   {sugerindo ? '...' : 'Sugerir'}
                 </button>
               )}
+              {canal === 'whatsapp' && (<>
+                <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) enviarMidia(f); e.target.value = '' }} />
+                <button onClick={() => fileInputRef.current?.click()} disabled={enviandoMidia || gravando} title="Anexar arquivo (PDF, imagem, vídeo...)"
+                  style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0, padding: 0 }}>
+                  {enviandoMidia ? <span style={{ width: 14, height: 14, border: '2px solid #ccc', borderTopColor: '#666', borderRadius: '50%', animation: 'soma-girar 0.8s linear infinite' }} /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>}
+                </button>
+                <button onClick={toggleGravarAudio} disabled={enviandoMidia} title={gravando ? 'Parar e enviar áudio' : 'Gravar áudio'}
+                  style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: gravando ? '#dc2626' : '#f4f4f5', color: gravando ? '#fff' : '#444', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0, animation: gravando ? 'soma-pulse 1.2s ease-in-out infinite' : 'none' }}>
+                  {gravando ? <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg> : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>}
+                </button>
+              </>)}
               <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
-                placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
+                placeholder={gravando ? 'Gravando áudio…' : 'Escreva uma mensagem...'} disabled={gravando} rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', background: gravando ? '#fef2f2' : '#fff' }} />
               <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
             </div>
           </>)}
