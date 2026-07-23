@@ -150,23 +150,18 @@ ${trendsTxt}${jaUsadoTxt}${pilaresTxt}
 REGRAS:
 - NÃO REPETIR é a regra mais importante: nenhum tema da lista "JÁ FOI USADO" pode voltar, nem disfarçado de variação. Prefira um ângulo novo, mesmo que menos óbvio.
 - Cada pauta deve ser ESPECÍFICA e acionável para este nicho (nada genérico).
-- HEADLINE obrigatória em toda pauta: a frase que vai NA ARTE (feed) ou como texto principal na abertura do vídeo (reel). Curta (até 60 caracteres), concreta, que faça o dedo parar. Não é o briefing nem o título do tema.
+- NÃO escreva headline, copy nem legenda — apenas o TEMA/ÂNGULO (briefing) e a DIREÇÃO VISUAL. A copy será escrita depois, pauta a pauta, na etapa de copy.
 - Varie os formatos: Feed (imagem estática) e Reel (vídeo curto). NÃO sugira Stories.
 - Distribua as datas ao longo do mês (3-4x por semana, exceto domingos).
 - DATAS: só a partir do dia ${diaMin} (é a data de hoje quando o plano é do mês corrente). NUNCA proponha dia anterior a esse — conteúdo não nasce atrasado.
 - Sugira um HORÁRIO para cada postagem (entre 10h e 20h, variando).
-- O tom de voz deve seguir o informado acima.
 - Respeite as preferências e restrições da marca.
-- As legendas devem ser completas e publicáveis (com no máximo 5 hashtags relevantes no final).
 
 Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backticks) no formato:
 [
   {
-    "briefing": "tema/ideia da pauta",
-    "headline": "a frase da arte / abertura do vídeo (até 60 caracteres)",
+    "briefing": "tema/ideia/ângulo da pauta (específico e acionável)",
     "sugestaoImagem": "descrição visual para o designer",
-    "textoImagem": "texto que aparece na arte (ou vazio)",
-    "legenda": "legenda completa com hashtags",
     "formato": "feed" | "reel",
     "dia": número do dia do mês (${diaMin}-${new Date(ano, plano.mes, 0).getDate()}),
     "hora": número da hora (10-20),
@@ -178,7 +173,7 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
     const client = new Anthropic({ apiKey: KEY })
     const msg = await client.messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 8000,
+      max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' } as any,
       messages: [{ role: 'user', content: prompt }],
@@ -212,12 +207,15 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
       // é o servidor (lib/dataPauta, testada). Prompt pede, código impõe.
       const dataAgendada = dataDaPauta({ ano, mes: plano.mes, dia: Number(p.dia), hora: Number(p.hora), minuto: Number(p.minuto) })
       const formato = ['feed', 'reel', 'story'].includes(p.formato) ? p.formato : 'feed'
+      // Linha de montagem: o plano nasce ESQUELETO (tema + direção visual). A
+      // copy (headline/sub/texto na arte/CTA/legenda) vem depois, pauta a pauta,
+      // pelo Gerar copy da etapa de copy (/api/esteira/gerar-copy).
       const post: Post = {
         id: uuid(),
         clienteId: plano.clienteId,
         clienteNome: plano.clienteNome,
         imagens: [],
-        legenda: (p.legenda || '').trim(),
+        legenda: '',
         status: 'rascunho',
         formato,
         dataAgendada,
@@ -229,17 +227,11 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
         planoId,
         etapa: 'briefing',
         briefing: (p.briefing || '').trim(),
-        headline: (p.headline || '').trim(),
         sugestaoImagem: (p.sugestaoImagem || '').trim(),
-        textoImagem: (p.textoImagem || '').trim(),
-        sugestaoLegenda: (p.legenda || '').trim(),
         // Studio Fase 0 — captura a matéria-prima da IA para medir a taxa de edição
         iaGerado: {
           briefing: (p.briefing || '').trim(),
-          headline: (p.headline || '').trim(),
           sugestaoImagem: (p.sugestaoImagem || '').trim(),
-          textoImagem: (p.textoImagem || '').trim(),
-          legenda: (p.legenda || '').trim(),
           formato,
           geradoEm: criadoEm,
         },
