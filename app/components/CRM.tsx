@@ -2449,31 +2449,124 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     } finally { setEnviandoMidia(false) }
   }
 
-  // Gravação de áudio (microfone) — grava, ao parar sobe e envia como áudio.
+  // Gravação de áudio (microfone) — grava com ONDA reagindo ao sinal + cronômetro;
+  // ao parar NÃO envia: mostra um player para ouvir antes (Enviar / Descartar).
   const [gravando, setGravando] = useState(false)
+  const [segundos, setSegundos] = useState(0)
+  const [audioPreview, setAudioPreview] = useState<{ url: string; file: File } | null>(null)
   const mediaRec = useRef<MediaRecorder | null>(null)
   const audioChunks = useRef<Blob[]>([])
-  async function toggleGravarAudio() {
-    if (gravando) { mediaRec.current?.stop(); return }
-    if (!sel) return
+  const streamRef = useRef<MediaStream | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+
+  function pararRecursosAudio() {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null
+    audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null
+    analyserRef.current = null
+  }
+  // Desenha as barras da onda no canvas (rAF, sem re-render do React).
+  function desenharOnda() {
+    const canvas = canvasRef.current, analyser = analyserRef.current
+    if (!canvas || !analyser) return
+    const ctx = canvas.getContext('2d'); if (!ctx) return
+    const N = 32
+    const dados = new Uint8Array(analyser.frequencyBinCount)
+    const passo = Math.max(1, Math.floor(dados.length / N))
+    const loop = () => {
+      analyser.getByteFrequencyData(dados)
+      const w = canvas.width, h = canvas.height
+      ctx.clearRect(0, 0, w, h)
+      const bw = w / N
+      for (let i = 0; i < N; i++) {
+        const v = dados[i * passo] / 255
+        const bh = Math.max(2, v * h)
+        ctx.fillStyle = '#16a34a'
+        ctx.fillRect(i * bw + bw * 0.28, (h - bh) / 2, bw * 0.44, bh)
+      }
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    loop()
+  }
+  // Inicia o loop de desenho só depois que o canvas está montado (gravando=true).
+  useEffect(() => {
+    if (gravando) desenharOnda()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gravando])
+  useEffect(() => () => pararRecursosAudio(), [])
+
+  async function iniciarGravacao() {
+    if (!sel || gravando) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const AC = (window.AudioContext || (window as any).webkitAudioContext)
+      const actx: AudioContext = new AC()
+      audioCtxRef.current = actx
+      const source = actx.createMediaStreamSource(stream)
+      const analyser = actx.createAnalyser()
+      analyser.fftSize = 128
+      source.connect(analyser)
+      analyserRef.current = analyser
       const mr = new MediaRecorder(stream)
       audioChunks.current = []
       mr.ondataavailable = e => { if (e.data.size) audioChunks.current.push(e.data) }
-      mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        setGravando(false)
+      mr.onstop = () => {
         const baseMime = (mr.mimeType || 'audio/webm').split(';')[0]
         const blob = new Blob(audioChunks.current, { type: baseMime })
+        pararRecursosAudio(); setGravando(false)
         if (blob.size < 800) { toast('Gravação muito curta.', 'info'); return }
         const ext = baseMime.includes('ogg') ? 'ogg' : baseMime.includes('mp4') ? 'm4a' : 'webm'
-        await enviarMidia(new File([blob], `audio-${Date.now()}.${ext}`, { type: baseMime }), 'audio')
+        const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: baseMime })
+        setAudioPreview({ url: URL.createObjectURL(blob), file })
       }
       mediaRec.current = mr
       mr.start()
-      setGravando(true)
+      setGravando(true); setSegundos(0)
+      timerRef.current = setInterval(() => setSegundos(s => s + 1), 1000)
     } catch { toast('Não foi possível acessar o microfone. Verifique a permissão do navegador.', 'erro') }
+  }
+  function pararGravacao() { mediaRec.current?.stop() } // o onstop gera o preview
+  function cancelarGravacao() {
+    const mr = mediaRec.current
+    if (mr) { mr.onstop = null; try { mr.stop() } catch { /* ok */ } }
+    pararRecursosAudio(); setGravando(false); audioChunks.current = []
+  }
+  async function enviarAudioPreview() {
+    if (!audioPreview) return
+    const f = audioPreview.file
+    URL.revokeObjectURL(audioPreview.url)
+    setAudioPreview(null)
+    await enviarMidia(f, 'audio')
+  }
+  function descartarAudioPreview() {
+    if (audioPreview) URL.revokeObjectURL(audioPreview.url)
+    setAudioPreview(null)
+  }
+
+  // Anexo em FILA: o arquivo escolhido vira prévia (validar/descartar) antes de enviar.
+  const [anexoPreview, setAnexoPreview] = useState<{ file: File; url: string; tipo: 'imagem' | 'video' | 'audio' | 'documento' } | null>(null)
+  function escolherAnexo(f: File) {
+    const tipo = /^image\//.test(f.type) ? 'imagem' : /^video\//.test(f.type) ? 'video' : /^audio\//.test(f.type) ? 'audio' : 'documento'
+    if (anexoPreview) URL.revokeObjectURL(anexoPreview.url)
+    setAnexoPreview({ file: f, url: URL.createObjectURL(f), tipo })
+  }
+  async function enviarAnexoPreview() {
+    if (!anexoPreview) return
+    const f = anexoPreview.file
+    URL.revokeObjectURL(anexoPreview.url)
+    setAnexoPreview(null)
+    await enviarMidia(f)
+  }
+  function descartarAnexoPreview() {
+    if (anexoPreview) URL.revokeObjectURL(anexoPreview.url)
+    setAnexoPreview(null)
   }
   async function enviar() {
     const t = texto.trim()
@@ -2884,21 +2977,62 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
                   {sugerindo ? '...' : 'Sugerir'}
                 </button>
               )}
-              {canal === 'whatsapp' && (<>
-                <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) enviarMidia(f); e.target.value = '' }} />
-                <button onClick={() => fileInputRef.current?.click()} disabled={enviandoMidia || gravando} title="Anexar arquivo (PDF, imagem, vídeo...)"
-                  style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0, padding: 0 }}>
-                  {enviandoMidia ? <span style={{ width: 14, height: 14, border: '2px solid #ccc', borderTopColor: '#666', borderRadius: '50%', animation: 'soma-girar 0.8s linear infinite' }} /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>}
-                </button>
-                <button onClick={toggleGravarAudio} disabled={enviandoMidia} title={gravando ? 'Parar e enviar áudio' : 'Gravar áudio'}
-                  style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: gravando ? '#dc2626' : '#f4f4f5', color: gravando ? '#fff' : '#444', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0, animation: gravando ? 'soma-pulse 1.2s ease-in-out infinite' : 'none' }}>
-                  {gravando ? <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg> : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>}
-                </button>
+              {gravando ? (
+                /* GRAVANDO — onda reagindo ao sinal + cronômetro + parar/cancelar */
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #fecaca', background: '#fef2f2', borderRadius: 10, padding: '5px 8px 5px 12px', minWidth: 0 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#dc2626', animation: 'soma-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{mmss(segundos)}</span>
+                  <canvas ref={canvasRef} width={300} height={30} style={{ flex: 1, height: 30, minWidth: 0 }} />
+                  <button onClick={cancelarGravacao} title="Cancelar gravação" style={{ padding: '7px 12px', background: 'transparent', color: '#888', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Cancelar</button>
+                  <button onClick={pararGravacao} title="Parar (ouvir antes de enviar)" style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
+                  </button>
+                </div>
+              ) : anexoPreview ? (
+                /* ANEXO NA FILA — valide antes de enviar; Descartar ou Enviar */
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #e2e2e2', borderRadius: 10, padding: '6px 10px', minWidth: 0 }}>
+                  {anexoPreview.tipo === 'imagem' ? (
+                    <img src={anexoPreview.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : anexoPreview.tipo === 'video' ? (
+                    <video src={anexoPreview.url} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: '#000' }} />
+                  ) : anexoPreview.tipo === 'audio' ? (
+                    <audio src={anexoPreview.url} controls style={{ height: 34, maxWidth: 200 }} />
+                  ) : (
+                    <span style={{ width: 40, height: 40, borderRadius: 8, background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+                    </span>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexoPreview.file.name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#999' }}>{(anexoPreview.file.size / 1024 / 1024).toFixed(anexoPreview.file.size > 1024 * 1024 ? 1 : 2)} MB · pronto para enviar</p>
+                  </div>
+                  <button onClick={descartarAnexoPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
+                  <button onClick={enviarAnexoPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar'}</button>
+                </div>
+              ) : audioPreview ? (
+                /* PRÉVIA — ouça antes de enviar; Descartar ou Enviar áudio */
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <audio src={audioPreview.url} controls style={{ flex: 1, height: 40, minWidth: 0 }} />
+                  <button onClick={descartarAudioPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
+                  <button onClick={enviarAudioPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar áudio'}</button>
+                </div>
+              ) : (<>
+                {canal === 'whatsapp' && (<>
+                  <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) escolherAnexo(f); e.target.value = '' }} />
+                  <button onClick={() => fileInputRef.current?.click()} disabled={enviandoMidia} title="Anexar arquivo (PDF, imagem, vídeo...)"
+                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0, padding: 0 }}>
+                    {enviandoMidia ? <span style={{ width: 14, height: 14, border: '2px solid #ccc', borderTopColor: '#666', borderRadius: '50%', animation: 'soma-girar 0.8s linear infinite' }} /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>}
+                  </button>
+                  <button onClick={iniciarGravacao} disabled={enviandoMidia} title="Gravar áudio"
+                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>
+                  </button>
+                </>)}
+                <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
+                  placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
+                <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
               </>)}
-              <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
-                placeholder={gravando ? 'Gravando áudio…' : 'Escreva uma mensagem...'} disabled={gravando} rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', background: gravando ? '#fef2f2' : '#fff' }} />
-              <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
             </div>
           </>)}
         </div>
