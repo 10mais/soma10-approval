@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
@@ -1013,8 +1014,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   </div>
 
                   {/* Painel da pauta — MODAL (pedido do dono 23/07): só ela na tela.
-                      Expandir inline virava um mar de campos sem começo nem fim na rolagem. */}
-                  {aberto && (
+                      Expandir inline virava um mar de campos sem começo nem fim na rolagem.
+                      PORTAL no body: o st-row anima com transform, e transform em ancestral
+                      prende o position:fixed dentro da linha (modal saía clipado). */}
+                  {aberto && createPortal(
                     <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
                     <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -1147,7 +1150,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     </div>
                     </div>
                     </div>
-                  )}
+                  , document.body)}
                 </div>
               )
             })}
