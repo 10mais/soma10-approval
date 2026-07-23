@@ -103,10 +103,10 @@ aside,
 .anim-toast-out { animation: soma-slide-out-right var(--dur-base) ease-in both; }
 
 /* Troca de aba: mais curta que o padrao (interacao mais frequente do app).
-   Fallback se o deep-link aba+modal clipar durante os 180ms (transform vira
-   containing block do modal fixed): trocar por fade puro —
-   .anim-aba { animation: soma-fade-in 180ms ease-out both; } */
-.anim-aba { animation: soma-rise-in 180ms var(--ease-out) both; }
+   FADE PURO de proposito: a versao com rise (transform) prendia modais fixed
+   abertos dentro do conteudo (print do dono, 23/07) — opacity nao cria
+   containing block, entao qualquer modal aberto fica intacto. */
+.anim-aba { animation: soma-fade-in 180ms ease-out both; }
 
 /* Acessibilidade: respeita quem pediu menos movimento no sistema. */
 @media (prefers-reduced-motion: reduce) {

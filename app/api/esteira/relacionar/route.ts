@@ -84,12 +84,15 @@ export async function POST(req: NextRequest) {
   if (postId) {
     const pauta = await redis.get<Post>(`post:${postId}`)
     if (!pauta) return NextResponse.json({ error: 'pauta não encontrada' }, { status: 404 })
-    // Pauta em produção de criativo: o caminho MANUAL converge com o automático
-    // da linha de montagem — tarefa do designer com a copy/anexos dentro, como
-    // subtarefa da tarefa-mãe do plano (lib/tarefasDaPauta).
-    if (pauta.etapa === 'criativo') {
+    // O caminho MANUAL ("Criar tarefa desta pauta") converge com o automático
+    // da linha de montagem em QUALQUER etapa (exceto pronto): tarefa do
+    // designer com copy/anexos (pauta + lâminas) dentro, responsável = designer
+    // do squad, como subtarefa da tarefa-mãe do plano (lib/tarefasDaPauta).
+    // Antes só a etapa 'criativo' ganhava isso — o resto caía no flat sem
+    // anexos e sem responsável (bug reportado pelo dono, 23/07).
+    {
       const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta')
-      const r = await nascerTarefaDesigner(postId, autor)
+      const r = await nascerTarefaDesigner(postId, autor, { manual: true })
       if (r) return NextResponse.json({ ok: true, resultado: r.reaberta ? 'jaVinculada' : 'criada', tipo: 'criativo', tarefaId: r.tarefaId })
     }
     const r = await relacionarPauta(pauta, autor)

@@ -92,13 +92,26 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
   return true
 }
 
+// Anexos que a tarefa do designer carrega: os da pauta + os de CADA lâmina do
+// carrossel (o dono reportou anexo de lâmina ficando para trás, 23/07).
+function anexosDaPauta(post: Post): { nome: string; url: string; tipo: string }[] {
+  return [
+    ...(post.anexos || []),
+    ...((post.laminas || []).map((l, i) => l.anexo ? { ...l.anexo, nome: `Lâmina ${i + 1} — ${l.anexo.nome}` } : null).filter(Boolean) as { nome: string; url: string; tipo: string }[]),
+  ]
+}
+
 // Copy aprovada -> nasce (ou reabre) a tarefa do DESIGNER com tudo dentro:
-// copy aprovada na descrição, anexos da pauta, prazo = data da postagem,
-// responsável = Designer do squad do cliente. Nunca lança: falha aqui não pode
-// derrubar a aprovação do cliente (o chamador embrulha em try/catch mesmo assim).
-export async function nascerTarefaDesigner(postId: string, autor: string): Promise<{ tarefaId: string; reaberta: boolean } | null> {
+// copy aprovada na descrição, anexos da pauta E das lâminas, prazo = data da
+// postagem, responsável = Designer do squad do cliente. `opts.manual` é o botão
+// "Criar tarefa desta pauta": cria em QUALQUER etapa exceto pronto (o time quer
+// a tarefa do designer mesmo antes da aprovação — controle manual). Nunca
+// lança: falha aqui não pode derrubar a aprovação do cliente.
+export async function nascerTarefaDesigner(postId: string, autor: string, opts: { manual?: boolean } = {}): Promise<{ tarefaId: string; reaberta: boolean } | null> {
   const post = await redis.get<Post>(`post:${postId}`)
-  if (!post || post.etapa !== 'criativo') return null
+  if (!post) return null
+  const etapaOk = post.etapa === 'criativo' || (opts.manual && post.etapa && post.etapa !== 'pronto')
+  if (!etapaOk) return null
   const agora = new Date().toISOString()
 
   // Pauta que JÁ tem tarefa (ajuste -> copy reaprovada, ou vínculo manual antigo):
@@ -106,11 +119,12 @@ export async function nascerTarefaDesigner(postId: string, autor: string): Promi
   if (post.tarefaId) {
     const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
     if (t) {
+      const anexosT = anexosDaPauta(post)
       const atualizada: Tarefa = {
         ...t,
         status: t.status === 'concluido' ? 'a_fazer' : t.status,
         descricao: descricaoTarefaDesigner(post),
-        ...(post.anexos?.length ? { anexos: post.anexos } : {}),
+        ...(anexosT.length ? { anexos: anexosT } : {}),
         atualizadoEm: agora,
         atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Copy reaprovada pelo cliente — tarefa atualizada com a copy nova', autor, criadoEm: agora }],
       }
@@ -131,6 +145,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string): Promi
     designerNome = u?.nome || ''
   }
   const tarefaPaiId = post.planoId ? await tarefaMaeDoPlano(post.planoId, autor) : null
+  const anexosSub = anexosDaPauta(post)
 
   const sub: Tarefa = {
     id: uuid(),
@@ -146,7 +161,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string): Promi
     marcoId: post.marcoId || '',
     ...(tarefaPaiId ? { tarefaPaiId } : {}),
     prazo: post.dataAgendada || '',
-    ...(post.anexos?.length ? { anexos: post.anexos } : {}),
+    ...(anexosSub.length ? { anexos: anexosSub } : {}),
     origemPostId: post.id,
     criadoPor: autor,
     criadoEm: agora,
