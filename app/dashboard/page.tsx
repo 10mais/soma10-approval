@@ -436,6 +436,17 @@ function Dashboard() {
     if (a === 'novo-post' && aba !== 'novo-post') abaAntesComposer.current = aba
     setAbaRaw(a); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_aba', a)
   }
+  // Motion: re-dispara a entrada do conteúdo a cada troca de aba SEM remount
+  // (key={aba} remontaria a árvore e perderia estado/dados das telas). O reflow
+  // faz o navegador esquecer a animação anterior e reiniciá-la via classe.
+  const abaAnimRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = abaAnimRef.current
+    if (!el) return
+    el.classList.remove('anim-aba')
+    void el.offsetWidth
+    el.classList.add('anim-aba')
+  }, [aba])
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_plannerView') === 'calendario') ? 'calendario' : 'lista')
@@ -2224,7 +2235,7 @@ function Dashboard() {
             mobile o cluster fica em (12px + safe-area) + ~46px de altura; em
             aparelho com notch a safe-area cresce e o título passava POR BAIXO do
             cluster. Por isso o topo acompanha a mesma safe-area (não é 64px fixo). */}
-        <div style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
+        <div ref={abaAnimRef} className="anim-aba" style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
 
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (
