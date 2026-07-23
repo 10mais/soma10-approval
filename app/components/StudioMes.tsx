@@ -20,10 +20,11 @@ type Pauta = {
   id: string; clienteId: string; clienteNome: string; imagens: string[]; legenda: string
   status: string; formato?: string; etapa?: string; briefing?: string; headline?: string; planoId?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
+  subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
   criadoEm?: string; atualizadoEm?: string
-  iaGerado?: { briefing?: string; headline?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; formato?: string; geradoEm: string }
+  iaGerado?: { briefing?: string; headline?: string; subheadline?: string; legenda?: string; sugestaoImagem?: string; textoImagem?: string; cta?: string; formato?: string; geradoEm: string }
   editadoAposIA?: boolean
   criativoGerado?: boolean
   criativoData?: any // receita do criativo (para reabrir no editor)
@@ -275,6 +276,33 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     }).catch(() => {})
   }
 
+  // Anexos da pauta (referências p/ o designer): sobem pro Blob e ficam no Post.
+  const [anexando, setAnexando] = useState<string | null>(null)
+  async function salvarAnexos(id: string, anexos: { nome: string; url: string; tipo: string }[]) {
+    setPautas(ps => ps.map(x => x.id === id ? { ...x, anexos } : x))
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, anexos }),
+    }).catch(() => {})
+  }
+  async function anexarArquivos(p: Pauta, files: FileList) {
+    setAnexando(p.id)
+    try {
+      const novos: { nome: string; url: string; tipo: string }[] = []
+      for (const file of Array.from(files)) {
+        // /api/upload adiciona sufixo aleatório — o nome original vive no campo `nome`.
+        const blob = await upload(`pautas/${p.id}/${file.name}`, file, {
+          access: 'public', handleUploadUrl: '/api/upload',
+          contentType: file.type || 'application/octet-stream', clientPayload: file.type || 'application/octet-stream',
+        })
+        novos.push({ nome: file.name, url: blob.url, tipo: file.type || '' })
+      }
+      await salvarAnexos(p.id, [...(p.anexos || []), ...novos])
+    } catch (e: any) {
+      toast(e?.message || 'Falha ao enviar o anexo. Tente novamente.', 'erro')
+    } finally { setAnexando(null) }
+  }
+
   async function salvarData(id: string, localValue: string) {
     const iso = localValue ? new Date(localValue).toISOString() : ''
     setPautas(ps => ps.map(p => p.id === id ? { ...p, dataAgendada: iso } : p))
@@ -437,7 +465,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     const cd = p.criativoData || {}
     setBriefObj(cd.objetivo || '')
     setBriefVals({
-      cta: cd.cta || '', oferta: cd.oferta || '', preco: cd.preco || '', dataEvento: cd.dataEvento || '',
+      cta: cd.cta || p.cta || '', oferta: cd.oferta || '', preco: cd.preco || '', dataEvento: cd.dataEvento || '',
       horaEvento: cd.horaEvento || '', localEvento: cd.localEvento || '', legal: cd.legal || '', whatsapp: cd.whatsapp || '',
     })
     // Descobre se a foto realista está ligada e qual motor (Nano Banana/Ideogram).
@@ -922,7 +950,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
                         <div><CampoLabel>Headline (arte / abertura do vídeo)</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
-                        <div><CampoLabel>Copy (legenda)</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
+                        <div><CampoLabel>Sub-headline (opcional)</CampoLabel><CelulaEditavel valor={p.subheadline} editavel={podeEditar} placeholder="Apoio da headline na arte..." onSalvar={v => salvarCampo(p.id, 'subheadline', v)} /></div>
+                        <div><CampoLabel>Copy do criativo (texto na arte)</CampoLabel><CelulaEditavel valor={p.textoImagem} editavel={podeEditar} placeholder="Texto que aparece na imagem..." onSalvar={v => salvarCampo(p.id, 'textoImagem', v)} /></div>
+                        <div><CampoLabel>CTA (na arte)</CampoLabel><CelulaEditavel valor={p.cta} editavel={podeEditar} placeholder="Chamada curta: Agende agora, Chame no WhatsApp..." onSalvar={v => salvarCampo(p.id, 'cta', v)} /></div>
+                        <div><CampoLabel>Legenda</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
                         <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
                         <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
                           <div>
@@ -944,6 +975,32 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
                               style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
                           </div>
+                        </div>
+                        <div>
+                          <CampoLabel>Anexos (referências p/ o designer)</CampoLabel>
+                          {(p.anexos || []).length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                              {(p.anexos || []).map(a => (
+                                <div key={a.url} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa', border: '1px solid #eee', borderRadius: 9, padding: '6px 10px' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                  <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 12, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nome}</a>
+                                  {podeEditar && (
+                                    <button onClick={() => salvarAnexos(p.id, (p.anexos || []).filter(x => x.url !== a.url))} title="Remover anexo" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {podeEditar && (
+                            <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: anexando === p.id ? 'wait' : 'pointer' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                              {anexando === p.id ? 'Enviando…' : 'Anexar arquivo'}
+                              <input type="file" multiple style={{ display: 'none' }} disabled={anexando !== null}
+                                onChange={e => { if (e.target.files?.length) anexarArquivos(p, e.target.files); e.target.value = '' }} />
+                            </label>
+                          )}
                         </div>
                       </div>
                       <div style={{ flex: '0 0 190px', display: 'flex', flexDirection: 'column', gap: 12 }}>

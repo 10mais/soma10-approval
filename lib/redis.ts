@@ -784,6 +784,7 @@ export type Plano = {
   mes: number // 1-12
   ano: number
   titulo?: string
+  tarefaId?: string // tarefa-mãe criada a partir deste plano (linha de montagem Studio > Tarefa > Planner)
   criadoPor: string
   criadoEm: string
 }
@@ -825,9 +826,12 @@ export type Post = {
   // A FRASE da peça: vai no layout do criativo ou como texto principal do vídeo.
   // Toda pauta tem a sua — é o que prende o dedo antes de qualquer legenda.
   headline?: string
+  subheadline?: string // apoio da headline na arte (opcional)
   sugestaoImagem?: string // descrição visual sugerida (opcional)
-  textoImagem?: string // texto que deve aparecer na arte
+  textoImagem?: string // texto que deve aparecer na arte ("copy do criativo")
+  cta?: string // chamada para ação NA ARTE (ex.: "Agende agora")
   sugestaoLegenda?: string // rascunho de legenda sugerido no briefing
+  anexos?: { nome: string; url: string; tipo: string }[] // referências da pauta (mesmo shape de Tarefa.anexos)
   ajusteCopy?: string // comentário do cliente ao pedir ajuste de copy
   ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
   copyAprovadaEm?: string
@@ -840,8 +844,10 @@ export type Post = {
   iaGerado?: {
     briefing?: string
     headline?: string
+    subheadline?: string
     sugestaoImagem?: string
     textoImagem?: string
+    cta?: string
     legenda?: string
     formato?: 'feed' | 'reel' | 'story'
     geradoEm: string

@@ -162,9 +162,11 @@ export async function PUT(req: NextRequest) {
     if (
       norm(atualizado.briefing) !== norm(g.briefing) ||
       norm(atualizado.headline) !== norm(g.headline) ||
+      norm(atualizado.subheadline) !== norm(g.subheadline) ||
       norm(atualizado.legenda) !== norm(g.legenda) ||
       norm(atualizado.sugestaoImagem) !== norm(g.sugestaoImagem) ||
       norm(atualizado.textoImagem) !== norm(g.textoImagem) ||
+      norm(atualizado.cta) !== norm(g.cta) ||
       norm(atualizado.formato) !== norm(g.formato)
     ) {
       atualizado.editadoAposIA = true
