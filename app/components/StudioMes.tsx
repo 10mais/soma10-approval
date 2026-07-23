@@ -221,7 +221,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [selCamada, setSelCamada] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null)
   function toggleLinha(id: string) {
-    setAbertos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+    // A pauta abre como MODAL (uma por vez): abrir outra fecha a anterior.
+    setAbertos(s => s.has(id) ? new Set() : new Set([id]))
   }
 
   function carregarPlanos() {
@@ -1011,9 +1012,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     </div>
                   </div>
 
-                  {/* Painel expandido — edição completa (formato/data viram controles bonitos) */}
+                  {/* Painel da pauta — MODAL (pedido do dono 23/07): só ela na tela.
+                      Expandir inline virava um mar de campos sem começo nem fim na rolagem. */}
                   {aberto && (
-                    <div className="st-detail" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', padding: '2px 20px 22px 45px' }}>
+                    <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
+                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: est.cor, background: est.bg, borderRadius: 999, padding: '4px 11px', flexShrink: 0 }}>{est.label}</span>
+                      <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || 'Pauta sem título'}</span>
+                      <button onClick={() => toggleLinha(p.id)} title="Fechar" style={{ width: 30, height: 30, borderRadius: 9, background: '#f4f4f5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                    <div className="st-detail" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
                       <div style={{ flexBasis: '100%' }}><PipelinePauta p={p} /></div>
                       <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1133,6 +1144,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           </div>
                         )}
                       </div>
+                    </div>
+                    </div>
                     </div>
                   )}
                 </div>
