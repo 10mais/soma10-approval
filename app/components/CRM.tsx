@@ -2411,8 +2411,16 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
   // Só recarrega as mensagens da conversa ATUAL — sem mexer na seleção nem nas
   // sugestões abertas. É o que o polling usa (antes o poll chamava abrir(), que
   // fechava o popup de sugestões a cada 15s — não dava tempo de escolher).
+  //
+  // GUARDA "a mais nova vence": o poll de 15s e o refetch pós-envio disputam.
+  // Uma resposta LIDA ANTES do salvamento pode chegar DEPOIS e sobrescrever a
+  // lista, apagando a mensagem recém-enviada (bug: "enviei e sumiu"). O seq
+  // garante que só a última requisição aplica o resultado.
+  const reqSeqRef = useRef(0)
   async function recarregarMensagens(id: string) {
+    const seq = ++reqSeqRef.current
     const d = await cfg.historico(id)
+    if (seq !== reqSeqRef.current) return // chegou uma resposta mais nova; descarta esta
     if (d) setMensagens(Array.isArray(d.mensagens) ? d.mensagens : [])
     setConversas(cs => cs.map(c => c.id === id ? { ...c, naoLidas: 0 } : c))
   }
