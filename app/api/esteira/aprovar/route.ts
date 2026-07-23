@@ -153,6 +153,8 @@ export async function POST(req: NextRequest) {
     post.status = 'corrigir'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
+    // Linha de montagem: devolve a peça pra estação do designer (reabre a tarefa).
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(postId, comentario || '', quem) } catch { /* segue */ }
     // Notifica o responsável pela pauta: criador + squad do cliente.
     const msg = `${quem} pediu ajuste no layout: "${comentario || 'sem comentário'}". A programação foi cancelada.`
     await notificarDono(post.criadoPor, 'geral', `Ajuste de layout — ${nome}`, msg, postId)

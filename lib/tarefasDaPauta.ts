@@ -65,6 +65,33 @@ export async function tarefaMaeDoPlano(planoId: string, autor: string): Promise<
   return mae.id
 }
 
+// Cliente devolveu o criativo (ajuste/reprovacao): a linha de montagem devolve
+// a peca para a estacao certa — reabre a tarefa do designer com o feedback
+// dentro. Idempotente: tarefa ja aberta so registra o feedback (nao reseta o
+// status de quem ja esta trabalhando). Nunca mexe na etapa da pauta.
+export async function reabrirTarefaDaPauta(postId: string, feedback: string, autor: string): Promise<boolean> {
+  const post = await redis.get<Post>(`post:${postId}`)
+  const tarefaId = post?.tarefaId
+  if (!post || !tarefaId) return false
+  const t = await redis.get<Tarefa>(`tarefa:${tarefaId}`)
+  if (!t) return false
+  const agora = new Date().toISOString()
+  const estavaConcluida = t.status === 'concluido'
+  const atualizada: Tarefa = {
+    ...t,
+    status: estavaConcluida ? 'a_fazer' : t.status,
+    ...(estavaConcluida ? { concluidoEm: undefined } : {}),
+    atualizadoEm: agora,
+    atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: estavaConcluida ? 'Cliente pediu ajuste no criativo — tarefa reaberta' : 'Cliente pediu ajuste no criativo', autor, criadoEm: agora }],
+    comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback do cliente: ${feedback || 'sem comentário'}`, criadoEm: agora }],
+  }
+  await redis.set(`tarefa:${tarefaId}`, atualizada)
+  if (t.responsavelEmail) {
+    await notificar(t.responsavelEmail, 'tarefa_alterada', `Ajuste no criativo — ${post.clienteNome || 'Cliente'}`, `O cliente pediu ajuste no criativo da tarefa "${t.titulo}": ${(feedback || 'sem comentário').slice(0, 140)}`, undefined, tarefaId).catch(() => {})
+  }
+  return true
+}
+
 // Copy aprovada -> nasce (ou reabre) a tarefa do DESIGNER com tudo dentro:
 // copy aprovada na descrição, anexos da pauta, prazo = data da postagem,
 // responsável = Designer do squad do cliente. Nunca lança: falha aqui não pode

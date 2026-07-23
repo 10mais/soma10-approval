@@ -118,6 +118,18 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     if (info) await notificarEquipe(info.tipo, info.titulo, info.mensagem, id)
   } catch (e) { console.error('Erro ao notificar equipe:', e) }
 
+  // Linha de montagem: ajuste/reprovação do criativo REABRE a tarefa do
+  // designer com o feedback do cliente dentro (lib/tarefasDaPauta). Nunca
+  // bloqueia a decisão do cliente.
+  if (type === 'corrected' || type === 'rejected') {
+    try {
+      const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta')
+      const pontos = Array.isArray(annotations) ? annotations.map((a: any) => a?.text).filter(Boolean).join(' · ') : ''
+      const feedback = [rejectReason, pontos].filter(Boolean).join(' — ')
+      await reabrirTarefaDaPauta(id, feedback, (post as any).clienteNome || (post as any).cliente || 'Cliente')
+    } catch { /* segue */ }
+  }
+
   // Ajuste de LAYOUT: cancela a programação (sai dos agendados) e notifica o
   // responsável pela pauta (criador + squad do cliente), além da equipe acima.
   if (type === 'corrected') {
