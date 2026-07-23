@@ -65,6 +65,58 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'acesso suspenso por pendência de pagamento' }, { status: 403 })
   }
 
+  // ===== LINHA DE MONTAGEM: COPY em aprovação (etapa aprovacao_copy) =====
+  // Pelo mesmo link público do criativo, a decisão aqui é sobre o TEXTO.
+  // approved -> copy aprovada (nasce a tarefa do designer); corrected/rejected ->
+  // aplica os campos EDITADOS pelo cliente (headline/sub/texto/CTA/legenda) +
+  // observação e devolve para a agência.
+  if ((post as any).etapa === 'aprovacao_copy') {
+    const agoraCopy = new Date().toISOString()
+    const clienteNomeCopy = (post as any).clienteNome || (post as any).cliente || 'Cliente'
+    const novos = (body.novosCampos || {}) as Record<string, unknown>
+    const aplicarCampos = () => {
+      for (const k of ['headline', 'subheadline', 'textoImagem', 'cta'] as const) {
+        if (typeof novos[k] === 'string') (post as any)[k] = novos[k]
+      }
+      if (typeof novaLegenda === 'string') (post as any).legenda = novaLegenda
+    }
+    try {
+      const { registrarLogCliente } = await import('@/lib/logCliente')
+      await registrarLogCliente({
+        clienteId: (post as any).clienteId || '', clienteNome: clienteNomeCopy,
+        tipo: type === 'approved' || type === 'caption' ? 'aprovacao' : type === 'rejected' ? 'reprovacao' : 'ajuste_copy',
+        acao: type === 'approved' || type === 'caption' ? 'Aprovou a copy' : type === 'rejected' ? 'Recusou a copy' : 'Pediu ajuste na copy',
+        postId: id, resumo: ((post as any).headline || post.legenda || (post as any).briefing || '').slice(0, 140),
+        motivo: rejectReason || undefined, origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+      })
+    } catch { /* nunca bloqueia */ }
+
+    if (type === 'approved' || type === 'caption') {
+      if (type === 'caption') aplicarCampos() // "aprovar com meus ajustes"
+      ;(post as any).etapa = 'criativo'
+      ;(post as any).copyAprovadaEm = agoraCopy
+      ;(post as any).ajusteCopy = undefined
+      if (post.status === 'aguardando_aprovacao' || post.status === 'corrigir') post.status = 'rascunho'
+      ;(post as any).etapaDesde = agoraCopy; (post as any).aguardandoDesde = undefined
+      ;(post as any).atualizadoEm = agoraCopy
+      await redis.set(`post:${id}`, post)
+      // Copy aprovada -> nasce a tarefa do designer (falha nunca derruba a decisão)
+      try { const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta'); await nascerTarefaDesigner(id, clienteNomeCopy) } catch { /* segue */ }
+      await notificarDono((post as any).criadoPor, 'geral', `Copy aprovada — ${clienteNomeCopy}`, `${clienteNomeCopy} aprovou a copy da pauta "${(post as any).briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, id)
+      return NextResponse.json({ ok: true })
+    }
+
+    aplicarCampos()
+    ;(post as any).ajusteCopy = rejectReason || 'Ajuste solicitado'
+    post.status = type === 'rejected' ? 'reprovado' : 'corrigir'
+    if (type === 'rejected') (post as any).motivoReprovacao = rejectReason || ''
+    ;(post as any).etapaDesde = agoraCopy; (post as any).aguardandoDesde = undefined
+    ;(post as any).atualizadoEm = agoraCopy
+    await redis.set(`post:${id}`, post)
+    await notificarDono((post as any).criadoPor, 'geral', `${type === 'rejected' ? 'Copy recusada' : 'Ajuste de copy'} — ${clienteNomeCopy}`, `${clienteNomeCopy} ${type === 'rejected' ? 'recusou a copy' : 'pediu ajuste na copy'}: "${rejectReason || 'sem comentário'}".`, id)
+    return NextResponse.json({ ok: true })
+  }
+
   // Correção SÓ da legenda: substitui o texto e SEGUE a programação (= aprova).
   const soLegenda = type === 'caption'
   if (soLegenda) {

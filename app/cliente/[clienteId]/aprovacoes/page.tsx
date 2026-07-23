@@ -233,7 +233,7 @@ export default function AprovacoesPagina() {
                         {(p.laminas || []).map((l: any, i: number) => l?.texto ? (
                           <p key={i} style={{ margin: '0 0 4px', fontSize: 12.5, color: '#334155', whiteSpace: 'pre-wrap' }}><strong style={{ color: '#0891b2' }}>Lâmina {i + 1}:</strong> {l.texto}</p>
                         ) : null)}
-                        {p.cta && <span style={{ display: 'inline-block', marginTop: 2, background: '#111', color: '#ffc00f', borderRadius: 999, padding: '4px 12px', fontSize: 11.5, fontWeight: 800 }}>{p.cta}</span>}
+                        {p.cta && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 800, color: '#92400e' }}>{p.cta}</p>}
                       </div>
                     )}
                     {ehCopy && (p.headline || p.subheadline || p.textoImagem || p.cta) && <p style={{ margin: '0 0 2px', fontSize: 10.5, fontWeight: 800, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Legenda</p>}

@@ -393,9 +393,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     try {
       await fetch('/api/posts', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: p.id, etapa: 'aprovacao_copy' }),
+        body: JSON.stringify({ id: p.id, etapa: 'aprovacao_copy', status: 'aguardando_aprovacao' }),
       })
       toast('Copy enviada para aprovação do cliente.', 'sucesso')
+      // Mesma experiência do criativo: gera/copia o LINK público e abre o modal.
+      await copiarLink(p.clienteId, p.clienteNome)
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }

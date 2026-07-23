@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
     post.etapa = 'criativo'
     post.copyAprovadaEm = agora
     post.ajusteCopy = undefined
+    // O envio da copy marca aguardando_aprovacao (link público); aprovada, volta a rascunho.
+    if (post.status === 'aguardando_aprovacao' || post.status === 'corrigir') post.status = 'rascunho'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     // Linha de montagem: copy aprovada -> nasce a tarefa do designer (com a
@@ -119,6 +121,7 @@ export async function POST(req: NextRequest) {
     if (typeof novaLegenda === 'string') post.legenda = novaLegenda
     if (post.etapa === 'aprovacao_copy') {
       post.etapa = 'criativo'; post.copyAprovadaEm = agora; post.ajusteCopy = undefined
+      if (post.status === 'aguardando_aprovacao' || post.status === 'corrigir') post.status = 'rascunho'
       post.etapaDesde = agora; post.aguardandoDesde = undefined
       await redis.set(`post:${postId}`, post)
       // Mesma transição do aprovar_copy: a tarefa do designer nasce aqui também.

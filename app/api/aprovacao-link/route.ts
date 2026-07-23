@@ -50,12 +50,21 @@ export async function GET(req: NextRequest) {
   const posts = todos
     // Mostra os aguardando aprovação E os que estão EM AJUSTE (corrigir) — para o
     // criativo não sumir enquanto a agência trabalha e o cliente poder editar o ajuste.
-    .filter(p => p.clienteId === clienteId && (p.status === 'aguardando_aprovacao' || p.status === 'corrigir'))
+    // A COPY em aprovação (etapa aprovacao_copy) entra pelo mesmo link: o cliente
+    // aprova o TEXTO antes de a arte ser produzida (linha de montagem).
+    .filter(p => p.clienteId === clienteId && (p.status === 'aguardando_aprovacao' || p.status === 'corrigir' || p.etapa === 'aprovacao_copy'))
     .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
     .map(p => ({
       id: p.id, codigo: (p as any).codigo, imagens: p.imagens || [], legenda: p.legenda || '',
       formato: (p as any).formato || '', dataAgendada: (p as any).dataAgendada || '', capasVideo: (p as any).capasVideo || {},
       status: p.status, anotacoes: (p as any).anotacoes || [], ajusteCriativo: (p as any).ajusteCriativo || '', motivoReprovacao: (p as any).motivoReprovacao || '',
+      // Copy em aprovação: o card do link vira "arte de texto" com estes campos.
+      ehCopy: p.etapa === 'aprovacao_copy',
+      headline: (p as any).headline || '', subheadline: (p as any).subheadline || '',
+      textoImagem: (p as any).textoImagem || '', cta: (p as any).cta || '',
+      laminas: ((p as any).laminas || []).map((l: any) => ({ texto: l?.texto || '' })),
+      medidas: (p as any).medidas || '', localAplicacao: (p as any).localAplicacao || '',
+      ajusteCopy: (p as any).ajusteCopy || '',
     }))
 
   // Logo do perfil: cliente.logo pode estar expirado (URL do IG → 403). Manda
