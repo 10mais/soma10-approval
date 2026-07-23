@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-type Toast = { id: string; mensagem: string; tipo: 'sucesso' | 'erro' | 'info'; titulo?: string }
+type Toast = { id: string; mensagem: string; tipo: 'sucesso' | 'erro' | 'info'; titulo?: string; saindo?: boolean }
 type Confirm = { id: string; mensagem: string; titulo?: string; okLabel?: string; cancelLabel?: string; perigo?: boolean }
 
 const CORES = {
@@ -31,7 +31,10 @@ export default function Toaster() {
       const id = Math.random().toString(36).slice(2)
       const t: Toast = { id, mensagem: String(d.mensagem || ''), tipo: d.tipo || 'info', titulo: d.titulo }
       setToasts(ts => [...ts, t])
-      setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 4200)
+      // Saída ANIMADA: marca `saindo` (anim-toast-out) e o onAnimationEnd remove.
+      setTimeout(() => setToasts(ts => ts.map(x => x.id === id ? { ...x, saindo: true } : x)), 4200)
+      // Rede de segurança: se a aba perder o frame do animationend, remove mesmo assim.
+      setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 4200 + 600)
     }
     const onConfirm = (e: Event) => setConfirm((e as CustomEvent).detail)
     window.addEventListener('soma-toast', onToast)
@@ -39,7 +42,9 @@ export default function Toaster() {
     return () => { window.removeEventListener('soma-toast', onToast); window.removeEventListener('soma-confirm', onConfirm) }
   }, [])
 
-  function fecharToast(id: string) { setToasts(ts => ts.filter(x => x.id !== id)) }
+  // O × usa a mesma saída animada do timeout (single place).
+  function fecharToast(id: string) { setToasts(ts => ts.map(x => x.id === id ? { ...x, saindo: true } : x)) }
+  function removerToast(id: string) { setToasts(ts => ts.filter(x => x.id !== id)) }
 
   function responder(ok: boolean) {
     if (confirm) window.dispatchEvent(new CustomEvent('soma-confirm-result', { detail: { id: confirm.id, ok } }))
@@ -48,16 +53,16 @@ export default function Toaster() {
 
   return (
     <>
-      <style>{`@keyframes somaToastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}`}</style>
-      {/* Pilha de toasts (canto superior direito) */}
+      {/* Pilha de toasts (canto superior direito) — entrada/saída via classes globais (globals.css) */}
       <div className="soma10-no-invert" style={{ position: 'fixed', top: 16, right: 16, zIndex: 6000, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 'min(360px, calc(100vw - 32px))', pointerEvents: 'none' }}>
         {toasts.map(t => (
-          <div key={t.id} style={{
-            pointerEvents: 'auto', display: 'flex', alignItems: 'flex-start', gap: 11,
-            background: '#111', color: '#fff', borderRadius: 13, padding: '13px 14px',
-            boxShadow: '0 12px 34px rgba(0,0,0,0.32)', borderLeft: `3px solid ${CORES[t.tipo].barra}`,
-            animation: 'somaToastIn .22s ease-out',
-          }}>
+          <div key={t.id} className={t.saindo ? 'anim-toast-out' : 'anim-toast-in'}
+            onAnimationEnd={() => { if (t.saindo) removerToast(t.id) }}
+            style={{
+              pointerEvents: 'auto', display: 'flex', alignItems: 'flex-start', gap: 11,
+              background: '#111', color: '#fff', borderRadius: 13, padding: '13px 14px',
+              boxShadow: '0 12px 34px rgba(0,0,0,0.32)', borderLeft: `3px solid ${CORES[t.tipo].barra}`,
+            }}>
             <span style={{ width: 28, height: 28, borderRadius: '50%', background: CORES[t.tipo].fundoIcone, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <IconeTipo tipo={t.tipo} />
             </span>
@@ -72,8 +77,8 @@ export default function Toaster() {
 
       {/* Modal de confirmacao */}
       {confirm && (
-        <div onClick={() => responder(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6100 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, padding: '24px 26px', maxWidth: 400, width: '90%', boxShadow: '0 18px 50px rgba(0,0,0,0.28)' }}>
+        <div onClick={() => responder(false)} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6100 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: '#fff', borderRadius: 16, padding: '24px 26px', maxWidth: 400, width: '90%', boxShadow: '0 18px 50px rgba(0,0,0,0.28)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: confirm.titulo ? 12 : 16 }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', background: confirm.perigo ? '#fef2f2' : 'rgba(255,192,15,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={confirm.perigo ? '#b91c1c' : '#a16207'} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
