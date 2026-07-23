@@ -8,6 +8,7 @@ import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
 import { atrasada, emRisco } from '@/lib/entregas'
 import ProducaoBoard from './ProducaoBoard'
 import { fecharFora } from '@/lib/fecharModal'
+import { useCountUp } from '@/lib/useCountUp'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -826,7 +827,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // Métrica da Fase 0: quanto a equipe ajusta o que a IA gerou.
   const geradas = pautas.filter(p => p.iaGerado)
   const editadas = geradas.filter(p => p.editadoAposIA)
+  // Métricas com contagem animada (a COR condicional segue lendo o valor real).
+  const nPautasAnim = useCountUp(pautas.length)
   const taxa = geradas.length ? Math.round((editadas.length / geradas.length) * 100) : null
+  const taxaAnim = useCountUp(taxa ?? 0)
 
   // Seleção: cliente primeiro (agência), depois o mês/plano daquele cliente.
   // Todos os clientes ativos aparecem — quem ainda não tem plano vem marcado, e
@@ -864,7 +868,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   return (
     <div className="st-root">
       <style>{`
-        .st-root{--ease:cubic-bezier(.2,.8,.2,1)}
+        .st-root{--ease:var(--ease-out)}
         .st-btn{transition:transform .16s var(--ease),box-shadow .18s,filter .18s,background .18s,opacity .16s;will-change:transform}
         .st-btn:hover{transform:translateY(-1px)}
         .st-btn:active{transform:translateY(0)}
@@ -912,12 +916,6 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
             <option value="">Mês…</option>
             {planosDoCliente.map(p => <option key={p.id} value={p.id}>{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
           </select>
-        )}
-        {planoSel && podeExcluir && (
-          <button className="st-btn" onClick={excluirPlano} title="Excluir este plano"
-            style={{ width: 40, alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 11, cursor: 'pointer', padding: 0 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" /></svg>
-          </button>
         )}
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
@@ -967,13 +965,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {planoSel && pautas.length > 0 && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
           <div className="st-metric" style={{ background: '#fff', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#111', letterSpacing: '-0.02em', lineHeight: 1 }}>{pautas.length}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#111', letterSpacing: '-0.02em', lineHeight: 1 }}>{nPautasAnim}</div>
             <div style={{ color: '#999', marginTop: 3, fontSize: 12 }}>pautas no mês</div>
           </div>
           {taxa !== null && (
             <div className="st-metric" title="Quantas pautas geradas pela IA a equipe ajustou. Alta = matéria-prima ainda precisa de trabalho; baixa = IA acertando bem." style={{ background: '#fff', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, color: taxa >= 60 ? '#b45309' : '#16a34a' }}>{taxa}%</span>
+                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, color: taxa >= 60 ? '#b45309' : '#16a34a' }}>{taxaAnim}%</span>
                 <span style={{ fontSize: 11.5, color: '#bbb', fontWeight: 700 }}>taxa de edição</span>
               </div>
               <div style={{ color: '#999', marginTop: 3, fontSize: 12 }}>{editadas.length} de {geradas.length} pautas da IA ajustadas</div>
@@ -984,7 +982,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Barra de ações em massa — aparece quando há pautas selecionadas */}
       {pautasSel.size > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#111', color: '#fff', borderRadius: 12, padding: '10px 16px', marginBottom: 14 }}>
+        <div className="anim-in" style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#111', color: '#fff', borderRadius: 12, padding: '10px 16px', marginBottom: 14 }}>
           <span style={{ fontSize: 13, fontWeight: 700 }}>{pautasSel.size} selecionada(s)</span>
           {pautasSel.size < pautas.length && (
             <button onClick={() => setPautasSel(new Set(pautas.map(x => x.id)))} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ddd', cursor: 'pointer', fontWeight: 600 }}>Selecionar todas ({pautas.length})</button>
@@ -1132,8 +1130,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       PORTAL no body: o st-row anima com transform, e transform em ancestral
                       prende o position:fixed dentro da linha (modal saía clipado). */}
                   {aberto && createPortal(
-                    <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
-                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
+                    <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
+                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: est.cor, background: est.bg, borderRadius: 999, padding: '4px 11px', flexShrink: 0 }}>{est.label}</span>
                       <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || 'Pauta sem título'}</span>
@@ -1207,7 +1205,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <CampoLabel>Lâminas do carrossel (uma a uma, cada lâmina com seu anexo)</CampoLabel>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {(p.laminas || []).map((l, i) => (
-                              <div key={i} style={{ border: '1px solid #ececec', borderRadius: 12, padding: '10px 12px', background: '#fbfbfc' }}>
+                              <div key={i} className="anim-item" style={{ border: '1px solid #ececec', borderRadius: 12, padding: '10px 12px', background: '#fbfbfc', ['--i' as any]: i }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                                   <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0891b2', background: '#e0f2fe', borderRadius: 999, padding: '2px 10px' }}>Lâmina {i + 1}</span>
                                   <span style={{ flex: 1 }} />
@@ -1351,6 +1349,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         </div>
       )}
 
+      {/* Excluir plano — DENTRO da área do plano, nomeando o alvo (a lixeira
+          solta na toolbar era ambígua: "exclui o atual ou todos?"). */}
+      {planoSel && podeExcluir && !carregando && (() => {
+        const pl = planos.find(x => x.id === planoSel)
+        return pl ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <button className="st-btn" onClick={excluirPlano}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" /></svg>
+              Excluir o plano de {MESES[pl.mes - 1]}/{pl.ano}
+            </button>
+          </div>
+        ) : null
+      })()}
+
       {/* Editor de arte (Nível 1) — editar textos/cores/template + refinar por prompt */}
       {editorPost && editorSpec && (() => {
         const s = editorSpec
@@ -1358,8 +1371,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const inp: any = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }
         const ghost: any = { padding: '5px 10px', background: '#f5f5f5', border: 'none', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
         return (
-          <div onClick={fecharFora(() => !editorAplicando && setEditorPost(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
+          <div onClick={fecharFora(() => !editorAplicando && setEditorPost(null))} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Editar arte</h3>
                 <div style={{ display: 'inline-flex', gap: 3, background: '#f4f4f5', borderRadius: 999, padding: 3, marginLeft: 'auto' }}>
@@ -1523,8 +1536,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Quantas pautas gerar e com quais pilares. Entram NO PLANO ATUAL. */}
       {planoModal && (
-        <div onClick={fecharFora(() => setPlanoModal(false), { temAlteracoes: () => !!gerarPilares.trim() })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', padding: 22 }}>
+        <div onClick={fecharFora(() => setPlanoModal(false), { temAlteracoes: () => !!gerarPilares.trim() })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Gerar pautas com IA</h3>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999', lineHeight: 1.5 }}>
               Elas entram no plano aberto, a partir de hoje. A IA recebe o que esta marca já publicou e não repete tema usado.
@@ -1566,8 +1579,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {gerarModal && (() => {
         const p = gerarModal
         return (
-          <div onClick={fecharFora(() => setGerarModal(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22, animation: 'stFade .18s ease' }}>
+          <div onClick={fecharFora(() => setGerarModal(null))} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>A IA usa a imagem de referência + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
 
@@ -1650,8 +1663,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Modal de compartilhamento do link de aprovação */}
       {linkModal && (
-        <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22, animation: 'stFade .18s ease' }}>
+        <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -1682,8 +1695,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const img = (preview.imagens || []).find(u => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u)) || (preview.imagens || [])[0]
         const inicial = (preview.clienteNome || '?').trim().charAt(0).toUpperCase()
         return (
-          <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'stFade .18s ease' }}>
+          <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--marca, #ffc00f)', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{inicial}</div>
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>{preview.clienteNome}</span>
