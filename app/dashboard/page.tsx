@@ -804,6 +804,7 @@ function Dashboard() {
   // Ler páginas do cookie após OAuth
   useEffect(() => {
     const pagesId = searchParams.get('meta_pages')
+    const erro = searchParams.get('meta_error')
     if (pagesId) {
       setAba('clientes')
       setMetaClienteAlvo(searchParams.get('meta_cliente') || '')
@@ -813,7 +814,7 @@ function Dashboard() {
         .then(pages => { if (Array.isArray(pages)) setMetaPages(pages) })
         .catch(() => {})
     }
-    if (searchParams.get('meta_error')) {
+    if (erro) {
       setAba('clientes')
       const erros: Record<string, string> = {
         acesso_negado: 'Acesso negado. Você cancelou a autorização.',
@@ -823,7 +824,12 @@ function Dashboard() {
         ig_nao_configurado: 'Integração do Instagram não configurada (faltam INSTAGRAM_APP_ID/SECRET na Vercel).',
         erro_interno: 'Erro interno. Tente novamente.',
       }
-      setMetaErro(erros[searchParams.get('meta_error')!] || 'Erro desconhecido.')
+      setMetaErro(erros[erro] || 'Erro desconhecido.')
+    }
+    // Consome os params UMA vez. Sem isto a URL segue com ?meta_pages/?meta_error
+    // e todo refresh re-dispara este efeito, jogando de volta em Clientes.
+    if ((pagesId || erro) && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/dashboard')
     }
   }, [searchParams])
 
