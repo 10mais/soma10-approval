@@ -226,6 +226,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     // A pauta abre como MODAL (uma por vez): abrir outra fecha a anterior.
     setAbertos(s => s.has(id) ? new Set() : new Set([id]))
   }
+  // Seleção em massa (checkbox por linha) para excluir várias pautas de uma vez.
+  const [pautasSel, setPautasSel] = useState<Set<string>>(new Set())
+  function toggleSel(id: string) {
+    setPautasSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  async function excluirSelecionadas() {
+    const ids = Array.from(pautasSel)
+    if (!ids.length) return
+    if (!(await confirmar(`Excluir ${ids.length} pauta(s) selecionada(s)? Serão removidas permanentemente.`, { titulo: 'Excluir pautas', okLabel: `Excluir ${ids.length}`, perigo: true }))) return
+    setPautas(ps => ps.filter(x => !pautasSel.has(x.id)))
+    setPautasSel(new Set())
+    for (const id of ids) await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }).catch(() => {})
+    toast(`${ids.length} pauta(s) excluída(s).`, 'sucesso')
+  }
 
   function carregarPlanos() {
     const url = clienteFixo ? `/api/planos?clienteId=${clienteFixo}` : '/api/planos'
@@ -244,6 +258,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
   function carregarPautas(planoId: string) {
     if (!planoId) { setPautas([]); return }
+    setPautasSel(new Set()) // troca de plano/recarga limpa a seleção em massa
     setCarregando(true)
     fetch(`/api/planos?id=${planoId}&pautas=1`).then(r => r.json())
       .then(d => setPautas(ordenar(d?.pautas || [])))
@@ -944,6 +959,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         </div>
       )}
 
+      {/* Barra de ações em massa — aparece quando há pautas selecionadas */}
+      {pautasSel.size > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#111', color: '#fff', borderRadius: 12, padding: '10px 16px', marginBottom: 14 }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{pautasSel.size} selecionada(s)</span>
+          {pautasSel.size < pautas.length && (
+            <button onClick={() => setPautasSel(new Set(pautas.map(x => x.id)))} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ddd', cursor: 'pointer', fontWeight: 600 }}>Selecionar todas ({pautas.length})</button>
+          )}
+          <button onClick={() => setPautasSel(new Set())} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ddd', cursor: 'pointer', fontWeight: 600 }}>Limpar</button>
+          <span style={{ flex: 1 }} />
+          <button onClick={excluirSelecionadas} style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>
+        </div>
+      )}
+
       {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
       {!planoSel ? (
         (!clienteSel && !clienteFixo && (postsGlobais || []).length > 0) ? (
@@ -1015,6 +1043,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <div key={p.id} className="st-row" style={{ borderBottom: '1px solid #f4f4f5', background: aberto ? '#fbfbfd' : undefined, animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
                   {/* Item recolhido — lista limpa, sem controles nativos */}
                   <div onClick={() => toggleLinha(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', cursor: 'pointer' }}>
+                    {podeExcluir && (
+                      <input type="checkbox" checked={pautasSel.has(p.id)} title="Selecionar para ações em massa"
+                        onClick={e => e.stopPropagation()} onChange={() => toggleSel(p.id)}
+                        style={{ width: 15, height: 15, accentColor: '#111', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
+                    )}
                     <svg className="st-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbcbce" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none' }}><path d="M9 18l6-6-6-6" /></svg>
                     {capa ? (
                       <img src={capa} alt="" onClick={e => { e.stopPropagation(); setPreview(p) }} title="Ver prévia" style={{ width: 46, height: 58, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: '0 5px 14px -7px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
@@ -1059,6 +1092,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       )}
                       {p.status === 'aguardando_aprovacao' && (
                         <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
+                      )}
+                      {podeExcluir && (
+                        <button onClick={() => excluir(p)} title="Excluir pauta"
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#b91c1c' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c8c8cc' }}
+                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', color: '#c8c8cc', border: 'none', borderRadius: 8, cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1146,21 +1187,34 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                                   )}
                                 </div>
                                 <CelulaEditavel valor={l.texto} editavel={podeEditar} placeholder={`Texto da lâmina ${i + 1}...`} onSalvar={async v => { const ls = [...(p.laminas || [])]; ls[i] = { ...ls[i], texto: v }; await salvarLaminas(p.id, ls) }} />
-                                <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                                   {l.anexo ? (
                                     <>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                                      <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.anexo.nome}</a>
+                                      {/(image\/|\.(jpg|jpeg|png|gif|webp))/i.test(`${l.anexo.tipo} ${l.anexo.url}`) ? (
+                                        <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+                                          <img src={l.anexo.url} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e5e5', display: 'block' }} />
+                                        </a>
+                                      ) : (
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                      )}
+                                      <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.anexo.nome}</a>
                                       {podeEditar && (
-                                        <button onClick={() => { const ls = [...(p.laminas || [])]; ls[i] = { texto: ls[i].texto }; salvarLaminas(p.id, ls) }} title="Remover anexo da lâmina" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                                        <label title="Trocar o anexo desta lâmina" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: '#555', cursor: 'pointer', flexShrink: 0 }}>
+                                          Trocar
+                                          <input type="file" style={{ display: 'none' }} disabled={anexandoLamina !== null}
+                                            onChange={e => { if (e.target.files?.[0]) anexarLamina(p, i, e.target.files[0]); e.target.value = '' }} />
+                                        </label>
+                                      )}
+                                      {podeEditar && (
+                                        <button onClick={() => { const ls = [...(p.laminas || [])]; ls[i] = { texto: ls[i].texto }; salvarLaminas(p.id, ls) }} title="Remover anexo da lâmina" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
                                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                                         </button>
                                       )}
                                     </>
                                   ) : podeEditar && (
-                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#555', cursor: anexandoLamina ? 'wait' : 'pointer' }}>
-                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-                                      {anexandoLamina === `${p.id}:${i}` ? 'Enviando…' : 'Anexar lâmina'}
+                                    <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: '#fff', color: '#0891b2', border: '1px dashed #7dd3fc', borderRadius: 10, fontWeight: 600, fontSize: 11, cursor: anexandoLamina ? 'wait' : 'pointer' }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                      {anexandoLamina === `${p.id}:${i}` ? 'Enviando…' : `Anexar arte da lâmina ${i + 1}`}
                                       <input type="file" style={{ display: 'none' }} disabled={anexandoLamina !== null}
                                         onChange={e => { if (e.target.files?.[0]) anexarLamina(p, i, e.target.files[0]); e.target.value = '' }} />
                                     </label>
