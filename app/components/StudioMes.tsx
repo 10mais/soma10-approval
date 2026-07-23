@@ -234,6 +234,36 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   function toggleSel(id: string) {
     setPautasSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
+  // Renomear o plano (Plano.titulo) — o PUT /api/planos já aceita o campo.
+  const [renomeando, setRenomeando] = useState(false)
+  const [tituloEdit, setTituloEdit] = useState('')
+  function abrirRenomear() {
+    const plano = planos.find(x => x.id === planoSel)
+    setTituloEdit(plano?.titulo || '')
+    setRenomeando(true)
+  }
+  async function salvarRenomear() {
+    const r = await fetch('/api/planos', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: planoSel, titulo: tituloEdit.trim() }),
+    }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { toast('Falha ao renomear o plano.', 'erro'); return }
+    setRenomeando(false)
+    carregarPlanos()
+    toast('Plano renomeado.', 'sucesso')
+  }
+  // Mover uma pauta para OUTRO plano do mesmo cliente (troca planoId + índices no servidor).
+  async function moverPautaDePlano(p: Pauta, novoPlanoId: string) {
+    if (!novoPlanoId || novoPlanoId === planoSel) return
+    setPautas(ps => ps.filter(x => x.id !== p.id)) // sai da lista do plano atual
+    setAbertos(new Set())
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: p.id, planoId: novoPlanoId }),
+    }).catch(() => {})
+    const destino = planos.find(x => x.id === novoPlanoId)
+    toast(`Pauta movida para ${destino ? `${MESES[destino.mes - 1]}/${destino.ano}` : 'outro plano'}.`, 'sucesso')
+  }
   async function excluirPlano() {
     const plano = planos.find(x => x.id === planoSel)
     if (!plano) return
@@ -920,6 +950,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </select>
         )}
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {planoSel && podeEditar && (
+          <button className="st-btn" onClick={abrirRenomear} title="Renomear este plano" style={{ padding: '10px 14px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+            Renomear
+          </button>
+        )}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
           {podeGerarIA && <button className="st-btn" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#fff', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 11, fontWeight: 500, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
@@ -928,6 +964,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </button>}
         </>}
       </div>
+
+      {/* Renomear plano — inline */}
+      {renomeando && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Nome do plano <span style={{ fontWeight: 400, color: '#aaa' }}>(ex.: Campanha de Dia dos Pais)</span></label>
+            <input autoFocus value={tituloEdit} onChange={e => setTituloEdit(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvarRenomear() }} placeholder="Deixe em branco para usar só o mês" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+          </div>
+          <button onClick={salvarRenomear} style={{ padding: '10px 20px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+          <button onClick={() => setRenomeando(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      )}
 
       {/* Form de novo plano */}
       {novoPlano && (
@@ -1303,6 +1351,16 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         {podeExcluir && (
                           <button onClick={() => excluir(p)} style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Excluir</button>
+                        )}
+                        {/* Mover a pauta para outro plano do mesmo cliente */}
+                        {podeEditar && planosDoCliente.filter(pl => pl.id !== planoSel).length > 0 && (
+                          <select value="" onChange={e => { if (e.target.value) moverPautaDePlano(p, e.target.value) }} title="Mover para outro plano"
+                            style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #e0e0e0', fontSize: 11.5, fontFamily: 'inherit', background: '#fff', color: '#555', cursor: 'pointer' }}>
+                            <option value="">Mover para…</option>
+                            {planosDoCliente.filter(pl => pl.id !== planoSel).map(pl => (
+                              <option key={pl.id} value={pl.id}>{MESES[pl.mes - 1]}/{pl.ano}{pl.titulo ? ` · ${pl.titulo}` : ''}</option>
+                            ))}
+                          </select>
                         )}
                         <span style={{ flex: 1 }} />
                         {podeEditar && onAbrirComposer && (

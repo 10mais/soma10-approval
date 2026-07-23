@@ -181,6 +181,13 @@ export async function PUT(req: NextRequest) {
     await desindexarPost(post.clienteId, id)
     await indexarPost(updates.clienteId, id)
   }
+  // Mover pauta entre planos: além de trocar o planoId, move a associação nos
+  // índices plano:{id}:pautas (senão a pauta some do plano novo e fica fantasma
+  // no antigo). Só quando o planoId realmente muda.
+  if ('planoId' in updates && updates.planoId !== post.planoId) {
+    if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
+    if (updates.planoId) await redis.sadd(`plano:${updates.planoId}:pautas`, id)
+  }
   return NextResponse.json({ ok: true, post: atualizado })
 }
 
