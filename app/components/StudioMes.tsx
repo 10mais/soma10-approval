@@ -22,6 +22,7 @@ type Pauta = {
   status: string; formato?: string; etapa?: string; briefing?: string; headline?: string; planoId?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
+  laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   tarefaId?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
@@ -346,6 +347,46 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       toast('Copy aprovada internamente — a pauta avançou para Criativo.', 'sucesso')
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
+  // Aprovação da COPY: manda a pauta para o cliente aprovar o texto (etapa
+  // aprovacao_copy — aparece nas Aprovações do portal; o PUT já marca o SLA).
+  async function enviarCopyAprovacao(p: Pauta) {
+    const temCopy = [p.headline, p.legenda, p.textoImagem, ...(p.laminas || []).map(l => l.texto)].some(v => (v || '').trim())
+    if (!temCopy) { toast('Escreva a copy antes de enviar para aprovação.', 'erro'); return }
+    const ok = await confirmar('Enviar a copy desta pauta para o cliente aprovar? Ela aparece nas Aprovações do portal dele.', { titulo: 'Aprovação de copy', okLabel: 'Enviar copy' })
+    if (!ok) return
+    setAcaoPauta(p.id)
+    try {
+      await fetch('/api/posts', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id, etapa: 'aprovacao_copy' }),
+      })
+      toast('Copy enviada para aprovação do cliente.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
+  // Lâminas do carrossel: copy separada lâmina a lâmina, cada uma com seu anexo.
+  const [anexandoLamina, setAnexandoLamina] = useState<string | null>(null)
+  async function salvarLaminas(id: string, laminas: NonNullable<Pauta['laminas']>) {
+    setPautas(ps => ps.map(x => x.id === id ? { ...x, laminas } : x))
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, laminas }),
+    }).catch(() => {})
+  }
+  async function anexarLamina(p: Pauta, i: number, file: File) {
+    setAnexandoLamina(`${p.id}:${i}`)
+    try {
+      const blob = await upload(`pautas/${p.id}/lamina-${i + 1}-${file.name}`, file, {
+        access: 'public', handleUploadUrl: '/api/upload',
+        contentType: file.type || 'application/octet-stream', clientPayload: file.type || 'application/octet-stream',
+      })
+      const ls = [...(p.laminas || [])]
+      ls[i] = { ...ls[i], anexo: { nome: file.name, url: blob.url, tipo: file.type || '' } }
+      await salvarLaminas(p.id, ls)
+    } catch (e: any) {
+      toast(e?.message || 'Falha ao enviar o anexo da lâmina.', 'erro')
+    } finally { setAnexandoLamina(null) }
   }
   async function enviarAoPlannerManual(p: Pauta) {
     const ok = await confirmar('Enviar esta pauta ao Planner como rascunho, sem concluir a tarefa? A copy vai junto; a equipe revisa e envia ao cliente de lá.', { titulo: 'Enviar ao Planner', okLabel: 'Enviar' })
@@ -1036,47 +1077,112 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                       </button>
                     </div>
-                    <div className="st-detail" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                    {(() => { const fk = p.formato || 'feed'; return (
+                    <div className="st-detail" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
-                      <div style={{ flexBasis: '100%' }}><PipelinePauta p={p} /></div>
-                      <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <div><PipelinePauta p={p} /></div>
+                      {(ajuste || anot.length > 0) && (
+                        <div style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
+                          <strong>Cliente pediu:</strong>
+                          {ajuste && <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{String(ajuste)}</div>}
+                          {anot.length > 0 && <ol style={{ margin: '4px 0 0', paddingLeft: 16 }}>{anot.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}</ol>}
+                        </div>
+                      )}
+                      {/* TOPO: formato + data — o formato personaliza o formulário abaixo */}
+                      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <div>
+                          <CampoLabel>Formato</CampoLabel>
+                          <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3 }}>
+                            {FORMATOS.map(f => {
+                              const on = fk === f.key
+                              return (
+                                <button key={f.key} className="st-btn" disabled={!podeEditar} onClick={() => salvarCampo(p.id, 'formato', f.key)}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{f.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <CampoLabel>Data e hora</CampoLabel>
+                          <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
+                            style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
+                        </div>
                         {podeEditar && podeGerarIA && (
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -8 }}>
+                          <div style={{ marginLeft: 'auto' }}>
                             <button className="st-btn" onClick={() => gerarCopyIA(p)} disabled={gerandoCopy === p.id}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                               {gerandoCopy === p.id ? 'Gerando copy…' : 'Gerar copy'}
                             </button>
                           </div>
                         )}
-                        <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
-                        <div><CampoLabel>Headline (arte / abertura do vídeo)</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
-                        <div><CampoLabel>Sub-headline (opcional)</CampoLabel><CelulaEditavel valor={p.subheadline} editavel={podeEditar} placeholder="Apoio da headline na arte..." onSalvar={v => salvarCampo(p.id, 'subheadline', v)} /></div>
-                        <div><CampoLabel>Copy do criativo (texto na arte)</CampoLabel><CelulaEditavel valor={p.textoImagem} editavel={podeEditar} placeholder="Texto que aparece na imagem..." onSalvar={v => salvarCampo(p.id, 'textoImagem', v)} /></div>
-                        <div><CampoLabel>CTA (na arte)</CampoLabel><CelulaEditavel valor={p.cta} editavel={podeEditar} placeholder="Chamada curta: Agende agora, Chame no WhatsApp..." onSalvar={v => salvarCampo(p.id, 'cta', v)} /></div>
-                        <div><CampoLabel>Legenda</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
-                        <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
-                        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
-                          <div>
-                            <CampoLabel>Formato</CampoLabel>
-                            <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3 }}>
-                              {FORMATOS.map(f => {
-                                const on = (p.formato || 'feed') === f.key
-                                return (
-                                  <button key={f.key} className="st-btn" disabled={!podeEditar} onClick={() => salvarCampo(p.id, 'formato', f.key)}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{f.label}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                          <div>
-                            <CampoLabel>Data e hora</CampoLabel>
-                            <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
-                              style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
+                      </div>
+                      {/* Formulário personalizado por formato (pedido do dono 23/07):
+                          Feed = completo; Reel = Headline/Gancho/Desenvolvimento/CTA;
+                          Carrossel = lâmina por lâmina; Story = sem legenda. */}
+                      <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
+                      <div><CampoLabel>{fk === 'reel' ? 'Headline (abertura do vídeo)' : fk === 'carrossel' ? 'Headline (capa do carrossel)' : 'Headline (arte)'}</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
+                      {fk !== 'carrossel' && (
+                        <div><CampoLabel>{fk === 'reel' ? 'Gancho' : 'Sub-headline (opcional)'}</CampoLabel><CelulaEditavel valor={p.subheadline} editavel={podeEditar} placeholder={fk === 'reel' ? 'Os primeiros segundos que seguram o dedo...' : 'Apoio da headline na arte...'} onSalvar={v => salvarCampo(p.id, 'subheadline', v)} /></div>
+                      )}
+                      {fk !== 'carrossel' && (
+                        <div><CampoLabel>{fk === 'reel' ? 'Desenvolvimento (roteiro do vídeo)' : 'Copy do criativo (texto na arte)'}</CampoLabel><CelulaEditavel valor={p.textoImagem} editavel={podeEditar} placeholder={fk === 'reel' ? 'O que o vídeo mostra e fala, na ordem...' : 'Texto que aparece na imagem...'} onSalvar={v => salvarCampo(p.id, 'textoImagem', v)} /></div>
+                      )}
+                      {fk === 'carrossel' && (
+                        <div>
+                          <CampoLabel>Lâminas do carrossel (uma a uma, cada lâmina com seu anexo)</CampoLabel>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {(p.laminas || []).map((l, i) => (
+                              <div key={i} style={{ border: '1px solid #ececec', borderRadius: 12, padding: '10px 12px', background: '#fbfbfc' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0891b2', background: '#e0f2fe', borderRadius: 999, padding: '2px 10px' }}>Lâmina {i + 1}</span>
+                                  <span style={{ flex: 1 }} />
+                                  {podeEditar && (
+                                    <button onClick={() => salvarLaminas(p.id, (p.laminas || []).filter((_, j) => j !== i))} title="Remover lâmina" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                                    </button>
+                                  )}
+                                </div>
+                                <CelulaEditavel valor={l.texto} editavel={podeEditar} placeholder={`Texto da lâmina ${i + 1}...`} onSalvar={async v => { const ls = [...(p.laminas || [])]; ls[i] = { ...ls[i], texto: v }; await salvarLaminas(p.id, ls) }} />
+                                <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  {l.anexo ? (
+                                    <>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                      <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.anexo.nome}</a>
+                                      {podeEditar && (
+                                        <button onClick={() => { const ls = [...(p.laminas || [])]; ls[i] = { texto: ls[i].texto }; salvarLaminas(p.id, ls) }} title="Remover anexo da lâmina" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : podeEditar && (
+                                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#555', cursor: anexandoLamina ? 'wait' : 'pointer' }}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                                      {anexandoLamina === `${p.id}:${i}` ? 'Enviando…' : 'Anexar lâmina'}
+                                      <input type="file" style={{ display: 'none' }} disabled={anexandoLamina !== null}
+                                        onChange={e => { if (e.target.files?.[0]) anexarLamina(p, i, e.target.files[0]); e.target.value = '' }} />
+                                    </label>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {podeEditar && (
+                              <button className="st-btn" onClick={() => salvarLaminas(p.id, [...(p.laminas || []), { texto: '' }])}
+                                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#0891b2', border: '1px solid #bae6fd', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                                Adicionar lâmina
+                              </button>
+                            )}
                           </div>
                         </div>
+                      )}
+                      <div><CampoLabel>{fk === 'reel' ? 'CTA (call to action)' : 'CTA (na arte)'}</CampoLabel><CelulaEditavel valor={p.cta} editavel={podeEditar} placeholder="Chamada curta: Agende agora, Chame no WhatsApp..." onSalvar={v => salvarCampo(p.id, 'cta', v)} /></div>
+                      {fk !== 'story' && (
+                        <div><CampoLabel>Legenda</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
+                      )}
+                      <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
                         <div>
                           <CampoLabel>Anexos (referências p/ o designer)</CampoLabel>
                           {(p.anexos || []).length > 0 && (
@@ -1103,60 +1209,49 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             </label>
                           )}
                         </div>
-                      </div>
-                      <div style={{ flex: '0 0 190px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div>
-                          <CampoLabel>Criativo</CampoLabel>
-                          {capa ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                              <img className="st-preview" src={capa} alt="" onClick={() => setPreview(p)} title="Ampliar (prévia de post)" style={{ width: 160, height: 200, borderRadius: 16, objectFit: 'cover', border: '1px solid rgba(17,17,17,.06)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
-                              {p.criativoGerado && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c3aed' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed' }} />Gerado pela IA · toque para ampliar</span>}
-                              {podeEditar && p.criativoData && <button className="st-btn" onClick={() => abrirEditor(p)} style={{ width: 160, padding: '8px 0', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Editar arte</button>}
-                              {podeEditar && <button className="st-btn" onClick={() => removerCriativo(p)} style={{ width: 160, padding: '7px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Remover criativo</button>}
-                            </div>
-                          ) : <div style={{ width: 160, height: 200, borderRadius: 16, border: '1.5px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#bbb', textAlign: 'center', padding: 8, background: '#fbfbfc' }}>Sem criativo ainda</div>}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, width: 160 }}>
-                          {podeEditar && podeEnviar && podeEnviarCliente && (
-                            <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 8px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
-                          )}
-                          {podeEditar && onAbrirComposer && (
-                            <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '9px 8px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
-                          )}
-                          {/* Controles manuais: a automação é o caminho fluido, mas quem manda é o responsável */}
-                          {podeEditar && p.etapa === 'criativo' && (
-                            <button className="st-btn" onClick={() => enviarAoPlannerManual(p)} disabled={acaoPauta === p.id}
-                              title="Mesmo destino de concluir a tarefa do designer — sem precisar concluir"
-                              style={{ padding: '9px 8px', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
-                              Enviar ao Planner (rascunho)
-                            </button>
-                          )}
-                          {podeEditar && p.etapa === 'aprovacao_copy' && (
-                            <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
-                              style={{ padding: '9px 8px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
-                              Aprovar copy internamente
-                            </button>
-                          )}
-                          {podeEditar && p.etapa && p.etapa !== 'pronto' && (
-                            <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
-                              title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
-                              style={{ padding: '9px 8px', background: '#fff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
-                              {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
-                            </button>
-                          )}
-                          {podeExcluir && (
-                            <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>
-                          )}
-                        </div>
-                        {(ajuste || anot.length > 0) && (
-                          <div style={{ margin: 0, fontSize: 11, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '8px 10px', width: 160, boxSizing: 'border-box', lineHeight: 1.45 }}>
-                            <strong>Cliente pediu:</strong>
-                            {ajuste && <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{String(ajuste)}</div>}
-                            {anot.length > 0 && <ol style={{ margin: '4px 0 0', paddingLeft: 15 }}>{anot.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}</ol>}
-                          </div>
+                      {/* RODAPÉ: as ações da pauta. Sem bloco "Criativo" aqui — a arte
+                          vive no nível da TAREFA do designer (decisão do dono, 23/07). */}
+                      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {podeExcluir && (
+                          <button onClick={() => excluir(p)} style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Excluir</button>
+                        )}
+                        <span style={{ flex: 1 }} />
+                        {podeEditar && onAbrirComposer && (
+                          <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
+                        )}
+                        {podeEditar && p.etapa && p.etapa !== 'pronto' && (
+                          <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
+                            title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
+                            style={{ padding: '10px 14px', background: '#fff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
+                          </button>
+                        )}
+                        {podeEditar && p.etapa === 'aprovacao_copy' && (
+                          <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
+                            style={{ padding: '10px 14px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            Aprovar copy internamente
+                          </button>
+                        )}
+                        {podeEditar && p.etapa === 'criativo' && (
+                          <button className="st-btn" onClick={() => enviarAoPlannerManual(p)} disabled={acaoPauta === p.id}
+                            title="Mesmo destino de concluir a tarefa do designer — sem precisar concluir"
+                            style={{ padding: '10px 14px', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            Enviar ao Planner (rascunho)
+                          </button>
+                        )}
+                        {podeEditar && podeEnviarCliente && (p.etapa === 'briefing' || p.etapa === 'copy') && (
+                          <button className="st-btn st-cta" onClick={() => enviarCopyAprovacao(p)} disabled={acaoPauta === p.id}
+                            title="O cliente aprova o TEXTO antes de a arte ser produzida"
+                            style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            Enviar copy para aprovação
+                          </button>
+                        )}
+                        {podeEditar && podeEnviar && !semMidia && podeEnviarCliente && (
+                          <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                         )}
                       </div>
                     </div>
+                    ) })()}
                     </div>
                     </div>
                   , document.body)}

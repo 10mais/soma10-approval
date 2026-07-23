@@ -832,6 +832,8 @@ export type Post = {
   cta?: string // chamada para ação NA ARTE (ex.: "Agende agora")
   sugestaoLegenda?: string // rascunho de legenda sugerido no briefing
   anexos?: { nome: string; url: string; tipo: string }[] // referências da pauta (mesmo shape de Tarefa.anexos)
+  // Carrossel: a copy separada lâmina por lâmina, cada uma com seu anexo (referência da arte daquela lâmina)
+  laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   ajusteCopy?: string // comentário do cliente ao pedir ajuste de copy
   ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
   copyAprovadaEm?: string

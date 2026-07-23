@@ -34,6 +34,7 @@ export function deveCriarTarefaDesigner(post: { etapa?: string; tarefaId?: strin
 export function descricaoTarefaDesigner(post: {
   briefing?: string; headline?: string; subheadline?: string
   textoImagem?: string; cta?: string; legenda?: string; sugestaoImagem?: string
+  laminas?: { texto: string }[]
 }): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const linhas = [
@@ -42,6 +43,8 @@ export function descricaoTarefaDesigner(post: {
     post.headline ? `<p><strong>Headline:</strong> ${esc(post.headline)}</p>` : '',
     post.subheadline ? `<p><strong>Sub-headline:</strong> ${esc(post.subheadline)}</p>` : '',
     post.textoImagem ? `<p><strong>Texto na arte:</strong> ${esc(post.textoImagem)}</p>` : '',
+    // Carrossel: a copy vem separada lâmina por lâmina — o designer produz nessa ordem.
+    ...(post.laminas || []).map((l, i) => l.texto ? `<p><strong>Lâmina ${i + 1}:</strong> ${esc(l.texto)}</p>` : ''),
     post.cta ? `<p><strong>CTA:</strong> ${esc(post.cta)}</p>` : '',
     post.sugestaoImagem ? `<p><strong>Direção de criativo:</strong> ${esc(post.sugestaoImagem)}</p>` : '',
     post.legenda ? `<p><strong>Legenda aprovada:</strong><br>${esc(post.legenda).replace(/\n/g, '<br>')}</p>` : '',

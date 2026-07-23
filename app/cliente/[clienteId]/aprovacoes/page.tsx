@@ -218,12 +218,15 @@ export default function AprovacoesPagina() {
                     </div>
                     {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}>Briefing: {p.briefing}</p>}
                     {/* Copy estruturada: o cliente aprova a copy INTEIRA (o que vai na arte), não só a legenda */}
-                    {ehCopy && (p.headline || p.subheadline || p.textoImagem || p.cta) && (
+                    {ehCopy && (p.headline || p.subheadline || p.textoImagem || p.cta || (p.laminas || []).length > 0) && (
                       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 8 }}>
                         <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Texto da arte</p>
                         {p.headline && <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, color: '#111' }}>{p.headline}</p>}
                         {p.subheadline && <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#475569' }}>{p.subheadline}</p>}
                         {p.textoImagem && <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#334155', whiteSpace: 'pre-wrap' }}>{p.textoImagem}</p>}
+                        {(p.laminas || []).map((l: any, i: number) => l?.texto ? (
+                          <p key={i} style={{ margin: '0 0 4px', fontSize: 12.5, color: '#334155', whiteSpace: 'pre-wrap' }}><strong style={{ color: '#0891b2' }}>Lâmina {i + 1}:</strong> {l.texto}</p>
+                        ) : null)}
                         {p.cta && <span style={{ display: 'inline-block', marginTop: 2, background: '#111', color: '#ffc00f', borderRadius: 999, padding: '4px 12px', fontSize: 11.5, fontWeight: 800 }}>{p.cta}</span>}
                       </div>
                     )}

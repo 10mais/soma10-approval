@@ -70,6 +70,13 @@ describe('descricaoTarefaDesigner', () => {
     const d = descricaoTarefaDesigner({ briefing: 'a < b & c' })
     expect(d).toContain('a &lt; b &amp; c')
   })
+
+  it('carrossel: leva as laminas numeradas, na ordem; lamina vazia nao vira linha', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'Carrossel do agro', laminas: [{ texto: 'Abertura' }, { texto: '' }, { texto: 'Fechamento com CTA' }] })
+    expect(d).toContain('Lâmina 1:</strong> Abertura')
+    expect(d).toContain('Lâmina 3:</strong> Fechamento com CTA')
+    expect(d).not.toContain('Lâmina 2')
+  })
 })
 
 describe('tituloTarefaMae', () => {
