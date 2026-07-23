@@ -336,6 +336,8 @@ export default function PostComposer({
   }
 
   const videosSemCapa = midias.filter(m => m.tipo === 'video' && !m.capa).length
+  // Story no IG nao usa legenda, capa nem collab — o backend ja ignora (lib/publicar.ts).
+  const ehStory = formato === 'story'
 
   // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
   useEffect(() => {
@@ -345,7 +347,7 @@ export default function PostComposer({
 
   async function submeter(acao: ComposerValue['acao']) {
     // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
-    if ((acao === 'publicar' || acao === 'agendar') && videosSemCapa > 0) {
+    if ((acao === 'publicar' || acao === 'agendar') && !ehStory && videosSemCapa > 0) {
       setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
       return
     }
@@ -371,7 +373,7 @@ export default function PostComposer({
   const enviandoArquivo = emEnvio.length > 0
   const marcoOk = !clienteId || !!marcoId
   const perfilOk = !multiPerfil || contaIds.length > 0
-  const podePublicar = !!clienteId && marcoOk && perfilOk && !!legenda.trim() && midias.length > 0 && redes.length > 0 && videosSemCapa === 0 && !enviando && !enviandoArquivo
+  const podePublicar = !!clienteId && marcoOk && perfilOk && (ehStory || !!legenda.trim()) && midias.length > 0 && redes.length > 0 && (ehStory || videosSemCapa === 0) && !enviando && !enviandoArquivo
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
@@ -586,7 +588,7 @@ export default function PostComposer({
               ))}
             </div>
           )}
-          {videosSemCapa > 0 && (
+          {!ehStory && videosSemCapa > 0 && (
             <p style={{ margin: '10px 0 0', fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
               {videosSemCapa > 1 ? `${videosSemCapa} vídeos estão` : 'Um vídeo está'} sem capa. Defina a capa pelo botão "Frame" ou "Capa" para poder publicar ou agendar.
             </p>
@@ -594,7 +596,7 @@ export default function PostComposer({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Legenda</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Legenda{ehStory && <span style={{ fontWeight: 400, color: '#aaa', marginLeft: 6 }}>(opcional no Story)</span>}</label>
           <textarea value={legenda} onChange={e => setLegenda(e.target.value)}
             placeholder="Escreva a legenda do post..."
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 130, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
@@ -617,7 +619,8 @@ export default function PostComposer({
           </div>
         </div>
 
-        {/* Colaboração (collab) */}
+        {/* Colaboração (collab) — não se aplica a Story (o IG não suporta collab em Stories) */}
+        {!ehStory && (
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>
             Marcar em colab com outro perfil
@@ -678,6 +681,7 @@ export default function PostComposer({
             </div>
           )}
         </div>
+        )}
 
         {/* Data e horario — sempre visivel */}
         <div style={{ marginBottom: 14 }}>
