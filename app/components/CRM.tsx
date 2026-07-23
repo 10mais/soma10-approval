@@ -2918,7 +2918,9 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
                   style={{ background: 'none', border: 'none', color: '#92400e', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>Cancelar</button>
               </div>
             )}
-            <div style={{ borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+            {/* paddingRight reserva a folga do FAB do assistente (fixed right:20, ~56px):
+                sem isso o botao da ponta (Parar/Enviar audio/Enviar) fica atras dele. */}
+            <div style={{ borderTop: '1px solid #f0f0f0', padding: '10px 72px 10px 10px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
               {/* Popover de modelos de mensagem */}
               {modelosAberto && (
                 <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
