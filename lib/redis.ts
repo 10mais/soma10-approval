@@ -797,7 +797,7 @@ export type Post = {
   imagens: string[]
   legenda: string
   status: PostStatus
-  formato?: 'feed' | 'reel' | 'story'
+  formato?: 'feed' | 'reel' | 'story' | 'carrossel' | 'grafico' // grafico = material impresso/aplicado (banner, revista, fachada...)
   dataAgendada?: string
   codigo?: string
   criadoPor: string
@@ -834,6 +834,9 @@ export type Post = {
   anexos?: { nome: string; url: string; tipo: string }[] // referências da pauta (mesmo shape de Tarefa.anexos)
   // Carrossel: a copy separada lâmina por lâmina, cada uma com seu anexo (referência da arte daquela lâmina)
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
+  // Material gráfico (formato 'grafico'): specs do material impresso/aplicado
+  medidas?: string // ex.: "3m x 1m", "21x29,7cm"
+  localAplicacao?: string // banner, revista, fachada, adesivo...
   ajusteCopy?: string // comentário do cliente ao pedir ajuste de copy
   ajusteCriativo?: string // comentário do cliente ao pedir ajuste de criativo
   copyAprovadaEm?: string

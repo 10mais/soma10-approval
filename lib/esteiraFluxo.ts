@@ -35,11 +35,15 @@ export function descricaoTarefaDesigner(post: {
   briefing?: string; headline?: string; subheadline?: string
   textoImagem?: string; cta?: string; legenda?: string; sugestaoImagem?: string
   laminas?: { texto: string }[]
+  medidas?: string; localAplicacao?: string
 }): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const linhas = [
     '<p><strong>Copy aprovada pelo cliente — produzir o criativo.</strong></p>',
     post.briefing ? `<p><strong>Briefing:</strong> ${esc(post.briefing)}</p>` : '',
+    // Material gráfico: as specs vêm ANTES do texto — o designer produz na medida certa.
+    post.localAplicacao ? `<p><strong>Local de aplicação:</strong> ${esc(post.localAplicacao)}</p>` : '',
+    post.medidas ? `<p><strong>Medidas:</strong> ${esc(post.medidas)}</p>` : '',
     post.headline ? `<p><strong>Headline:</strong> ${esc(post.headline)}</p>` : '',
     post.subheadline ? `<p><strong>Sub-headline:</strong> ${esc(post.subheadline)}</p>` : '',
     post.textoImagem ? `<p><strong>Texto na arte:</strong> ${esc(post.textoImagem)}</p>` : '',

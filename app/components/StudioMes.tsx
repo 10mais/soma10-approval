@@ -23,6 +23,7 @@ type Pauta = {
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
+  medidas?: string; localAplicacao?: string
   tarefaId?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
@@ -48,6 +49,7 @@ const FORMATOS = [
   { key: 'reel', label: 'Reel', cor: '#dc2626' },
   { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
   { key: 'story', label: 'Story', cor: '#7c3aed' },
+  { key: 'grafico', label: 'Material Gráfico', cor: '#059669' },
 ]
 
 // Estado da linha e a ação natural seguinte (o "próximo passo" de cada pauta).
@@ -1150,7 +1152,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
                             style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
                         </div>
-                        {podeEditar && podeGerarIA && (
+                        {podeEditar && podeGerarIA && fk !== 'grafico' && (
                           <div style={{ marginLeft: 'auto' }}>
                             <button className="st-btn" onClick={() => gerarCopyIA(p)} disabled={gerandoCopy === p.id}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 15px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: gerandoCopy === p.id ? 'not-allowed' : 'pointer', opacity: gerandoCopy === p.id ? 0.6 : 1 }}>
@@ -1164,12 +1166,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           Feed = completo; Reel = Headline/Gancho/Desenvolvimento/CTA;
                           Carrossel = lâmina por lâmina; Story = sem legenda. */}
                       <div><CampoLabel>Pauta / briefing</CampoLabel><CelulaEditavel valor={p.briefing} editavel={podeEditar} placeholder="Tema / ângulo da pauta..." onSalvar={v => salvarCampo(p.id, 'briefing', v)} /></div>
-                      <div><CampoLabel>{fk === 'reel' ? 'Headline (abertura do vídeo)' : fk === 'carrossel' ? 'Headline (capa do carrossel)' : 'Headline (arte)'}</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
-                      {fk !== 'carrossel' && (
+                      {fk === 'grafico' && (
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                          <div style={{ flex: '1 1 200px', minWidth: 0 }}><CampoLabel>Medidas</CampoLabel><CelulaEditavel valor={p.medidas} editavel={podeEditar} placeholder="Ex.: 3m x 1m, 21x29,7cm..." onSalvar={v => salvarCampo(p.id, 'medidas', v)} /></div>
+                          <div style={{ flex: '1 1 200px', minWidth: 0 }}><CampoLabel>Local de aplicação</CampoLabel><CelulaEditavel valor={p.localAplicacao} editavel={podeEditar} placeholder="Banner, revista, fachada, adesivo..." onSalvar={v => salvarCampo(p.id, 'localAplicacao', v)} /></div>
+                        </div>
+                      )}
+                      {fk !== 'grafico' && (
+                        <div><CampoLabel>{fk === 'reel' ? 'Headline (abertura do vídeo)' : fk === 'carrossel' ? 'Headline (capa do carrossel)' : 'Headline (arte)'}</CampoLabel><CelulaEditavel valor={p.headline} editavel={podeEditar} placeholder="A frase que faz o dedo parar..." onSalvar={v => salvarCampo(p.id, 'headline', v)} /></div>
+                      )}
+                      {fk !== 'carrossel' && fk !== 'grafico' && (
                         <div><CampoLabel>{fk === 'reel' ? 'Gancho' : 'Sub-headline (opcional)'}</CampoLabel><CelulaEditavel valor={p.subheadline} editavel={podeEditar} placeholder={fk === 'reel' ? 'Os primeiros segundos que seguram o dedo...' : 'Apoio da headline na arte...'} onSalvar={v => salvarCampo(p.id, 'subheadline', v)} /></div>
                       )}
                       {fk !== 'carrossel' && (
-                        <div><CampoLabel>{fk === 'reel' ? 'Desenvolvimento (roteiro do vídeo)' : 'Copy do criativo (texto na arte)'}</CampoLabel><CelulaEditavel valor={p.textoImagem} editavel={podeEditar} placeholder={fk === 'reel' ? 'O que o vídeo mostra e fala, na ordem...' : 'Texto que aparece na imagem...'} onSalvar={v => salvarCampo(p.id, 'textoImagem', v)} /></div>
+                        <div><CampoLabel>{fk === 'reel' ? 'Desenvolvimento (roteiro do vídeo)' : fk === 'grafico' ? 'Copy do criativo (todas as informações em texto)' : 'Copy do criativo (texto na arte)'}</CampoLabel><CelulaEditavel valor={p.textoImagem} editavel={podeEditar} placeholder={fk === 'reel' ? 'O que o vídeo mostra e fala, na ordem...' : fk === 'grafico' ? 'Tudo que o material precisa dizer: textos, contatos, endereço, QR code...' : 'Texto que aparece na imagem...'} onSalvar={v => salvarCampo(p.id, 'textoImagem', v)} /></div>
                       )}
                       {fk === 'carrossel' && (
                         <div>
@@ -1232,11 +1242,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           </div>
                         </div>
                       )}
-                      <div><CampoLabel>{fk === 'reel' ? 'CTA (call to action)' : 'CTA (na arte)'}</CampoLabel><CelulaEditavel valor={p.cta} editavel={podeEditar} placeholder="Chamada curta: Agende agora, Chame no WhatsApp..." onSalvar={v => salvarCampo(p.id, 'cta', v)} /></div>
-                      {fk !== 'story' && (
+                      {fk !== 'grafico' && (
+                        <div><CampoLabel>{fk === 'reel' ? 'CTA (call to action)' : 'CTA (na arte)'}</CampoLabel><CelulaEditavel valor={p.cta} editavel={podeEditar} placeholder="Chamada curta: Agende agora, Chame no WhatsApp..." onSalvar={v => salvarCampo(p.id, 'cta', v)} /></div>
+                      )}
+                      {fk !== 'story' && fk !== 'grafico' && (
                         <div><CampoLabel>Legenda</CampoLabel><CelulaEditavel valor={p.legenda} editavel={podeEditar} placeholder="Legenda / copy do post..." onSalvar={v => salvarCampo(p.id, 'legenda', v)} /></div>
                       )}
-                      <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
+                      {fk !== 'grafico' && (
+                        <div><CampoLabel>Direção de criativo</CampoLabel><CelulaEditavel valor={p.sugestaoImagem} editavel={podeEditar} placeholder="Descrição visual p/ o designer..." onSalvar={v => salvarCampo(p.id, 'sugestaoImagem', v)} /></div>
+                      )}
                         <div>
                           <CampoLabel>Anexos (referências p/ o designer)</CampoLabel>
                           {(p.anexos || []).length > 0 && (

@@ -71,6 +71,13 @@ describe('descricaoTarefaDesigner', () => {
     expect(d).toContain('a &lt; b &amp; c')
   })
 
+  it('material grafico: leva medidas e local de aplicacao', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'Banner da feira', medidas: '3m x 1m', localAplicacao: 'Fachada do estande', textoImagem: 'Nome, telefone, QR code' })
+    expect(d).toContain('Medidas:</strong> 3m x 1m')
+    expect(d).toContain('Local de aplicação:</strong> Fachada do estande')
+    expect(d).toContain('Nome, telefone, QR code')
+  })
+
   it('carrossel: leva as laminas numeradas, na ordem; lamina vazia nao vira linha', () => {
     const d = descricaoTarefaDesigner({ briefing: 'Carrossel do agro', laminas: [{ texto: 'Abertura' }, { texto: '' }, { texto: 'Fechamento com CTA' }] })
     expect(d).toContain('Lâmina 1:</strong> Abertura')
