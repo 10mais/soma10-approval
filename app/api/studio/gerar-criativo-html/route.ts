@@ -159,8 +159,10 @@ export async function POST(req: NextRequest) {
 
     const b = brief || {}
     const def = objetivoDef(b.objetivo)
+    // O brief do modal manda; a copy estruturada da pauta é a reserva (CTA).
+    const ctaFinal = b.cta || post.cta || ''
     const camposBrief = [
-      b.cta ? `CTA: ${b.cta}` : '', b.oferta ? `Oferta: ${b.oferta}` : '', b.preco ? `Preço: ${b.preco}` : '',
+      ctaFinal ? `CTA: ${ctaFinal}` : '', b.oferta ? `Oferta: ${b.oferta}` : '', b.preco ? `Preço: ${b.preco}` : '',
       b.dataEvento ? `Data: ${b.dataEvento}` : '', b.horaEvento ? `Hora: ${b.horaEvento}` : '', b.localEvento ? `Local: ${b.localEvento}` : '',
       b.legal ? `Texto legal (letra miúda): ${b.legal}` : '', b.whatsapp ? `WhatsApp: ${b.whatsapp}` : '',
     ].filter(Boolean).join(' · ')
@@ -171,7 +173,12 @@ export async function POST(req: NextRequest) {
       vibe: cliente.style,
       fontesInfo,
       tokens: tokensDisponiveis,
-      briefing: [post.briefing || post.legenda || '', post.sugestaoImagem ? `Direção de criativo: ${post.sugestaoImagem}` : ''].filter(Boolean).join('\n'),
+      briefing: [
+        post.briefing || post.legenda || '',
+        post.subheadline ? `Sub-headline: ${post.subheadline}` : '',
+        post.textoImagem ? `Texto que DEVE aparecer na arte: ${post.textoImagem}` : '',
+        post.sugestaoImagem ? `Direção de criativo: ${post.sugestaoImagem}` : '',
+      ].filter(Boolean).join('\n'),
       headlineFixa: headlineFixa || undefined,
       objetivo: def ? `${def.label} — ${def.dica}` : undefined,
       camposBrief,
@@ -207,7 +214,8 @@ export async function POST(req: NextRequest) {
     const criativoData = {
       template: 'html', html,
       headline: headlineFixa || undefined,
-      objetivo: b.objetivo || undefined, cta: b.cta || undefined, oferta: b.oferta || undefined, preco: b.preco || undefined,
+      subheadline: post.subheadline || undefined,
+      objetivo: b.objetivo || undefined, cta: ctaFinal || undefined, oferta: b.oferta || undefined, preco: b.preco || undefined,
       dataEvento: b.dataEvento || undefined, horaEvento: b.horaEvento || undefined, localEvento: b.localEvento || undefined,
       legal: b.legal || undefined, whatsapp: b.whatsapp || undefined,
       corFundo: (cliente.corPrimaria || '#141414').trim(), corAccent: (cliente.corSecundaria || '#ffc00f').trim(),
