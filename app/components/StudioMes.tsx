@@ -21,6 +21,7 @@ type Pauta = {
   status: string; formato?: string; etapa?: string; briefing?: string; headline?: string; planoId?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
+  tarefaId?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
   criadoEm?: string; atualizadoEm?: string
@@ -323,6 +324,35 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       else toast('Todos os campos já tinham conteúdo — nada foi alterado.', 'sucesso')
     } catch { toast('Erro de conexão ao gerar a copy.', 'erro') }
     finally { setGerandoCopy(null) }
+  }
+
+  // Controles MANUAIS da linha de montagem: o responsável manda no processo.
+  const [acaoPauta, setAcaoPauta] = useState<string | null>(null)
+  async function aprovarCopyInterno(p: Pauta) {
+    const ok = await confirmar('Aprovar a copy internamente, sem esperar o cliente? A pauta avança para Criativo e a tarefa do designer é criada.', { titulo: 'Aprovar internamente', okLabel: 'Aprovar copy' })
+    if (!ok) return
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/esteira/aprovar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id, acao: 'aprovar_copy', comentario: '' }),
+      }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha ao aprovar a copy.', 'erro'); return }
+      toast('Copy aprovada internamente — a pauta avançou para Criativo.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
+  async function criarTarefaManual(p: Pauta) {
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/esteira/relacionar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id }),
+      }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha ao criar a tarefa.', 'erro'); return }
+      toast(r.resultado === 'criada' ? 'Tarefa criada na Gestão de tarefas.' : r.resultado === 'jaVinculada' ? 'Esta pauta já tem tarefa vinculada — foi atualizada.' : 'Pauta pronta não gera tarefa.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
 
   async function salvarData(id: string, localValue: string) {
@@ -1052,6 +1082,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           )}
                           {podeEditar && onAbrirComposer && (
                             <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '9px 8px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
+                          )}
+                          {/* Controles manuais: a automação é o caminho fluido, mas quem manda é o responsável */}
+                          {podeEditar && p.etapa === 'aprovacao_copy' && (
+                            <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
+                              style={{ padding: '9px 8px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                              Aprovar copy internamente
+                            </button>
+                          )}
+                          {podeEditar && p.etapa && p.etapa !== 'pronto' && (
+                            <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
+                              title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
+                              style={{ padding: '9px 8px', background: '#fff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                              {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
+                            </button>
                           )}
                           {podeExcluir && (
                             <button onClick={() => excluir(p)} style={{ padding: '6px 8px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 8, fontWeight: 500, fontSize: 10.5, cursor: 'pointer' }}>Excluir</button>

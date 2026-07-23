@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
     post.ajusteCopy = undefined
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
+    // Linha de montagem: copy aprovada -> nasce a tarefa do designer (com a
+    // copy e os anexos dentro). Falha aqui NUNCA derruba a aprovação.
+    try { const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta'); await nascerTarefaDesigner(postId, quem) } catch { /* segue */ }
     await notificarDono(post.criadoPor, 'geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }
@@ -118,6 +121,8 @@ export async function POST(req: NextRequest) {
       post.etapa = 'criativo'; post.copyAprovadaEm = agora; post.ajusteCopy = undefined
       post.etapaDesde = agora; post.aguardandoDesde = undefined
       await redis.set(`post:${postId}`, post)
+      // Mesma transição do aprovar_copy: a tarefa do designer nasce aqui também.
+      try { const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta'); await nascerTarefaDesigner(postId, quem) } catch { /* segue */ }
       await notificarDono(post.criadoPor, 'geral', `Legenda ajustada e copy aprovada — ${nome}`, `${quem} ajustou a legenda e aprovou a copy. Etapa avançou para Criativo.`, postId)
       return NextResponse.json({ ok: true, etapa: post.etapa })
     }

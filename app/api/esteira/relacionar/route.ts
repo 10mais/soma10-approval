@@ -84,6 +84,14 @@ export async function POST(req: NextRequest) {
   if (postId) {
     const pauta = await redis.get<Post>(`post:${postId}`)
     if (!pauta) return NextResponse.json({ error: 'pauta não encontrada' }, { status: 404 })
+    // Pauta em produção de criativo: o caminho MANUAL converge com o automático
+    // da linha de montagem — tarefa do designer com a copy/anexos dentro, como
+    // subtarefa da tarefa-mãe do plano (lib/tarefasDaPauta).
+    if (pauta.etapa === 'criativo') {
+      const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta')
+      const r = await nascerTarefaDesigner(postId, autor)
+      if (r) return NextResponse.json({ ok: true, resultado: r.reaberta ? 'jaVinculada' : 'criada', tipo: 'criativo', tarefaId: r.tarefaId })
+    }
     const r = await relacionarPauta(pauta, autor)
     return NextResponse.json({ ok: true, ...r })
   }
