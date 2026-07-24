@@ -264,6 +264,35 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     const destino = planos.find(x => x.id === novoPlanoId)
     toast(`Pauta movida para ${destino ? `${MESES[destino.mes - 1]}/${destino.ano}` : 'outro plano'}.`, 'sucesso')
   }
+  // Busca de pautas (lupa) — filtra a lista do plano por qualquer texto da copy.
+  const [buscaPauta, setBuscaPauta] = useState('')
+
+  // LIXEIRA das pautas — soft-delete de 30 dias (posts_excluidos no servidor).
+  const [mostrarLixeira, setMostrarLixeira] = useState(false)
+  const [lixeiraPautas, setLixeiraPautas] = useState<any[]>([])
+  function carregarLixeira() {
+    const cid = clienteFixo || clienteSel
+    fetch(`/api/posts?lixeira=1${cid ? `&clienteId=${cid}` : ''}`).then(r => r.json())
+      .then(d => setLixeiraPautas(Array.isArray(d) ? d : [])).catch(() => setLixeiraPautas([]))
+  }
+  useEffect(() => { if (mostrarLixeira) carregarLixeira() }, [mostrarLixeira, clienteSel])
+  async function restaurarPauta(p: any) {
+    setLixeiraPautas(ls => ls.filter(x => x.id !== p.id))
+    await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, restaurar: true }) }).catch(() => {})
+    toast('Pauta restaurada.', 'sucesso')
+    if (planoSel) carregarPautas(planoSel)
+  }
+  async function excluirPautaPermanente(p: any) {
+    if (!(await confirmar('Excluir esta pauta PERMANENTEMENTE? Não dá para recuperar.', { titulo: 'Excluir de vez', okLabel: 'Excluir', perigo: true }))) return
+    setLixeiraPautas(ls => ls.filter(x => x.id !== p.id))
+    await fetch(`/api/posts?id=${p.id}&permanente=true`, { method: 'DELETE' }).catch(() => {})
+    toast('Pauta excluída permanentemente.', 'sucesso')
+  }
+  function diasRestantesLixeira(excluidoEm?: string) {
+    if (!excluidoEm) return 30
+    return Math.max(0, 30 - Math.floor((Date.now() - new Date(excluidoEm).getTime()) / 86400000))
+  }
+
   async function excluirPlano() {
     const plano = planos.find(x => x.id === planoSel)
     if (!plano) return
@@ -873,6 +902,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     .map(c => ({ id: c.id, nome: c.nome, temPlano: comPlano.has(c.id) }))
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'))
   const planosDoCliente = clienteSel ? planos.filter(p => p.clienteId === clienteSel) : []
+  // Pautas visíveis na lista, aplicando a busca (lupa) sobre toda a copy.
+  const buscaPautaLc = buscaPauta.trim().toLowerCase()
+  const pautasVis = buscaPautaLc
+    ? pautas.filter(p => `${p.briefing || ''} ${p.headline || ''} ${p.subheadline || ''} ${p.textoImagem || ''} ${p.cta || ''} ${p.legenda || ''} ${p.sugestaoImagem || ''}`.toLowerCase().includes(buscaPautaLc))
+    : pautas
   function escolherCliente(cid: string) {
     setClienteSel(cid)
     const ps = planos.filter(p => p.clienteId === cid)
@@ -950,7 +984,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </select>
         )}
         {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
-        {planoSel && podeEditar && (
+        {podeExcluir && (clienteSel || clienteFixo) && (
+          <button className="st-btn" onClick={() => setMostrarLixeira(v => !v)} title="Pautas excluídas (ficam 30 dias)"
+            style={{ padding: '10px 14px', background: mostrarLixeira ? '#fef2f2' : '#fff', color: mostrarLixeira ? '#b91c1c' : '#3a3a3a', border: `1px solid ${mostrarLixeira ? '#fca5a5' : '#ececec'}`, borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" /></svg>
+            {mostrarLixeira ? 'Voltar' : 'Lixeira'}
+          </button>
+        )}
+        {planoSel && podeEditar && !mostrarLixeira && (
           <button className="st-btn" onClick={abrirRenomear} title="Renomear este plano" style={{ padding: '10px 14px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
             Renomear
@@ -1043,6 +1084,39 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         </div>
       )}
 
+      {/* LIXEIRA — pautas excluídas (30 dias), restaurar ou apagar de vez */}
+      {mostrarLixeira ? (
+        <div className="st-card" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Pautas na lixeira</span>
+            <span style={{ fontSize: 11.5, color: '#999' }}>ficam 30 dias, depois são apagadas de vez</span>
+          </div>
+          {lixeiraPautas.length === 0 ? (
+            <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma pauta na lixeira.</p>
+          ) : lixeiraPautas.map((p: any) => {
+            const dias = diasRestantesLixeira(p.excluidoEm)
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid #f6f6f7' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || p.headline || p.legenda || 'Pauta sem título'}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: dias <= 5 ? '#b91c1c' : '#999' }}>Excluída {p.excluidoPor ? `por ${p.excluidoPor}` : ''} · {dias === 0 ? 'some hoje' : `${dias} dia(s) restante(s)`}</p>
+                </div>
+                <button onClick={() => restaurarPauta(p)} style={{ padding: '7px 14px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Restaurar</button>
+                <button onClick={() => excluirPautaPermanente(p)} title="Excluir de vez" style={{ padding: '7px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Excluir de vez</button>
+              </div>
+            )
+          })}
+        </div>
+      ) : (<>
+      {/* Busca por pautas (lupa) — filtra a lista por qualquer texto da copy */}
+      {planoSel && !carregando && pautas.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid #ececec', borderRadius: 11, padding: '2px 12px', marginBottom: 14, maxWidth: 420 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          <input value={buscaPauta} onChange={e => setBuscaPauta(e.target.value)} placeholder="Buscar pauta (briefing, headline, legenda…)"
+            style={{ flex: 1, border: 'none', outline: 'none', padding: '9px 0', fontSize: 13, fontFamily: 'inherit', background: 'transparent' }} />
+          {buscaPauta && <button onClick={() => setBuscaPauta('')} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>}
+        </div>
+      )}
       {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
       {!planoSel ? (
         (!clienteSel && !clienteFixo && (postsGlobais || []).length > 0) ? (
@@ -1096,10 +1170,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           <p style={{ margin: '0 0 6px' }}>Nenhuma pauta neste plano ainda.</p>
           {podeEditar && <p style={{ margin: 0, fontSize: 13 }}>Clique em <strong>Gerar plano com IA</strong> para a IA propor o mês, ou <strong>+ Nova linha</strong> para começar do zero.</p>}
         </div>
+      ) : pautasVis.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 44, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+          <p style={{ margin: 0, fontSize: 13.5 }}>Nenhuma pauta encontrada para <strong>“{buscaPauta}”</strong>.</p>
+        </div>
       ) : (
         <div className="st-card" style={{ overflow: 'hidden' }}>
           <div style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
-            {pautas.map((p, idx) => {
+            {pautasVis.map((p, idx) => {
               const est = estadoStudio(p)
               const ajuste = p.ajusteCopy || p.ajusteCriativo || p.motivoReprovacao
               const anot = Array.isArray(p.anotacoes) ? p.anotacoes : []
@@ -1423,6 +1501,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         ) : null
       })()}
+      </>)}
 
       {/* Editor de arte (Nível 1) — editar textos/cores/template + refinar por prompt */}
       {editorPost && editorSpec && (() => {

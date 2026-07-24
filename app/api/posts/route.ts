@@ -32,6 +32,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'acesso suspenso' }, { status: 403 })
   }
 
+  // LIXEIRA (equipe): pautas soft-deletadas, purgando de vez as com +30 dias.
+  // Mesmo padrão da lixeira de Tarefas (posts_excluidos + excluidoEm).
+  if (req.nextUrl.searchParams.get('lixeira') === '1' && role !== 'cliente') {
+    const filtroCli = req.nextUrl.searchParams.get('clienteId') || ''
+    const ids = await redis.smembers('posts_excluidos')
+    const posts = ids.length > 0 ? ((await redis.mget<(Post | null)[]>(...ids.map(i => `post:${i}`))).filter(Boolean) as Post[]) : []
+    const agora = Date.now()
+    const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000
+    const validas: Post[] = []
+    for (const p of posts) {
+      const ex = (p as any).excluidoEm
+      if (ex && agora - new Date(ex).getTime() > TRINTA_DIAS) {
+        await redis.del(`post:${p.id}`); await redis.srem('posts_excluidos', p.id)
+      } else if (!filtroCli || p.clienteId === filtroCli) {
+        validas.push(p)
+      }
+    }
+    validas.sort((a, b) => new Date((b as any).excluidoEm || 0).getTime() - new Date((a as any).excluidoEm || 0).getTime())
+    return NextResponse.json(validas)
+  }
+
   // Busca de UM post por id (usado pelo acompanhamento de status da publicacao)
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
@@ -147,6 +168,21 @@ export async function PUT(req: NextRequest) {
   const post = await redis.get<Post>(`post:${id}`)
   if (!post) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
+  // Restaurar da lixeira: volta a pauta aos índices. Se o plano sumiu no meio
+  // tempo, restaura como pauta AVULSA (sem planoId) em vez de quebrar.
+  if (updates.restaurar) {
+    const restaurado: any = { ...post, atualizadoEm: new Date().toISOString() }
+    delete restaurado.excluidoEm; delete restaurado.excluidoPor
+    const planoVivo = post.planoId ? await redis.get(`plano:${post.planoId}`) : null
+    if (post.planoId && !planoVivo) restaurado.planoId = undefined
+    await redis.set(`post:${id}`, restaurado)
+    await redis.srem('posts_excluidos', id)
+    await redis.sadd('posts', id)
+    await indexarPost(post.clienteId, id)
+    if (restaurado.planoId) await redis.sadd(`plano:${restaurado.planoId}:pautas`, id)
+    return NextResponse.json({ ok: true, post: restaurado })
+  }
+
   const atualizado = { ...post, ...updates, atualizadoEm: new Date().toISOString() }
   // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
   const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']
@@ -215,9 +251,26 @@ export async function DELETE(req: NextRequest) {
     }
   }
 
+  // SOFT-DELETE por padrão: a pauta vai para a LIXEIRA (30 dias), some das views
+  // ativas mas é recuperável. `?permanente=true` apaga de vez (usado na lixeira).
+  // Pauta não some mais de repente — pedido do dono, 23/07.
+  const permanente = req.nextUrl.searchParams.get('permanente') === 'true'
+  if (!permanente) {
+    const agora = new Date().toISOString()
+    await redis.set(`post:${id}`, { ...post, excluidoEm: agora, excluidoPor: session.user?.name || '' })
+    await redis.srem('posts', id)
+    await redis.srem('agendados', id)
+    await desindexarPost(post.clienteId, id)
+    if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
+    await redis.sadd('posts_excluidos', id)
+    // Vínculo com a tarefa é PRESERVADO no soft-delete (para restaurar limpo).
+    return NextResponse.json({ ok: true, lixeira: true })
+  }
+
   await redis.del(`post:${id}`)
   await redis.srem('posts', id)
   await redis.srem('agendados', id)
+  await redis.srem('posts_excluidos', id)
   await desindexarPost(post.clienteId, id)
   if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
 

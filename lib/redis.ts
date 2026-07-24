@@ -819,6 +819,8 @@ export type Post = {
   redesPublicadas?: string[]
   midiaRemovida?: boolean // mídia já publicada e removida do Blob para liberar espaço
   thumbnail?: string // miniatura mantida após a limpeza (uma imagem leve por post)
+  excluidoEm?: string // ISO — soft-delete: foi para a lixeira (posts_excluidos), some das views ativas
+  excluidoPor?: string // quem mandou para a lixeira
   // Esteira de criativos
   planoId?: string // plano mensal a que a pauta pertence
   etapa?: EtapaCriativo // posição na esteira (ausente = post avulso, fora da esteira)
