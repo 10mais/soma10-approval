@@ -3,12 +3,12 @@
 > Documento para retomar o projeto em outra janela/sessão sem perder informação.
 > Mantido manualmente. Atualizar quando algo estrutural mudar.
 >
-> **Comece pela §38** (2026-07-14/15) — é o estado mais recente e, onde divergir
-> de seções antigas, vale o que está lá. Ela cobre: 3ª instância (**Deny Turismo**,
-> perfil `turismo`), marca perfil-aware (**Soma10 Agency/Clinic/App**), inbox de
-> WhatsApp rico (mídia/grupos/encaminhar/editar) e o CRM de clínica unificado.
-> **§38.0** = modelo mental (um código, N instâncias — sempre saber para QUAL
-> instância é o pedido). **§38.9** = mapa de "onde mexer". **§38.10** = pendências.
+> **Comece pela §39** (2026-07-23) — é o estado mais recente e, onde divergir de
+> seções antigas, vale o que está lá. Ela cobre a **linha de montagem COPY >
+> PRODUÇÃO** (Studio > Tarefa > Planner), o **sistema de motion design** (CSS
+> puro), o CRM Mensagens (áudio/anexos com prévia), a **lixeira de pautas** e uma
+> leva de refinamentos do Studio. Para o modelo mental (um código, N instâncias),
+> ver **§38.0**; mapa de "onde mexer", **§38.9**.
 
 ## 1. Visão geral e acesso
 
@@ -1123,3 +1123,102 @@ Outros pontos do inbox:
   pela Vercel) e não cobre o addendum **Railway/Evolution** (WhatsApp).
 - Herdadas da §37.7: bloqueios da agenda, busca full-text no WhatsApp, Instagram
   Direct (App Review), provisionar Sua Dupla (`gestao`) e Phenoma (`clinica`).
+
+## 39. Evolução 2026-07-23 — Linha de montagem COPY > PRODUÇÃO · Motion design · CRM Mensagens · Lixeira de pautas
+
+Sessão longa, **deploy contínuo** (commits `d069bf9`→`e8f453b` na `main`, todos READY
+na Vercel). Todo o gate rodado a cada passo (`tsc --noEmit` + `vitest`, 664 testes).
+⚠️ Havia **WIP de Estoque/Produtos do dono** não-commitado durante a sessão (lib/estoque.ts,
+Produtos.tsx, redis.ts com `FormaPagamento` duplicado, permissoesGranular.ts `telefonia`) —
+tudo intocado nos meus commits (staging por **pathspec/hunk**, nunca pelo índice cheio).
+Os 4 erros de tsc no baseline são desse WIP, não da sessão.
+
+### 39.1 LINHA DE MONTAGEM: Studio > Tarefa > Planner (o grande tema)
+Fluxo linear decidido pelo dono para os criativos: **1. produção da copy (Studio)** →
+**2. aprovação da copy (cliente)** → **3. produção do criativo (TAREFA do designer)** →
+**4. aprovação do criativo (Planner, fluxo normal)**. Mapeia 1:1 na esteira existente
+(`briefing→copy→aprovacao_copy→criativo→aprovacao_criativo→pronto`).
+- **Copy estruturada por pauta** (`lib/redis.ts` Post): novos campos `subheadline`, `cta`,
+  `anexos` (shape de `Tarefa.anexos`), `laminas[]` (carrossel: texto+anexo por lâmina),
+  `medidas`/`localAplicacao` (formato Material Gráfico). `textoImagem` = "copy do criativo".
+- **`gerar-plano` virou esqueleto**: gera só briefing + direção visual + formato + data.
+  A copy vem depois, pauta a pauta, pelo botão **"Gerar copy"** → nova rota
+  `/api/esteira/gerar-copy` (Brand Board + Playbook + `REGRA_PTBR`; só preenche campo VAZIO
+  salvo `sobrescrever`; snapshot `iaGerado` só do que a IA escreveu).
+- **Regras puras em `lib/esteiraFluxo.ts`** (testes em `tests/esteiraFluxo.test.ts`, com
+  teste-oráculo usando `apareceNoPlanner` do `plannerFiltro` intocado): `aoConcluirTarefa`
+  (só etapa 'criativo' → {pronto, rascunho}; nunca regride/pula aprovação), `descricaoTarefaDesigner`,
+  `tituloSubtarefa`, `prazoTarefaMae`.
+- **`lib/tarefasDaPauta.ts`** (casa única servidor): `nascerTarefaDesigner` cria a tarefa do
+  designer. **A tarefa é TOP-LEVEL** (sem `tarefaPaiId`) — o kanban esconde subtarefas
+  (`!tarefaPaiId`), e nascer como subtarefa da "tarefa-mãe do plano" a tornava INVISÍVEL
+  (bug reportado como "não chega anexo/briefing" e "copy aprovada não vai pra produção";
+  a solução foi torná-la top-level). Leva copy na descrição, anexos da pauta E das lâminas,
+  responsável = **designer do squad** (`cliente.squadPapeis.designer`), prazo = dataAgendada,
+  vínculo pela `origemPostId`. `reabrirTarefaDaPauta` (ajuste do cliente reabre).
+- **Ganchos:** copy aprovada em `/api/esteira/aprovar` (aprovar_copy + corrigir_legenda) e
+  `/api/decision` (link público, ramo de copy) → etapa criativo + `nascerTarefaDesigner`.
+  Concluir a tarefa (PUT `/api/tarefas`, `origemPostId`) → pauta ao Planner como rascunho.
+  Ajuste/recusa do criativo → reabre a tarefa com o feedback.
+- **Controles MANUAIS** (o responsável manda): "Aprovar copy internamente", "Criar tarefa
+  desta pauta" (via `/api/esteira/relacionar`, `manual:true` — converge com o automático em
+  qualquer etapa≠pronto), "Enviar ao Planner (rascunho)". `/api/tarefas` POST aceita
+  `origemPostId` (`CAMPOS_TAREFA`) e fecha o vínculo (`post.tarefaId`).
+- **Nova tarefa (GestaoTarefas) ganha "Vincular pauta do Studio"**: ao escolher o cliente,
+  lista as pautas dele (`/api/posts?clienteId`), traz briefing+copy pra descrição, anexos,
+  sugere tipo Criativo e dispensa a etapa do Playbook.
+- **Aprovação de copy = mesma experiência do criativo**: "Enviar copy para aprovação" gera o
+  link público e abre o modal de compartilhar. `/aprovacoes/[token]` ganhou o **`CopyCard`**:
+  estrutura igual ao card de criativo, mas o TEXTO ocupa o lugar da imagem (sem rótulos, sem
+  botão de CTA — decisão do dono); "Solicitar ajustes" = tudo editável + observação.
+
+### 39.2 Motion design — sistema CSS puro (ver [[motion-system]] na memória)
+Fim de `app/globals.css`: tokens (`--dur-fast/base/slow` 140/220/360ms, `--ease-out`/`--ease-spring`),
+keyframes prefixados `soma-`, classes `.anim-overlay/.anim-modal/.anim-in/.anim-item/.anim-toast-in/out/.anim-aba`,
+e `@media (prefers-reduced-motion)` (1ª vez no projeto). **Regras da casa no próprio CSS:**
+nunca `transform` em ancestral de modal fixed (bug do `.cliente-card`); tema escuro = filter
+invert → não animar filter/backdrop-filter. Aplicado: saída dos toasts (`Toaster` gerencia
+`saindo` + onAnimationEnd), confirm animado, `girar` unificado (3 cópias), `pulse` morto do
+GestaoTarefas consertado, modais do Studio, `lib/useCountUp` nas métricas, **troca de aba do
+dashboard via reflow-retrigger** (`.anim-aba` é FADE PURO — a versão com rise prendia modais
+fixed abertos, print do dono).
+
+### 39.3 CRM Mensagens (`CRM.tsx`)
+- **Sugestão não fecha mais sozinha**: `recarregarMensagens()` (só recarrega histórico)
+  separado de `abrir()` (troca conversa) — o poll de 15s chamava `abrir` e resetava tudo.
+- **Mensagem enviada não some**: guarda "a resposta mais nova vence" (`reqSeqRef`) —
+  respostas fora de ordem sobrescreviam a lista apagando a msg recém-enviada.
+- **Anexo + áudio** (só canal WhatsApp; backend `enviarMidiaWhatsApp` já existia): clipe sobe
+  PDF/imagem/vídeo/doc; microfone grava com **onda (Web Audio + canvas rAF) + cronômetro** e
+  **prévia antes de enviar** (player, Enviar/Descartar). Anexo também entra na FILA (prévia).
+  MIME normalizado sem `;codecs` p/ o whitelist do `/api/upload`. Compositor com `paddingRight`
+  reserva folga do FAB do assistente.
+
+### 39.4 Studio — refinamentos (StudioMes.tsx)
+Pauta abre como **MODAL** (portal no body — o `.st-row` anima com transform e clipava o fixed);
+**+ Nova linha** nasce no topo com o modal aberto; formulário **por formato** (Feed/Reel/
+Carrossel-com-lâminas/Story-sem-legenda/Material Gráfico); seleção em massa + X por linha;
+renomear plano; **mover pauta entre planos** (PUT `/api/posts` move `planoId` E os índices
+`plano:{id}:pautas`); **lupa de busca** por pauta.
+
+### 39.5 LIXEIRA de pautas (30 dias) — soft-delete
+`Post` ganhou `excluidoEm`/`excluidoPor`. `DELETE /api/posts` = **soft por padrão** (vai pra
+`posts_excluidos`, sai das views ativas, mantém o vínculo com a tarefa; `?permanente=true`
+apaga de vez e limpa o vínculo). `GET ?lixeira=1&clienteId=` lista e **purga +30 dias na
+leitura**; `PUT {restaurar:true}` volta aos índices (plano sumido → restaura avulsa). UI:
+botão "Lixeira" na toolbar do Studio (restaurar / excluir de vez / dias restantes). Mesma
+mecânica da lixeira de Tarefas (`tarefas_excluidas`).
+Também: **status "Descartado"** em Tarefas (coluna escondível), fix do **refresh→Clientes**
+(params de OAuth agora limpos da URL via `history.replaceState`), **Story sem obrigação** de
+capa/legenda/colab no compositor.
+
+### 39.6 Chaves Redis novas · Pendências
+- **Redis:** `posts_excluidos` (set da lixeira de pautas). Campos novos no Post (§39.1/39.5).
+- **VALIDAR EM PRODUÇÃO (só o dono):** o ciclo COPY>PRODUÇÃO ponta a ponta (gerar copy →
+  enviar → aprovar como cliente → tarefa do designer aparece no quadro com anexos → concluir
+  → Planner rascunho). **Conferir que o cliente tem o papel Designer no squad** (senão a
+  tarefa nasce sem responsável, mas agora aparece no quadro).
+- **WIP de Estoque/Produtos do dono** precisa dos 3 fixes de tsc antes de commitar (chip
+  aberto): `FormaPagamento` duplicado em `redis.ts`, `'telefonia'` no union de
+  `permissoesGranular.ts`, iteração de Map em `estoque.ts`.
+- Herdadas: validações em produção do inbox WhatsApp (§38.10) e demais pendências da §38.
