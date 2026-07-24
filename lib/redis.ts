@@ -512,6 +512,86 @@ export type Processo = {
   atualizadoEm: string
 }
 
+// ─── VAREJO (perfil telefonia) ───────────────────────────────────────────────
+// Multi-loja DENTRO de uma instância. `lojaId` nasce NATIVO aqui (módulo novo),
+// não é o retrofit de tenant no CRM/Financeiro global. Ver plano Space Technology.
+
+// Loja/filial. Lista em `config:lojas` (array), padrão de config:contasBancarias.
+export type Loja = {
+  id: string
+  nome: string
+  endereco?: string
+  ativa?: boolean
+  criadoEm?: string
+}
+
+// Produto do catálogo — COMPARTILHADO entre as lojas (mesmo SKU em todas). O
+// SALDO é por loja e vive fora daqui (chave `estoque:{lojaId}:{produtoId}`,
+// número, baixado com DECRBY atômico na venda). Molde: PacoteViagem (tabela de
+// preço no modelo, sem estoque). Chaves: `produto:{id}` + set `produtos`.
+export type CategoriaProduto = 'smartphone' | 'eletronico' | 'acessorio' | 'outro'
+export type Produto = {
+  id: string
+  nome: string
+  sku?: string
+  categoria: CategoriaProduto
+  precoVenda: number
+  precoCusto?: number       // custo de aquisição (margem, não exibido ao cliente)
+  estoqueMinimo?: number    // alerta "abaixo do mínimo" por loja
+  ativo?: boolean
+  descricao?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+// Movimentação de estoque (log/auditoria; o saldo vivo é a chave numérica).
+// entrada (compra), saida (venda/perda), transferencia (entre lojas), ajuste.
+// Chaves: `movestoque:{id}` + set `movestoque`.
+export type TipoMovEstoque = 'entrada' | 'saida' | 'transferencia' | 'ajuste'
+export type MovimentacaoEstoque = {
+  id: string
+  produtoId: string
+  lojaId: string            // loja afetada (na transferência: destino leva outra mov com sinal oposto na origem)
+  lojaDestinoId?: string    // preenchido nas transferências (a origem é lojaId)
+  tipo: TipoMovEstoque
+  quantidade: number        // sempre positiva; o `tipo` diz a direção
+  motivo?: string
+  vendaId?: string          // baixa originada de uma venda
+  criadoPor?: string
+  criadoEm: string
+}
+
+// Venda (PDV) — vários itens, baixa no estoque, alimenta o financeiro da loja.
+// O CrmNegocio tem valor ÚNICO e não modela carrinho — por isso é entidade nova.
+// Chaves: `venda:{id}` + set `vendas`.
+export type ItemVenda = {
+  produtoId: string
+  nome: string              // snapshot do nome no momento da venda
+  quantidade: number
+  precoUnit: number         // snapshot do preço (corrigir o produto não reescreve venda feita)
+}
+// Formas do PDV do varejo — diferem das do turismo (débito/crédito/outro no lugar
+// de cartão/transferência), por isso é um tipo próprio, não o FormaPagamento acima.
+export type FormaPagamentoVenda = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'boleto' | 'outro'
+export type Venda = {
+  id: string
+  lojaId: string
+  itens: ItemVenda[]
+  desconto?: number
+  total: number             // soma dos itens - desconto
+  formaPagamento: FormaPagamentoVenda
+  // Parcelamento opcional (crediário) — mesmo motor do turismo/cidadania. Sem
+  // financeiro = à vista (uma entrada única no caixa da loja).
+  financeiro?: import('./financeiroContrato').FinanceiroContrato
+  contatoId?: string        // cliente da venda (CrmContato), opcional
+  vendedor?: string
+  data: string              // ISO
+  nfe?: { numero?: string; chave?: string; status?: 'pendente' | 'emitida' | 'cancelada'; emitidaEm?: string } // Fase 5 (registrado, não usado ainda)
+  criadoPor?: string
+  criadoEm: string
+}
+
 // Resposta de NPS (0-10 + comentário). Chaves: set `nps`, `nps:{id}`, `cliente:{id}:nps`.
 export type NpsResposta = {
   id: string

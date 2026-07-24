@@ -54,6 +54,7 @@ const Viagens = dynamic(() => import('../components/Viagens'), { ssr: false, loa
 const CalendarioViagens = dynamic(() => import('../components/CalendarioViagens'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Processos = dynamic(() => import('../components/Processos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Produtos = dynamic(() => import('../components/Produtos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -418,7 +419,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -2114,6 +2115,13 @@ function Dashboard() {
                   <NavBtn chave="processos" label="Processos" />
                 </nav>
               )}
+              {/* Varejo (telefonia) — Produtos/Estoque (Vendas entra na Fase 2) */}
+              {perfilTelefonia && podeGrupo('crm') && (
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Varejo</span>}
+                  <NavBtn chave="produtos" label="Produtos" />
+                </nav>
+              )}
               {/* Comunicação — acima de Estratégia */}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
@@ -3388,6 +3396,11 @@ function Dashboard() {
         )}
         {aba === 'frota' && perfilTurismo && role !== 'cliente' && (
           <Frota podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+        )}
+
+        {/* Varejo telefonia — Produtos/Estoque */}
+        {aba === 'produtos' && perfilTelefonia && role !== 'cliente' && (
+          <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
         )}
 
         {/* Assessoria cidadania — esteira de Processos */}

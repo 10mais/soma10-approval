@@ -11,7 +11,7 @@ export type AcaoPerm = 'publicar' | 'enviar_cliente' | 'gerar_ia' | 'aprovar' | 
 // permissões esconde as que não se aplicam (a Norah não precisa ver "Viagens").
 // Telas admin-only (Colaboradores, Configurações, Reuniões, Trabalhe Conosco)
 // ficam FORA: o granular só afeta gerente/usuario, e admin atravessa tudo.
-export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?: 'clinica' | 'turismo' | 'cidadania' }[] = [
+export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?: 'clinica' | 'turismo' | 'cidadania' | 'telefonia' }[] = [
   { key: 'meu-dia', label: 'Meu dia', categoria: 'Pessoal' },
   { key: 'lista-pessoal', label: 'Personal list', categoria: 'Pessoal' },
   { key: 'studio', label: 'Studio', categoria: 'Produção' },
@@ -41,6 +41,7 @@ export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?
   { key: 'reservas', label: 'Reservas', categoria: 'Operação', perfil: 'turismo' },
   { key: 'frota', label: 'Frota', categoria: 'Operação', perfil: 'turismo' },
   { key: 'processos', label: 'Processos', categoria: 'Assessoria', perfil: 'cidadania' },
+  { key: 'produtos', label: 'Produtos/Estoque', categoria: 'Varejo', perfil: 'telefonia' },
   { key: 'rentabilidade', label: 'Financeiro', categoria: 'Gestão' },
   { key: 'clientes', label: 'Clientes', categoria: 'Gestão' },
 ]
