@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Loja } from '@/lib/redis'
+import { resolverEscopoLoja } from '@/lib/escopoLoja'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -18,9 +19,16 @@ async function sessaoEquipe() {
 }
 
 export async function GET() {
-  if (!(await sessaoEquipe())) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const lojas = (await redis.get<Loja[]>(KEY)) || []
-  return NextResponse.json(Array.isArray(lojas) ? lojas : [])
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const todas = (await redis.get<Loja[]>(KEY)) || []
+  const lista = Array.isArray(todas) ? todas : []
+  // Escopo: operador travado só vê a SUA loja (nem o nome das outras vaza no seletor);
+  // sem loja atribuída = não vê nenhuma. Admin/gestor veem todas.
+  const esc = resolverEscopoLoja({ role: (session.user as any).role, lojaId: (session.user as any).lojaId })
+  if (esc.tipo === 'loja') return NextResponse.json(lista.filter(l => l.id === esc.lojaId))
+  if (esc.tipo === 'bloqueado') return NextResponse.json([])
+  return NextResponse.json(lista)
 }
 
 export async function PUT(req: NextRequest) {

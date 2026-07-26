@@ -4,7 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { redis, Produto, MovimentacaoEstoque, TipoMovEstoque } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { chaveEstoque, validarTransferencia } from '@/lib/estoque'
+import { resolverEscopoLoja, podeEscreverNaLoja } from '@/lib/escopoLoja'
 import { v4 as uuid } from 'uuid'
+
+// Escopo do usuário da sessão (papel + loja vinda do TOKEN, nunca do request).
+function escopoDe(session: any) {
+  return { role: (session.user as any).role as string, lojaId: (session.user as any).lojaId as string | undefined }
+}
 
 export const runtime = 'nodejs'
 
@@ -23,24 +29,27 @@ async function produtoIds(): Promise<string[]> {
   return await redis.smembers('produtos')
 }
 
-// GET ?lojaId= : saldo de cada produto naquela loja. Sem lojaId: saldo por
-// produto em TODAS as lojas (o dono consolida).
+// GET ?lojaId= : saldo de cada produto naquela loja. Admin/gestor sem lojaId:
+// consolidado de TODAS. O ESCOPO manda: operador travado só lê a SUA loja — o
+// ?lojaId= dele é ignorado (resolverEscopoLoja); sem loja atribuída = 403.
 export async function GET(req: NextRequest) {
   const session = await sessaoEquipe()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const lojaId = req.nextUrl.searchParams.get('lojaId') || ''
+  const esc = resolverEscopoLoja(escopoDe(session), req.nextUrl.searchParams.get('lojaId'))
+  if (esc.tipo === 'bloqueado') return NextResponse.json({ error: esc.motivo }, { status: 403 })
   const ids = await produtoIds()
-  if (!ids.length) return NextResponse.json({ saldos: {} })
 
-  if (lojaId) {
-    const chaves = ids.map(pid => chaveEstoque(lojaId, pid))
-    const valores = ids.length ? await redis.mget<(number | null)[]>(...chaves) : []
+  if (esc.tipo === 'loja') {
+    if (!ids.length) return NextResponse.json({ lojaId: esc.lojaId, saldos: {} })
+    const chaves = ids.map(pid => chaveEstoque(esc.lojaId, pid))
+    const valores = await redis.mget<(number | null)[]>(...chaves)
     const saldos: Record<string, number> = {}
     ids.forEach((pid, i) => { saldos[pid] = Number(valores[i]) || 0 })
-    return NextResponse.json({ lojaId, saldos })
+    return NextResponse.json({ lojaId: esc.lojaId, saldos })
   }
 
-  // Consolidado: precisa das lojas para varrer todas as chaves.
+  // esc.tipo === 'todas' (admin/gestor) — consolidado; precisa das lojas para varrer as chaves.
+  if (!ids.length) return NextResponse.json({ porLoja: {} })
   const lojas = (await redis.get<{ id: string }[]>('config:lojas')) || []
   const porLoja: Record<string, Record<string, number>> = {}
   for (const l of lojas) {
@@ -73,13 +82,16 @@ export async function POST(req: NextRequest) {
   const b = await req.json()
   const tipo = b.tipo as TipoMovEstoque
   const produtoId = String(b.produtoId || '').trim()
-  const lojaId = String(b.lojaId || '').trim()
-  if (!produtoId || !lojaId) return NextResponse.json({ error: 'produto e loja obrigatórios' }, { status: 400 })
+  if (!produtoId) return NextResponse.json({ error: 'produto obrigatório' }, { status: 400 })
   const produto = await redis.get<Produto>(`produto:${produtoId}`)
   if (!produto) return NextResponse.json({ error: 'produto não encontrado' }, { status: 404 })
   const qtd = Math.floor(Number(b.quantidade) || 0)
 
   if (tipo === 'entrada') {
+    // Escopo: a loja vem do escopo do usuário, nunca crua do corpo (operador só na sua).
+    const escr = podeEscreverNaLoja(escopoDe(session), b.lojaId)
+    if ('erro' in escr) return NextResponse.json({ error: escr.erro }, { status: escr.status })
+    const lojaId = escr.lojaId
     if (qtd <= 0) return NextResponse.json({ error: 'quantidade deve ser maior que zero' }, { status: 400 })
     const saldo = await redis.incrby(chaveEstoque(lojaId, produtoId), qtd)
     const mov = await registrarMov({ produtoId, lojaId, tipo: 'entrada', quantidade: qtd, motivo: b.motivo }, autor)
@@ -87,6 +99,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (tipo === 'ajuste') {
+    const escr = podeEscreverNaLoja(escopoDe(session), b.lojaId)
+    if ('erro' in escr) return NextResponse.json({ error: escr.erro }, { status: escr.status })
+    const lojaId = escr.lojaId
     // Contagem física: define o saldo absoluto. `quantidade` aqui é o saldo final.
     const alvo = Math.max(0, qtd)
     await redis.set(chaveEstoque(lojaId, produtoId), alvo)
@@ -95,6 +110,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (tipo === 'transferencia') {
+    // Transferir entre lojas exige ver a rede toda — operador travado não vê outras unidades.
+    if (resolverEscopoLoja(escopoDe(session)).tipo !== 'todas') {
+      return NextResponse.json({ error: 'Apenas a gestão da rede pode transferir entre lojas.' }, { status: 403 })
+    }
+    const lojaId = String(b.lojaId || '').trim()
     const lojaDestinoId = String(b.lojaDestinoId || '').trim()
     const saldoOrigem = Number(await redis.get<number>(chaveEstoque(lojaId, produtoId))) || 0
     const erro = validarTransferencia({ lojaOrigem: lojaId, lojaDestino: lojaDestinoId, quantidade: qtd, saldoOrigem })
