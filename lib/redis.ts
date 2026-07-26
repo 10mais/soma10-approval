@@ -598,6 +598,11 @@ export type Venda = {
   vendedor?: string
   data: string              // ISO
   nfe?: { numero?: string; chave?: string; status?: 'pendente' | 'emitida' | 'cancelada'; emitidaEm?: string } // Fase 5 (registrado, não usado ainda)
+  // Cancelamento: a venda NÃO é apagada (auditoria) — vira cancelada, o estoque
+  // volta (estorno) e a entrada do caixa é removida. Ver DELETE /api/vendas.
+  cancelada?: boolean
+  canceladaEm?: string
+  canceladaPor?: string
   criadoPor?: string
   criadoEm: string
 }

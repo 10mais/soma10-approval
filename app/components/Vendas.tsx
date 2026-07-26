@@ -1,12 +1,12 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { toast } from '@/lib/toast'
+import { toast, confirmar } from '@/lib/toast'
 import { totalVenda } from '@/lib/estoque'
 
 type Produto = { id: string; nome: string; sku?: string; categoria: string; precoVenda: number; ativo?: boolean }
 type ItemCarrinho = { produtoId: string; nome: string; quantidade: number; precoUnit: number }
 type Contato = { id: string; nome: string; telefone?: string }
-type Venda = { id: string; itens: ItemCarrinho[]; total: number; desconto?: number; formaPagamento: string; contatoId?: string; vendedor?: string; data: string }
+type Venda = { id: string; itens: ItemCarrinho[]; total: number; desconto?: number; formaPagamento: string; contatoId?: string; vendedor?: string; data: string; cancelada?: boolean }
 
 const FORMAS: [string, string][] = [['dinheiro', 'Dinheiro'], ['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['boleto', 'Boleto'], ['outro', 'Outro']]
 const formaLabel = (k: string) => FORMAS.find(f => f[0] === k)?.[1] || k
@@ -61,6 +61,13 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
     setFinalizando(false)
     if (r?.ok) { toast('Venda registrada e estoque baixado.', 'sucesso'); setCarrinho([]); setDesconto(''); setContatoId(''); setBuscaContato(''); carregar() }
     else toast(r?.error || 'Não foi possível registrar a venda.', 'erro')
+  }
+
+  async function cancelar(v: Venda) {
+    if (!(await confirmar(`Cancelar esta venda de ${brl(v.total)}? O estoque volta e a entrada sai do caixa.`, { titulo: 'Cancelar venda', okLabel: 'Cancelar venda', perigo: true }))) return
+    const r = await fetch(`/api/vendas?id=${v.id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { toast('Venda cancelada e estoque estornado.', 'sucesso'); carregar() }
+    else toast(r?.error || 'Não foi possível cancelar.', 'erro')
   }
 
   if (bloqueado) {
@@ -165,12 +172,13 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
           <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#111' }}>Vendas recentes</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {vendas.slice(0, 20).map(v => (
-              <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #f0f0f0' }}>
+              <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: v.cancelada ? '#fafafa' : '#fff', borderRadius: 10, border: '1px solid #f0f0f0', opacity: v.cancelada ? 0.7 : 1 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: '#111' }}>{v.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(v.formaPagamento)}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: '#111' }}>{v.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(v.formaPagamento)} {v.cancelada && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 999, padding: '2px 8px', marginLeft: 4 }}>cancelada</span>}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#999' }}>{new Date(v.data).toLocaleString('pt-BR')}{v.vendedor ? ` · ${v.vendedor}` : ''}</p>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{brl(v.total)}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: v.cancelada ? '#bbb' : '#16a34a', textDecoration: v.cancelada ? 'line-through' : 'none' }}>{brl(v.total)}</span>
+                {podeEditar && !v.cancelada && <button onClick={() => cancelar(v)} title="Cancelar venda" style={{ background: 'none', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '5px 10px' }}>Cancelar</button>}
               </div>
             ))}
           </div>

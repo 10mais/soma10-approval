@@ -106,3 +106,38 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, venda })
 }
+
+// DELETE ?id= : CANCELA a venda (não apaga — auditoria). Estorna o estoque
+// (INCRBY de volta na loja), remove a entrada do caixa e marca cancelada.
+// Escopo: operador só cancela venda da SUA loja.
+export async function DELETE(req: NextRequest) {
+  const session = await sessaoEquipe()
+  if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) {
+    return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
+  }
+  const id = req.nextUrl.searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
+  const venda = await redis.get<Venda>(`venda:${id}`)
+  if (!venda) return NextResponse.json({ error: 'não encontrada' }, { status: 404 })
+  const escr = podeEscreverNaLoja(escopoDe(session), venda.lojaId)
+  if ('erro' in escr) return NextResponse.json({ error: escr.erro }, { status: escr.status })
+  if (venda.cancelada) return NextResponse.json({ error: 'Venda já cancelada.' }, { status: 400 })
+
+  const agora = new Date().toISOString()
+  const autor = session.user?.name || session.user?.email || undefined
+  // Estorno: devolve cada item ao estoque da loja + registra a entrada (auditoria).
+  for (const [pid, q] of Object.entries(quantidadePorProduto(venda.itens))) {
+    await redis.incrby(chaveEstoque(venda.lojaId, pid), q)
+    const mov: MovimentacaoEstoque = { id: uuid(), produtoId: pid, lojaId: venda.lojaId, tipo: 'entrada', quantidade: q, vendaId: venda.id, motivo: 'estorno de venda cancelada', criadoPor: autor, criadoEm: agora }
+    await redis.set(`movestoque:${mov.id}`, mov)
+    await redis.sadd('movestoque', mov.id)
+  }
+  // Remove a entrada do caixa (o dinheiro não entrou).
+  await redis.del(`lancamento:venda-${venda.id}`)
+  await redis.srem('lancamentos', `venda-${venda.id}`)
+
+  const cancelada: Venda = { ...venda, cancelada: true, canceladaEm: agora, canceladaPor: autor }
+  await redis.set(`venda:${venda.id}`, cancelada)
+  return NextResponse.json({ ok: true, venda: cancelada })
+}
