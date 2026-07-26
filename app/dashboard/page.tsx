@@ -624,7 +624,7 @@ function Dashboard() {
   const perfilTelefonia = perfilInstancia === 'telefonia'
   // Lojas do varejo (perfil telefonia) — usadas no form de colaborador para
   // vincular o operador a uma unidade (isolamento; ver lib/escopoLoja).
-  const [lojasTel, setLojasTel] = useState<{ id: string; nome: string }[]>([])
+  const [lojasTel, setLojasTel] = useState<{ id: string; nome: string; evolutionInstance?: string }[]>([])
   useEffect(() => { if (perfilTelefonia) fetch('/api/lojas').then(r => r.json()).then(d => setLojasTel(Array.isArray(d) ? d : [])).catch(() => {}) }, [perfilTelefonia])
   const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
@@ -5101,9 +5101,21 @@ function Dashboard() {
 
             {abaConfig === 'integracoes' && (<>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>WhatsApp (conexão)</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.</p>
-              <WhatsAppConexao />
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>WhatsApp (conexão){perfilTelefonia ? ' — por loja' : ''}</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>{perfilTelefonia ? 'Cada loja pareia o seu próprio número (mesmo host, instâncias separadas). Defina a instância de cada loja em Produtos → Gerenciar lojas.' : 'Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.'}</p>
+              {perfilTelefonia ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {lojasTel.length === 0 && <p style={{ fontSize: 12.5, color: '#a16207' }}>Cadastre as lojas em Produtos → Gerenciar lojas primeiro.</p>}
+                  {lojasTel.map(l => (
+                    <div key={l.id} style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                      <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 800, color: '#111' }}>{l.nome}</p>
+                      {l.evolutionInstance
+                        ? <WhatsAppConexao instancia={l.evolutionInstance} />
+                        : <p style={{ margin: 0, fontSize: 12, color: '#a16207' }}>Defina a “Instância WhatsApp” desta loja em Produtos → Gerenciar lojas para poder conectar.</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : <WhatsAppConexao />}
             </div>
             <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Integrações</h3>

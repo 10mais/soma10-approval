@@ -4,7 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { abaixoDoMinimo } from '@/lib/estoque'
 
-type Loja = { id: string; nome: string; endereco?: string; ativa?: boolean }
+type Loja = { id: string; nome: string; endereco?: string; ativa?: boolean; evolutionInstance?: string }
 type Produto = { id: string; nome: string; sku?: string; categoria: string; precoVenda: number; precoCusto?: number; estoqueMinimo?: number; ativo?: boolean; descricao?: string }
 
 const CATEGORIAS = [
@@ -293,12 +293,14 @@ function GerirLojas({ lojas, onFechar, onSalvo }: { lojas: Loja[]; onFechar: () 
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 22, margin: '24px 0' }}>
         <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>Lojas</h3>
         {lista.map((l, i) => (
-          <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-            <input value={l.nome} onChange={e => { const ls = [...lista]; ls[i] = { ...l, nome: e.target.value }; setLista(ls) }} placeholder={`Loja ${i + 1}`} style={{ ...inp, flex: 1 }} />
-            <input value={l.endereco || ''} onChange={e => { const ls = [...lista]; ls[i] = { ...l, endereco: e.target.value }; setLista(ls) }} placeholder="Endereço (opcional)" style={{ ...inp, flex: 1 }} />
+          <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input value={l.nome} onChange={e => { const ls = [...lista]; ls[i] = { ...l, nome: e.target.value }; setLista(ls) }} placeholder={`Loja ${i + 1}`} style={{ ...inp, flex: '1 1 130px' }} />
+            <input value={l.endereco || ''} onChange={e => { const ls = [...lista]; ls[i] = { ...l, endereco: e.target.value }; setLista(ls) }} placeholder="Endereço (opcional)" style={{ ...inp, flex: '1 1 130px' }} />
+            <input value={l.evolutionInstance || ''} onChange={e => { const ls = [...lista]; ls[i] = { ...l, evolutionInstance: e.target.value }; setLista(ls) }} placeholder="Instância WhatsApp (ex.: space-cruzalta)" title="Nome da instância Evolution desta loja (só letras minúsculas, números e hífen)" style={{ ...inp, flex: '1 1 160px' }} />
             <button onClick={() => setLista(lista.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ccc', fontSize: 18, cursor: 'pointer' }}>×</button>
           </div>
         ))}
+        <p style={{ margin: '0 0 12px', fontSize: 11.5, color: '#aaa' }}>A “Instância WhatsApp” é o nome único desta loja no host do Evolution — cada loja pareia o seu próprio número. Deixe vazio se ainda não usa WhatsApp por loja.</p>
         <button onClick={() => setLista([...lista, { id: '', nome: '', ativa: true }])} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0', marginBottom: 14 }}>+ Adicionar loja</button>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar lojas'}</button>

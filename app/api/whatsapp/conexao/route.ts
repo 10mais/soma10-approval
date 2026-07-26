@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { evolutionConfigurado, normalizarUrlEvolution, normalizarChaveEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
+import { evolutionConfigurado, evolutionConfiguradoInst, instanciaEvolution, normalizarUrlEvolution, normalizarChaveEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,6 @@ export const runtime = 'nodejs'
 // O host do Evolution fica sempre no Railway; aqui só falamos com ele pela API.
 
 const base = () => normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-const inst = () => process.env.EVOLUTION_INSTANCE || ''
 const headers = () => ({ apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' })
 
 function webhookUrl(): string {
@@ -20,9 +19,9 @@ function webhookUrl(): string {
 }
 
 // Registra o webhook na Evolution apontando de volta pro Soma10 (idempotente).
-async function registrarWebhook(): Promise<boolean> {
+async function registrarWebhook(instancia: string): Promise<boolean> {
   try {
-    const r = await fetch(`${base()}/webhook/set/${inst()}`, {
+    const r = await fetch(`${base()}/webhook/set/${instancia}`, {
       method: 'POST', headers: headers(),
       // base64: o Evolution embute os bytes da mídia no próprio webhook — caminho
       // mais robusto para o inbox salvar imagem/áudio/vídeo no Blob.
@@ -39,7 +38,7 @@ async function registrarWebhook(): Promise<boolean> {
 // devolve o QR/código de pareamento na própria resposta.
 // Corpo v2 (integration BAILEYS = WhatsApp Web/QR); se o host for v1 e rejeitar,
 // tenta o corpo mínimo antigo.
-async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: string | null; codigo?: string | null; erro?: string }> {
+async function criarInstancia(instancia: string, numero?: string): Promise<{ ok: boolean; base64?: string | null; codigo?: string | null; erro?: string }> {
   const tentar = async (corpo: any) => {
     const r = await fetch(`${base()}/instance/create`, { method: 'POST', headers: headers(), body: JSON.stringify(corpo) })
     const d = await r.json().catch(() => ({} as any))
@@ -47,8 +46,8 @@ async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: 
   }
   try {
     // `number` no create faz o Evolution devolver o CÓDIGO de pareamento junto.
-    let { r, d } = await tentar({ instanceName: inst(), qrcode: true, integration: 'WHATSAPP-BAILEYS', ...(numero ? { number: numero } : {}) })
-    if (!r.ok) ({ r, d } = await tentar({ instanceName: inst(), qrcode: true, ...(numero ? { number: numero } : {}) }))
+    let { r, d } = await tentar({ instanceName: instancia, qrcode: true, integration: 'WHATSAPP-BAILEYS', ...(numero ? { number: numero } : {}) })
+    if (!r.ok) ({ r, d } = await tentar({ instanceName: instancia, qrcode: true, ...(numero ? { number: numero } : {}) }))
     if (!r.ok) {
       const detalhe = [d?.response?.message, d?.message, d?.error].flat().filter((x: any) => typeof x === 'string' && x.trim()).join(' · ')
       // 401 no CREATE tem causa específica e vale explicar: /instance/create é um
@@ -56,9 +55,9 @@ async function criarInstancia(numero?: string): Promise<{ ok: boolean; base64?: 
       // não um token de instância. Dá para consultar o estado de uma instância com
       // token menor e mesmo assim levar 401 aqui, que foi o caso da Sua Dupla.
       if (r.status === 401 || r.status === 403) {
-        return { ok: false, erro: `O Evolution recusou a chave ao criar a instância "${inst()}" (HTTP ${r.status}). A EVOLUTION_API_KEY precisa ser a AUTHENTICATION_API_KEY GLOBAL do host — a mesma que está no Railway, em Variables do serviço Evolution. Token de instância não cria instância.` }
+        return { ok: false, erro: `O Evolution recusou a chave ao criar a instância "${instancia}" (HTTP ${r.status}). A EVOLUTION_API_KEY precisa ser a AUTHENTICATION_API_KEY GLOBAL do host — a mesma que está no Railway, em Variables do serviço Evolution. Token de instância não cria instância.` }
       }
-      return { ok: false, erro: `O Evolution não deixou criar a instância "${inst()}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
+      return { ok: false, erro: `O Evolution não deixou criar a instância "${instancia}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
     }
     return { ok: true, base64: d?.qrcode?.base64 || d?.base64 || null, codigo: d?.qrcode?.code || d?.qrcode?.pairingCode || d?.pairingCode || null }
   } catch (e: any) {
@@ -74,13 +73,15 @@ function hostEvolution(): string {
   try { return new URL(base()).host } catch { return String(process.env.EVOLUTION_API_URL || '').slice(0, 80) }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  if (!evolutionConfigurado()) return NextResponse.json({ configurado: false, estado: 'nao_configurado' })
-  const comum = { configurado: true, instancia: inst(), host: hostEvolution() }
+  // Instância da requisição (WhatsApp por loja); ausente = EVOLUTION_INSTANCE da env.
+  const instancia = instanciaEvolution(req.nextUrl.searchParams.get('instancia'))
+  if (!evolutionConfiguradoInst(instancia)) return NextResponse.json({ configurado: false, estado: 'nao_configurado' })
+  const comum = { configurado: true, instancia, host: hostEvolution() }
   try {
-    const r = await fetch(`${base()}/instance/connectionState/${inst()}`, { headers: headers() })
+    const r = await fetch(`${base()}/instance/connectionState/${instancia}`, { headers: headers() })
     const d = await r.json().catch(() => ({} as any))
     // Antes o status HTTP era ignorado: 401 (apikey errada) e 404 (instância
     // inexistente) caíam em "desconhecido" e a pessoa ficava sem saber o motivo.
@@ -105,26 +106,27 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  if (!evolutionConfigurado()) return NextResponse.json({ error: 'Evolution não configurado (faltam as variáveis EVOLUTION_* na Vercel).' }, { status: 400 })
-  const { acao, numero } = await req.json().catch(() => ({} as any))
+  const { acao, numero, instancia: instReq } = await req.json().catch(() => ({} as any))
+  const instancia = instanciaEvolution(instReq)
+  if (!evolutionConfiguradoInst(instancia)) return NextResponse.json({ error: 'Evolution não configurado (faltam as variáveis EVOLUTION_* na Vercel).' }, { status: 400 })
   // Número do WhatsApp a parear (com DDI). Com ele, o Evolution gera o CÓDIGO de
   // pareamento — o caminho que funciona quando o celular recusa o QR com "Não
   // foi possível conectar o dispositivo" (aconteceu na Norah e na Deny).
   const num = String(numero || '').replace(/\D/g, '')
 
   if (acao === 'desconectar') {
-    try { await fetch(`${base()}/instance/logout/${inst()}`, { method: 'DELETE', headers: headers() }) } catch {}
+    try { await fetch(`${base()}/instance/logout/${instancia}`, { method: 'DELETE', headers: headers() }) } catch {}
     return NextResponse.json({ ok: true })
   }
 
   if (acao === 'webhook') {
-    return NextResponse.json({ ok: await registrarWebhook() })
+    return NextResponse.json({ ok: await registrarWebhook(instancia) })
   }
 
   // Conectar: garante o webhook e devolve o QR (base64) / código de pareamento.
   // Com `numero`, o connect leva ?number= e o Evolution devolve o pairingCode.
-  const conectarUrl = `${base()}/instance/connect/${inst()}${num ? `?number=${num}` : ''}`
-  await registrarWebhook()
+  const conectarUrl = `${base()}/instance/connect/${instancia}${num ? `?number=${num}` : ''}`
+  await registrarWebhook(instancia)
   try {
     const r = await fetch(conectarUrl, { headers: headers() })
     const d = await r.json().catch(() => ({} as any))
@@ -135,9 +137,9 @@ export async function POST(req: NextRequest) {
     // 404 = a instância ainda não existe no host (o connect nunca cria). Em vez
     // de mandar o dono ao /manager do Railway, CRIA aqui e segue o pareamento.
     if (r.status === 404) {
-      const criada = await criarInstancia(num || undefined)
+      const criada = await criarInstancia(instancia, num || undefined)
       if (!criada.ok) return NextResponse.json({ error: criada.erro }, { status: 502 })
-      await registrarWebhook() // agora a instância existe; o webhook cola
+      await registrarWebhook(instancia) // agora a instância existe; o webhook cola
       if (criada.base64 || criada.codigo) return NextResponse.json({ ok: true, base64: criada.base64, codigo: criada.codigo })
       // Criou mas o create não trouxe QR — pede pelo caminho normal.
       const r2 = await fetch(conectarUrl, { headers: headers() })
@@ -145,13 +147,13 @@ export async function POST(req: NextRequest) {
       const b2 = d2?.base64 || d2?.qrcode?.base64 || null
       const c2 = d2?.code || d2?.qrcode?.code || d2?.pairingCode || null
       if (b2 || c2) return NextResponse.json({ ok: true, base64: b2, codigo: c2 })
-      return NextResponse.json({ error: `Instância "${inst()}" criada, mas o Evolution não devolveu o QR — clique em Conectar de novo.` }, { status: 502 })
+      return NextResponse.json({ error: `Instância "${instancia}" criada, mas o Evolution não devolveu o QR — clique em Conectar de novo.` }, { status: 502 })
     }
 
     // Sem QR = erro. Devolver o motivo do Evolution em vez de "tente de novo":
     // 401 é apikey errada; o resto sai traduzido. Sem isto, cada pareamento novo
     // vira caça ao tesouro.
-    return NextResponse.json({ error: explicaFalhaConexao(r.status, d, inst()) }, { status: 502 })
+    return NextResponse.json({ error: explicaFalhaConexao(r.status, d, instancia) }, { status: 502 })
   } catch (e: any) {
     return NextResponse.json({ error: `Não deu para falar com o Evolution (${e?.message || e}). Confira a EVOLUTION_API_URL desta instância.` }, { status: 502 })
   }

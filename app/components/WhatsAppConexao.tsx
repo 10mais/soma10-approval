@@ -19,7 +19,8 @@ const INFO: Record<string, { label: string; cor: string; bg: string }> = {
   desconhecido: { label: 'Desconhecido', cor: '#6b7280', bg: '#f4f4f5' },
 }
 
-export default function WhatsAppConexao() {
+export default function WhatsAppConexao({ instancia }: { instancia?: string } = {}) {
+  const qsInst = instancia ? `?instancia=${encodeURIComponent(instancia)}` : ''
   const [estado, setEstado] = useState<Estado>('desconhecido')
   const [configurado, setConfigurado] = useState(true)
   const [carregando, setCarregando] = useState(true)
@@ -38,20 +39,20 @@ export default function WhatsAppConexao() {
   const [host, setHost] = useState('')
 
   const carregar = useCallback(async () => {
-    const d = await fetch('/api/whatsapp/conexao').then(r => r.json()).catch(() => null)
+    const d = await fetch(`/api/whatsapp/conexao${qsInst}`).then(r => r.json()).catch(() => null)
     if (d) {
       setConfigurado(!!d.configurado); setEstado(d.estado || 'desconhecido')
       setErro(d.erro || ''); setHost(d.host || '')
     }
     setCarregando(false)
-  }, [])
+  }, [qsInst])
   useEffect(() => { carregar() }, [carregar])
 
   // Enquanto o QR está na tela (ou conectando), re-checa o status a cada 5s.
   useEffect(() => {
     if (!qr && estado !== 'connecting') return
     const id = setInterval(async () => {
-      const d = await fetch('/api/whatsapp/conexao').then(r => r.json()).catch(() => null)
+      const d = await fetch(`/api/whatsapp/conexao${qsInst}`).then(r => r.json()).catch(() => null)
       if (d?.estado) { setEstado(d.estado); if (d.estado === 'open') { setQr(null); setCodigo(null); toast('WhatsApp conectado!', 'sucesso') } }
     }, 5000)
     return () => clearInterval(id)
@@ -62,7 +63,7 @@ export default function WhatsAppConexao() {
     setOcupado(true); setQr(null); setCodigo(null)
     const d = await fetch('/api/whatsapp/conexao', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao: 'conectar', ...(comNumero ? { numero } : {}) }),
+      body: JSON.stringify({ acao: 'conectar', ...(comNumero ? { numero } : {}), ...(instancia ? { instancia } : {}) }),
     }).then(r => r.json()).catch(() => null)
     setOcupado(false)
     if (d?.base64) setQr(d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`)
@@ -74,7 +75,7 @@ export default function WhatsAppConexao() {
 
   async function desconectar() {
     setOcupado(true)
-    await fetch('/api/whatsapp/conexao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'desconectar' }) }).catch(() => {})
+    await fetch('/api/whatsapp/conexao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'desconectar', ...(instancia ? { instancia } : {}) }) }).catch(() => {})
     setOcupado(false); setQr(null); setCodigo(null); carregar()
   }
 
