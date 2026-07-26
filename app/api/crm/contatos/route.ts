@@ -5,6 +5,8 @@ import { redis, CrmContato, CrmEmpresa, ContatoInteracao, ProximoPasso, Usuario 
 import { notificar } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { resolverEscopoLoja, podeEscreverNaLoja } from '@/lib/escopoLoja'
 
 export const runtime = 'nodejs'
 
@@ -37,13 +39,24 @@ export async function GET(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
+  // Varejo multi-loja: escopo por loja (SÓ telefonia; outros perfis não têm loja).
+  const perfil = await getPerfilInstancia()
+  const esc = perfil === 'telefonia'
+    ? resolverEscopoLoja({ role: (session.user as any).role, lojaId: (session.user as any).lojaId }, req.nextUrl.searchParams.get('lojaId'))
+    : null
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
     const c = await redis.get<CrmContato>(`contato:${id}`)
-    return c ? NextResponse.json(c) : NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    if (!c) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    if (esc && (esc.tipo === 'bloqueado' || (esc.tipo === 'loja' && c.lojaId !== esc.lojaId))) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    return NextResponse.json(c)
   }
   const ids = await redis.smembers('crm:contatos')
-  const contatos = ids.length ? ((await redis.mget<(CrmContato | null)[]>(...ids.map(i => `contato:${i}`))).filter(Boolean) as CrmContato[]) : []
+  let contatos = ids.length ? ((await redis.mget<(CrmContato | null)[]>(...ids.map(i => `contato:${i}`))).filter(Boolean) as CrmContato[]) : []
+  if (esc) {
+    if (esc.tipo === 'bloqueado') contatos = []
+    else if (esc.tipo === 'loja') contatos = contatos.filter(c => c.lojaId === esc.lojaId)
+  }
   contatos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
   return NextResponse.json(contatos)
 }
@@ -54,10 +67,19 @@ export async function POST(req: NextRequest) {
   if (await bloqueiaPapel((session.user as any).role, 'crm', 'editar', (session.user as any).permissoes)) return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   const b = await req.json()
   const autor = session.user?.name || ''
+  // Varejo multi-loja: carimba a loja do escopo (operador na sua; admin/gestor
+  // precisam ter escolhido uma). SÓ telefonia. Vale para individual E lote.
+  const perfil = await getPerfilInstancia()
+  let lojaIdCarimbo: string | undefined
+  if (perfil === 'telefonia') {
+    const escr = podeEscreverNaLoja({ role: (session.user as any).role, lojaId: (session.user as any).lojaId }, b.lojaId)
+    if ('erro' in escr) return NextResponse.json({ error: escr.erro }, { status: escr.status })
+    lojaIdCarimbo = escr.lojaId
+  }
   const novo = (d: any): CrmContato => {
     const agora = new Date().toISOString()
     return {
-      id: uuid(), nome: String(d.nome).trim(), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', ultimoProcedimento: d.ultimoProcedimento || '', nuncaVeio: !!d.nuncaVeio, criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+      id: uuid(), nome: String(d.nome).trim(), ...(lojaIdCarimbo ? { lojaId: lojaIdCarimbo } : {}), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', ultimoProcedimento: d.ultimoProcedimento || '', nuncaVeio: !!d.nuncaVeio, criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
       ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),

@@ -1002,6 +1002,7 @@ export type CrmContatoTipo = 'paciente' | 'profissional' | 'fornecedor' | 'lead'
 export type CrmContato = {
   id: string
   nome: string
+  lojaId?: string // varejo multi-loja (telefonia): a que unidade o contato pertence (isolamento). Ausente nos outros perfis.
   email?: string
   telefone?: string // WhatsApp — preparado para a integração oficial futura
   empresa?: string
@@ -1085,6 +1086,7 @@ export type CrmNegocioStatus = 'aberto' | 'ganho' | 'perdido'
 export type CrmNegocio = {
   id: string
   titulo: string
+  lojaId?: string // varejo multi-loja (telefonia): a que unidade a oportunidade pertence (isolamento). Ausente nos outros perfis.
   valor?: number
   estagioId: string
   pipelineId?: string // funil ao qual o negócio pertence (ausente = pipeline padrão)

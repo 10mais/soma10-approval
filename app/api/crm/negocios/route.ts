@@ -8,6 +8,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { garantirSetupCrm } from '@/lib/crmPipelines'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { perfilVendeParaPessoa } from '@/lib/perfisInstanciaCatalogo'
+import { resolverEscopoLoja, podeEscreverNaLoja } from '@/lib/escopoLoja'
 import { sanitizarLinhagem } from '@/lib/linhagem'
 
 export const runtime = 'nodejs'
@@ -52,13 +53,26 @@ async function passarBriefingAosClosers(n: CrmNegocio, contatoNome: string) {
 export async function GET(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  // Varejo multi-loja: escopo por loja (SÓ telefonia; outros perfis não têm loja).
+  const perfil = await getPerfilInstancia()
+  const esc = perfil === 'telefonia'
+    ? resolverEscopoLoja({ role: (session.user as any).role, lojaId: (session.user as any).lojaId }, req.nextUrl.searchParams.get('lojaId'))
+    : null
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
     const n = await redis.get<CrmNegocio>(`negocio:${id}`)
-    return n ? NextResponse.json(n) : NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    if (!n) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    // Operador não acessa negócio de outra loja nem por id direto.
+    if (esc && (esc.tipo === 'bloqueado' || (esc.tipo === 'loja' && n.lojaId !== esc.lojaId))) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+    return NextResponse.json(n)
   }
   const ids = await redis.smembers('crm:negocios')
-  const negocios = ids.length ? ((await redis.mget<(CrmNegocio | null)[]>(...ids.map(i => `negocio:${i}`))).filter(Boolean) as CrmNegocio[]) : []
+  let negocios = ids.length ? ((await redis.mget<(CrmNegocio | null)[]>(...ids.map(i => `negocio:${i}`))).filter(Boolean) as CrmNegocio[]) : []
+  if (esc) {
+    if (esc.tipo === 'bloqueado') negocios = []
+    else if (esc.tipo === 'loja') negocios = negocios.filter(n => n.lojaId === esc.lojaId)
+    // 'todas' (admin/gestor) = sem filtro: compila a rede inteira
+  }
   negocios.sort((a, b) => new Date(b.atualizadoEm || b.criadoEm).getTime() - new Date(a.atualizadoEm || a.criadoEm).getTime())
   return NextResponse.json(negocios)
 }
@@ -82,6 +96,14 @@ export async function POST(req: NextRequest) {
   if (!perfilVendeParaPessoa(perfil) && !b.profissionalAutonomo && !String(b.empresa || '').trim()) {
     return NextResponse.json({ error: 'informe a empresa da oportunidade' }, { status: 400 })
   }
+  // Varejo multi-loja: carimba a loja do ESCOPO (operador na sua; admin/gestor
+  // precisam ter escolhido uma no seletor). SÓ telefonia.
+  let lojaIdNeg: string | undefined
+  if (perfil === 'telefonia') {
+    const escr = podeEscreverNaLoja({ role: (session.user as any).role, lojaId: (session.user as any).lojaId }, b.lojaId)
+    if ('erro' in escr) return NextResponse.json({ error: escr.erro }, { status: escr.status })
+    lojaIdNeg = escr.lojaId
+  }
 
   const { estagios: ests } = await garantirSetupCrm()
   const estagioId = b.estagioId || (ests.find(e => (b.pipelineId ? (e.pipelineId === b.pipelineId) : true) && !e.ganho && !e.perdido)?.id) || ests[0]?.id || ''
@@ -91,6 +113,7 @@ export async function POST(req: NextRequest) {
   const negocio: CrmNegocio = {
     id: uuid(),
     titulo: String(b.titulo).trim(),
+    ...(lojaIdNeg ? { lojaId: lojaIdNeg } : {}),
     valor: Number(b.valor) || 0,
     estagioId,
     pipelineId: b.pipelineId || estSel?.pipelineId || '',

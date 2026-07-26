@@ -43,7 +43,10 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', podeTrocarLoja = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; podeTrocarLoja?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
+  // Varejo: admin/gestor em "Todas" precisa focar uma loja pra CRIAR (o servidor
+  // exige a loja). Filtro de leitura vai por ?lojaId= no carregar().
+  const bloquearCriarPorLoja = perfilTelefonia && podeTrocarLoja && !lojaAtiva
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -169,8 +172,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   function carregar() {
     Promise.all([
       fetch('/api/crm/estagios').then(r => r.json()),
-      fetch('/api/crm/negocios').then(r => r.json()),
-      fetch('/api/crm/contatos').then(r => r.json()),
+      fetch(`/api/crm/negocios?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()),
+      fetch(`/api/crm/contatos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()),
       fetch('/api/crm/empresas').then(r => r.json()),
       fetch('/api/crm/pipelines').then(r => r.json()),
     ]).then(([e, n, c, emp, pl]) => {
@@ -186,7 +189,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       setCarregando(false)
     }).catch(() => setCarregando(false))
   }
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar() }, [lojaAtiva])
 
   async function moverEstagio(neg: Negocio, estagioId: string) {
     if (neg.estagioId === estagioId) return
@@ -231,7 +234,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                 <span style={{ background: '#b45309', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
               )}
             </button>
-            {podeEditar && <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania ? 'Nova oportunidade' : 'Novo negócio'}</button>}
+            {podeEditar && <button onClick={() => setNovoModal(true)} disabled={bloquearCriarPorLoja} title={bloquearCriarPorLoja ? 'Escolha uma loja no seletor lateral para adicionar' : undefined} style={{ padding: '10px 18px', background: bloquearCriarPorLoja ? '#eee' : 'var(--marca, #ffc00f)', color: bloquearCriarPorLoja ? '#aaa' : 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: bloquearCriarPorLoja ? 'not-allowed' : 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania || perfilTelefonia ? 'Nova oportunidade' : 'Novo negócio'}</button>}
           </div>
         )}
         {vista === 'contatos' && (
@@ -370,13 +373,13 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} lojaAtiva={lojaAtiva} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
       {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} onIrProcessos={onIrProcessos} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {abordar && <AbordagemModal contato={abordar} podeEditar={podeEditar}
         onClose={() => setAbordar(null)}
         onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setAbordar(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} tipoPadrao={perfilCidadania ? 'lead' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} lojaAtiva={lojaAtiva} tipoPadrao={perfilCidadania ? 'lead' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
         onAbrirWhatsApp={(telefone, contatoId) => {
           // `telefone` vem do formulário (a ficha acabou de salvar): a lista em
           // memória ainda tem o número antigo e abordaria o número errado.
@@ -387,8 +390,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setContatoModal(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined}
         onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
-      {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
-      {bulkModal && <BulkContatosModal onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
+      {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} lojaAtiva={lojaAtiva} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
+      {bulkModal && <BulkContatosModal lojaAtiva={lojaAtiva} onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir}
         onAbrirContato={c => { setEmpresaModal(null); setContatoModal(c) }}
         onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
@@ -490,7 +493,7 @@ const CANAL: Record<string, { label: string; cor: string }> = {
 }
 type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
 
-function BulkContatosModal({ onClose, onSalvo }: { onClose: () => void; onSalvo: () => void }) {
+function BulkContatosModal({ lojaAtiva = '', onClose, onSalvo }: { lojaAtiva?: string; onClose: () => void; onSalvo: () => void }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
   const linhas = texto.split('\n').filter(l => l.trim())
@@ -502,7 +505,7 @@ function BulkContatosModal({ onClose, onSalvo }: { onClose: () => void; onSalvo:
     }).filter(c => c.nome)
     if (!lote.length) return
     setSalvando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(`${r.criados} contato(s) adicionado(s).`, 'sucesso'); onSalvo() } else toast('Falha ao adicionar.', 'erro')
   }
@@ -977,8 +980,8 @@ function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
 // Importação em massa com PRÉVIA e mapeamento de colunas — o usuário confere
 // antes de gravar, então dado errado não entra. Formato esperado é só um palpite;
 // as colunas são remapeáveis.
-function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImportado }: {
-  linhas: string[][]; tipo?: string; perfilClinica: boolean; onClose: () => void; onImportado: () => void
+function ImportarContatosModal({ linhas, tipo, perfilClinica, lojaAtiva = '', onClose, onImportado }: {
+  linhas: string[][]; tipo?: string; perfilClinica: boolean; lojaAtiva?: string; onClose: () => void; onImportado: () => void
 }) {
   const CAMPOS: { k: string; label: string; req?: boolean }[] = perfilClinica
     ? [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'nascimento', label: 'Nascimento' }, { k: 'etiquetas', label: 'Etiquetas' }]
@@ -1032,7 +1035,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, onClose, onImporta
     if (map.nome === undefined || map.nome < 0) { toast('Escolha qual coluna é o Nome.', 'erro'); return }
     if (!validos.length) { toast('Nenhuma linha com nome preenchido.', 'erro'); return }
     setSalvando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(`${r.criados} ${perfilClinica ? 'paciente(s)/contato(s)' : 'contato(s)'} importado(s).`, 'sucesso'); onImportado() }
     else toast(r?.error || 'Falha ao importar.', 'erro')
@@ -1185,7 +1188,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
   )
 }
 
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
   const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
@@ -1287,7 +1290,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
     const corpo = corpoDoForm()
     let criado: Contato | undefined
     if (contato?.id) await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, ...corpo }) }).catch(() => {})
-    else criado = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).then(d => d?.contato).catch(() => undefined)
+    else criado = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corpo, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }) }).then(x => x.json()).then(d => d?.contato).catch(() => undefined)
     setSalvando(false); onSalvo(criado)
   }
 
@@ -1664,7 +1667,7 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   )
 }
 
-function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
   // A oportunidade nasce do contato, sem exigir empresa. A regra é a MESMA que a
   // rota aplica (perfilVendeParaPessoa) — repetir a lista de perfis aqui foi o
@@ -1694,7 +1697,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
     let idContato = contatoId
     let nomeNegocio = contatoSel?.nome || ''
     if (modoContato === 'novo') {
-      const corpo: any = { nome: f.contatoNome, telefone: f.contatoTelefone }
+      const corpo: any = { nome: f.contatoNome, telefone: f.contatoTelefone, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }
       if (semEmpresa) corpo.tipo = 'lead'
       else { corpo.empresa = f.profissionalAutonomo ? '' : f.empresa; corpo.profissionalAutonomo = f.profissionalAutonomo }
       const c = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(r => r.json()).catch(() => null)
@@ -1705,7 +1708,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, destinoDesejado: f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', ...(lojaAtiva ? { lojaId: lojaAtiva } : {}), profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, destinoDesejado: f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
