@@ -50,13 +50,15 @@ const IconWhats = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2.1c0 .2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.3-.1.6.2.3.8 1.4 1.8 2.2 1.2 1.1 2.3 1.4 2.6 1.6.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.6.3 0 .2 0 .8-.2 1.4Z"/></svg>
 )
 
-export default function DashboardHome({ clientes, posts, onVerCliente, onIr, perfilClinica = false, perfilTurismo = false }: {
+export default function DashboardHome({ clientes, posts, onVerCliente, onIr, perfilClinica = false, perfilTurismo = false, perfilTelefonia = false, lojaAtiva = '' }: {
   clientes: Cliente[]
   posts: Post[]
   onVerCliente: (id: string) => void
   onIr?: (aba: string) => void
   perfilClinica?: boolean
   perfilTurismo?: boolean
+  perfilTelefonia?: boolean
+  lojaAtiva?: string
 }) {
   const agora = new Date()
   const mesAtual = agora.getMonth()
@@ -197,6 +199,100 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   }, [viagens, reservasAtivasT, veiculosT])
   const saidasBaixaOcup = useMemo(() => proximasSaidas.filter(e => { const cap = capacidadeDe(e.veiculoId); return cap && emDias(e.dataIda) <= 21 && paxDaViagem(e.id) / cap < 0.5 }), [proximasSaidas, reservasAtivasT, veiculosT])
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  // ---- Home telefonia (varejo): vendas do dia, ticket, estoque baixo, top produtos ----
+  const [vendasTel, setVendasTel] = useState<any[]>([])
+  const [produtosTel, setProdutosTel] = useState<any[]>([])
+  const [saldoTel, setSaldoTel] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!perfilTelefonia) return
+    fetch(`/api/vendas?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendasTel(Array.isArray(d?.vendas) ? d.vendas : [])).catch(() => {})
+    fetch('/api/produtos').then(r => r.json()).then(d => setProdutosTel(Array.isArray(d?.produtos) ? d.produtos : [])).catch(() => {})
+    fetch(`/api/estoque?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => {
+      if (d?.saldos) setSaldoTel(d.saldos)
+      else if (d?.porLoja) { const acc: Record<string, number> = {}; for (const loja of Object.values(d.porLoja) as Record<string, number>[]) for (const [pid, q] of Object.entries(loja)) acc[pid] = (acc[pid] || 0) + q; setSaldoTel(acc) }
+      else setSaldoTel({})
+    }).catch(() => {})
+  }, [perfilTelefonia, lojaAtiva])
+  const vendasHojeTel = useMemo(() => vendasTel.filter(v => !v.cancelada && (v.data || '').slice(0, 10) === hojeStr), [vendasTel, hojeStr])
+  const totalHojeTel = vendasHojeTel.reduce((s, v) => s + (Number(v.total) || 0), 0)
+  const ticketTel = vendasHojeTel.length ? totalHojeTel / vendasHojeTel.length : 0
+  const vendasMesTel = useMemo(() => vendasTel.filter(v => !v.cancelada && ehDoMesStr(v.data)), [vendasTel, mesAtual, anoAtual])
+  const receitaMesTel = vendasMesTel.reduce((s, v) => s + (Number(v.total) || 0), 0)
+  const baixoEstoqueTel = useMemo(() => produtosTel.filter(p => (p.estoqueMinimo || 0) > 0 && (saldoTel[p.id] || 0) < p.estoqueMinimo), [produtosTel, saldoTel])
+  const topProdutosTel = useMemo(() => {
+    const m: Record<string, { nome: string; qtd: number }> = {}
+    for (const v of vendasMesTel) for (const it of (v.itens || [])) { m[it.produtoId] = m[it.produtoId] || { nome: it.nome, qtd: 0 }; m[it.produtoId].qtd += it.quantidade }
+    return Object.values(m).sort((a, b) => b.qtd - a.qtd).slice(0, 5)
+  }, [vendasMesTel])
+
+  if (perfilTelefonia) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Painel — Varejo</h1>
+          <p style={{ margin: '4px 0 0', color: '#888', fontSize: 14 }}>{lojaAtiva ? 'Loja selecionada' : 'Todas as lojas (rede)'} · {MESES[mesAtual]} de {anoAtual}</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          {[
+            { label: 'Vendas hoje', valor: String(vendasHojeTel.length), cor: '#111' },
+            { label: 'Faturamento hoje', valor: brl(totalHojeTel), cor: '#16a34a' },
+            { label: 'Ticket médio (hoje)', valor: brl(ticketTel), cor: '#111' },
+            { label: 'Estoque baixo', valor: String(baixoEstoqueTel.length), cor: baixoEstoqueTel.length ? '#b91c1c' : '#16a34a' },
+          ].map(k => (
+            <div key={k.label} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 16 }}>
+              <div style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{k.label}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: k.cor, marginTop: 4 }}>{k.valor}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 13, color: '#999' }}>Faturamento no mês: <strong style={{ color: '#111' }}>{brl(receitaMesTel)}</strong> · {vendasMesTel.length} venda(s)</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>Mais vendidos no mês</h2>
+              {onIr && <button onClick={() => onIr('vendas')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ir ao PDV</button>}
+            </div>
+            {topProdutosTel.length === 0 ? <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Nenhuma venda no mês ainda.</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {topProdutosTel.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 20, fontSize: 13, fontWeight: 800, color: '#bbb' }}>{i + 1}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#666' }}>{p.qtd} un.</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ background: baixoEstoqueTel.length ? '#fffbeb' : '#fff', border: `1px solid ${baixoEstoqueTel.length ? '#fde68a' : '#eee'}`, borderRadius: 14, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: baixoEstoqueTel.length ? '#92400e' : '#111' }}>Estoque baixo</h2>
+              {onIr && <button onClick={() => onIr('produtos')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver estoque</button>}
+            </div>
+            {baixoEstoqueTel.length === 0 ? <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Tudo acima do mínimo.</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {baixoEstoqueTel.slice(0, 6).map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7c2d12' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
+                    <strong style={{ whiteSpace: 'nowrap', marginLeft: 8 }}>{saldoTel[p.id] || 0} / mín {p.estoqueMinimo}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {([['vendas', 'PDV / Vendas'], ['produtos', 'Produtos'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
+            onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer' }}>{label}</button> : null
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (perfilTurismo) {
     return (
