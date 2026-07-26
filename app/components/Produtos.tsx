@@ -17,7 +17,7 @@ const catLabel = (k: string) => CATEGORIAS.find(c => c.key === k)?.label || k
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
-export default function Produtos({ podeEditar = true, podeExcluir = true }: { podeEditar?: boolean; podeExcluir?: boolean }) {
+export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAtiva = '' }: { podeEditar?: boolean; podeExcluir?: boolean; lojaAtiva?: string }) {
   const [sub, setSub] = useState<'catalogo' | 'estoque'>('catalogo')
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [lojas, setLojas] = useState<Loja[]>([])
@@ -51,7 +51,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true }: { po
       {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
           ? <Catalogo produtos={produtos} podeEditar={podeEditar} podeExcluir={podeExcluir} onMudou={carregar} />
-          : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} />}
+          : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} />}
     </div>
   )
 }
@@ -130,18 +130,27 @@ function Catalogo({ produtos, podeEditar, podeExcluir, onMudou }: { produtos: Pr
 }
 
 // ─── Estoque por loja ────────────────────────────────────────────────────────
-function Estoque({ produtos, lojas, podeEditar, onLojasMudaram }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void }) {
-  const [lojaId, setLojaId] = useState('')
+function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void; lojaAtiva: string }) {
   const [saldos, setSaldos] = useState<Record<string, number>>({})
+  const [porLoja, setPorLoja] = useState<Record<string, Record<string, number>> | null>(null)
   const [gerirLojas, setGerirLojas] = useState(false)
   const [mov, setMov] = useState<{ produto: Produto } | null>(null)
 
-  useEffect(() => { if (!lojaId && lojas.length) setLojaId(lojas[0].id) }, [lojas, lojaId])
-  function carregarSaldos() {
-    if (!lojaId) return
-    fetch(`/api/estoque?lojaId=${lojaId}`).then(r => r.json()).then(d => setSaldos(d?.saldos || {})).catch(() => {})
+  // lojaAtiva vem do seletor da sidebar: '' = consolidado (rede); id = loja focada.
+  // O operador não tem seletor: cai em '' e o servidor devolve só a loja DELE
+  // (saldos), não o porLoja — por isso detectamos a forma da resposta.
+  function carregar() {
+    if (lojaAtiva) {
+      setPorLoja(null)
+      fetch(`/api/estoque?lojaId=${lojaAtiva}`).then(r => r.json()).then(d => setSaldos(d?.saldos || {})).catch(() => {})
+    } else {
+      fetch('/api/estoque').then(r => r.json()).then(d => {
+        if (d?.porLoja) { setPorLoja(d.porLoja); setSaldos({}) }
+        else { setPorLoja(null); setSaldos(d?.saldos || {}) }
+      }).catch(() => {})
+    }
   }
-  useEffect(() => { carregarSaldos() }, [lojaId])
+  useEffect(() => { carregar() }, [lojaAtiva])
 
   if (lojas.length === 0) {
     return (
@@ -153,37 +162,67 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram }: { produtos: Pr
     )
   }
 
+  const consolidado = !lojaAtiva && !!porLoja
+  // Loja em foco: pela sidebar (lojaAtiva) ou, pro operador, a única que ele enxerga.
+  const lojaFocoId = lojaAtiva || (!porLoja && lojas.length === 1 ? lojas[0].id : '')
+  const lojaFocoNome = lojas.find(l => l.id === lojaFocoId)?.nome || ''
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={lojaId} onChange={e => setLojaId(e.target.value)} style={{ ...inp, minWidth: 200, background: '#fff' }}>
-          {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-        </select>
-        {podeEditar && <button onClick={() => setGerirLojas(true)} style={{ padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
+        <span style={{ fontSize: 13.5, fontWeight: 800, color: '#111' }}>{consolidado ? 'Estoque · todas as lojas (rede)' : `Estoque · ${lojaFocoNome || 'loja'}`}</span>
+        {podeEditar && <button onClick={() => setGerirLojas(true)} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
       </div>
 
-      {produtos.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {produtos.map(p => {
-            const s = saldos[p.id] || 0
-            const baixo = abaixoDoMinimo(s, p.estoqueMinimo)
-            return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>{p.nome}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{catLabel(p.categoria)}{p.sku ? ` · ${p.sku}` : ''}</p>
+      {produtos.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p>
+        : consolidado ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 11, overflow: 'hidden', border: '1px solid #f0f0f0' }}>
+              <thead>
+                <tr style={{ background: '#fafafa' }}>
+                  <th style={thL}>Produto</th>
+                  {lojas.map(l => <th key={l.id} style={thR}>{l.nome}</th>)}
+                  <th style={thR}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {produtos.map(p => {
+                  const cols = lojas.map(l => (porLoja?.[l.id]?.[p.id]) || 0)
+                  const total = cols.reduce((a, b) => a + b, 0)
+                  return (
+                    <tr key={p.id} style={{ borderTop: '1px solid #f4f4f4' }}>
+                      <td style={tdL}><span style={{ fontWeight: 600, color: '#111' }}>{p.nome}</span>{p.sku ? <span style={{ color: '#aaa', fontSize: 12 }}> · {p.sku}</span> : ''}</td>
+                      {cols.map((s, i) => { const baixo = abaixoDoMinimo(s, p.estoqueMinimo); return <td key={i} style={{ ...tdR, color: baixo ? '#dc2626' : '#111', fontWeight: baixo ? 800 : 600 }}>{s}</td> })}
+                      <td style={{ ...tdR, fontWeight: 800 }}>{total}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: '#aaa' }}>Para movimentar o estoque, escolha uma loja no seletor lateral.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {produtos.map(p => {
+              const s = saldos[p.id] || 0
+              const baixo = abaixoDoMinimo(s, p.estoqueMinimo)
+              return (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>{p.nome}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{catLabel(p.categoria)}{p.sku ? ` · ${p.sku}` : ''}</p>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: baixo ? '#dc2626' : '#111', whiteSpace: 'nowrap' }}>{s} un.</span>
+                  {baixo && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 999, padding: '3px 9px' }}>abaixo do mín.</span>}
+                  {podeEditar && <button onClick={() => setMov({ produto: p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Movimentar</button>}
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 800, color: baixo ? '#dc2626' : '#111', whiteSpace: 'nowrap' }}>{s} un.</span>
-                {baixo && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 999, padding: '3px 9px' }}>abaixo do mín.</span>}
-                {podeEditar && <button onClick={() => setMov({ produto: p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Movimentar</button>}
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
 
       {gerirLojas && <GerirLojas lojas={lojas} onFechar={() => setGerirLojas(false)} onSalvo={() => { setGerirLojas(false); onLojasMudaram() }} />}
-      {mov && <MovimentarModal produto={mov.produto} lojaId={lojaId} lojas={lojas} saldoAtual={saldos[mov.produto.id] || 0} onFechar={() => setMov(null)} onFeito={() => { setMov(null); carregarSaldos() }} />}
+      {mov && <MovimentarModal produto={mov.produto} lojaId={lojaFocoId} lojas={lojas} saldoAtual={saldos[mov.produto.id] || 0} onFechar={() => setMov(null)} onFeito={() => { setMov(null); carregar() }} />}
     </div>
   )
 }
@@ -271,3 +310,7 @@ function GerirLojas({ lojas, onFechar, onSalvo }: { lojas: Loja[]; onFechar: () 
 }
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }
+const thL: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', fontSize: 11.5, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }
+const thR: React.CSSProperties = { ...thL, textAlign: 'right' }
+const tdL: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', fontSize: 13.5 }
+const tdR: React.CSSProperties = { textAlign: 'right', padding: '10px 14px', fontSize: 13.5, whiteSpace: 'nowrap' }

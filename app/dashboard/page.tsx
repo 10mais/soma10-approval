@@ -530,6 +530,9 @@ function Dashboard() {
   useEffect(() => { setPostPreviewSlide(0); setPostLegendaExpandida(false) }, [postPreview])
   const [verComoClienteId, setVerComoClienteIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_clienteId') || '' : ''))
   const setVerComoClienteId = (id: string) => { setVerComoClienteIdRaw(id); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_clienteId', id) }
+  // Varejo (telefonia): loja em foco no seletor lateral. '' = Todas (rede/consolidado).
+  const [verComoLojaId, setVerComoLojaIdRaw] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem('soma10_lojaId') || '' : ''))
+  const setVerComoLojaId = (id: string) => { setVerComoLojaIdRaw(id); if (typeof window !== 'undefined') { if (id) sessionStorage.setItem('soma10_lojaId', id); else sessionStorage.removeItem('soma10_lojaId') } }
   // "Visualizar como" um PAPEL (admin prevê a visão de um colaborador gerente/usuário)
   const [verComoPapel, setVerComoPapelRaw] = useState<'' | 'gerente' | 'usuario'>(() => (typeof window !== 'undefined' ? (sessionStorage.getItem('soma10_verComoPapel') as any) || '' : ''))
   const setVerComoPapel = (p: '' | 'gerente' | 'usuario') => { setVerComoPapelRaw(p); if (typeof window !== 'undefined') sessionStorage.setItem('soma10_verComoPapel', p) }
@@ -850,6 +853,10 @@ function Dashboard() {
   }, [searchParams])
 
   const role = (session?.user as any)?.role
+  // Seletor de loja (telefonia): só admin e gestor-da-rede (gerente sem loja fixa) trocam;
+  // operador vinculado a uma loja não tem seletor (fica selado — ver lib/escopoLoja).
+  const meuLojaId = (session?.user as any)?.lojaId as string | undefined
+  const podeTrocarLoja = perfilTelefonia && (role === 'admin' || (role === 'gerente' && !meuLojaId))
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
   // Regra e histórico das regressões: lib/plannerFiltro.ts (com testes).
   const postsPlanner = posts.filter(p => apareceNoPlanner(p as any))
@@ -1982,7 +1989,18 @@ function Dashboard() {
               "clientes" de agência (sub-accounts) — a aba clientes já é oculta nos
               três perfis. Na cidadania o cliente é PESSOA (contato do CRM) e o que
               se acompanha é o Processo, não uma sub-conta de marca. */}
-          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && <div style={{ marginBottom: 20 }}>
+          {/* Seletor de loja do varejo (telefonia) — Todas (rede) + cada unidade.
+              Reaproveita o lugar do sub-account; operador travado não tem seletor. */}
+          {podeTrocarLoja && !recolhida && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>Ver loja</label>
+              <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? '#ffc00f' : '#e0e0e0'}`, background: verComoLojaId ? '#fffbeb' : '#fff', color: '#111', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                <option value="">Todas (rede)</option>
+                {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+              </select>
+            </div>
+          )}
+          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
@@ -3404,7 +3422,7 @@ function Dashboard() {
 
         {/* Varejo telefonia — Produtos/Estoque */}
         {aba === 'produtos' && perfilTelefonia && role !== 'cliente' && (
-          <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} />
+          <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} lojaAtiva={verComoLojaId} />
         )}
 
         {/* Assessoria cidadania — esteira de Processos */}
