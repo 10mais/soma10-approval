@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, infoGrupoEvolution, ehMensagemSistema, resolverMencoes, lembrarNomeWa, fotoWaCache, WaConversa } from '@/lib/whatsapp'
+import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, infoGrupoEvolution, ehMensagemSistema, resolverMencoes, lembrarNomeWa, fotoWaCache, WaConversa, lojaDaInstancia, chaveConversaWa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
@@ -30,6 +30,11 @@ export async function GET(req: NextRequest) {
 async function processarEvolution(body: any): Promise<boolean> {
   // Opcional: exige ?token= igual ao WHATSAPP_VERIFY_TOKEN quando este existir.
   if (body?.event && !String(body.event).includes('messages.upsert')) return false
+  // WhatsApp por loja (telefonia): a mensagem CHEGA por uma instância → descobre a
+  // loja dona e isola tudo nela. Sem loja mapeada (Norah/Deny/instância única) =
+  // lojaId undefined → chaves globais de sempre.
+  const instancia = String(body?.instance || '') || undefined
+  const lojaId = (await lojaDaInstancia(instancia))?.id
   const eventos = Array.isArray(body?.data) ? body.data : [body?.data].filter(Boolean)
   let gravou = false
   for (const d of eventos) {
@@ -42,14 +47,14 @@ async function processarEvolution(body: any): Promise<boolean> {
     if (ehMensagemSistema(d?.message)) continue
     // Eco do que o sistema acabou de enviar: mesmo key.id já gravado — ignora.
     const msgId = d?.key?.id || uuid()
-    if (daEquipe && await mensagemExiste(tel, msgId)) continue
+    if (daEquipe && await mensagemExiste(tel, msgId, lojaId)) continue
     // Quem falou: no grupo é o `participant`; no 1:1 é o próprio número.
     const autorId = String(d?.key?.participant || d?.participant || '').split('@')[0]
     if (!daEquipe && d?.pushName && (autorId || tel)) await lembrarNomeWa(autorId || tel, d.pushName)
     const texto = await resolverMencoes(textoMensagemEvolution(d?.message) || '[mensagem]', d?.message)
     const em = d?.messageTimestamp ? new Date(Number(d.messageTimestamp) * 1000).toISOString() : new Date().toISOString()
     const tipoMidia = tipoMidiaEvolution(d?.message)
-    const existente = await redis.get<WaConversa>(`wa:conversa:${tel.replace(/\D/g, '')}`)
+    const existente = await redis.get<WaConversa>(chaveConversaWa(tel.replace(/\D/g, ''), lojaId))
     // Grupo: nome/foto = assunto e imagem do grupo (busca uma vez); quem falou vai
     // por mensagem. Individual: foto e nome do contato (pushName) — mas NUNCA a
     // partir de uma mensagem nossa: aí o pushName é o nome do NOSSO número.
@@ -62,7 +67,7 @@ async function processarEvolution(body: any): Promise<boolean> {
       const chaveInfo = `wa:grupoinfo:${tel.replace(/\D/g, '')}`
       const jaBuscou = await redis.get(chaveInfo).catch(() => null)
       if (!jaBuscou || !existente?.nome) {
-        const g = await infoGrupoEvolution(jid)
+        const g = await infoGrupoEvolution(jid, instancia)
         nomeConversa = g.nome || existente?.nome || `Grupo ${tel.slice(-6)}`
         foto = g.foto || (existente as any)?.foto
         await redis.set(chaveInfo, 1, { ex: 60 * 60 * 24 * 7 }).catch(() => {})
@@ -70,7 +75,7 @@ async function processarEvolution(body: any): Promise<boolean> {
       // Avatar de quem falou (cacheado por participante)
       if (!daEquipe && autorId) autorFoto = await fotoWaCache(autorId)
     } else {
-      if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel)) || undefined }
+      if (!(existente as any)?.foto) { foto = (await fotoPerfilEvolution(tel, instancia)) || undefined }
       if (!daEquipe) nomeConversa = d?.pushName
     }
     // 1) GRAVA a mensagem primeiro (já marcada como mídia). Assim ela nunca se
@@ -84,16 +89,17 @@ async function processarEvolution(body: any): Promise<boolean> {
         ...(autorFoto ? { autorFoto } : {}),
         ...(tipoMidia ? { tipo: tipoMidia } : {}),
       },
-      { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any)
+      { ...(nomeConversa ? { nome: nomeConversa } : {}), ...(foto ? { foto } : {}), jid, ...(ehGrupo ? { grupo: true } : {}) } as any,
+      lojaId)
     // Só avisa a equipe do que CHEGA (mensagem nossa não é notificação).
     if (!daEquipe) await notificarEquipe('geral', `WhatsApp: ${ehGrupo ? nomeConversa : (d?.pushName || tel)}`, texto.slice(0, 120)).catch(() => {})
     gravou = true
 
     // 2) Só então baixa a mídia e anexa à mensagem já salva (best-effort).
     if (tipoMidia) {
-      const midia = await capturarMidiaEvolution(d)
+      const midia = await capturarMidiaEvolution(d, instancia)
       if (midia?.midiaUrl) {
-        const ok = await atualizarMensagem(tel, msgId, { midiaUrl: midia.midiaUrl, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}) })
+        const ok = await atualizarMensagem(tel, msgId, { midiaUrl: midia.midiaUrl, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}) }, lojaId)
         console.log('[wa-midia] anexada', tipoMidia, ok ? 'ok' : 'FALHOU-update', msgId)
       } else {
         console.warn('[wa-midia] sem url para', tipoMidia, msgId)

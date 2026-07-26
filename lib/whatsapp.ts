@@ -28,6 +28,7 @@ export type WaConversa = {
   telefone: string; nome?: string; foto?: string; contatoId?: string; ultimaMsg?: string; ultimaEm?: string; naoLidas?: number
   jid?: string // remoteJid completo (necessário p/ grupos e edição de mensagem)
   grupo?: boolean // conversa de GRUPO (@g.us)
+  lojaId?: string // varejo multi-loja (telefonia): loja dona da conversa (isolamento)
 }
 
 export function evolutionConfigurado(): boolean {
@@ -73,6 +74,14 @@ export async function lojaDaInstancia(instancia?: string): Promise<{ id: string;
   const loja = (await lojasWa()).find(l => (l.evolutionInstance || '').trim() === nome)
   return loja ? { id: loja.id, nome: loja.nome } : null
 }
+
+// Chaves do inbox — NAMESPACEADAS por loja no varejo (telefonia). Sem lojaId,
+// ficam as chaves globais de sempre → Norah/Deny/Sua Dupla byte-idênticas. Com
+// lojaId, cada loja tem o seu inbox isolado (o mesmo número em 2 lojas não colide).
+const nsWa = (lojaId?: string) => (lojaId ? `${lojaId}:` : '')
+export const chaveMsgsWa = (tel: string, lojaId?: string) => `wa:msgs:${nsWa(lojaId)}${tel}`
+export const chaveConversaWa = (tel: string, lojaId?: string) => `wa:conversa:${nsWa(lojaId)}${tel}`
+export const chaveConversasSetWa = (lojaId?: string) => `wa:conversas${lojaId ? `:${lojaId}` : ''}`
 
 const soDigitos = (t: string) => (t || '').replace(/\D/g, '')
 
@@ -384,28 +393,28 @@ export async function lerBlobMidia(url: string): Promise<{ stream: ReadableStrea
 // A mensagem já está no histórico? Usado para não duplicar o ECO do WhatsApp:
 // o que o sistema envia é gravado na hora do envio e volta pelo webhook (fromMe)
 // com o mesmo key.id. Olha só as últimas (o eco chega em segundos).
-export async function mensagemExiste(telefone: string, msgId: string): Promise<boolean> {
+export async function mensagemExiste(telefone: string, msgId: string, lojaId?: string): Promise<boolean> {
   const tel = soDigitos(telefone)
   if (!tel || !msgId) return false
   try {
-    const raw = await redis.lrange(`wa:msgs:${tel}`, -40, -1)
+    const raw = await redis.lrange(chaveMsgsWa(tel, lojaId), -40, -1)
     return raw.some(m => { try { const o: any = typeof m === 'string' ? JSON.parse(m) : m; return o?.id === msgId } catch { return false } })
   } catch { return false }
 }
 
 // Atualiza UMA mensagem já gravada (ex.: anexar a mídia depois que ela subiu ao
 // Blob). Procura de trás pra frente: a mensagem alvo é quase sempre a última.
-export async function atualizarMensagem(telefone: string, msgId: string, patch: Partial<WaMensagem>): Promise<boolean> {
+export async function atualizarMensagem(telefone: string, msgId: string, patch: Partial<WaMensagem>, lojaId?: string): Promise<boolean> {
   const tel = soDigitos(telefone)
   if (!tel || !msgId) return false
   try {
-    const raw = await redis.lrange(`wa:msgs:${tel}`, -25, -1)
+    const raw = await redis.lrange(chaveMsgsWa(tel, lojaId), -25, -1)
     for (let i = raw.length - 1; i >= 0; i--) {
       let o: any
       try { o = typeof raw[i] === 'string' ? JSON.parse(raw[i] as string) : raw[i] } catch { continue }
       if (o?.id !== msgId) continue
       const idx = -(raw.length - i) // índice negativo real na lista
-      await redis.lset(`wa:msgs:${tel}`, idx, JSON.stringify({ ...o, ...patch }))
+      await redis.lset(chaveMsgsWa(tel, lojaId), idx, JSON.stringify({ ...o, ...patch }))
       return true
     }
   } catch (e: any) { console.warn('[wa-midia] falha ao atualizar msg:', e?.message || String(e)) }
@@ -413,18 +422,19 @@ export async function atualizarMensagem(telefone: string, msgId: string, patch: 
 }
 
 // Salva uma mensagem na conversa (por telefone) e atualiza os metadados/índice.
-export async function salvarMensagem(telefone: string, msg: WaMensagem, extra?: Partial<WaConversa>) {
+export async function salvarMensagem(telefone: string, msg: WaMensagem, extra?: Partial<WaConversa>, lojaId?: string) {
   const tel = soDigitos(telefone)
   if (!tel) return
-  await redis.rpush(`wa:msgs:${tel}`, JSON.stringify(msg))
-  await redis.sadd('wa:conversas', tel)
-  const atual = (await redis.get<WaConversa>(`wa:conversa:${tel}`)) || { telefone: tel }
+  await redis.rpush(chaveMsgsWa(tel, lojaId), JSON.stringify(msg))
+  await redis.sadd(chaveConversasSetWa(lojaId), tel)
+  const atual = (await redis.get<WaConversa>(chaveConversaWa(tel, lojaId))) || { telefone: tel }
   const conversa: WaConversa = {
     ...atual, ...extra, telefone: tel,
+    ...(lojaId ? { lojaId } : {}),
     ultimaMsg: msg.texto.slice(0, 120), ultimaEm: msg.em,
     naoLidas: msg.de === 'cliente' ? (atual.naoLidas || 0) + 1 : (extra?.naoLidas ?? atual.naoLidas ?? 0),
   }
-  await redis.set(`wa:conversa:${tel}`, conversa)
+  await redis.set(chaveConversaWa(tel, lojaId), conversa)
 }
 
 // Envia mensagem de texto. Prioriza o Evolution (número antigo via QR); se não
@@ -445,7 +455,8 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
       })
       const d = await r.json().catch(() => ({} as any))
       if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
-      await salvarMensagem(tel, { id: d?.key?.id || crypto.randomUUID(), de: 'agente', texto, em: new Date().toISOString(), autor })
+      const lojaId = instancia ? (await lojaDaInstancia(instancia))?.id : undefined
+      await salvarMensagem(tel, { id: d?.key?.id || crypto.randomUUID(), de: 'agente', texto, em: new Date().toISOString(), autor }, undefined, lojaId)
       return { ok: true }
     } catch (e: any) {
       return { ok: false, erro: e?.message || String(e) }
@@ -531,11 +542,12 @@ export async function enviarMidiaWhatsApp(
     }
     const d = await r.json().catch(() => ({} as any))
     if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
+    const lojaId = instancia ? (await lojaDaInstancia(instancia))?.id : undefined
     await salvarMensagem(tel, {
       id: d?.key?.id || crypto.randomUUID(), de: 'agente', em: new Date().toISOString(), autor,
       texto: midia.caption || `[${midia.tipo}]`, tipo: midia.tipo === 'figurinha' ? 'imagem' : midia.tipo,
       midiaUrl: midia.url, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : {}),
-    })
+    }, undefined, lojaId)
     return { ok: true }
   } catch (e: any) { return { ok: false, erro: e?.message || String(e) } }
 }
