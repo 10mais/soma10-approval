@@ -33,6 +33,12 @@ export type Usuario = {
   bio?: string
   fusoHorario?: string
   clienteId?: string
+  // Varejo multi-loja (perfil telefonia): vincula o usuário a UMA loja. Operador
+  // (usuario/vendas) com lojaId = travado nela (isolamento entre unidades). Admin
+  // e gerente SEM lojaId veem todas (gestor da rede); gerente COM lojaId = gerente
+  // de uma unidade só. A regra vive em lib/escopoLoja.ts — o lojaId do operador
+  // vem SEMPRE do token, nunca do request. Ausente em quem não é admin/gerente = bloqueado.
+  lojaId?: string
   custoHora?: number // custo/hora do profissional em R$ (custo operacional por cliente)
   salarioFixo?: number // remuneração fixa mensal em R$
   salarioVariavel?: number // remuneração variável mensal em R$ (= valorPorProjeto x qtdProjetos)
