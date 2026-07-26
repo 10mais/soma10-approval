@@ -17,7 +17,7 @@ const catLabel = (k: string) => CATEGORIAS.find(c => c.key === k)?.label || k
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
-export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAtiva = '' }: { podeEditar?: boolean; podeExcluir?: boolean; lojaAtiva?: string }) {
+export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAtiva = '', podeGerirLojas = false }: { podeEditar?: boolean; podeExcluir?: boolean; lojaAtiva?: string; podeGerirLojas?: boolean }) {
   const [sub, setSub] = useState<'catalogo' | 'estoque'>('catalogo')
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [lojas, setLojas] = useState<Loja[]>([])
@@ -51,7 +51,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
       {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
           ? <Catalogo produtos={produtos} podeEditar={podeEditar} podeExcluir={podeExcluir} onMudou={carregar} />
-          : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} />}
+          : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} />}
     </div>
   )
 }
@@ -130,7 +130,7 @@ function Catalogo({ produtos, podeEditar, podeExcluir, onMudou }: { produtos: Pr
 }
 
 // ─── Estoque por loja ────────────────────────────────────────────────────────
-function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void; lojaAtiva: string }) {
+function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeGerirLojas }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void; lojaAtiva: string; podeGerirLojas: boolean }) {
   const [saldos, setSaldos] = useState<Record<string, number>>({})
   const [porLoja, setPorLoja] = useState<Record<string, Record<string, number>> | null>(null)
   const [gerirLojas, setGerirLojas] = useState(false)
@@ -156,7 +156,7 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva }: { p
     return (
       <div style={{ padding: 24, background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', textAlign: 'center' }}>
         <p style={{ margin: '0 0 12px', fontSize: 14, color: '#666' }}>Nenhuma loja cadastrada. O estoque é por loja — crie a primeira.</p>
-        {podeEditar && <button onClick={() => setGerirLojas(true)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
+        {podeGerirLojas && <button onClick={() => setGerirLojas(true)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
         {gerirLojas && <GerirLojas lojas={lojas} onFechar={() => setGerirLojas(false)} onSalvo={() => { setGerirLojas(false); onLojasMudaram() }} />}
       </div>
     )
@@ -171,7 +171,7 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva }: { p
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 13.5, fontWeight: 800, color: '#111' }}>{consolidado ? 'Estoque · todas as lojas (rede)' : `Estoque · ${lojaFocoNome || 'loja'}`}</span>
-        {podeEditar && <button onClick={() => setGerirLojas(true)} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
+        {podeGerirLojas && <button onClick={() => setGerirLojas(true)} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
       </div>
 
       {produtos.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p>

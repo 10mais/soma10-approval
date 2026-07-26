@@ -3424,7 +3424,7 @@ function Dashboard() {
 
         {/* Varejo telefonia — Produtos/Estoque */}
         {aba === 'produtos' && perfilTelefonia && role !== 'cliente' && (
-          <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} lojaAtiva={verComoLojaId} />
+          <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} lojaAtiva={verComoLojaId} podeGerirLojas={role === 'admin'} />
         )}
 
         {/* Varejo telefonia — PDV (vendas) */}
