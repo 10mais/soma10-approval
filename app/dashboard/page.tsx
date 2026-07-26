@@ -55,6 +55,7 @@ const CalendarioViagens = dynamic(() => import('../components/CalendarioViagens'
 const Reservas = dynamic(() => import('../components/Reservas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Processos = dynamic(() => import('../components/Processos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Produtos = dynamic(() => import('../components/Produtos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Vendas = dynamic(() => import('../components/Vendas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const WhatsAppConexao = dynamic(() => import('../components/WhatsAppConexao'), { ssr: false })
 const PermissoesGranular = dynamic(() => import('../components/PermissoesGranular'), { ssr: false })
 // Modal de tarefa standalone (aberto ao clicar numa notificação de tarefa, sem trocar de aba)
@@ -419,7 +420,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -2142,6 +2143,7 @@ function Dashboard() {
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Varejo</span>}
                   <NavBtn chave="produtos" label="Produtos" />
+                  <NavBtn chave="vendas" label="Vendas (PDV)" />
                 </nav>
               )}
               {/* Comunicação — acima de Estratégia */}
@@ -3423,6 +3425,11 @@ function Dashboard() {
         {/* Varejo telefonia — Produtos/Estoque */}
         {aba === 'produtos' && perfilTelefonia && role !== 'cliente' && (
           <Produtos podeEditar={podeNivelDash('crm', 'editar')} podeExcluir={podeNivelDash('crm', 'excluir')} lojaAtiva={verComoLojaId} />
+        )}
+
+        {/* Varejo telefonia — PDV (vendas) */}
+        {aba === 'vendas' && perfilTelefonia && role !== 'cliente' && (
+          <Vendas lojaAtiva={verComoLojaId} bloqueado={podeTrocarLoja && !verComoLojaId} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} />
         )}
 
         {/* Assessoria cidadania — esteira de Processos */}
