@@ -59,7 +59,7 @@ async function criarInstancia(instancia: string, numero?: string): Promise<{ ok:
       }
       return { ok: false, erro: `O Evolution não deixou criar a instância "${instancia}"${detalhe ? ` — ${detalhe}` : ''} (HTTP ${r.status}).` }
     }
-    return { ok: true, base64: d?.qrcode?.base64 || d?.base64 || null, codigo: d?.qrcode?.code || d?.qrcode?.pairingCode || d?.pairingCode || null }
+    return { ok: true, base64: d?.qrcode?.base64 || d?.base64 || null, codigo: d?.qrcode?.pairingCode || d?.pairingCode || null }
   } catch (e: any) {
     return { ok: false, erro: `Falha ao criar a instância no Evolution (${e?.message || e}).` }
   }
@@ -131,7 +131,9 @@ export async function POST(req: NextRequest) {
     const r = await fetch(conectarUrl, { headers: headers() })
     const d = await r.json().catch(() => ({} as any))
     const base64 = d?.base64 || d?.qrcode?.base64 || null
-    const codigo = d?.code || d?.qrcode?.code || d?.pairingCode || null
+    // `code`/`qrcode.code` é o CONTEÚDO do QR (string enorme) — nunca é digitável.
+    // O código de pareamento (curto) só vem em `pairingCode`, e só quando há número.
+    const codigo = d?.pairingCode || d?.qrcode?.pairingCode || null
     if (base64 || codigo) return NextResponse.json({ ok: true, base64, codigo })
 
     // 404 = a instância ainda não existe no host (o connect nunca cria). Em vez
@@ -145,7 +147,7 @@ export async function POST(req: NextRequest) {
       const r2 = await fetch(conectarUrl, { headers: headers() })
       const d2 = await r2.json().catch(() => ({} as any))
       const b2 = d2?.base64 || d2?.qrcode?.base64 || null
-      const c2 = d2?.code || d2?.qrcode?.code || d2?.pairingCode || null
+      const c2 = d2?.pairingCode || d2?.qrcode?.pairingCode || null
       if (b2 || c2) return NextResponse.json({ ok: true, base64: b2, codigo: c2 })
       return NextResponse.json({ error: `Instância "${instancia}" criada, mas o Evolution não devolveu o QR — clique em Conectar de novo.` }, { status: 502 })
     }
