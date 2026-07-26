@@ -74,6 +74,10 @@ export type LancamentoFuturo = {
   // Idem para a assessoria de cidadania: parcela/pagamento do contrato de um
   // Processo. A rota /api/processos mantém em sincronia (lancamentosProcesso).
   processoId?: string
+  // Varejo (telefonia): entrada gerada por uma venda do PDV. lojaId = caixa da
+  // unidade. A rota /api/vendas cria junto; id determinístico (venda-{id}).
+  vendaId?: string
+  lojaId?: string
   criadoPor?: string
   criadoEm: string
 }
