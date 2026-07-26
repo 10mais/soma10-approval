@@ -40,6 +40,40 @@ export function whatsappConfigurado(): boolean {
   return evolutionConfigurado() || cloudConfigurado()
 }
 
+// WhatsApp POR LOJA (perfil telefonia). A instância a usar: a explícita (o nome
+// da instância daquela loja) ou, se ausente, a EVOLUTION_INSTANCE de sempre — as
+// demais instâncias (Norah/Deny/Sua Dupla) não passam nada e ficam idênticas.
+export function instanciaEvolution(instancia?: string): string {
+  return (instancia || '').trim() || process.env.EVOLUTION_INSTANCE || ''
+}
+// Evolution configurado PARA ESTA instância: host (URL+KEY) + um nome de instância.
+// Sem `instancia`, equivale a evolutionConfigurado() (usa a env). Com, permite a
+// telefonia operar N lojas no mesmo host sem depender da env EVOLUTION_INSTANCE.
+export function evolutionConfiguradoInst(instancia?: string): boolean {
+  return !!(process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY && instanciaEvolution(instancia))
+}
+
+type LojaWa = { id: string; nome?: string; evolutionInstance?: string }
+async function lojasWa(): Promise<LojaWa[]> {
+  const ls = await redis.get<LojaWa[]>('config:lojas')
+  return Array.isArray(ls) ? ls : []
+}
+// Nome da instância Evolution de uma loja (envio/conexão). Sem instância própria,
+// cai no EVOLUTION_INSTANCE da env (retrocompat / instância única).
+export async function instanciaDaLoja(lojaId?: string): Promise<string> {
+  if (!lojaId) return instanciaEvolution()
+  const loja = (await lojasWa()).find(l => l.id === lojaId)
+  return instanciaEvolution(loja?.evolutionInstance)
+}
+// Loja dona de uma instância (roteamento do webhook: msg que CHEGA por `instance`
+// pertence a esta loja). null = não mapeada (instância única / outros perfis).
+export async function lojaDaInstancia(instancia?: string): Promise<{ id: string; nome?: string } | null> {
+  const nome = (instancia || '').trim()
+  if (!nome) return null
+  const loja = (await lojasWa()).find(l => (l.evolutionInstance || '').trim() === nome)
+  return loja ? { id: loja.id, nome: loja.nome } : null
+}
+
 const soDigitos = (t: string) => (t || '').replace(/\D/g, '')
 
 // Por que o QR não veio? Traduz a resposta do Evolution para algo acionável na
@@ -90,12 +124,12 @@ export function normalizarUrlEvolution(u?: string): string {
 
 // Busca a URL da foto de perfil no WhatsApp (Evolution). Aceita telefone OU jid
 // completo (grupo `...@g.us` precisa do jid). Best-effort.
-export async function fotoPerfilEvolution(numeroOuJid: string): Promise<string | null> {
-  if (!evolutionConfigurado()) return null
+export async function fotoPerfilEvolution(numeroOuJid: string, instancia?: string): Promise<string | null> {
+  if (!evolutionConfiguradoInst(instancia)) return null
   try {
     const alvo = (numeroOuJid || '').includes('@') ? numeroOuJid : (numeroOuJid || '').replace(/\D/g, '')
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-    const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${process.env.EVOLUTION_INSTANCE}`, {
+    const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${instanciaEvolution(instancia)}`, {
       method: 'POST',
       headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({ number: alvo }),
@@ -106,11 +140,11 @@ export async function fotoPerfilEvolution(numeroOuJid: string): Promise<string |
 }
 
 // Nome (subject) + foto de um grupo — best-effort, ao criar a conversa do grupo.
-export async function infoGrupoEvolution(jid: string): Promise<{ nome?: string; foto?: string }> {
-  if (!evolutionConfigurado() || !jid.endsWith('@g.us')) return {}
+export async function infoGrupoEvolution(jid: string, instancia?: string): Promise<{ nome?: string; foto?: string }> {
+  if (!evolutionConfiguradoInst(instancia) || !jid.endsWith('@g.us')) return {}
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-    const r = await fetch(`${base}/group/findGroupInfos/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(jid)}`, {
+    const r = await fetch(`${base}/group/findGroupInfos/${instanciaEvolution(instancia)}?groupJid=${encodeURIComponent(jid)}`, {
       headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY) },
     })
     const d = await r.json().catch(() => ({} as any))
@@ -287,9 +321,9 @@ async function putBlobAdaptativo(pathname: string, buf: Buffer, contentType: str
 
 // Pede ao Evolution os bytes (base64) de uma mensagem de mídia. Loga falhas
 // no runtime da Vercel para diagnóstico ([wa-midia]).
-async function pedirBase64Evolution(corpo: any): Promise<{ b64: string; mimetype?: string }> {
+async function pedirBase64Evolution(corpo: any, instancia?: string): Promise<{ b64: string; mimetype?: string }> {
   const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-  const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${process.env.EVOLUTION_INSTANCE}`, {
+  const r = await fetch(`${base}/chat/getBase64FromMediaMessage/${instanciaEvolution(instancia)}`, {
     method: 'POST',
     headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
     body: JSON.stringify(corpo),
@@ -304,7 +338,7 @@ async function pedirBase64Evolution(corpo: any): Promise<{ b64: string; mimetype
 // senão pede os bytes ao Evolution (getBase64FromMediaMessage — tenta os DOIS
 // formatos de corpo, key-só e mensagem completa, p/ cobrir versões). Best-effort:
 // qualquer falha devolve só o tipo — a mensagem fica com o rótulo, nada quebra.
-export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem, 'tipo' | 'midiaUrl' | 'mimetype' | 'fileName'> | null> {
+export async function capturarMidiaEvolution(data: any, instancia?: string): Promise<Pick<WaMensagem, 'tipo' | 'midiaUrl' | 'mimetype' | 'fileName'> | null> {
   try {
     const m = noMidiaEvolution(data?.message)
     if (!m) {
@@ -318,9 +352,9 @@ export async function capturarMidiaEvolution(data: any): Promise<Pick<WaMensagem
       : typeof data?.base64 === 'string' ? data.base64
       : typeof m.no?.base64 === 'string' ? m.no.base64 : ''
     let mimetype: string = m.no?.mimetype || ''
-    if (!b64 && evolutionConfigurado() && data?.key?.id) {
-      let r = await pedirBase64Evolution({ message: { key: data.key }, convertToMp4: false })
-      if (!r.b64) r = await pedirBase64Evolution({ message: data, convertToMp4: false }) // formato antigo (mensagem completa)
+    if (!b64 && evolutionConfiguradoInst(instancia) && data?.key?.id) {
+      let r = await pedirBase64Evolution({ message: { key: data.key }, convertToMp4: false }, instancia)
+      if (!r.b64) r = await pedirBase64Evolution({ message: data, convertToMp4: false }, instancia) // formato antigo (mensagem completa)
       if (r.b64) { b64 = r.b64; mimetype = r.mimetype || mimetype }
     }
     if (!b64) { console.warn('[wa-midia] sem base64 para', m.tipo, data?.key?.id || ''); return { tipo: m.tipo } }
@@ -396,15 +430,15 @@ export async function salvarMensagem(telefone: string, msg: WaMensagem, extra?: 
 // Envia mensagem de texto. Prioriza o Evolution (número antigo via QR); se não
 // houver, usa a Cloud API; sem nenhum, no-op. `destinoJid` (opcional) força o
 // destinatário no Evolution — necessário para GRUPOS (@g.us).
-export async function enviarWhatsApp(telefone: string, texto: string, autor?: string, destinoJid?: string): Promise<{ ok: boolean; erro?: string }> {
+export async function enviarWhatsApp(telefone: string, texto: string, autor?: string, destinoJid?: string, instancia?: string): Promise<{ ok: boolean; erro?: string }> {
   const tel = soDigitos(telefone)
   if (!tel) return { ok: false, erro: 'telefone inválido' }
 
   // A) Evolution API
-  if (evolutionConfigurado()) {
+  if (evolutionConfiguradoInst(instancia)) {
     try {
       const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-      const r = await fetch(`${base}/message/sendText/${process.env.EVOLUTION_INSTANCE}`, {
+      const r = await fetch(`${base}/message/sendText/${instanciaEvolution(instancia)}`, {
         method: 'POST',
         headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
         body: JSON.stringify({ number: destinoJid || tel, text: texto }),
@@ -441,13 +475,13 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
 
 // EDITA uma mensagem já enviada (regra do WhatsApp: só as nossas, ~15 min).
 // A key é reconstruída: id da mensagem + remoteJid da conversa + fromMe.
-export async function editarMensagemWhatsApp(telefone: string, msgId: string, novoTexto: string, jid?: string): Promise<{ ok: boolean; erro?: string }> {
-  if (!evolutionConfigurado()) return { ok: false, erro: 'edição disponível só no conector Evolution' }
+export async function editarMensagemWhatsApp(telefone: string, msgId: string, novoTexto: string, jid?: string, instancia?: string): Promise<{ ok: boolean; erro?: string }> {
+  if (!evolutionConfiguradoInst(instancia)) return { ok: false, erro: 'edição disponível só no conector Evolution' }
   const tel = soDigitos(telefone)
   const remoteJid = jid || `${tel}@s.whatsapp.net`
   try {
     const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
-    const r = await fetch(`${base}/chat/updateMessage/${process.env.EVOLUTION_INSTANCE}`, {
+    const r = await fetch(`${base}/chat/updateMessage/${instanciaEvolution(instancia)}`, {
       method: 'POST',
       headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({ number: remoteJid, key: { remoteJid, fromMe: true, id: msgId }, text: novoTexto }),
@@ -465,8 +499,9 @@ export async function enviarMidiaWhatsApp(
   midia: { tipo: NonNullable<WaMensagem['tipo']>; url: string; mimetype?: string; fileName?: string; caption?: string },
   autor?: string,
   destinoJid?: string,
+  instancia?: string,
 ): Promise<{ ok: boolean; erro?: string }> {
-  if (!evolutionConfigurado()) return { ok: false, erro: 'envio de mídia disponível só no conector Evolution' }
+  if (!evolutionConfiguradoInst(instancia)) return { ok: false, erro: 'envio de mídia disponível só no conector Evolution' }
   const tel = soDigitos(telefone)
   if (!tel) return { ok: false, erro: 'telefone inválido' }
   try {
@@ -484,12 +519,12 @@ export async function enviarMidiaWhatsApp(
     }
     let r: Response
     if (midia.tipo === 'audio') {
-      r = await fetch(`${base}/message/sendWhatsAppAudio/${process.env.EVOLUTION_INSTANCE}`, {
+      r = await fetch(`${base}/message/sendWhatsAppAudio/${instanciaEvolution(instancia)}`, {
         method: 'POST', headers, body: JSON.stringify({ number: destinoJid || tel, audio: media }),
       })
     } else {
       const mediatype = midia.tipo === 'imagem' || midia.tipo === 'figurinha' ? 'image' : midia.tipo === 'video' ? 'video' : 'document'
-      r = await fetch(`${base}/message/sendMedia/${process.env.EVOLUTION_INSTANCE}`, {
+      r = await fetch(`${base}/message/sendMedia/${instanciaEvolution(instancia)}`, {
         method: 'POST', headers,
         body: JSON.stringify({ number: destinoJid || tel, mediatype, media, ...(midia.mimetype ? { mimetype: midia.mimetype } : {}), ...(midia.fileName ? { fileName: midia.fileName } : { ...(midia.tipo === 'documento' ? { fileName: 'documento' } : {}) }), ...(midia.caption ? { caption: midia.caption } : {}) }),
       })

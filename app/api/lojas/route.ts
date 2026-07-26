@@ -44,6 +44,8 @@ export async function PUT(req: NextRequest) {
       nome: String(l.nome).trim().slice(0, 80),
       endereco: (l.endereco || '').toString().trim().slice(0, 200) || undefined,
       ativa: l.ativa !== false,
+      // Nome da instância Evolution da loja (WhatsApp por loja) — sanitizado.
+      evolutionInstance: (l.evolutionInstance || '').toString().trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40) || undefined,
       criadoEm: antigas.find(a => a.id === l.id)?.criadoEm || new Date().toISOString(),
     }))
   await redis.set(KEY, limpa)

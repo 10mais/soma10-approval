@@ -532,6 +532,10 @@ export type Loja = {
   nome: string
   endereco?: string
   ativa?: boolean
+  // WhatsApp por loja (telefonia): nome da instância Evolution DESTA loja no host
+  // compartilhado (ex.: 'space-santoangelo'). Cada loja pareia o seu número; o
+  // webhook roteia o que chega por esta instância. Ver lib/whatsapp instanciaDaLoja.
+  evolutionInstance?: string
   criadoEm?: string
 }
 
