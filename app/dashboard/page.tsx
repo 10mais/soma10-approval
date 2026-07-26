@@ -2106,10 +2106,21 @@ function Dashboard() {
           {/* NIVEL AGENCIA — oculto na visao de cliente e de vendas */}
           {!verComoClienteId && !ehVendas && (
             <>
+              {/* Telefonia: menu na ORDEM pedida pelo dono (Painel · Meu dia · Personal
+                  list · Produtos · PDV · CRM · Tarefas); o resto segue abaixo normal. */}
+              {perfilTelefonia && (
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <NavBtn chave="home" label="Painel" />
+                  <NavBtn chave="meu-dia" label="Meu dia" />
+                  <NavBtn chave="lista-pessoal" label="Personal list" />
+                  {podeGrupo('crm') && <><NavBtn chave="produtos" label="Produtos" /><NavBtn chave="vendas" label="Vendas (PDV)" /><NavBtn chave="crm" label="CRM" /></>}
+                  {podeGrupo('producao') && !ocultas.includes('tarefas') && <NavBtn chave="tarefas" label="Tarefas" />}
+                </nav>
+              )}
               {([
-                { titulo: '', grupo: '', itens: [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']] },
-                { titulo: 'Produção', grupo: 'producao', itens: [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] },
-              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
+                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']]) as [string, string][] },
+                { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
@@ -2139,14 +2150,6 @@ function Dashboard() {
                   <NavBtn chave="processos" label="Processos" />
                 </nav>
               )}
-              {/* Varejo (telefonia) — Produtos/Estoque (Vendas entra na Fase 2) */}
-              {perfilTelefonia && podeGrupo('crm') && (
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Varejo</span>}
-                  <NavBtn chave="produtos" label="Produtos" />
-                  <NavBtn chave="vendas" label="Vendas (PDV)" />
-                </nav>
-              )}
               {/* Comunicação — acima de Estratégia */}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                 {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
@@ -2156,8 +2159,8 @@ function Dashboard() {
               </nav>
               {([
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
-                { titulo: 'Vendas', grupo: 'crm', itens: [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']] },
-              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
+                { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']]) as [string, string][] },
+              ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
