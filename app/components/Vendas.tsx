@@ -25,12 +25,15 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
   const [contatoId, setContatoId] = useState('')
   const [buscaContato, setBuscaContato] = useState('')
   const [finalizando, setFinalizando] = useState(false)
+  const [recibo, setRecibo] = useState<Venda | null>(null)
+  const [lojasNome, setLojasNome] = useState<Record<string, string>>({})
 
   function carregar() {
     fetch('/api/produtos').then(r => r.json()).then(d => setProdutos((Array.isArray(d?.produtos) ? d.produtos : []).filter((p: Produto) => p.ativo !== false))).catch(() => {})
     fetch(`/api/crm/contatos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setContatos(Array.isArray(d) ? d : [])).catch(() => {})
     fetch(`/api/vendas?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendas(Array.isArray(d?.vendas) ? d.vendas : [])).catch(() => {})
     fetch(`/api/estoque?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setSaldos(d?.saldos || {})).catch(() => {})
+    fetch('/api/lojas').then(r => r.json()).then(d => setLojasNome(Object.fromEntries((Array.isArray(d) ? d : []).map((l: any) => [l.id, l.nome])))).catch(() => {})
   }
   useEffect(() => { carregar() /* eslint-disable-next-line */ }, [lojaAtiva])
 
@@ -59,8 +62,27 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
       body: JSON.stringify({ lojaId: lojaAtiva, itens: carrinho, desconto: Number(desconto) || 0, formaPagamento: forma, contatoId: contatoId || undefined }),
     }).then(x => x.json()).catch(() => null)
     setFinalizando(false)
-    if (r?.ok) { toast('Venda registrada e estoque baixado.', 'sucesso'); setCarrinho([]); setDesconto(''); setContatoId(''); setBuscaContato(''); carregar() }
+    if (r?.ok) { toast('Venda registrada e estoque baixado.', 'sucesso'); setRecibo(r.venda); setCarrinho([]); setDesconto(''); setContatoId(''); setBuscaContato(''); carregar() }
     else toast(r?.error || 'Não foi possível registrar a venda.', 'erro')
+  }
+
+  function imprimirRecibo(v: Venda) {
+    const esc = (s: string) => String(s || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] || c))
+    const nomeLoja = lojasNome[(v as any).lojaId] || 'Space Technology'
+    const linhas = v.itens.map(i => `<tr><td>${esc(i.nome)}</td><td style="text-align:center">${i.quantidade}</td><td style="text-align:right">${brl(i.precoUnit)}</td><td style="text-align:right">${brl(i.precoUnit * i.quantidade)}</td></tr>`).join('')
+    const cliente = v.contatoId ? (contatos.find(c => c.id === v.contatoId)?.nome || '') : ''
+    const html = `<html><head><meta charset="utf-8"><title>Comprovante de venda</title><style>body{font-family:system-ui,Arial,sans-serif;max-width:360px;margin:20px auto;color:#111;font-size:13px}h2{margin:0 0 2px;font-size:16px}table{width:100%;border-collapse:collapse;margin:12px 0}td,th{padding:4px 0;border-bottom:1px solid #eee}th{text-align:left;font-size:11px;color:#888}.tot{font-size:18px;font-weight:800;text-align:right;margin-top:6px}.muted{color:#777;font-size:12px}</style></head><body>
+<h2>${esc(nomeLoja)}</h2><div class="muted">Comprovante de venda</div>
+<div class="muted">${new Date(v.data).toLocaleString('pt-BR')}${v.vendedor ? ' · ' + esc(v.vendedor) : ''}</div>
+${cliente ? `<div class="muted">Cliente: ${esc(cliente)}</div>` : ''}
+<table><thead><tr><th>Item</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
+${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.desconto)}</div>` : ''}
+<div class="tot">Total: ${brl(v.total)}</div>
+<div class="muted" style="text-align:right">Pagamento: ${esc(formaLabel(v.formaPagamento))}</div>
+<script>window.onload=function(){window.print()}</script></body></html>`
+    const w = window.open('', '_blank', 'width=420,height=640')
+    if (!w) { toast('Permita pop-ups para imprimir o comprovante.', 'info'); return }
+    w.document.write(html); w.document.close()
   }
 
   async function cancelar(v: Venda) {
@@ -181,6 +203,24 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
                 {podeEditar && !v.cancelada && <button onClick={() => cancelar(v)} title="Cancelar venda" style={{ background: 'none', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '5px 10px' }}>Cancelar</button>}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Comprovante da venda recém-registrada */}
+      {recibo && (
+        <div onClick={() => setRecibo(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 380, padding: 22 }}>
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, marginBottom: 6 }}>✓</div>
+              <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Venda registrada</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: '#16a34a' }}>{brl(recibo.total)}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{recibo.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(recibo.formaPagamento)}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => imprimirRecibo(recibo)} style={{ flex: 1, padding: '11px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>Imprimir comprovante</button>
+              <button onClick={() => setRecibo(null)} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Nova venda</button>
+            </div>
           </div>
         </div>
       )}
