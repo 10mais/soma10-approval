@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         await limparFalhasLogin(credentials.email) // login OK: zera o contador
-        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId, permissoes: usuario.permissoes, permissoesGranular: usuario.permissoesGranular } as any
+        return { id: usuario.id, name: usuario.nome, email: usuario.email, role: usuario.role, clienteId: usuario.clienteId, lojaId: usuario.lojaId, permissoes: usuario.permissoes, permissoesGranular: usuario.permissoesGranular } as any
       },
     }),
   ],
@@ -49,6 +49,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role
         token.clienteId = (user as any).clienteId
+        ;(token as any).lojaId = (user as any).lojaId
         ;(token as any).permissoes = (user as any).permissoes
         ;(token as any).permissoesGranular = (user as any).permissoesGranular
       }
@@ -58,6 +59,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).role = token.role
         ;(session.user as any).clienteId = token.clienteId
+        ;(session.user as any).lojaId = (token as any).lojaId
         ;(session.user as any).permissoes = (token as any).permissoes
         ;(session.user as any).permissoesGranular = (token as any).permissoesGranular
       }

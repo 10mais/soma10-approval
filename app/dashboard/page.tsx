@@ -618,6 +618,10 @@ function Dashboard() {
   const perfilTurismo = perfilInstancia === 'turismo'
   const perfilCidadania = perfilInstancia === 'cidadania'
   const perfilTelefonia = perfilInstancia === 'telefonia'
+  // Lojas do varejo (perfil telefonia) — usadas no form de colaborador para
+  // vincular o operador a uma unidade (isolamento; ver lib/escopoLoja).
+  const [lojasTel, setLojasTel] = useState<{ id: string; nome: string }[]>([])
+  useEffect(() => { if (perfilTelefonia) fetch('/api/lojas').then(r => r.json()).then(d => setLojasTel(Array.isArray(d) ? d : [])).catch(() => {}) }, [perfilTelefonia])
   const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
@@ -1729,7 +1733,7 @@ function Dashboard() {
 
   function iniciarEdicaoUsuario(u: any) {
     setEditandoUsuario(u.email)
-    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', areaSaude: (u as any).areaSaude || '', corAgenda: (u as any).corAgenda || '', permissoes: (u as any).permissoes, permissoesGranular: (u as any).permissoesGranular, foto: u.foto || '', clienteId: u.clienteId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
+    setEdicaoUsuario({ nome: u.nome, role: u.role, novaSenha: '', cargo: u.cargo || '', funcaoVendas: (u as any).funcaoVendas || '', areaSaude: (u as any).areaSaude || '', corAgenda: (u as any).corAgenda || '', permissoes: (u as any).permissoes, permissoesGranular: (u as any).permissoesGranular, foto: u.foto || '', clienteId: u.clienteId || '', lojaId: (u as any).lojaId || '', custoHora: u.custoHora || 0, salarioFixo: u.salarioFixo || 0, valorPorProjeto: (u as any).valorPorProjeto || 0, qtdProjetos: (u as any).qtdProjetos || 0 } as any)
     setVerSenhaEdicao(false)
   }
 
@@ -1737,7 +1741,7 @@ function Dashboard() {
     await fetch('/api/usuarios', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', recebeAgenda: (edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude, permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, tipoTurismo: (edicaoUsuario as any).tipoTurismo ?? '', cnh: (edicaoUsuario as any).cnh ?? '', telefone: (edicaoUsuario as any).telefone ?? '', novaSenha: edicaoUsuario.novaSenha || undefined }),
+      body: JSON.stringify({ email, nome: edicaoUsuario.nome, role: edicaoUsuario.role, cargo: edicaoUsuario.cargo, funcaoVendas: (edicaoUsuario as any).funcaoVendas || '', areaSaude: (edicaoUsuario as any).areaSaude ?? '', corAgenda: (edicaoUsuario as any).corAgenda ?? '', recebeAgenda: (edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude, permissoes: (edicaoUsuario as any).permissoes ?? null, permissoesGranular: (edicaoUsuario as any).permissoesGranular ?? null, foto: edicaoUsuario.foto, clienteId: (edicaoUsuario as any).clienteId || '', lojaId: (edicaoUsuario as any).lojaId ?? '', custoHora: edicaoUsuario.custoHora || 0, salarioFixo: edicaoUsuario.salarioFixo || 0, valorPorProjeto: edicaoUsuario.valorPorProjeto || 0, qtdProjetos: edicaoUsuario.qtdProjetos || 0, tipoTurismo: (edicaoUsuario as any).tipoTurismo ?? '', cnh: (edicaoUsuario as any).cnh ?? '', telefone: (edicaoUsuario as any).telefone ?? '', novaSenha: edicaoUsuario.novaSenha || undefined }),
     })
     setEditandoUsuario(null)
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -4475,6 +4479,13 @@ function Dashboard() {
                         {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
                     )}
+                    {perfilTelefonia && novoUsuario.role !== 'admin' && novoUsuario.role !== 'cliente' && (
+                      <select value={(novoUsuario as any).lojaId || ''} onChange={e => setNovoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        <option value="">{novoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
+                        {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                      </select>
+                    )}
                     <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
                       padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
                       fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
@@ -4569,6 +4580,13 @@ function Dashboard() {
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                             <option value="">Vincular a qual cliente?</option>
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                          </select>
+                        )}
+                        {perfilTelefonia && edicaoUsuario.role !== 'admin' && edicaoUsuario.role !== 'cliente' && (
+                          <select value={(edicaoUsuario as any).lojaId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            <option value="">{edicaoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
+                            {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                           </select>
                         )}
                         <div style={{ flex: 1, minWidth: 160, position: 'relative' }}>
