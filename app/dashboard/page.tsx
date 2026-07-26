@@ -3556,7 +3556,7 @@ function Dashboard() {
         )}
 
         {aba === 'tarefas' && (
-          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
+          <GestaoTarefas clientes={clientes as any} usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} abrirTarefaId={tarefaAbrirId} onAbriuTarefa={() => setTarefaAbrirId(null)} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} />
         )}
 
         {aba === 'campanhas' && (
@@ -3564,7 +3564,7 @@ function Dashboard() {
         )}
 
         {aba === 'crm' && role !== 'cliente' && (
-          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} onIrAgenda={() => setAba('agenda' as any)} onIrProcessos={() => setAba('processos' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
+          <CRM usuarios={usuarios as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} onIrAgenda={() => setAba('agenda' as any)} onIrProcessos={() => setAba('processos' as any)} podeEditar={role === 'vendas' || podeNivelDash('crm', 'editar')} podeExcluir={role === 'vendas' || podeNivelDash('crm', 'excluir')} onClienteCriado={() => fetch('/api/clientes').then(r => r.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})} />
         )}
 
         {aba === 'candidaturas' && role === 'admin' && (

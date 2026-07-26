@@ -71,6 +71,9 @@ export default function AssistenteIA() {
   const ehVendas = role === 'vendas'
   const pathname = usePathname()
   const rotaPublica = ehRotaPublica(pathname)
+  // Perfil da instância — troca as sugestões iniciais pelo nicho (ex.: varejo telefonia)
+  const [perfil, setPerfil] = useState<string | null>(null)
+  useEffect(() => { fetch('/api/marca').then(r => r.json()).then(d => setPerfil(d?.perfil || null)).catch(() => {}) }, [])
 
   const [aberto, setAberto] = useState(false)
   // No mobile o botao sobe acima da barra de navegacao inferior
@@ -396,6 +399,11 @@ export default function AssistenteIA() {
                       'Como está meu funil? O que priorizar?',
                       'Quebre esta objeção do cliente:',
                       'Escreva um script de follow-up para...',
+                    ] : perfil === 'telefonia' ? [
+                      'Quais produtos estão abaixo do estoque mínimo?',
+                      'Resuma as vendas de hoje por loja',
+                      'Escreva um anúncio de WhatsApp para o [produto]',
+                      'Sugira um combo de acessórios para quem comprou um celular',
                     ] : [
                       'Quantas tarefas atrasadas temos?',
                       'Como está o funil de vendas?',

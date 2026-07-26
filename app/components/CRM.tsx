@@ -43,7 +43,7 @@ type Negocio = {
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
 
-export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
+export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -62,10 +62,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // Clínica não tem Empresas. 'pacientes' foi unificado em Contatos — o
   // sessionStorage antigo pode trazer essa vista, que já não existe.
   useEffect(() => {
-    // Clínica e cidadania vendem para PESSOA FÍSICA — não têm Empresas.
-    if ((perfilClinica || perfilCidadania) && vista === 'empresas') setVista('funil')
+    // Clínica, cidadania e varejo (telefonia) vendem para PESSOA FÍSICA — não têm Empresas.
+    if ((perfilClinica || perfilCidadania || perfilTelefonia) && vista === 'empresas') setVista('funil')
     if ((vista as string) === 'pacientes') setVista('contatos')
-  }, [perfilClinica, perfilCidadania, vista])
+  }, [perfilClinica, perfilCidadania, perfilTelefonia, vista])
   // "Agendar" a partir do CRM: guarda o pré-preenchimento e navega pra Agenda
   function agendarNoCrm(prefill: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) {
     try { sessionStorage.setItem('agenda_prefill', JSON.stringify(prefill)) } catch {}
@@ -213,7 +213,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: '#111', flexShrink: 0 }}>CRM</h2>
         <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {((perfilClinica || perfilCidadania
+          {((perfilClinica || perfilCidadania || perfilTelefonia
             ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
             : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
           ) as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (

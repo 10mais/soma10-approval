@@ -77,6 +77,18 @@ const TIPOS_CIDADANIA: { key: string; label: string; cor: string; icone: string 
   { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
 ]
 
+// Tipos do dia a dia de uma LOJA DE VAREJO (perfil telefonia — eletrônicos e acessórios)
+const TIPOS_TELEFONIA: { key: string; label: string; cor: string; icone: string }[] = [
+  { key: 'venda', label: 'Venda (PDV)', cor: '#059669', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
+  { key: 'orcamento', label: 'Orçamento', cor: '#1d4ed8', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
+  { key: 'pos_venda', label: 'Pós-venda / troca / garantia', cor: '#d97706', icone: 'M3 12a9 9 0 1 0 9-9M3 12l4-4M3 12l4 4' },
+  { key: 'compras_estoque', label: 'Compras / Estoque', cor: '#7c3aed', icone: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' },
+  { key: 'financeiro', label: 'Financeiro', cor: '#0891b2', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
+  { key: 'atendimento', label: 'Atendimento', cor: '#b45309', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { key: 'reuniao_interna', label: 'Reunião', cor: '#4f46e5', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+]
+
 // Tipos personalizados criados pela equipe (persistidos no servidor). Mantidos em
 // modulo para que os badges dos cards (que usam tipoInfo) resolvam tipos custom.
 let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] = []
@@ -84,9 +96,10 @@ let TIPOS_CUSTOM: { key: string; label: string; cor: string; icone: string }[] =
 let PERFIL_CLINICA_TAREFAS = false
 let PERFIL_TURISMO_TAREFAS = false
 let PERFIL_CIDADANIA_TAREFAS = false
-function tiposBase() { return PERFIL_CIDADANIA_TAREFAS ? TIPOS_CIDADANIA : PERFIL_TURISMO_TAREFAS ? TIPOS_TURISMO : PERFIL_CLINICA_TAREFAS ? TIPOS_CLINICA : TIPOS }
+let PERFIL_TELEFONIA_TAREFAS = false
+function tiposBase() { return PERFIL_CIDADANIA_TAREFAS ? TIPOS_CIDADANIA : PERFIL_TURISMO_TAREFAS ? TIPOS_TURISMO : PERFIL_CLINICA_TAREFAS ? TIPOS_CLINICA : PERFIL_TELEFONIA_TAREFAS ? TIPOS_TELEFONIA : TIPOS }
 // Resolver de badge inclui TODOS os catálogos: tarefas antigas mantêm o rótulo mesmo trocando o perfil
-function todosTipos() { return [...TIPOS, ...TIPOS_CLINICA, ...TIPOS_TURISMO, ...TIPOS_CIDADANIA, ...TIPOS_CUSTOM] }
+function todosTipos() { return [...TIPOS, ...TIPOS_CLINICA, ...TIPOS_TURISMO, ...TIPOS_CIDADANIA, ...TIPOS_TELEFONIA, ...TIPOS_CUSTOM] }
 function tipoInfo(key?: string) { return todosTipos().find(t => t.key === key) || TIPOS.find(t => t.key === 'tarefa')! }
 function fmtRelogio(ms: number) { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60; const mm = String(m).padStart(2, '0'), ss = String(seg).padStart(2, '0'); return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}` }
 // Definition of Done — checklist padrão por tipo de tarefa
@@ -299,11 +312,12 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean }) {
+export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
   // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
   PERFIL_CLINICA_TAREFAS = perfilClinica
   PERFIL_TURISMO_TAREFAS = perfilTurismo
   PERFIL_CIDADANIA_TAREFAS = perfilCidadania
+  PERFIL_TELEFONIA_TAREFAS = perfilTelefonia
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [excluidas, setExcluidas] = useState<Tarefa[]>([])
   const [view, setView] = useState<'kanban' | 'lista'>('kanban')
@@ -440,7 +454,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <span style={{ position: 'absolute', left: 10, color: '#bbb', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
               <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
             </div>
-            {!perfilClinica && !perfilTurismo && !perfilCidadania && (
+            {!perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && (
               <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
                 <option value="">Todos os clientes</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}

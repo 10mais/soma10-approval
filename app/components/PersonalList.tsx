@@ -77,6 +77,13 @@ export default function PersonalList() {
   }
 
   const aberto = notepads.find(n => n.id === abertoId)
+  // Fechar o editor: nota SEM título e SEM conteúdo é descartada (não fica salva).
+  async function fecharNota(comConfirmacao = false) {
+    const n = notepads.find(x => x.id === abertoId)
+    if (n && !n.titulo.trim() && !textoDe(n.conteudo)) { excluirNota(n.id); return }
+    if (comConfirmacao && !(await confirmar('Deseja fechar a nota? Ela já foi salva automaticamente.', { titulo: 'Fechar nota', okLabel: 'Sair', cancelLabel: 'Continuar editando' }))) return
+    setAbertoId(null)
+  }
   // Concluir uma microtarefa = finalizar e arquivar (sai da lista ativa).
   function concluir(id: string) {
     const it = itens.find(i => i.id === id)
@@ -188,7 +195,7 @@ export default function PersonalList() {
 
       {/* Editor do notepad em MODAL */}
       {aberto && (
-        <div onClick={async () => { if (await confirmar('Deseja fechar a nota? Ela já foi salva automaticamente.', { titulo: 'Fechar nota', okLabel: 'Sair', cancelLabel: 'Continuar editando' })) setAbertoId(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={() => fecharNota(true)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
               <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota" autoFocus
@@ -198,7 +205,7 @@ export default function PersonalList() {
               <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </button>
-              <button onClick={() => setAbertoId(null)} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+              <button onClick={() => fecharNota()} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: 16, overflowY: 'auto' }}>
               <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} completo placeholder="Escreva aqui… use a barra para tópicos, listas numeradas, títulos, cor e links." minHeight={320} />
