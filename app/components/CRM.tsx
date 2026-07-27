@@ -47,6 +47,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // Varejo: admin/gestor em "Todas" precisa focar uma loja pra CRIAR (o servidor
   // exige a loja). Filtro de leitura vai por ?lojaId= no carregar().
   const bloquearCriarPorLoja = perfilTelefonia && podeTrocarLoja && !lojaAtiva
+  // Lojas do varejo — pra o seletor de loja destino na importação de contatos.
+  const [lojasTel, setLojasTel] = useState<{ id: string; nome: string; codigo?: string }[]>([])
+  useEffect(() => { if (perfilTelefonia) fetch('/api/lojas').then(r => r.json()).then(d => setLojasTel(Array.isArray(d) ? d : [])).catch(() => {}) }, [perfilTelefonia])
   const [estagios, setEstagios] = useState<Estagio[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
@@ -390,8 +393,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setContatoModal(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined}
         onClose={() => setContatoModal(null)} onSalvo={() => { setContatoModal(null); carregar() }} />}
-      {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} lojaAtiva={lojaAtiva} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
-      {bulkModal && <BulkContatosModal lojaAtiva={lojaAtiva} onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
+      {importar && <ImportarContatosModal linhas={importar.linhas} tipo={importar.tipo} perfilClinica={perfilClinica} perfilTelefonia={perfilTelefonia} lojas={lojasTel} lojaAtiva={lojaAtiva} onClose={() => setImportar(null)} onImportado={() => { setImportar(null); carregar() }} />}
+      {bulkModal && <BulkContatosModal perfilTelefonia={perfilTelefonia} lojas={lojasTel} lojaAtiva={lojaAtiva} onClose={() => setBulkModal(false)} onSalvo={() => { setBulkModal(false); carregar() }} />}
       {empresaModal && <EmpresaModal empresa={empresaModal === 'novo' ? null : empresaModal} contatos={contatos} negocios={negocios} podeExcluir={podeExcluir}
         onAbrirContato={c => { setEmpresaModal(null); setContatoModal(c) }}
         onClose={() => setEmpresaModal(null)} onSalvo={() => { setEmpresaModal(null); carregar() }} />}
@@ -493,9 +496,10 @@ const CANAL: Record<string, { label: string; cor: string }> = {
 }
 type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
 
-function BulkContatosModal({ lojaAtiva = '', onClose, onSalvo }: { lojaAtiva?: string; onClose: () => void; onSalvo: () => void }) {
+function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = '', onClose, onSalvo }: { perfilTelefonia?: boolean; lojas?: { id: string; nome: string; codigo?: string }[]; lojaAtiva?: string; onClose: () => void; onSalvo: () => void }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [lojaDestino, setLojaDestino] = useState(lojaAtiva)
   const linhas = texto.split('\n').filter(l => l.trim())
   async function salvar() {
     const lote = linhas.map(l => {
@@ -504,8 +508,9 @@ function BulkContatosModal({ lojaAtiva = '', onClose, onSalvo }: { lojaAtiva?: s
       return { nome: c[0] || '', telefone: c[1] || '', email: c[2] || '', empresa: c[3] || '' }
     }).filter(c => c.nome)
     if (!lote.length) return
+    if (perfilTelefonia && !lojaDestino) { toast('Escolha a loja de destino.', 'erro'); return }
     setSalvando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(`${r.criados} contato(s) adicionado(s).`, 'sucesso'); onSalvo() } else toast('Falha ao adicionar.', 'erro')
   }
@@ -514,6 +519,15 @@ function BulkContatosModal({ lojaAtiva = '', onClose, onSalvo }: { lojaAtiva?: s
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Adicionar vários contatos</h3>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#999' }}>Um contato por linha, separando por <b>;</b> (ou vírgula): <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+        {perfilTelefonia && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Loja de destino</label>
+            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? '#e2e2e2' : '#fca5a5'}`, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+              <option value="">Selecione a loja…</option>
+              {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
+            </select>
+          </div>
+        )}
         <textarea value={texto} onChange={e => setTexto(e.target.value)} autoFocus placeholder={'João Silva ; +5511999990000 ; joao@empresa.com ; Clínica X\nMaria Souza ; +5511988887777 ; maria@loja.com ; Loja Y'}
           style={{ width: '100%', minHeight: 200, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.6 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
@@ -980,9 +994,10 @@ function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
 // Importação em massa com PRÉVIA e mapeamento de colunas — o usuário confere
 // antes de gravar, então dado errado não entra. Formato esperado é só um palpite;
 // as colunas são remapeáveis.
-function ImportarContatosModal({ linhas, tipo, perfilClinica, lojaAtiva = '', onClose, onImportado }: {
-  linhas: string[][]; tipo?: string; perfilClinica: boolean; lojaAtiva?: string; onClose: () => void; onImportado: () => void
+function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = false, lojas = [], lojaAtiva = '', onClose, onImportado }: {
+  linhas: string[][]; tipo?: string; perfilClinica: boolean; perfilTelefonia?: boolean; lojas?: { id: string; nome: string; codigo?: string }[]; lojaAtiva?: string; onClose: () => void; onImportado: () => void
 }) {
+  const [lojaDestino, setLojaDestino] = useState(lojaAtiva)
   const CAMPOS: { k: string; label: string; req?: boolean }[] = perfilClinica
     ? [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'nascimento', label: 'Nascimento' }, { k: 'etiquetas', label: 'Etiquetas' }]
     : [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'empresa', label: 'Empresa' }, { k: 'cargo', label: 'Cargo' }]
@@ -1034,8 +1049,9 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, lojaAtiva = '', on
   async function importar() {
     if (map.nome === undefined || map.nome < 0) { toast('Escolha qual coluna é o Nome.', 'erro'); return }
     if (!validos.length) { toast('Nenhuma linha com nome preenchido.', 'erro'); return }
+    if (perfilTelefonia && !lojaDestino) { toast('Escolha a loja de destino.', 'erro'); return }
     setSalvando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(`${r.criados} ${perfilClinica ? 'paciente(s)/contato(s)' : 'contato(s)'} importado(s).`, 'sucesso'); onImportado() }
     else toast(r?.error || 'Falha ao importar.', 'erro')
@@ -1052,6 +1068,16 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, lojaAtiva = '', on
         <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888' }}>
           Formato sugerido (separado por ; ou vírgula): <b>{CAMPOS.map(c => c.label).join(' · ')}</b>. Se a ordem do seu arquivo for outra, ajuste o mapa abaixo — a prévia mostra como vai ficar.
         </p>
+
+        {perfilTelefonia && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Loja de destino dos contatos</label>
+            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 320, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? '#e2e2e2' : '#fca5a5'}`, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+              <option value="">Selecione a loja…</option>
+              {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
+            </select>
+          </div>
+        )}
 
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: '#333', fontWeight: 600, marginBottom: 14 }}>
           <input type="checkbox" checked={cab} onChange={e => setCab(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
