@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
     total: totalVenda(itens, desconto),
     formaPagamento: b.formaPagamento || 'dinheiro',
     ...(b.contatoId ? { contatoId: String(b.contatoId) } : {}),
-    vendedor: autor,
+    // Vendedor atribuído no PDV (nome escolhido no balcão); sem escolha = quem operou.
+    vendedor: (b.vendedor && String(b.vendedor).trim().slice(0, 80)) || autor,
     data: agora,
     criadoPor: autor,
     criadoEm: agora,

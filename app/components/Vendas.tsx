@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { toast, confirmar } from '@/lib/toast'
 import { totalVenda } from '@/lib/estoque'
 
 type Produto = { id: string; nome: string; sku?: string; categoria: string; precoVenda: number; ativo?: boolean }
 type ItemCarrinho = { produtoId: string; nome: string; quantidade: number; precoUnit: number }
 type Contato = { id: string; nome: string; telefone?: string }
+type Vendedor = { id: string; nome: string; email: string; role: string }
 type Venda = { id: string; itens: ItemCarrinho[]; total: number; desconto?: number; formaPagamento: string; contatoId?: string; vendedor?: string; data: string; cancelada?: boolean }
 
 const FORMAS: [string, string][] = [['dinheiro', 'Dinheiro'], ['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['boleto', 'Boleto'], ['outro', 'Outro']]
@@ -14,10 +16,14 @@ const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'cu
 const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
 export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar = true }: { lojaAtiva?: string; bloqueado?: boolean; podeEditar?: boolean }) {
+  const { data: session } = useSession()
+  const meuNome = (session?.user?.name || '').trim()
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [saldos, setSaldos] = useState<Record<string, number>>({})
   const [contatos, setContatos] = useState<Contato[]>([])
   const [vendas, setVendas] = useState<Venda[]>([])
+  const [vendedores, setVendedores] = useState<Vendedor[]>([])
+  const [vendedor, setVendedor] = useState('')
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([])
   const [busca, setBusca] = useState('')
   const [desconto, setDesconto] = useState('')
@@ -34,8 +40,16 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
     fetch(`/api/vendas?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendas(Array.isArray(d?.vendas) ? d.vendas : [])).catch(() => {})
     fetch(`/api/estoque?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setSaldos(d?.saldos || {})).catch(() => {})
     fetch('/api/lojas').then(r => r.json()).then(d => setLojasNome(Object.fromEntries((Array.isArray(d) ? d : []).map((l: any) => [l.id, l.nome])))).catch(() => {})
+    fetch(`/api/vendas/vendedores?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendedores(Array.isArray(d?.vendedores) ? d.vendedores : [])).catch(() => {})
   }
   useEffect(() => { carregar() /* eslint-disable-next-line */ }, [lojaAtiva])
+  // Padrão do vendedor: eu mesmo (se estou na lista da loja), senão o único vendedor.
+  useEffect(() => {
+    if (vendedor) return
+    const eu = vendedores.find(v => v.nome === meuNome)
+    if (eu) setVendedor(eu.nome)
+    else if (vendedores.length === 1) setVendedor(vendedores[0].nome)
+  }, [vendedores, meuNome, vendedor])
 
   const total = useMemo(() => totalVenda(carrinho, Number(desconto) || 0), [carrinho, desconto])
   const filtrados = useMemo(() => {
@@ -59,7 +73,7 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
     setFinalizando(true)
     const r = await fetch('/api/vendas', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lojaId: lojaAtiva, itens: carrinho, desconto: Number(desconto) || 0, formaPagamento: forma, contatoId: contatoId || undefined }),
+      body: JSON.stringify({ lojaId: lojaAtiva, itens: carrinho, desconto: Number(desconto) || 0, formaPagamento: forma, contatoId: contatoId || undefined, vendedor: vendedor || undefined }),
     }).then(x => x.json()).catch(() => null)
     setFinalizando(false)
     if (r?.ok) { toast('Venda registrada e estoque baixado.', 'sucesso'); setRecibo(r.venda); setCarrinho([]); setDesconto(''); setContatoId(''); setBuscaContato(''); carregar() }
@@ -110,7 +124,10 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
         {/* Catálogo */}
         <div>
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar produto por nome ou SKU…" style={{ ...inp, width: '100%', marginBottom: 10 }} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar produto por nome ou SKU…" style={{ ...inp, flex: 1 }} />
+            <button onClick={carregar} title="Atualizar produtos e estoque" style={{ ...inp, padding: '9px 14px', background: '#f5f5f5', color: '#444', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Atualizar</button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 460, overflowY: 'auto' }}>
             {filtrados.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 14 }}>{produtos.length === 0 ? 'Nenhum produto no catálogo.' : 'Nada encontrado.'}</p>
               : filtrados.map(p => {
@@ -170,6 +187,19 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
                   </div>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Vendedor da loja */}
+          <div style={{ marginTop: 12 }}>
+            <label style={lbl}>Vendedor</label>
+            {vendedores.length > 0 ? (
+              <select value={vendedor} onChange={e => setVendedor(e.target.value)} style={{ ...inp, width: '100%', background: '#fff' }}>
+                <option value="">Balcão (sem vendedor)</option>
+                {vendedores.map(v => <option key={v.id} value={v.nome}>{v.nome}{v.role !== 'vendas' ? ` · ${v.role}` : ''}</option>)}
+              </select>
+            ) : (
+              <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#a16207' }}>Nenhum vendedor nesta loja. Crie colaboradores (papel <strong>Vendas</strong>) vinculados à loja em Colaboradores.</p>
             )}
           </div>
 
