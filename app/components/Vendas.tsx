@@ -31,6 +31,10 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
   const [forma, setForma] = useState('dinheiro')
   const [contatoId, setContatoId] = useState('')
   const [buscaContato, setBuscaContato] = useState('')
+  const [cadastrando, setCadastrando] = useState(false)
+  const [novoNome, setNovoNome] = useState('')
+  const [novoTel, setNovoTel] = useState('')
+  const [salvandoCli, setSalvandoCli] = useState(false)
   const [finalizando, setFinalizando] = useState(false)
   const [recibo, setRecibo] = useState<Venda | null>(null)
   const [lojasNome, setLojasNome] = useState<Record<string, string>>({})
@@ -68,6 +72,25 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
   }
   const setItem = (pid: string, patch: Partial<ItemCarrinho>) => setCarrinho(c => c.map(x => x.produtoId === pid ? { ...x, ...patch } : x))
   const remover = (pid: string) => setCarrinho(c => c.filter(x => x.produtoId !== pid))
+
+  async function novoCliente() {
+    const nome = novoNome.trim()
+    if (!nome || salvandoCli) return
+    setSalvandoCli(true)
+    // A rota carimba o lojaId pelo escopo (podeEscreverNaLoja): operador cai na
+    // sua loja; passar lojaAtiva só resolve o caso admin/gestor com loja focada.
+    const r = await fetch('/api/crm/contatos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, telefone: novoTel.trim() || undefined, lojaId: lojaAtiva || undefined }),
+    }).then(x => x.json()).catch(() => null)
+    setSalvandoCli(false)
+    if (r?.ok && r.contato) {
+      setContatos(cs => [...cs, r.contato as Contato].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' })))
+      setContatoId(r.contato.id)
+      setCadastrando(false); setNovoNome(''); setNovoTel(''); setBuscaContato('')
+      toast('Cliente cadastrado e vinculado à venda.', 'sucesso')
+    } else toast(r?.error || 'Não foi possível cadastrar o cliente.', 'erro')
+  }
 
   async function finalizar() {
     if (!carrinho.length || finalizando) return
@@ -177,6 +200,16 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
                 Cliente: <strong>{contatoSel.nome}</strong>
                 <button onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>trocar</button>
               </div>
+            ) : cadastrando ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>Novo cliente</span>
+                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} placeholder="Nome*" autoFocus style={{ ...inp, width: '100%', fontSize: 12.5 }} />
+                <input value={novoTel} onChange={e => setNovoTel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') novoCliente() }} placeholder="Telefone (opcional)" inputMode="tel" style={{ ...inp, width: '100%', fontSize: 12.5 }} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={novoCliente} disabled={!novoNome.trim() || salvandoCli} style={{ flex: 1, padding: '8px 12px', borderRadius: 9, border: 'none', background: '#111', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: novoNome.trim() && !salvandoCli ? 'pointer' : 'default', opacity: novoNome.trim() && !salvandoCli ? 1 : 0.5, fontFamily: 'inherit' }}>{salvandoCli ? 'Salvando…' : 'Salvar cliente'}</button>
+                  <button onClick={() => { setCadastrando(false); setNovoNome(''); setNovoTel('') }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid #e2e2e2', background: '#fff', color: '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                </div>
+              </div>
             ) : (
               <div style={{ position: 'relative' }}>
                 <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} placeholder="Cliente (opcional) — buscar por nome/telefone" style={{ ...inp, width: '100%', fontSize: 12.5 }} />
@@ -187,6 +220,7 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
                     ))}
                   </div>
                 )}
+                <button onClick={() => { setNovoNome(buscaContato.trim()); setNovoTel(''); setCadastrando(true) }} style={{ marginTop: 6, background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>+ Cadastrar {buscaContato.trim() ? `"${buscaContato.trim()}"` : 'cliente novo'}</button>
               </div>
             )}
           </div>
