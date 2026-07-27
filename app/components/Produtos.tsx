@@ -398,6 +398,14 @@ function ImportarProdutosModal({ lojas, lojaAtiva, onFechar, onImportado }: { lo
   const [enviando, setEnviando] = useState(false)
   const { linhas, ignoradas } = useMemo(() => parseProdutosColados(texto), [texto])
 
+  async function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return
+    const buf = await f.arrayBuffer()
+    let t = new TextDecoder('utf-8', { fatal: false }).decode(buf)
+    if (t.includes('�')) t = new TextDecoder('windows-1252').decode(buf) // ERP Windows/Excel (Latin-1)
+    setTexto(t)
+    e.target.value = ''
+  }
   async function importar() {
     if (!lojaId) { toast('Escolha a loja de destino.', 'erro'); return }
     if (!linhas.length) { toast('Cole ao menos uma linha válida.', 'erro'); return }
@@ -418,9 +426,15 @@ function ImportarProdutosModal({ lojas, lojaAtiva, onFechar, onImportado }: { lo
           <option value="">Selecione a loja…</option>
           {lojasAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
         </select>
-        <label style={lbl}>Cole as linhas (Excel/planilha ou CSV)</label>
-        <div style={{ margin: '0 0 6px', fontSize: 11, color: '#aaa' }}>Colunas, nesta ordem: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mínimo · Quantidade</code>. Categorias: smartphone, eletronico, acessorio, outro.</div>
-        <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={'iPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10\nCabo USB-C;CB-USBC;acessorio;39,90;15;5;50'} style={{ ...inp, width: '100%', minHeight: 170, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+          <label style={{ ...lbl, margin: 0 }}>Envie o arquivo do seu sistema (.csv) ou cole abaixo</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#111', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            Enviar arquivo
+            <input type="file" accept=".csv,.txt,text/csv" onChange={onArquivo} style={{ display: 'none' }} />
+          </label>
+        </div>
+        <div style={{ margin: '0 0 6px', fontSize: 11, color: '#aaa' }}>Reconhece o export do seu ERP (Descrição, Preço Venda, Estoque, Custo, Est. Mínimo, Código Barras…) OU o formato simples: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mín · Quantidade</code>.</div>
+        <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\niPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10'} style={{ ...inp, width: '100%', minHeight: 150, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
         <div style={{ margin: '10px 0 16px', fontSize: 12.5, color: '#444' }}>
           {texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> produto(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} linha(s) ignorada(s) (sem preço)</span>}</> : <span style={{ color: '#aaa' }}>Cole os dados para ver a prévia.</span>}
         </div>

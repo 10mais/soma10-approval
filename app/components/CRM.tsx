@@ -11,6 +11,7 @@ import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/l
 import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
 import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
 import { perfilVendeParaPessoa } from '@/lib/perfisInstanciaCatalogo'
+import { parseContatosPlanilha } from '@/lib/contatosImport'
 
 // O CRM recebe o perfil como três booleanos (herança das telas antigas); as
 // regras compartilhadas com o servidor falam a chave do perfil. Converte aqui,
@@ -500,25 +501,35 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [lojaDestino, setLojaDestino] = useState(lojaAtiva)
-  const linhas = texto.split('\n').filter(l => l.trim())
+  // Aceita o EXPORT do ERP (mapeia por cabeçalho: Nome, DDD+Celular, CPF, Nascimento…)
+  // OU o formato simples (Nome ; Telefone ; Email ; Empresa).
+  const { linhas, ignoradas } = useMemo(() => parseContatosPlanilha(texto), [texto])
+  async function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return
+    const buf = await f.arrayBuffer()
+    let t = new TextDecoder('utf-8', { fatal: false }).decode(buf)
+    if (t.includes('�')) t = new TextDecoder('windows-1252').decode(buf) // ERP Windows/Excel (Latin-1)
+    setTexto(t); e.target.value = ''
+  }
   async function salvar() {
-    const lote = linhas.map(l => {
-      const sep = (l.match(/;/g) || []).length >= (l.match(/,/g) || []).length ? ';' : ','
-      const c = l.split(sep).map(s => s.trim())
-      return { nome: c[0] || '', telefone: c[1] || '', email: c[2] || '', empresa: c[3] || '' }
-    }).filter(c => c.nome)
-    if (!lote.length) return
+    if (!linhas.length) { toast('Cole ou envie ao menos um contato.', 'erro'); return }
     if (perfilTelefonia && !lojaDestino) { toast('Escolha a loja de destino.', 'erro'); return }
     setSalvando(true)
-    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
+    const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: linhas, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { toast(`${r.criados} contato(s) adicionado(s).`, 'sucesso'); onSalvo() } else toast('Falha ao adicionar.', 'erro')
+    if (r?.ok) { toast(`${r.criados} contato(s) importado(s).`, 'sucesso'); onSalvo() } else toast(r?.error || 'Falha ao importar.', 'erro')
   }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Adicionar vários contatos</h3>
-        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#999' }}>Um contato por linha, separando por <b>;</b> (ou vírgula): <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Importar contatos</h3>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: '#999', flex: 1, minWidth: 180 }}>Envie o <b>.csv do seu sistema</b> (reconhece Nome, CPF, DDD+Celular, E-mail, Nascimento) ou cole: <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#111', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Enviar arquivo
+            <input type="file" accept=".csv,.txt,text/csv" onChange={onArquivo} style={{ display: 'none' }} />
+          </label>
+        </div>
         {perfilTelefonia && (
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Loja de destino</label>
@@ -528,10 +539,11 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
             </select>
           </div>
         )}
-        <textarea value={texto} onChange={e => setTexto(e.target.value)} autoFocus placeholder={'João Silva ; +5511999990000 ; joao@empresa.com ; Clínica X\nMaria Souza ; +5511988887777 ; maria@loja.com ; Loja Y'}
-          style={{ width: '100%', minHeight: 200, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.6 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
-          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Adicionando...' : `Adicionar ${linhas.length || ''} contato(s)`}</button>
+        <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\nJoão Silva ; 5511999990000 ; joao@x.com ; Loja Y'}
+          style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
+        <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> contato(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} sem nome ignorada(s)</span>}</> : <span style={{ color: '#aaa' }}>Cole ou envie o arquivo para ver a prévia.</span>}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? '#16a34a' : '#f0f0f0', color: linhas.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando...' : `Importar ${linhas.length || ''} contato(s)`}</button>
           <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
