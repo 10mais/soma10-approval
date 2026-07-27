@@ -36,7 +36,7 @@ export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar =
   const [lojasNome, setLojasNome] = useState<Record<string, string>>({})
 
   function carregar() {
-    fetch('/api/produtos').then(r => r.json()).then(d => setProdutos((Array.isArray(d?.produtos) ? d.produtos : []).filter((p: Produto) => p.ativo !== false))).catch(() => {})
+    fetch(`/api/produtos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setProdutos((Array.isArray(d?.produtos) ? d.produtos : []).filter((p: Produto) => p.ativo !== false))).catch(() => {})
     fetch(`/api/crm/contatos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setContatos(Array.isArray(d) ? d : [])).catch(() => {})
     fetch(`/api/vendas?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendas(Array.isArray(d?.vendas) ? d.vendas : [])).catch(() => {})
     fetch(`/api/estoque?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setSaldos(d?.saldos || {})).catch(() => {})

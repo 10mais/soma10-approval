@@ -27,11 +27,11 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
   function carregar() {
     setCarregando(true)
     Promise.all([
-      fetch('/api/produtos').then(r => r.json()).then(d => setProdutos(Array.isArray(d?.produtos) ? d.produtos : [])),
+      fetch(`/api/produtos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setProdutos(Array.isArray(d?.produtos) ? d.produtos : [])),
       fetch('/api/lojas').then(r => r.json()).then(d => setLojas(Array.isArray(d) ? d : [])),
     ]).catch(() => {}).finally(() => setCarregando(false))
   }
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar() /* eslint-disable-next-line */ }, [lojaAtiva])
 
   return (
     <div style={{ maxWidth: 980 }}>
@@ -51,7 +51,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
 
       {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
-          ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} onMudou={carregar} />
+          ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} bloquearCriar={podeGerirLojas && !lojaAtiva} onMudou={carregar} />
           : sub === 'lojas'
             ? <LojasView lojas={lojas} produtos={produtos} onMudou={carregar} />
             : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} onGerirLojas={() => setSub('lojas')} />}
@@ -60,7 +60,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
 }
 
 // ─── Catálogo ────────────────────────────────────────────────────────────────
-function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, onMudou }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; podeExcluir: boolean; lojaAtiva: string; onMudou: () => void }) {
+function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquearCriar = false, onMudou }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; podeExcluir: boolean; lojaAtiva: string; bloquearCriar?: boolean; onMudou: () => void }) {
   const [editor, setEditor] = useState<Partial<Produto> | null>(null)
   const [importar, setImportar] = useState(false)
   const [busca, setBusca] = useState('')
@@ -72,7 +72,8 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, onMudou
   async function salvar() {
     if (!editor) return
     const metodo = editor.id ? 'PUT' : 'POST'
-    const r = await fetch('/api/produtos', { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor) }).then(x => x.json()).catch(() => null)
+    const corpo = editor.id ? editor : { ...editor, ...(lojaAtiva ? { lojaId: lojaAtiva } : {}) }
+    const r = await fetch('/api/produtos', { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     if (r?.ok) { setEditor(null); onMudou() } else toast(r?.error || 'Não foi possível salvar o produto.', 'erro')
   }
   async function excluir(p: Produto) {
@@ -84,10 +85,11 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, onMudou
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, SKU ou categoria…" style={{ ...inp, flex: 1, minWidth: 200 }} />
-        {podeEditar && lojas.length > 0 && <button onClick={() => setImportar(true)} style={{ padding: '9px 16px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Importar</button>}
-        {podeEditar && <button onClick={() => setEditor({ categoria: 'smartphone', precoVenda: 0, ativo: true })} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Produto</button>}
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, SKU, marca…" style={{ ...inp, flex: 1, minWidth: 200 }} />
+        {podeEditar && lojas.length > 0 && <button onClick={() => setImportar(true)} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: '#fff', color: bloquearCriar ? '#bbb' : '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>Importar</button>}
+        {podeEditar && <button onClick={() => setEditor({ categoria: 'smartphone', precoVenda: 0, ativo: true })} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: bloquearCriar ? '#eee' : '#111', color: bloquearCriar ? '#aaa' : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>+ Produto</button>}
       </div>
+      {bloquearCriar && <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#a16207' }}>Você está vendo <strong>todas as lojas</strong>. Escolha uma loja no seletor “Ver loja” para cadastrar/importar produtos nela.</p>}
       {importar && <ImportarProdutosModal lojas={lojas} lojaAtiva={lojaAtiva} onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); onMudou() }} />}
 
       {filtrados.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>{produtos.length === 0 ? 'Nenhum produto ainda. Cadastre o primeiro.' : 'Nada encontrado.'}</p> : (

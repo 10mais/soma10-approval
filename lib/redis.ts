@@ -550,6 +550,7 @@ export type CategoriaProduto = 'smartphone' | 'eletronico' | 'acessorio' | 'outr
 export type Produto = {
   id: string
   nome: string
+  lojaId?: string           // varejo multi-loja: a loja DONA do produto (catálogo por loja). Ausente = legado/sem loja.
   sku?: string
   categoria: CategoriaProduto
   precoVenda: number

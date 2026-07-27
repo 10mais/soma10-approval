@@ -207,7 +207,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   useEffect(() => {
     if (!perfilTelefonia) return
     fetch(`/api/vendas?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setVendasTel(Array.isArray(d?.vendas) ? d.vendas : [])).catch(() => {})
-    fetch('/api/produtos').then(r => r.json()).then(d => setProdutosTel(Array.isArray(d?.produtos) ? d.produtos : [])).catch(() => {})
+    fetch(`/api/produtos?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => setProdutosTel(Array.isArray(d?.produtos) ? d.produtos : [])).catch(() => {})
     fetch(`/api/estoque?lojaId=${encodeURIComponent(lojaAtiva)}`).then(r => r.json()).then(d => {
       if (d?.saldos) setSaldoTel(d.saldos)
       else if (d?.porLoja) { const acc: Record<string, number> = {}; for (const loja of Object.values(d.porLoja) as Record<string, number>[]) for (const [pid, q] of Object.entries(loja)) acc[pid] = (acc[pid] || 0) + q; setSaldoTel(acc) }
