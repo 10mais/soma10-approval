@@ -1029,6 +1029,7 @@ export type CrmContato = {
   empresaId?: string // vínculo com a entidade Empresa
   profissionalAutonomo?: boolean // PF sem empresa (autônomo) — dispensa vínculo com Empresa
   areaAtuacao?: string // área/segmento de atuação do contato
+  cpfCnpj?: string // varejo (telefonia): CPF ou CNPJ do cliente — guardado só com dígitos (a tela formata/valida)
   cargo?: string
   tipo?: CrmContatoTipo // ausente = contato comum (compatível com a base existente)
   nascimento?: string // YYYY-MM-DD — aniversariantes do mês (clínicas)

@@ -6,7 +6,7 @@ import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
-import { formatarCnpj, cnpjValido, soDigitosCnpj } from '@/lib/cnpj'
+import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDoc, soDigitosDoc } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
 import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
@@ -26,7 +26,7 @@ type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdi
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
 type Interacao = { id: string; tipo: string; texto: string; autor: string; data: string; criadoEm: string }
 type ProximoPasso = { id: string; titulo: string; quando: string; nota?: string; feito?: boolean; tarefaId?: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; preferenciasViagem?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; proximosPassos?: ProximoPasso[]; ultimoContato?: string; criadoEm?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; cpfCnpj?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; preferenciasViagem?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; proximosPassos?: ProximoPasso[]; ultimoContato?: string; criadoEm?: string }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
@@ -383,7 +383,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         onClose={() => setAbordar(null)}
         onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
         onAbrirOportunidade={podeEditar ? (contatoId => { setAbordar(null); setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />}
-      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} lojaAtiva={lojaAtiva} tipoPadrao={perfilCidadania ? 'lead' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
+      {contatoModal && <ContatoModal contato={contatoModal === 'novo' ? null : contatoModal} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} lojaAtiva={lojaAtiva} tipoPadrao={perfilCidadania ? 'lead' : (vista === 'contatos' && perfilClinica ? 'lead' : 'paciente')} onAgendar={perfilClinica ? agendarNoCrm : undefined}
         onAbrirWhatsApp={(telefone, contatoId) => {
           // `telefone` vem do formulário (a ficha acabou de salvar): a lista em
           // memória ainda tem o número antigo e abordaria o número errado.
@@ -1226,8 +1226,8 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
   )
 }
 
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
-  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
+function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', cpfCnpj: (contato as any)?.cpfCnpj || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
   const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
@@ -1406,7 +1406,25 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               )}
               {perfilCidadania && <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
             </div>
-          ) : (<>
+          ) : perfilTelefonia ? (<>
+            {/* Varejo: cliente PF (CPF) na maioria, PJ (CNPJ) numa venda para empresa.
+                Um só campo resolve os dois — a contagem de dígitos diz qual é. */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+              <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              Pessoa física (sem empresa)
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Pessoa física' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div>
+                <label style={labelStyle}>CPF / CNPJ</label>
+                <input value={formatarDoc(f.cpfCnpj)} onChange={e => setF({ ...f, cpfCnpj: soDigitosDoc(e.target.value) })} inputMode="numeric" placeholder="Só números" style={inputStyle} />
+                {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: '#dc2626' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? 'Incompleto — CPF tem 11 dígitos, CNPJ 14.' : 'Dígitos não conferem — confira o número.'}</span>}
+              </div>
+              <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+            </div>
+          </>) : (<>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
               <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               Profissional Autônomo (sem empresa)

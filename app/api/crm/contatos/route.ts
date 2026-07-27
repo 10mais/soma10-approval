@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { resolverEscopoLoja, podeEscreverNaLoja } from '@/lib/escopoLoja'
+import { soDigitosDoc } from '@/lib/cnpj'
 
 export const runtime = 'nodejs'
 
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
     const agora = new Date().toISOString()
     return {
       id: uuid(), nome: String(d.nome).trim(), ...(lojaIdCarimbo ? { lojaId: lojaIdCarimbo } : {}), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', ultimoProcedimento: d.ultimoProcedimento || '', nuncaVeio: !!d.nuncaVeio, criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
+      ...(d.cpfCnpj ? { cpfCnpj: soDigitosDoc(d.cpfCnpj) } : {}),
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
       ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),
@@ -201,9 +203,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, contato: atualizado })
   }
 
-  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo', 'ultimoProcedimento', 'nuncaVeio', 'sobrenomeLinhagem']
+  const campos = ['nome', 'email', 'telefone', 'empresa', 'empresaId', 'profissionalAutonomo', 'areaAtuacao', 'cpfCnpj', 'cargo', 'observacoes', 'tipo', 'nascimento', 'preferenciasViagem', 'etiquetas', 'ativo', 'ultimoProcedimento', 'nuncaVeio', 'sobrenomeLinhagem']
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
+  if ('cpfCnpj' in updates) atualizado.cpfCnpj = soDigitosDoc(updates.cpfCnpj) // guarda só dígitos
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra
   if (atualizado.empresa && (!atualizado.empresaId || ('empresa' in updates && !('empresaId' in updates)))) {
     atualizado.empresaId = await acharOuCriarEmpresa(atualizado.empresa, session.user?.name || '', await carregarEmpresas())
