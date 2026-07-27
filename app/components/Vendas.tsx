@@ -14,6 +14,7 @@ const FORMAS: [string, string][] = [['dinheiro', 'Dinheiro'], ['pix', 'Pix'], ['
 const formaLabel = (k: string) => FORMAS.find(f => f[0] === k)?.[1] || k
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+const PAPEL_LOJA: Record<string, string> = { usuario: 'Estoquista', vendas: 'Vendedor', gerente: 'Gerente', admin: 'Admin' }
 
 export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar = true }: { lojaAtiva?: string; bloqueado?: boolean; podeEditar?: boolean }) {
   const { data: session } = useSession()
@@ -196,7 +197,7 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
             {vendedores.length > 0 ? (
               <select value={vendedor} onChange={e => setVendedor(e.target.value)} style={{ ...inp, width: '100%', background: '#fff' }}>
                 <option value="">Balcão (sem vendedor)</option>
-                {vendedores.map(v => <option key={v.id} value={v.nome}>{v.nome}{v.role !== 'vendas' ? ` · ${v.role}` : ''}</option>)}
+                {vendedores.map(v => <option key={v.id} value={v.nome}>{v.nome} · {PAPEL_LOJA[v.role] || v.role}</option>)}
               </select>
             ) : (
               <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#a16207' }}>Nenhum vendedor nesta loja. Crie colaboradores (papel <strong>Vendas</strong>) vinculados à loja em Colaboradores.</p>

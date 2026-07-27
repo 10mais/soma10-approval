@@ -4490,13 +4490,20 @@ function Dashboard() {
                     </div>
                     <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
-                      <option value="gerente">Gerente</option>
-                      <option value="usuario">Usuário</option>
-                      <option value="admin">Admin</option>
-                      <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
-                      {!perfilClinica && <option value="cliente">Cliente</option>}
+                      {perfilTelefonia ? (<>
+                        <option value="usuario">Estoquista</option>
+                        <option value="vendas">Vendedor</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="admin">Admin</option>
+                      </>) : (<>
+                        <option value="gerente">Gerente</option>
+                        <option value="usuario">Usuário</option>
+                        <option value="admin">Admin</option>
+                        <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
+                        {!perfilClinica && <option value="cliente">Cliente</option>}
+                      </>)}
                     </select>
-                    {novoUsuario.role === 'vendas' && !perfilClinica && (
+                    {novoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                       <select value={(novoUsuario as any).funcaoVendas || ''} onChange={e => setNovoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
                         <option value="">Função...</option>
@@ -4593,13 +4600,20 @@ function Dashboard() {
                         <span style={{ alignSelf: 'center', fontSize: 12, color: '#888' }}>Variável: <strong style={{ color: '#16a34a' }}>{((edicaoUsuario.valorPorProjeto || 0) * (edicaoUsuario.qtdProjetos || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></span>
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
-                          <option value="gerente">Gerente</option>
-                          <option value="usuario">Usuário</option>
-                          <option value="admin">Admin</option>
-                          <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
-                          {!perfilClinica && <option value="cliente">Cliente</option>}
+                          {perfilTelefonia ? (<>
+                            <option value="usuario">Estoquista</option>
+                            <option value="vendas">Vendedor</option>
+                            <option value="gerente">Gerente</option>
+                            <option value="admin">Admin</option>
+                          </>) : (<>
+                            <option value="gerente">Gerente</option>
+                            <option value="usuario">Usuário</option>
+                            <option value="admin">Admin</option>
+                            <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
+                            {!perfilClinica && <option value="cliente">Cliente</option>}
+                          </>)}
                         </select>
-                        {edicaoUsuario.role === 'vendas' && !perfilClinica && (
+                        {edicaoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                           <select value={(edicaoUsuario as any).funcaoVendas || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
                             <option value="">Função...</option>
