@@ -3,17 +3,27 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
 import { getUsuariosRaw } from '@/lib/cache'
+import { getPerfilInstancia } from '@/lib/perfisInstancia'
+import { resolverEscopoLoja } from '@/lib/escopoLoja'
 import { revalidateTag } from 'next/cache'
 import { registrarAuditoria } from '@/lib/auditoria'
 import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const usuarios = await getUsuariosRaw()
+  let usuarios = await getUsuariosRaw()
+  // VAREJO (telefonia): cada loja vê só os SEUS colaboradores; admin/gestor sem
+  // loja focada vê todas (compilado). Isolamento entre unidades.
+  const perfil = await getPerfilInstancia()
+  if (perfil === 'telefonia') {
+    const esc = resolverEscopoLoja({ role, lojaId: (session.user as any).lojaId }, req.nextUrl.searchParams.get('lojaId'))
+    if (esc.tipo === 'bloqueado') usuarios = []
+    else if (esc.tipo === 'loja') usuarios = usuarios.filter(u => u.lojaId === esc.lojaId)
+  }
   // Nunca expõe senha (hash) nem o segredo 2FA.
   return NextResponse.json(usuarios.map(u => ({ ...u, senha: undefined, twoFactorSecret: undefined })))
 }

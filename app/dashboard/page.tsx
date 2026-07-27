@@ -862,6 +862,14 @@ function Dashboard() {
   // operador vinculado a uma loja não tem seletor (fica selado — ver lib/escopoLoja).
   const meuLojaId = (session?.user as any)?.lojaId as string | undefined
   const podeTrocarLoja = perfilTelefonia && (role === 'admin' || (role === 'gerente' && !meuLojaId))
+  // Isolamento dos COLABORADORES por loja (telefonia): recarrega o roster escopado
+  // pela loja focada — os dropdowns de vendedor/responsável só mostram a equipe da
+  // loja. Admin/gestor em "Todas" veem o compilado.
+  useEffect(() => {
+    if (!perfilTelefonia) return
+    const url = (role === 'admin' || role === 'gerente') ? '/api/usuarios' : '/api/equipe'
+    fetch(`${url}?lojaId=${encodeURIComponent(verComoLojaId)}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setUsuarios(d) }).catch(() => {})
+  }, [perfilTelefonia, verComoLojaId, role])
   const clienteEmVisualizacao = clientes.find(c => c.id === verComoClienteId)
   // Regra e histórico das regressões: lib/plannerFiltro.ts (com testes).
   const postsPlanner = posts.filter(p => apareceNoPlanner(p as any))
