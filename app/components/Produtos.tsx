@@ -51,7 +51,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
 
       {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
-          ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} bloquearCriar={podeGerirLojas && !lojaAtiva} onMudou={carregar} />
+          ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} onMudou={carregar} />
           : sub === 'lojas'
             ? <LojasView lojas={lojas} onMudou={carregar} />
             : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} onGerirLojas={() => setSub('lojas')} />}

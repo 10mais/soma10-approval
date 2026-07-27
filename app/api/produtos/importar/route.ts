@@ -34,12 +34,13 @@ export async function POST(req: NextRequest) {
   if (!linhas.length) return NextResponse.json({ error: 'Nada para importar.' }, { status: 400 })
   if (linhas.length > 2000) return NextResponse.json({ error: 'Importe no máximo 2000 produtos por vez.' }, { status: 400 })
 
-  // Índice do catálogo DA LOJA (catálogo é por loja) para casar por SKU/nome —
-  // mesmo SKU em outra loja é produto separado, não atualiza.
+  // Catálogo COMPARTILHADO: índice sobre TODOS os produtos (não por loja) para
+  // casar por SKU/nome — reimportar o mesmo SKU noutra loja ATUALIZA o mesmo
+  // produto e só soma estoque naquela loja, em vez de duplicar o cadastro.
   const ids = await redis.smembers('produtos')
   const atuais = ids.length ? ((await redis.mget<(Produto | null)[]>(...ids.map(i => `produto:${i}`))).filter(Boolean) as Produto[]) : []
   const porChave = new Map<string, Produto>()
-  for (const p of atuais.filter(p => p.lojaId === lojaId)) porChave.set(chaveMatchProduto(p), p)
+  for (const p of atuais) porChave.set(chaveMatchProduto(p), p)
 
   const autor = session.user?.name || session.user?.email || undefined
   const agora = new Date().toISOString()
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
       produto = { ...existente, ...campos, atualizadoEm: agora }
       atualizados++
     } else {
-      produto = { id: uuid(), ...campos, lojaId, criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
+      // Catálogo compartilhado: produto é da rede, sem lojaId (o estoque abaixo é por loja).
+      produto = { id: uuid(), ...campos, criadoPor: autor, criadoEm: agora, atualizadoEm: agora }
       await redis.sadd('produtos', produto.id)
       criados++
     }
