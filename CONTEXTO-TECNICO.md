@@ -1222,3 +1222,77 @@ capa/legenda/colab no compositor.
   aberto): `FormaPagamento` duplicado em `redis.ts`, `'telefonia'` no union de
   `permissoesGranular.ts`, iteração de Map em `estoque.ts`.
 - Herdadas: validações em produção do inbox WhatsApp (§38.10) e demais pendências da §38.
+
+## 40. Evolução 2026-07-24→27 — SPACE TECHNOLOGY (perfil `telefonia`): varejo multi-loja completo
+
+**A 6ª linha de produto: varejo de eletrônicos multi-loja, com ISOLAMENTO DE DADOS entre
+unidades da MESMA empresa (não é esconder tela — é segurança).** ~30 commits, deploy contínuo
+na main, gate (`tsc` + `vitest`, 743 testes) verde a cada passo. Detalhes vivos na memória
+`telefonia-multiloja.md`. Instância provisionada: Vercel `soma10-spacetechnology`, domínio
+`spacetechnology.soma10.com.br`, Blob PÚBLICO. WhatsApp: host Railway `space-technology`
+(evolution-api-production-641f.up.railway.app) de pé, envs EVOLUTION_API_URL+KEY na Vercel
+(SEM EVOLUTION_INSTANCE — é por loja); pareamento dos 3 números pendente (presencial).
+
+### 40.1 A ESPINHA DE SEGURANÇA — `lib/escopoLoja.ts` (puro, testado)
+`resolverEscopoLoja(user, lojaPedida)` → `{tipo:'todas'|'loja'|'bloqueado'}`; `podeEscreverNaLoja`;
+`podeVerTodasAsLojas`. **Regra:** o `lojaId` do operador vem do TOKEN (auth.ts o trafega igual
+`clienteId`), NUNCA do request — a loja pedida por `?lojaId=` só vale pra admin/gestor. Admin
+sempre vê todas (+seletor); gerente SEM loja = gestor da rede (todas); qualquer não-admin COM
+`Usuario.lojaId` = travado nela; usuario/vendas SEM loja = **FAIL-CLOSED** (vê nada). Toda rota
+do varejo aplica isso, gated a `perfil==='telefonia'` (getPerfilInstancia) — os outros perfis
+não são tocados.
+
+### 40.2 O que está isolado por loja (servidor)
+- **Estoque** (`/api/estoque`): saldo por `estoque:{lojaId}:{produtoId}` (DECRBY atômico);
+  GET escopado (loja focada = a dela; "Todas" = consolidado `porLoja`); transferência só p/ gestão.
+- **Produtos** (`/api/produtos`): **catálogo POR LOJA** — `Produto.lojaId` (reverti o "compartilhado"
+  a pedido do dono: trocar de loja mostra os produtos DELA). GET filtra, POST carimba, PUT/DELETE
+  só na loja do produto. Legado sem lojaId só no consolidado. Import casa/cria DENTRO da loja.
+- **CRM** (`/api/crm/negocios` e `/api/crm/contatos`): `lojaId` nos dois; GET filtra, POST carimba.
+- **Vendas** (`/api/vendas`): venda escopada; `/api/vendas/vendedores` (roster da loja, acessível
+  ao operador — ≠ /api/usuarios admin-only).
+- **COLABORADORES** (`/api/usuarios` E `/api/equipe`): escopados por loja — ERA O FURO (dropdown
+  de vendedor vazava gente de outras lojas). page.tsx recarrega o roster ao trocar de loja.
+
+### 40.3 UI / navegação
+- **Seletor "Ver loja"** na sidebar (reusa o slot do sub-account): admin/gestor trocam entre
+  Todas + cada loja (`verComoLojaId`, sessionStorage); operador travado não tem seletor.
+  Dirige TODAS as telas do varejo.
+- **PDV** (`Vendas.tsx`): carrinho, preço ajustável (snapshot), pagamento, cliente, **vendedor
+  da loja**, cancelamento (estorno), **comprovante imprimível**. Só na loja focada (admin em
+  "Todas" vê aviso).
+- **Painel** do varejo (DashboardHome branch telefonia), **Lojas** (aba própria robusta: cards
+  + editor completo código/telefone/CNPJ/instância + ativar/excluir com guarda), **catálogo
+  AGRUPADO por categoria e marca** (Produto ganhou `marca`/`modelo`/`codigo`).
+- **Papéis de loja** no cadastro de colaborador: Estoquista(usuario)/Vendedor(vendas)/Gerente/Admin.
+- **Menu telefonia** na ordem do dono: Painel · Meu dia · Personal list · Produtos · PDV · CRM · Tarefas.
+- CRM: **empresa REMOVIDA** dos modais de oportunidade (criação E edição) — venda é p/ pessoa.
+
+### 40.4 Importação em massa por loja
+- **Upload de arquivo (.csv)** nos modais de Produtos e Contatos, com detecção de encoding
+  (UTF-8→Windows-1252 pro Excel BR). Parsers PUROS+testados (`lib/produtosImport`,
+  `lib/contatosImport`) **mapeiam por NOME de coluna** o export do ERP do cliente (Descrição/
+  Preço Venda/Estoque/Custo/Est.Mínimo/Marca/Código; e Nome/CPF/DDD+Celular/E-mail/Nascimento)
+  — fallback posicional. Escolhe a loja destino. Produtos: upsert no catálogo da loja + entrada
+  de estoque.
+
+### 40.5 WhatsApp por loja (Fase 3) — parcial
+- **F3-A** (transporte retrocompatível): `whatsapp.ts` — todas as funções ganharam param
+  `instancia` OPCIONAL (default `EVOLUTION_INSTANCE` → Norah/Deny idênticas, provado por tsc).
+  Helpers `instanciaDaLoja`/`lojaDaInstancia`; chaves `wa:*` NAMESPACEADAS por loja
+  (`chaveMsgsWa`/`chaveConversaWa`/`chaveConversasSetWa`). `Loja.evolutionInstance`.
+- **F3-B** (conexão por loja): `/api/whatsapp/conexao` aceita `instancia`; `WhatsAppConexao`
+  prop `instancia`; Config→Integrações no telefonia = 1 painel por loja (ACORDEÃO — abre uma
+  de cada vez). Fix: código de pareamento (só `pairingCode` curto, não o QR cru).
+- **F3-C inbound** (webhook roteia por `body.instance`→loja, isola a conversa nela).
+- **FALTA F3-C read-side** (precisa dos números pareados pra validar): escopar `/api/crm/mensagens`
+  por loja + mostrar o inbox por loja no CRM (hoje o inbox nem renderiza p/ telefonia porque
+  `whatsappConfigurado()` checa a env INSTANCE, que não existe — gate precisa virar por-loja).
+
+### 40.6 Pendências / próximos passos
+- **WhatsApp F3-C read-side + validação** (parear os 3 chips presencial, depois inbox por loja).
+- Crediário/parcelamento no PDV (Venda.financeiro já no tipo); NF (Venda.nfe registrado, Fase 5).
+- Transferência entre lojas com catálogo POR loja: hoje `estoque` transfere pelo mesmo produtoId;
+  como o produto agora é da loja, transferir p/ outra loja precisa casar/criar por SKU no destino
+  (revisitar — a UI de transferência ainda assume o modelo antigo).
+- Gate `build` = `vitest && next build` — teste vermelho não deploya (vale pra TODAS as instâncias).
