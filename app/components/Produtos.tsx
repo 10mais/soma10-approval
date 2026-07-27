@@ -53,7 +53,7 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
         : sub === 'catalogo'
           ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} bloquearCriar={podeGerirLojas && !lojaAtiva} onMudou={carregar} />
           : sub === 'lojas'
-            ? <LojasView lojas={lojas} produtos={produtos} onMudou={carregar} />
+            ? <LojasView lojas={lojas} onMudou={carregar} />
             : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} onGerirLojas={() => setSub('lojas')} />}
     </div>
   )
@@ -326,7 +326,7 @@ function MovimentarModal({ produto, lojaId, lojas, saldoAtual, onFechar, onFeito
 }
 
 // ─── Gestão de lojas (robusta) ───────────────────────────────────────────────
-function LojasView({ lojas, produtos, onMudou }: { lojas: Loja[]; produtos: Produto[]; onMudou: () => void }) {
+function LojasView({ lojas, onMudou }: { lojas: Loja[]; onMudou: () => void }) {
   const [editando, setEditando] = useState<Loja | null | 'novo'>(null)
   const [porLoja, setPorLoja] = useState<Record<string, Record<string, number>>>({})
   useEffect(() => { fetch('/api/estoque').then(r => r.json()).then(d => { if (d?.porLoja) setPorLoja(d.porLoja) }).catch(() => {}) }, [lojas.length])
@@ -359,7 +359,10 @@ function LojasView({ lojas, produtos, onMudou }: { lojas: Loja[]; produtos: Prod
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {lojas.map(l => {
             const saldos = porLoja[l.id] || {}
-            const comEstoque = produtos.filter(p => (saldos[p.id] || 0) > 0).length
+            // Contar da MESMA fonte das unidades (porLoja desta loja), nunca da
+            // lista `produtos` — ela vem escopada à loja focada e filtrada por
+            // lojaId, o que dava "0 produtos" com estoque > 0 (fontes divergentes).
+            const comEstoque = Object.values(saldos).filter(v => (Number(v) || 0) > 0).length
             const unidades = Object.values(saldos).reduce((s, v) => s + (Number(v) || 0), 0)
             const inativa = l.ativa === false
             return (
