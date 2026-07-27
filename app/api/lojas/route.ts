@@ -42,7 +42,10 @@ export async function PUT(req: NextRequest) {
     .map((l: any) => ({
       id: l.id || uuid(),
       nome: String(l.nome).trim().slice(0, 80),
+      codigo: (l.codigo || '').toString().trim().slice(0, 20) || undefined,
       endereco: (l.endereco || '').toString().trim().slice(0, 200) || undefined,
+      telefone: (l.telefone || '').toString().trim().slice(0, 40) || undefined,
+      cnpj: (l.cnpj || '').toString().trim().slice(0, 20) || undefined,
       ativa: l.ativa !== false,
       // Nome da instância Evolution da loja (WhatsApp por loja) — sanitizado.
       evolutionInstance: (l.evolutionInstance || '').toString().trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40) || undefined,

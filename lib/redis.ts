@@ -530,7 +530,10 @@ export type Processo = {
 export type Loja = {
   id: string
   nome: string
+  codigo?: string      // código curto/identificador da unidade (ex.: '01', 'MATRIZ')
   endereco?: string
+  telefone?: string
+  cnpj?: string
   ativa?: boolean
   // WhatsApp por loja (telefonia): nome da instância Evolution DESTA loja no host
   // compartilhado (ex.: 'space-santoangelo'). Cada loja pareia o seu número; o

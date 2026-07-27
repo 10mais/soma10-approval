@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { abaixoDoMinimo } from '@/lib/estoque'
+import { parseProdutosColados } from '@/lib/produtosImport'
 
-type Loja = { id: string; nome: string; endereco?: string; ativa?: boolean; evolutionInstance?: string }
+type Loja = { id: string; nome: string; codigo?: string; endereco?: string; telefone?: string; cnpj?: string; ativa?: boolean; evolutionInstance?: string }
 type Produto = { id: string; nome: string; sku?: string; categoria: string; precoVenda: number; precoCusto?: number; estoqueMinimo?: number; ativo?: boolean; descricao?: string }
 
 const CATEGORIAS = [
@@ -18,7 +19,7 @@ const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'cu
 const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
 export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAtiva = '', podeGerirLojas = false }: { podeEditar?: boolean; podeExcluir?: boolean; lojaAtiva?: string; podeGerirLojas?: boolean }) {
-  const [sub, setSub] = useState<'catalogo' | 'estoque'>('catalogo')
+  const [sub, setSub] = useState<'catalogo' | 'estoque' | 'lojas'>('catalogo')
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [lojas, setLojas] = useState<Loja[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -40,9 +41,9 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Catálogo compartilhado entre as lojas · estoque por loja.</p>
         </div>
         <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
-          {(['catalogo', 'estoque'] as const).map(v => (
+          {(['catalogo', 'estoque', ...(podeGerirLojas ? ['lojas'] as const : [])] as const).map(v => (
             <button key={v} onClick={() => setSub(v)} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, background: sub === v ? '#fff' : 'transparent', color: sub === v ? '#111' : '#888', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
-              {v === 'catalogo' ? 'Catálogo' : 'Estoque'}
+              {v === 'catalogo' ? 'Catálogo' : v === 'estoque' ? 'Estoque' : 'Lojas'}
             </button>
           ))}
         </div>
@@ -50,15 +51,18 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
 
       {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
-          ? <Catalogo produtos={produtos} podeEditar={podeEditar} podeExcluir={podeExcluir} onMudou={carregar} />
-          : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} />}
+          ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} onMudou={carregar} />
+          : sub === 'lojas'
+            ? <LojasView lojas={lojas} produtos={produtos} onMudou={carregar} />
+            : <Estoque produtos={produtos} lojas={lojas} podeEditar={podeEditar} onLojasMudaram={carregar} lojaAtiva={lojaAtiva} podeGerirLojas={podeGerirLojas} onGerirLojas={() => setSub('lojas')} />}
     </div>
   )
 }
 
 // ─── Catálogo ────────────────────────────────────────────────────────────────
-function Catalogo({ produtos, podeEditar, podeExcluir, onMudou }: { produtos: Produto[]; podeEditar: boolean; podeExcluir: boolean; onMudou: () => void }) {
+function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, onMudou }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; podeExcluir: boolean; lojaAtiva: string; onMudou: () => void }) {
   const [editor, setEditor] = useState<Partial<Produto> | null>(null)
+  const [importar, setImportar] = useState(false)
   const [busca, setBusca] = useState('')
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -81,8 +85,10 @@ function Catalogo({ produtos, podeEditar, podeExcluir, onMudou }: { produtos: Pr
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, SKU ou categoria…" style={{ ...inp, flex: 1, minWidth: 200 }} />
+        {podeEditar && lojas.length > 0 && <button onClick={() => setImportar(true)} style={{ padding: '9px 16px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Importar</button>}
         {podeEditar && <button onClick={() => setEditor({ categoria: 'smartphone', precoVenda: 0, ativo: true })} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Produto</button>}
       </div>
+      {importar && <ImportarProdutosModal lojas={lojas} lojaAtiva={lojaAtiva} onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); onMudou() }} />}
 
       {filtrados.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>{produtos.length === 0 ? 'Nenhum produto ainda. Cadastre o primeiro.' : 'Nada encontrado.'}</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -130,10 +136,9 @@ function Catalogo({ produtos, podeEditar, podeExcluir, onMudou }: { produtos: Pr
 }
 
 // ─── Estoque por loja ────────────────────────────────────────────────────────
-function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeGerirLojas }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void; lojaAtiva: string; podeGerirLojas: boolean }) {
+function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeGerirLojas, onGerirLojas }: { produtos: Produto[]; lojas: Loja[]; podeEditar: boolean; onLojasMudaram: () => void; lojaAtiva: string; podeGerirLojas: boolean; onGerirLojas: () => void }) {
   const [saldos, setSaldos] = useState<Record<string, number>>({})
   const [porLoja, setPorLoja] = useState<Record<string, Record<string, number>> | null>(null)
-  const [gerirLojas, setGerirLojas] = useState(false)
   const [mov, setMov] = useState<{ produto: Produto } | null>(null)
 
   // lojaAtiva vem do seletor da sidebar: '' = consolidado (rede); id = loja focada.
@@ -156,8 +161,7 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
     return (
       <div style={{ padding: 24, background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', textAlign: 'center' }}>
         <p style={{ margin: '0 0 12px', fontSize: 14, color: '#666' }}>Nenhuma loja cadastrada. O estoque é por loja — crie a primeira.</p>
-        {podeGerirLojas && <button onClick={() => setGerirLojas(true)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
-        {gerirLojas && <GerirLojas lojas={lojas} onFechar={() => setGerirLojas(false)} onSalvo={() => { setGerirLojas(false); onLojasMudaram() }} />}
+        {podeGerirLojas && <button onClick={onGerirLojas} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
       </div>
     )
   }
@@ -171,7 +175,7 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 13.5, fontWeight: 800, color: '#111' }}>{consolidado ? 'Estoque · todas as lojas (rede)' : `Estoque · ${lojaFocoNome || 'loja'}`}</span>
-        {podeGerirLojas && <button onClick={() => setGerirLojas(true)} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
+        {podeGerirLojas && <button onClick={onGerirLojas} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
       </div>
 
       {produtos.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p>
@@ -221,7 +225,6 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
           </div>
         )}
 
-      {gerirLojas && <GerirLojas lojas={lojas} onFechar={() => setGerirLojas(false)} onSalvo={() => { setGerirLojas(false); onLojasMudaram() }} />}
       {mov && <MovimentarModal produto={mov.produto} lojaId={lojaFocoId} lojas={lojas} saldoAtual={saldos[mov.produto.id] || 0} onFechar={() => setMov(null)} onFeito={() => { setMov(null); carregar() }} />}
     </div>
   )
@@ -279,32 +282,151 @@ function MovimentarModal({ produto, lojaId, lojas, saldoAtual, onFechar, onFeito
   )
 }
 
-function GerirLojas({ lojas, onFechar, onSalvo }: { lojas: Loja[]; onFechar: () => void; onSalvo: () => void }) {
-  const [lista, setLista] = useState<Loja[]>(lojas.length ? lojas : [{ id: '', nome: '', ativa: true }])
+// ─── Gestão de lojas (robusta) ───────────────────────────────────────────────
+function LojasView({ lojas, produtos, onMudou }: { lojas: Loja[]; produtos: Produto[]; onMudou: () => void }) {
+  const [editando, setEditando] = useState<Loja | null | 'novo'>(null)
+  const [porLoja, setPorLoja] = useState<Record<string, Record<string, number>>>({})
+  useEffect(() => { fetch('/api/estoque').then(r => r.json()).then(d => { if (d?.porLoja) setPorLoja(d.porLoja) }).catch(() => {}) }, [lojas.length])
+
+  async function salvarLista(lista: Loja[]): Promise<boolean> {
+    const r = await fetch('/api/lojas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lojas: lista }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) { onMudou(); return true }
+    toast(r?.error || 'Não foi possível salvar as lojas.', 'erro'); return false
+  }
+  async function salvarLoja(loja: Loja) {
+    const existe = loja.id && lojas.some(l => l.id === loja.id)
+    const nova = existe ? lojas.map(l => l.id === loja.id ? loja : l) : [...lojas, loja]
+    if (await salvarLista(nova)) setEditando(null)
+  }
+  async function excluir(loja: Loja) {
+    const unidades = Object.values(porLoja[loja.id] || {}).reduce((s, v) => s + (Number(v) || 0), 0)
+    if (unidades > 0) { toast(`"${loja.nome}" tem ${unidades} un. em estoque — zere/transfira antes de excluir.`, 'erro'); return }
+    if (!(await confirmar(`Excluir a loja "${loja.nome}"? As vendas e o histórico já feitos permanecem.`, { titulo: 'Excluir loja', okLabel: 'Excluir', perigo: true }))) return
+    await salvarLista(lojas.filter(l => l.id !== loja.id))
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#999' }}>{lojas.length} loja(s) · cada uma tem estoque, PDV, CRM e WhatsApp próprios.</p>
+        <button onClick={() => setEditando('novo')} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Nova loja</button>
+      </div>
+
+      {lojas.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Nenhuma loja ainda. Crie a primeira unidade.</p> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+          {lojas.map(l => {
+            const saldos = porLoja[l.id] || {}
+            const comEstoque = produtos.filter(p => (saldos[p.id] || 0) > 0).length
+            const unidades = Object.values(saldos).reduce((s, v) => s + (Number(v) || 0), 0)
+            const inativa = l.ativa === false
+            return (
+              <div key={l.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', boxShadow: '0 1px 5px rgba(0,0,0,0.05)', padding: 16, opacity: inativa ? 0.65 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>{l.nome}{l.codigo && <span style={{ fontSize: 11, fontWeight: 800, color: '#666', background: '#f0f0f0', borderRadius: 6, padding: '2px 7px', marginLeft: 8 }}>{l.codigo}</span>}</p>
+                    {l.endereco && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.endereco}</p>}
+                  </div>
+                  {inativa && <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>inativa</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 16, margin: '12px 0', fontSize: 12.5, color: '#444' }}>
+                  <span><strong style={{ color: '#111' }}>{comEstoque}</strong> produtos</span>
+                  <span><strong style={{ color: '#111' }}>{unidades}</strong> un. em estoque</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#888', marginBottom: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.evolutionInstance ? '#16a34a' : '#ccc', flexShrink: 0 }} />
+                  {l.evolutionInstance ? `WhatsApp: ${l.evolutionInstance}` : 'WhatsApp não configurado'}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => setEditando(l)} style={{ flex: 1, padding: '7px 0', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => salvarLista(lojas.map(x => x.id === l.id ? { ...x, ativa: inativa } : x))} style={{ padding: '7px 12px', background: '#fff', color: '#666', border: '1px solid #e2e2e2', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{inativa ? 'Ativar' : 'Desativar'}</button>
+                  <button onClick={() => excluir(l)} title="Excluir" style={{ padding: '7px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>×</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {editando && <LojaEditor loja={editando === 'novo' ? null : editando} onSalvar={salvarLoja} onFechar={() => setEditando(null)} />}
+    </div>
+  )
+}
+
+function LojaEditor({ loja, onSalvar, onFechar }: { loja: Loja | null; onSalvar: (l: Loja) => void; onFechar: () => void }) {
+  const [f, setF] = useState<Loja>(loja || { id: '', nome: '', ativa: true })
   const [salvando, setSalvando] = useState(false)
+  const set = (patch: Partial<Loja>) => setF(prev => ({ ...prev, ...patch }))
   async function salvar() {
+    if (!f.nome.trim()) { toast('Informe o nome da loja.', 'erro'); return }
     setSalvando(true)
-    const r = await fetch('/api/lojas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lojas: lista.filter(l => l.nome.trim()) }) }).then(x => x.json()).catch(() => null)
+    await onSalvar({ ...f, nome: f.nome.trim() })
     setSalvando(false)
-    if (r?.ok) onSalvo(); else toast('Não foi possível salvar as lojas.', 'erro')
   }
   return (
     <div onClick={fecharFora(onFechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 20, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, padding: 22, margin: '24px 0' }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>Lojas</h3>
-        {lista.map((l, i) => (
-          <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input value={l.nome} onChange={e => { const ls = [...lista]; ls[i] = { ...l, nome: e.target.value }; setLista(ls) }} placeholder={`Loja ${i + 1}`} style={{ ...inp, flex: '1 1 130px' }} />
-            <input value={l.endereco || ''} onChange={e => { const ls = [...lista]; ls[i] = { ...l, endereco: e.target.value }; setLista(ls) }} placeholder="Endereço (opcional)" style={{ ...inp, flex: '1 1 130px' }} />
-            <input value={l.evolutionInstance || ''} onChange={e => { const ls = [...lista]; ls[i] = { ...l, evolutionInstance: e.target.value }; setLista(ls) }} placeholder="Instância WhatsApp (ex.: space-cruzalta)" title="Nome da instância Evolution desta loja (só letras minúsculas, números e hífen)" style={{ ...inp, flex: '1 1 160px' }} />
-            <button onClick={() => setLista(lista.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ccc', fontSize: 18, cursor: 'pointer' }}>×</button>
-          </div>
-        ))}
-        <p style={{ margin: '0 0 12px', fontSize: 11.5, color: '#aaa' }}>A “Instância WhatsApp” é o nome único desta loja no host do Evolution — cada loja pareia o seu próprio número. Deixe vazio se ainda não usa WhatsApp por loja.</p>
-        <button onClick={() => setLista([...lista, { id: '', nome: '', ativa: true }])} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0', marginBottom: 14 }}>+ Adicionar loja</button>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 22, margin: '24px 0' }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{loja ? 'Editar loja' : 'Nova loja'}</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div><label style={lbl}>Nome *</label><input value={f.nome} onChange={e => set({ nome: e.target.value })} placeholder="Ex.: Santo Ângelo (Matriz)" style={{ ...inp, width: '100%' }} autoFocus /></div>
+          <div><label style={lbl}>Código</label><input value={f.codigo || ''} onChange={e => set({ codigo: e.target.value })} placeholder="01" style={{ ...inp, width: '100%' }} /></div>
+        </div>
+        <label style={lbl}>Endereço</label>
+        <input value={f.endereco || ''} onChange={e => set({ endereco: e.target.value })} placeholder="Rua, nº, bairro, cidade" style={{ ...inp, width: '100%', marginBottom: 10 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div><label style={lbl}>Telefone</label><input value={f.telefone || ''} onChange={e => set({ telefone: e.target.value })} placeholder="(55) 99999-9999" style={{ ...inp, width: '100%' }} /></div>
+          <div><label style={lbl}>CNPJ</label><input value={f.cnpj || ''} onChange={e => set({ cnpj: e.target.value })} placeholder="00.000.000/0001-00" style={{ ...inp, width: '100%' }} /></div>
+        </div>
+        <label style={lbl}>Instância WhatsApp</label>
+        <input value={f.evolutionInstance || ''} onChange={e => set({ evolutionInstance: e.target.value })} placeholder="ex.: space-cruzalta" title="Nome único desta loja no host do Evolution (minúsculas, números e hífen)" style={{ ...inp, width: '100%', marginBottom: 6 }} />
+        <p style={{ margin: '0 0 14px', fontSize: 11, color: '#aaa' }}>Cada loja pareia o seu próprio número. Deixe vazio se ainda não usa WhatsApp por loja.</p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#444', marginBottom: 16 }}>
+          <input type="checkbox" checked={f.ativa !== false} onChange={e => set({ ativa: e.target.checked })} /> Loja ativa (aparece nos seletores e no PDV)
+        </label>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar lojas'}</button>
-          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: f.nome.trim() ? '#111' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar loja'}</button>
+          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ImportarProdutosModal({ lojas, lojaAtiva, onFechar, onImportado }: { lojas: Loja[]; lojaAtiva: string; onFechar: () => void; onImportado: () => void }) {
+  const lojasAtivas = lojas.filter(l => l.ativa !== false)
+  const [lojaId, setLojaId] = useState(lojaAtiva || lojasAtivas[0]?.id || '')
+  const [texto, setTexto] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const { linhas, ignoradas } = useMemo(() => parseProdutosColados(texto), [texto])
+
+  async function importar() {
+    if (!lojaId) { toast('Escolha a loja de destino.', 'erro'); return }
+    if (!linhas.length) { toast('Cole ao menos uma linha válida.', 'erro'); return }
+    setEnviando(true)
+    const r = await fetch('/api/produtos/importar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lojaId, linhas }) }).then(x => x.json()).catch(() => null)
+    setEnviando(false)
+    if (r?.ok) { toast(`${r.criados} criado(s) · ${r.atualizados} atualizado(s) · ${r.unidades} un. no estoque.`, 'sucesso'); onImportado() }
+    else toast(r?.error || 'Falha ao importar.', 'erro')
+  }
+
+  return (
+    <div onClick={fecharFora(onFechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 20, overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, padding: 22, margin: '24px 0' }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Importar produtos em massa</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888' }}>O catálogo é compartilhado; casa por SKU (ou nome) — existente atualiza, novo é criado. A quantidade entra no estoque da <strong>loja escolhida</strong>.</p>
+        <label style={lbl}>Loja de destino do estoque</label>
+        <select value={lojaId} onChange={e => setLojaId(e.target.value)} style={{ ...inp, width: '100%', background: '#fff', marginBottom: 12 }}>
+          <option value="">Selecione a loja…</option>
+          {lojasAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
+        </select>
+        <label style={lbl}>Cole as linhas (Excel/planilha ou CSV)</label>
+        <div style={{ margin: '0 0 6px', fontSize: 11, color: '#aaa' }}>Colunas, nesta ordem: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mínimo · Quantidade</code>. Categorias: smartphone, eletronico, acessorio, outro.</div>
+        <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={'iPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10\nCabo USB-C;CB-USBC;acessorio;39,90;15;5;50'} style={{ ...inp, width: '100%', minHeight: 170, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
+        <div style={{ margin: '10px 0 16px', fontSize: 12.5, color: '#444' }}>
+          {texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> produto(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} linha(s) ignorada(s) (sem preço)</span>}</> : <span style={{ color: '#aaa' }}>Cole os dados para ver a prévia.</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={importar} disabled={enviando || !linhas.length || !lojaId} style={{ flex: 1, padding: '11px 0', background: (linhas.length && lojaId) ? '#16a34a' : '#eee', color: (linhas.length && lojaId) ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{enviando ? 'Importando…' : `Importar ${linhas.length || ''}`}</button>
+          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
