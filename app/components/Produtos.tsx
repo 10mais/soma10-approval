@@ -6,7 +6,7 @@ import { abaixoDoMinimo } from '@/lib/estoque'
 import { parseProdutosColados } from '@/lib/produtosImport'
 
 type Loja = { id: string; nome: string; codigo?: string; endereco?: string; telefone?: string; cnpj?: string; ativa?: boolean; evolutionInstance?: string }
-type Produto = { id: string; nome: string; sku?: string; categoria: string; precoVenda: number; precoCusto?: number; estoqueMinimo?: number; ativo?: boolean; descricao?: string }
+type Produto = { id: string; nome: string; marca?: string; modelo?: string; codigo?: string; sku?: string; categoria: string; precoVenda: number; precoCusto?: number; estoqueMinimo?: number; ativo?: boolean; descricao?: string }
 
 const CATEGORIAS = [
   { key: 'smartphone', label: 'Smartphone' },
@@ -66,8 +66,29 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
   const [busca, setBusca] = useState('')
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    return produtos.filter(p => !q || `${p.nome} ${p.sku || ''} ${catLabel(p.categoria)}`.toLowerCase().includes(q))
+    return produtos.filter(p => !q || `${p.nome} ${p.marca || ''} ${p.modelo || ''} ${p.codigo || ''} ${p.sku || ''} ${catLabel(p.categoria)}`.toLowerCase().includes(q))
   }, [produtos, busca])
+  // Agrupa por CATEGORIA e, dentro, por MARCA (pedido do dono pra organizar o catálogo).
+  const grupos = useMemo(() => {
+    const cats = new Map<string, Map<string, Produto[]>>()
+    for (const p of filtrados) {
+      const cat = p.categoria || 'outro'
+      const marca = (p.marca || '').trim() || '—'
+      if (!cats.has(cat)) cats.set(cat, new Map())
+      const m = cats.get(cat)!
+      if (!m.has(marca)) m.set(marca, [])
+      m.get(marca)!.push(p)
+    }
+    return Array.from(cats.entries())
+      .sort((a, b) => catLabel(a[0]).localeCompare(catLabel(b[0]), 'pt'))
+      .map(([cat, marcasMap]) => ({
+        cat,
+        total: Array.from(marcasMap.values()).reduce((s, a) => s + a.length, 0),
+        marcas: Array.from(marcasMap.entries())
+          .sort((a, b) => a[0].localeCompare(b[0], 'pt'))
+          .map(([marca, ps]) => ({ marca: marca === '—' ? '' : marca, produtos: ps.sort((x, y) => x.nome.localeCompare(y.nome, 'pt')) })),
+      }))
+  }, [filtrados])
 
   async function salvar() {
     if (!editor) return
@@ -93,16 +114,31 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
       {importar && <ImportarProdutosModal lojas={lojas} lojaAtiva={lojaAtiva} onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); onMudou() }} />}
 
       {filtrados.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>{produtos.length === 0 ? 'Nenhum produto ainda. Cadastre o primeiro.' : 'Nada encontrado.'}</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filtrados.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>{p.nome} {p.ativo === false && <span style={{ fontSize: 10.5, color: '#999', fontWeight: 700 }}>· inativo</span>}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{catLabel(p.categoria)}{p.sku ? ` · ${p.sku}` : ''}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {grupos.map(g => (
+            <div key={g.cat}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '0 0 8px', padding: '0 2px' }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{catLabel(g.cat)}</span>
+                <span style={{ fontSize: 12, color: '#aaa' }}>{g.total}</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap' }}>{brl(p.precoVenda)}</span>
-              {podeEditar && <button onClick={() => setEditor({ ...p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
-              {podeExcluir && <button onClick={() => excluir(p)} style={{ padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
+              {g.marcas.map(m => (
+                <div key={m.marca || 'sem'} style={{ marginBottom: 10 }}>
+                  {m.marca && <p style={{ margin: '0 0 5px', fontSize: 11.5, fontWeight: 700, color: '#888', padding: '0 4px' }}>{m.marca}</p>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {m.produtos.map(p => (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome} {p.ativo === false && <span style={{ fontSize: 10.5, color: '#999', fontWeight: 700 }}>· inativo</span>}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{[p.modelo, p.codigo && `cód ${p.codigo}`, p.sku].filter(Boolean).join(' · ') || catLabel(p.categoria)}</p>
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap' }}>{brl(p.precoVenda)}</span>
+                        {podeEditar && <button onClick={() => setEditor({ ...p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
+                        {podeExcluir && <button onClick={() => excluir(p)} style={{ padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -115,8 +151,13 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
             <label style={lbl}>Nome *</label>
             <input value={editor.nome || ''} onChange={e => setEditor({ ...editor, nome: e.target.value })} placeholder="Ex.: iPhone 15 128GB" style={{ ...inp, width: '100%', marginBottom: 10 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div><label style={lbl}>Marca</label><input value={editor.marca || ''} onChange={e => setEditor({ ...editor, marca: e.target.value })} placeholder="Ex.: Apple, Samsung, JBL" style={{ ...inp, width: '100%' }} /></div>
+              <div><label style={lbl}>Modelo</label><input value={editor.modelo || ''} onChange={e => setEditor({ ...editor, modelo: e.target.value })} placeholder="Ex.: 15 Pro Max 256GB" style={{ ...inp, width: '100%' }} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={lbl}>Categoria</label><select value={editor.categoria} onChange={e => setEditor({ ...editor, categoria: e.target.value })} style={{ ...inp, width: '100%', background: '#fff' }}>{CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
-              <div><label style={lbl}>SKU</label><input value={editor.sku || ''} onChange={e => setEditor({ ...editor, sku: e.target.value })} placeholder="opcional" style={{ ...inp, width: '100%' }} /></div>
+              <div><label style={lbl}>Código</label><input value={editor.codigo || ''} onChange={e => setEditor({ ...editor, codigo: e.target.value })} placeholder="interno" style={{ ...inp, width: '100%' }} /></div>
+              <div><label style={lbl}>SKU / barras</label><input value={editor.sku || ''} onChange={e => setEditor({ ...editor, sku: e.target.value })} placeholder="opcional" style={{ ...inp, width: '100%' }} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={lbl}>Preço venda *</label><input type="number" min="0" step="0.01" value={editor.precoVenda ?? ''} onChange={e => setEditor({ ...editor, precoVenda: Number(e.target.value) })} style={{ ...inp, width: '100%' }} /></div>

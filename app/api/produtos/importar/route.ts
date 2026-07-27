@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     const categoria = (CATEGORIAS_IMPORT.includes(linha?.categoria as any) ? linha.categoria : 'outro') as Produto['categoria']
     const campos = {
       nome,
+      ...(linha?.marca ? { marca: String(linha.marca).trim().slice(0, 60) } : {}),
+      ...(linha?.modelo ? { modelo: String(linha.modelo).trim().slice(0, 60) } : {}),
+      ...(linha?.codigo ? { codigo: String(linha.codigo).trim().slice(0, 40) } : {}),
       sku: (linha?.sku || '').trim() || undefined,
       categoria,
       precoVenda: Math.round(preco * 100) / 100,

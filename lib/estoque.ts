@@ -59,7 +59,7 @@ export function validarTransferencia(params: {
 
 // Sanitiza/valida um produto recebido do cliente HTTP. Erro (string) ou o objeto limpo.
 export type ProdutoEntrada = {
-  nome?: string; sku?: string; categoria?: string; precoVenda?: any; precoCusto?: any; estoqueMinimo?: any; ativo?: boolean; descricao?: string
+  nome?: string; marca?: string; modelo?: string; codigo?: string; sku?: string; categoria?: string; precoVenda?: any; precoCusto?: any; estoqueMinimo?: any; ativo?: boolean; descricao?: string
 }
 const CATEGORIAS = ['smartphone', 'eletronico', 'acessorio', 'outro']
 export function limparProduto(bruto: ProdutoEntrada): { erro: string } | { ok: true; campos: any } {
@@ -73,6 +73,9 @@ export function limparProduto(bruto: ProdutoEntrada): { erro: string } | { ok: t
     ok: true,
     campos: {
       nome,
+      marca: (bruto?.marca || '').trim() || undefined,
+      modelo: (bruto?.modelo || '').trim() || undefined,
+      codigo: (bruto?.codigo || '').trim() || undefined,
       sku: (bruto?.sku || '').trim() || undefined,
       categoria,
       precoVenda: preco,

@@ -7,6 +7,9 @@
 
 export type LinhaImportProduto = {
   nome: string
+  marca?: string
+  modelo?: string
+  codigo?: string
   sku?: string
   categoria: string
   precoVenda: number
@@ -58,14 +61,17 @@ export function parseProdutosColados(texto: string): { linhas: LinhaImportProdut
   const col = comCab
     ? {
         nome: achar(header, /descri|^produto|^nome/i),
-        sku: achar(header, /barras/i, /c[oó]digo pr[oó]prio/i, /^c[oó]digo$/i, /refer/i, /sku/i),
+        marca: achar(header, /marca|fabricante/i),
+        modelo: achar(header, /modelo/i),
+        codigo: achar(header, /c[oó]digo pr[oó]prio/i, /^c[oó]digo$/i, /refer/i),
+        sku: achar(header, /barras/i, /sku|ean|gtin/i),
         categoria: achar(header, /grupo|categoria/i),
         preco: achar(header, /pre[çc]o.*venda/i, /^venda$/i, /^pre[çc]o$/i),
         custo: achar(header, /custo/i),
         min: achar(header, /m[ií]nimo/i),
         qtd: achar(header, /^estoque$/i, /quantidade/i, /^qtd/i, /saldo/i),
       }
-    : { nome: 0, sku: 1, categoria: 2, preco: 3, custo: 4, min: 5, qtd: 6 }
+    : { nome: 0, marca: -1, modelo: -1, codigo: -1, sku: 1, categoria: 2, preco: 3, custo: 4, min: 5, qtd: 6 }
 
   const linhas: LinhaImportProduto[] = []
   let ignoradas = 0
@@ -81,6 +87,9 @@ export function parseProdutosColados(texto: string): { linhas: LinhaImportProdut
     const min = numBR(val(c, col.min))
     linhas.push({
       nome: nome.slice(0, 120),
+      ...(val(c, col.marca) ? { marca: val(c, col.marca).slice(0, 60) } : {}),
+      ...(val(c, col.modelo) ? { modelo: val(c, col.modelo).slice(0, 60) } : {}),
+      ...(val(c, col.codigo) ? { codigo: val(c, col.codigo).slice(0, 40) } : {}),
       sku: val(c, col.sku).trim() || undefined,
       categoria: cat,
       precoVenda: Math.max(0, Math.round(preco * 100) / 100),

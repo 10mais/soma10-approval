@@ -551,6 +551,9 @@ export type Produto = {
   id: string
   nome: string
   lojaId?: string           // varejo multi-loja: a loja DONA do produto (catálogo por loja). Ausente = legado/sem loja.
+  marca?: string            // fabricante (agrupa a listagem)
+  modelo?: string           // modelo do produto
+  codigo?: string           // código interno da loja (distinto do SKU/código de barras)
   sku?: string
   categoria: CategoriaProduto
   precoVenda: number

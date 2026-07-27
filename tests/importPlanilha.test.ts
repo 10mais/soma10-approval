@@ -11,8 +11,16 @@ describe('parseProdutosColados — export de ERP (mapeia por cabeçalho)', () =>
   it('mapeia colunas do ERP na ordem que vierem', () => {
     const { linhas } = parseProdutosColados(csv)
     expect(linhas).toHaveLength(2)
-    expect(linhas[0]).toEqual({ nome: 'ADAPTADOR DE VIAGEM', sku: '789123', categoria: 'outro', precoVenda: 49.9, precoCusto: 14, estoqueMinimo: 2, quantidade: 1 })
+    expect(linhas[0]).toEqual({ nome: 'ADAPTADOR DE VIAGEM', codigo: '470', sku: '789123', categoria: 'outro', precoVenda: 49.9, precoCusto: 14, estoqueMinimo: 2, quantidade: 1 })
     expect(linhas[1]).toMatchObject({ nome: 'FONE HREBOS', quantidade: 7, precoCusto: 12.5, estoqueMinimo: 3 })
+  })
+  it('mapeia Marca e Código Próprio quando presentes', () => {
+    const csv = [
+      'Descrição do Produto;Marca;Preço Venda;Grupo;Código Próprio;Estoque',
+      'Fone JBL Tune;JBL;199,90;acessorio;INT-001;5',
+    ].join('\n')
+    const { linhas } = parseProdutosColados(csv)
+    expect(linhas[0]).toMatchObject({ nome: 'Fone JBL Tune', marca: 'JBL', codigo: 'INT-001', categoria: 'acessorio', precoVenda: 199.9, quantidade: 5 })
   })
   it('ainda aceita o formato simples posicional (sem cabeçalho)', () => {
     const { linhas } = parseProdutosColados('Cabo USB;CB1;acessorio;29,90;10;5;50')
