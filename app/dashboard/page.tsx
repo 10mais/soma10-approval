@@ -627,6 +627,9 @@ function Dashboard() {
   const [lojasTel, setLojasTel] = useState<{ id: string; nome: string; evolutionInstance?: string }[]>([])
   const [waLojaAberta, setWaLojaAberta] = useState('') // conexão WhatsApp: uma loja por vez (acordeão)
   useEffect(() => { if (perfilTelefonia) fetch('/api/lojas').then(r => r.json()).then(d => setLojasTel(Array.isArray(d) ? d : [])).catch(() => {}) }, [perfilTelefonia])
+  // "Criar vendedor dentro da sub-account": ao abrir o cadastro com uma loja focada
+  // no seletor lateral, a loja do colaborador já vem pré-selecionada (telefonia).
+  useEffect(() => { if (perfilTelefonia && mostrarFormUsuario && verComoLojaId && !(novoUsuario as any).lojaId) setNovoUsuario(p => ({ ...p, lojaId: verComoLojaId } as any)) }, [mostrarFormUsuario, perfilTelefonia, verComoLojaId])
   const ocultas = abasOcultas(perfilInstancia)
   const [chatNaoLidas, setChatNaoLidas] = useState(0)
   const [configAberto, setConfigAberto] = useState(true)
