@@ -1833,6 +1833,10 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
             </div>
             <div><label style={labelStyle}>Ascendente / origem da família</label><input value={f.ascendenteOrigem} onChange={e => setF({ ...f, ascendenteOrigem: e.target.value })} placeholder="Nome do antepassado estrangeiro, se souber" style={inputStyle} /></div>
             <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          </>) : perfilTelefonia ? (<>
+            {/* Varejo: venda para PESSOA — nada de empresa/segmento/faturamento. */}
+            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
+            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Produto de interesse, negociação, observações da venda..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
