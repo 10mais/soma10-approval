@@ -71,6 +71,7 @@ export default function DashboardVendas() {
       <p style={{ margin: '0 0 10px', fontSize: 12.5, fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Conversão</p>
       <div style={{ ...grid, marginBottom: 14 }}>
         <Kpi label="Taxa de ganho" valor={`${c.winRate}%`} cor="#16a34a" sub="ganhos ÷ todas as oportunidades" />
+        <Kpi label="Conversão (R$)" valor={`${c.conversaoValor}%`} cor="#16a34a" sub={`${fmtR$(c.valorConvertido)} de ${fmtR$(c.valorOportunidades)}`} />
         <Kpi label="Ticket médio" valor={fmtR$(c.ticketMedio)} sub="média dos negócios ganhos" />
         <Kpi label="Em aberto" valor={fmtR$(c.emAbertoValor)} cor="#1d4ed8" sub={`${c.emAbertoQtd} oportunidade(s)`} />
         <Kpi label="Ganhos no mês" valor={fmtR$(c.ganhosMesValor)} cor="#16a34a" sub={`${c.ganhosMesQtd} negócio(s)`} />

@@ -417,7 +417,10 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   const valorAberto = abertos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const valorGanhoMes = ganhosMes.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const winRate = negocios.length > 0 ? Math.round((ganhos.length / negocios.length) * 100) : 0
-  const ticket = ganhos.length > 0 ? ganhos.reduce((s, n) => s + (Number(n.valor) || 0), 0) / ganhos.length : 0
+  const valorOportunidades = negocios.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  const valorConvertido = ganhos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  const conversaoValor = valorOportunidades > 0 ? Math.round((valorConvertido / valorOportunidades) * 100) : 0
+  const ticket = ganhos.length > 0 ? valorConvertido / ganhos.length : 0
   const colsAbertas = estagios.filter(e => !e.ganho && !e.perdido)
   const porVendedor = Object.values(abertos.reduce((acc: any, n) => {
     const k = n.donoNome || '—'; acc[k] = acc[k] || { nome: k, qtd: 0, valor: 0 }; acc[k].qtd++; acc[k].valor += Number(n.valor) || 0; return acc
@@ -442,6 +445,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
         <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={`${abertos.length} negócio(s)`} />
         <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="#16a34a" />
         <Card titulo="Win rate" valor={`${winRate}%`} sub={`${ganhos.length} ganho / ${negocios.length} oportunidade(s)`} />
+        <Card titulo="Conversão (R$)" valor={`${conversaoValor}%`} sub={`${fmtR$(valorConvertido)} de ${fmtR$(valorOportunidades)}`} />
         <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
       </div>
 

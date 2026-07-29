@@ -36,12 +36,17 @@ export async function GET() {
     else if (n.status !== 'perdido') v.abertoValor += Number(n.valor) || 0
   }
 
+  const valorOportunidades = soma(negocios)
+  const valorConvertido = soma(ganhos)
   const conversao = {
     emAbertoQtd: abertos.length,
     emAbertoValor: soma(abertos),
     ganhosMesQtd: ganhosMes.length,
     ganhosMesValor: soma(ganhosMes),
     winRate: negocios.length ? Math.round((ganhos.length / negocios.length) * 100) : 0,
+    valorOportunidades,
+    valorConvertido,
+    conversaoValor: valorOportunidades ? Math.round((valorConvertido / valorOportunidades) * 100) : 0,
     ticketMedio: ganhos.length ? Math.round(soma(ganhos) / ganhos.length) : 0,
     porVendedor: Object.values(porVendedorMap).sort((a, b) => (b.ganhoValor + b.abertoValor) - (a.ganhoValor + a.abertoValor)),
   }
