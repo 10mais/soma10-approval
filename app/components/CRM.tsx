@@ -413,13 +413,10 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   const noMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === m && d.getFullYear() === y }
   const abertos = negocios.filter(n => n.status === 'aberto')
   const ganhos = negocios.filter(n => n.status === 'ganho')
-  const perdidos = negocios.filter(n => n.status === 'perdido')
   const ganhosMes = ganhos.filter(n => noMes(n.atualizadoEm))
-  const perdidosMes = perdidos.filter(n => noMes(n.atualizadoEm))
   const valorAberto = abertos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const valorGanhoMes = ganhosMes.reduce((s, n) => s + (Number(n.valor) || 0), 0)
-  const fechados = ganhosMes.length + perdidosMes.length
-  const winRate = fechados > 0 ? Math.round((ganhosMes.length / fechados) * 100) : 0
+  const winRate = negocios.length > 0 ? Math.round((ganhos.length / negocios.length) * 100) : 0
   const ticket = ganhos.length > 0 ? ganhos.reduce((s, n) => s + (Number(n.valor) || 0), 0) / ganhos.length : 0
   const colsAbertas = estagios.filter(e => !e.ganho && !e.perdido)
   const porVendedor = Object.values(abertos.reduce((acc: any, n) => {
@@ -444,7 +441,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
         <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={`${abertos.length} negócio(s)`} />
         <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="#16a34a" />
-        <Card titulo="Win rate (mês)" valor={`${winRate}%`} sub={`${ganhosMes.length} ganho / ${perdidosMes.length} perdido`} />
+        <Card titulo="Win rate" valor={`${winRate}%`} sub={`${ganhos.length} ganho / ${negocios.length} oportunidade(s)`} />
         <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
       </div>
 

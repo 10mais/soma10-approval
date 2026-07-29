@@ -23,7 +23,6 @@ export async function GET() {
 
   // ---- CONVERSÃO (CRM) ----
   const ganhos = negocios.filter(n => n.status === 'ganho')
-  const perdidos = negocios.filter(n => n.status === 'perdido')
   const abertos = negocios.filter(n => n.status !== 'ganho' && n.status !== 'perdido')
   const soma = (arr: CrmNegocio[]) => arr.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0)
@@ -42,7 +41,7 @@ export async function GET() {
     emAbertoValor: soma(abertos),
     ganhosMesQtd: ganhosMes.length,
     ganhosMesValor: soma(ganhosMes),
-    winRate: (ganhos.length + perdidos.length) ? Math.round((ganhos.length / (ganhos.length + perdidos.length)) * 100) : 0,
+    winRate: negocios.length ? Math.round((ganhos.length / negocios.length) * 100) : 0,
     ticketMedio: ganhos.length ? Math.round(soma(ganhos) / ganhos.length) : 0,
     porVendedor: Object.values(porVendedorMap).sort((a, b) => (b.ganhoValor + b.abertoValor) - (a.ganhoValor + a.abertoValor)),
   }
