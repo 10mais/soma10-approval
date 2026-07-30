@@ -6,7 +6,8 @@ import { redis, Cliente } from '@/lib/redis'
 export async function clienteSuspenso(clienteId?: string | null): Promise<boolean> {
   if (!clienteId) return false
   const c = await redis.get<Cliente>(`cliente:${clienteId}`)
-  return !!c?.inadimplente
+  // Inadimplente OU arquivado (contrato encerrado) = sem acesso às rotas do cliente.
+  return !!(c?.inadimplente || c?.arquivado)
 }
 
 // Resolve o clienteId a partir de um token público (aprovação ou status) e diz se

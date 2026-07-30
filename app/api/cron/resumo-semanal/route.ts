@@ -33,7 +33,7 @@ async function enviarResumos(): Promise<NextResponse> {
   let enviados = 0
   for (const id of ids) {
     const c = await redis.get<Cliente>(`cliente:${id}`)
-    if (!c || c.tipo === 'interno' || !c.loginEmail) continue
+    if (!c || c.tipo === 'interno' || (c as any).arquivado || !c.loginEmail) continue
     const r = await gerarResumoSemanal(id)
     if (!r) continue
     try {

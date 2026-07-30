@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clienteSuspenso } from '@/lib/suspensao'
+import { clientesAtivosIds } from '@/lib/cache'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -92,6 +93,14 @@ export async function GET(req: NextRequest) {
   // Posts na esteira: exclui briefing/copy/criativo do Planner, mas MANTEM aprovacao_copy
   // e aprovacao_criativo (necessarios para a tela de aprovacoes do cliente)
   filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto' || p!.etapa === 'aprovacao_copy' || p!.etapa === 'aprovacao_criativo')
+
+  // Esconde da EQUIPE o conteúdo de cliente ARQUIVADO ou já EXCLUÍDO (órfão):
+  // post sem clienteId (avulso) ou de cliente ativo permanece. O set vem do
+  // servidor com a lista COMPLETA de clientes — nunca esconde cliente ativo.
+  if (role !== 'cliente') {
+    const ativos = await clientesAtivosIds()
+    filtrados = (filtrados as Post[]).filter(p => !p!.clienteId || ativos.has(p!.clienteId))
+  }
 
   return NextResponse.json(filtrados)
 }

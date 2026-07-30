@@ -137,6 +137,7 @@ async function consultarTarefas(input: any): Promise<string> {
 async function consultarClientes(input: any): Promise<string> {
   const ids = await redis.smembers('clientes')
   let clientes = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
+  clientes = clientes.filter(c => !(c as any).arquivado) // cliente arquivado nunca entra
   if (!input.incluir_internos) clientes = clientes.filter(c => c.tipo !== 'interno')
   const lista = clientes.map(c => ({
     nome: c.nome,
@@ -174,7 +175,7 @@ async function consultarBrandboard(input: any): Promise<string> {
   const clientes = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
   const norm = (s: string) => (s || '').toLowerCase()
   const c = clientes.find(x => norm(x.nome) === alvo) || clientes.find(x => norm(x.nome).includes(alvo)) || clientes.find(x => alvo.includes(norm(x.nome)))
-  if (!c) return JSON.stringify({ erro: `cliente nao encontrado: ${input.cliente}`, clientesDisponiveis: clientes.filter(x => x.tipo !== 'interno').map(x => x.nome).slice(0, 40) })
+  if (!c) return JSON.stringify({ erro: `cliente nao encontrado: ${input.cliente}`, clientesDisponiveis: clientes.filter(x => x.tipo !== 'interno' && !(x as any).arquivado).map(x => x.nome).slice(0, 40) })
 
   const pb = c.playbook || {}
   const doc = (c.documentoMarca || '')
@@ -215,7 +216,7 @@ async function consultarFinanceiro(input: any): Promise<string> {
   const despesas = dids.length ? ((await redis.mget<(Despesa | null)[]>(...dids.map(i => `despesa:${i}`))).filter(Boolean) as Despesa[]) : []
 
   // Receita = contrato recorrente + avulsas do mes (clientes, exclui internos)
-  const receita = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => {
+  const receita = clientes.filter(c => c.tipo !== 'interno' && !(c as any).arquivado).reduce((s, c) => {
     const avulsas = (c.receitasAvulsas || []).filter(r => r.mes === mes).reduce((a, r) => a + (Number(r.valor) || 0), 0)
     return s + (Number(c.contratoValor) || 0) + avulsas
   }, 0)

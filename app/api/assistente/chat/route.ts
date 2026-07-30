@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     try {
       const ids = await redis.smembers('clientes')
       const cls = ids.length ? ((await redis.mget<(Cliente | null)[]>(...ids.map(i => `cliente:${i}`))).filter(Boolean) as Cliente[]) : []
-      listaClientes = cls.filter(c => c.tipo !== 'interno').map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`).join('\n')
+      listaClientes = cls.filter(c => c.tipo !== 'interno' && !(c as any).arquivado).map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`).join('\n')
     } catch { /* opcional */ }
     usarWebSearch = (agente.ferramentas || []).includes('web_search')
     system = `Você é "${agente.nome}"${agente.funcao ? `, ${agente.funcao}` : ''} da ${nomeAgencia}, uma agência de marketing digital. Você atua dentro do sistema Soma10 e conversa com a EQUIPE da agência (nunca com clientes finais).
@@ -151,7 +151,7 @@ Regras de estilo:
       const ids = await redis.smembers('clientes')
       const clientes = (await Promise.all(ids.map(id => redis.get<Cliente>(`cliente:${id}`)))).filter(Boolean) as Cliente[]
       listaClientes = clientes
-        .filter(c => c.tipo !== 'interno')
+        .filter(c => c.tipo !== 'interno' && !(c as any).arquivado)
         .map(c => `- ${c.nome}${c.segmento ? ` (${c.segmento})` : ''}${c.instagram ? ` — @${(c.instagram || '').replace(/^@/, '')}` : ''}`)
         .join('\n')
     } catch { /* roster e opcional */ }

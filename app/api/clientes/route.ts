@@ -40,6 +40,11 @@ export async function GET(req: NextRequest) {
   if (role === 'cliente') {
     const clienteId = (session.user as any).clienteId
     clientes = clientes.filter(c => c.id === clienteId)
+  } else {
+    // Equipe: por padrão esconde ARQUIVADOS (cliente que cancelou). ?arquivados=1
+    // devolve SÓ os arquivados (tela de gestão para restaurar).
+    const soArquivados = req.nextUrl.searchParams.get('arquivados') === '1'
+    clientes = clientes.filter(c => soArquivados ? !!c.arquivado : !c.arquivado)
   }
 
   // Nunca expor tokens nem a senha em texto plano ao frontend — nem os das
@@ -135,7 +140,7 @@ export async function PUT(req: NextRequest) {
     'contratoValor', 'contratoInicio', 'contratoRenovacao', 'contratoCiclo', 'diaVencimento', 'receitasAvulsas',
     'segmento', 'palavrasChave', 'descricao', 'publicoAlvo', 'tomDeVoz', 'preferencias', 'documentos',
     'documentoMarca', 'documentoMarcaGeradoEm', 'permissoes', 'handoffVendas', 'referenciasVisuais', 'assetsMarca', 'squad', 'squadPapeis', 'modulos', 'inadimplente', 'suspensoDesde',
-    'fontes', 'style']
+    'arquivado', 'arquivadoEm', 'fontes', 'style']
   const atualizado = { ...cliente }
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]
@@ -157,6 +162,10 @@ export async function PUT(req: NextRequest) {
   // Auditoria: mudança de estado de suspensão por inadimplência.
   if ('inadimplente' in updates && !!updates.inadimplente !== !!cliente.inadimplente) {
     await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'equipe', acao: updates.inadimplente ? 'cliente_suspenso' : 'cliente_reativado', alvo: cliente.nome })
+  }
+  // Auditoria: arquivamento / restauração do cliente.
+  if ('arquivado' in updates && !!updates.arquivado !== !!cliente.arquivado) {
+    await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'equipe', acao: updates.arquivado ? 'cliente_arquivado' : 'cliente_restaurado', alvo: cliente.nome })
   }
   const { facebookPageToken, instagramToken, loginSenha, ...seguro } = atualizado as any
   return NextResponse.json({ ok: true, cliente: seguro })

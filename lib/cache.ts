@@ -20,6 +20,15 @@ export const getClientesRaw = unstable_cache(
   { tags: ['clientes'], revalidate: 120 }
 )
 
+// IDs dos clientes ATIVOS (existem e NÃO estão arquivados). Serve para esconder,
+// nas telas de produção (posts/planos/tarefas), o conteúdo de cliente ARQUIVADO
+// ou já EXCLUÍDO (órfão) — item sem clienteId ou de cliente ativo permanece.
+// Piggyback no cache de clientes (invalida junto pela tag 'clientes').
+export async function clientesAtivosIds(): Promise<Set<string>> {
+  const clientes = await getClientesRaw()
+  return new Set(clientes.filter(c => !c.arquivado).map(c => c.id))
+}
+
 export const getUsuariosRaw = unstable_cache(
   async (): Promise<Usuario[]> => {
     const emails = await redis.smembers('usuarios')

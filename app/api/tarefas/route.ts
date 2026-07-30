@@ -9,6 +9,7 @@ import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
+import { clientesAtivosIds } from '@/lib/cache'
 
 function extrairMencoes(texto: string): string[] {
   const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
@@ -53,7 +54,11 @@ export async function GET(req: NextRequest) {
   }
 
   const ids = await redis.smembers('tarefas')
-  const tarefas = ids.length > 0 ? ((await redis.mget<(Tarefa | null)[]>(...ids.map(id => `tarefa:${id}`))).filter(Boolean) as Tarefa[]) : []
+  let tarefas = ids.length > 0 ? ((await redis.mget<(Tarefa | null)[]>(...ids.map(id => `tarefa:${id}`))).filter(Boolean) as Tarefa[]) : []
+  // Esconde tarefas de cliente ARQUIVADO ou já EXCLUÍDO (órfã). Tarefa sem
+  // clienteId (interna da equipe) permanece.
+  const ativos = await clientesAtivosIds()
+  tarefas = tarefas.filter(t => !(t as any).clienteId || ativos.has((t as any).clienteId))
   tarefas.sort((a, b) => {
     const ordem: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
     return (ordem[a.prioridade] ?? 9) - (ordem[b.prioridade] ?? 9) || new Date(a.prazo || '9999').getTime() - new Date(b.prazo || '9999').getTime()

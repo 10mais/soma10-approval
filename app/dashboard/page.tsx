@@ -553,7 +553,12 @@ function Dashboard() {
   const [clientesView, setClientesView] = useState<'lista' | 'blocos'>(() => (typeof window !== 'undefined' && localStorage.getItem('clientesView') === 'blocos') ? 'blocos' : 'lista')
   const [clienteAberto, setClienteAberto] = useState<string | null>(null)
   const [clienteBusca, setClienteBusca] = useState('')
-  const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon' | 'suspenso'>('todos')
+  const [clienteFiltro, setClienteFiltro] = useState<'todos' | 'renovar' | 'sem_conexao' | 'com_addon' | 'suspenso' | 'arquivado'>('todos')
+  const [clientesArquivados, setClientesArquivados] = useState<Cliente[]>([])
+  useEffect(() => {
+    if (clienteFiltro !== 'arquivado') return
+    fetch('/api/clientes?arquivados=1').then(r => r.json()).then(d => setClientesArquivados(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [clienteFiltro])
   const [stripeOn, setStripeOn] = useState(false)
   useEffect(() => { fetch('/api/stripe/cobrar').then(r => r.json()).then(d => setStripeOn(!!d?.configurado)).catch(() => {}) }, [])
   const [novoCliente, setNovoCliente] = useState<{ nome: string; instagram: string; loginEmail: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number; contratoValor?: number; contratoInicio?: string; contratoRenovacao?: string; contratoCiclo?: string; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }>({ nome: '', instagram: '', loginEmail: '', corPrimaria: '#ffc00f', corSecundaria: '#111111', tipo: 'cliente', entregaveis: [], postsMensais: 12, receitasAvulsas: [] })
@@ -1749,6 +1754,18 @@ function Dashboard() {
       body: JSON.stringify({ id }),
     })
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
+  }
+
+  // Arquivar/Restaurar cliente: some das listas/seletores e do Planner/Studio/Tarefas
+  // (o servidor esconde o conteúdo de cliente arquivado) + corta o acesso ao portal.
+  // Reversível — restaurar traz tudo de volta. Nada é apagado.
+  async function arquivarCliente(id: string, nome: string, arquivar: boolean) {
+    if (arquivar && !(await confirmar(`Arquivar "${nome}"? Ele some das listas, dos seletores e do Planner/Studio/Tarefas, e o acesso ao portal dele é cortado. Você pode restaurar depois — nada é apagado.`, { titulo: 'Arquivar cliente', okLabel: 'Arquivar' }))) return
+    await fetch('/api/clientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, arquivado: arquivar, arquivadoEm: arquivar ? new Date().toISOString() : '' }) })
+    setEditandoCliente(null)
+    fetch('/api/clientes').then(r => r.json()).then(setClientes)
+    fetch('/api/clientes?arquivados=1').then(r => r.json()).then(d => setClientesArquivados(Array.isArray(d) ? d : [])).catch(() => {})
+    toast(arquivar ? 'Cliente arquivado. O conteúdo dele saiu das telas.' : 'Cliente restaurado.', 'sucesso')
   }
 
   function iniciarEdicaoUsuario(u: any) {
@@ -3876,7 +3893,7 @@ function Dashboard() {
                 {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on'], ['suspenso', 'Suspensos']] as const).map(([k, label]) => (
+                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] as const).map(([k, label]) => (
                   <button key={k} onClick={() => setClienteFiltro(k)}
                     style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid #111' : '1px solid #e5e7eb', background: clienteFiltro === k ? '#111' : '#fff', color: clienteFiltro === k ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
                 ))}
@@ -3899,7 +3916,8 @@ function Dashboard() {
                 if (clienteFiltro === 'renovar') { if (!c.contratoRenovacao) return false; return Math.ceil((new Date(c.contratoRenovacao).getTime() - Date.now()) / 86400000) <= 30 }
                 return true
               }
-              const grupos = [{ titulo: 'Clientes', lista: clientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: 'Projetos internos', lista: clientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
+              const fonteClientes = clienteFiltro === 'arquivado' ? clientesArquivados : clientes
+              const grupos = [{ titulo: 'Clientes', lista: fonteClientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: 'Projetos internos', lista: fonteClientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
               if (grupos.every(g => g.lista.length === 0)) return (
                 <div style={{ textAlign: 'center', padding: '48px 20px', color: '#aaa', fontSize: 14, background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhum cliente encontrado{(clienteBusca || clienteFiltro !== 'todos') ? ' com esse filtro.' : '.'}</div>
               )
@@ -3918,6 +3936,7 @@ function Dashboard() {
                         {c.nome}
                         <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? '#dbeafe' : '#f0fdf4', color: (c as any).tipo === 'interno' ? '#1d4ed8' : '#16a34a' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
                         {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>Suspenso</span>}
+                        {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>Arquivado</span>}
                         {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
                         ) : null })()}
@@ -4337,6 +4356,10 @@ function Dashboard() {
                           <button onClick={() => excluirCliente(c.id, c.nome)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #fecaca', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: '#ef4444', cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                             Excluir cliente
+                          </button>
+                          <button onClick={() => arquivarCliente(c.id, c.nome, !(c as any).arquivado)} title={(c as any).arquivado ? 'Restaurar o cliente e o conteúdo dele' : 'Arquivar: some das telas e corta o acesso ao portal (reversível)'} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: (c as any).arquivado ? '#16a34a' : '#b45309', cursor: 'pointer' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>
+                            {(c as any).arquivado ? 'Restaurar' : 'Arquivar'}
                           </button>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: '#fff', color: '#b45309', border: '1px solid #fde68a', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}

@@ -52,7 +52,7 @@ export async function GET() {
   }
 
   // ---- RETENÇÃO (clientes) ----
-  const ativos = clientes.filter(c => c.tipo !== 'interno')
+  const ativos = clientes.filter(c => c.tipo !== 'interno' && !(c as any).arquivado)
   // Mensalidade recorrente por cliente = contrato + assinaturas de módulos ativas.
   const mensal = (c: Cliente) => (Number(c.contratoValor) || 0) + totalMensalModulos((c as any).modulos)
   const mrr = ativos.reduce((s, c) => s + mensal(c), 0)

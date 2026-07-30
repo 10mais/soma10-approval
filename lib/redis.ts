@@ -221,6 +221,11 @@ export type Cliente = {
   // Suspensão por inadimplência: bloqueia o acesso do cliente ao portal.
   inadimplente?: boolean
   suspensoDesde?: string
+  // Arquivamento: cliente que encerrou/cancelou o contrato. Some das listas e
+  // seletores da agência (filtrado na fonte em /api/clientes) e perde o acesso
+  // ao portal (guard do layout + clienteSuspenso). Reversível (restaurar).
+  arquivado?: boolean
+  arquivadoEm?: string
   // Cobrança recorrente (Stripe). Vinculados server-side pela cobrança/webhook.
   stripeCustomerId?: string
   stripeSubscriptionId?: string

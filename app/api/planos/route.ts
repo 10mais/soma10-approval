@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid'
 import { desindexarPost } from '@/lib/postsIndex'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
+import { clientesAtivosIds } from '@/lib/cache'
 
 export const runtime = 'nodejs'
 
@@ -32,6 +33,11 @@ export async function GET(req: NextRequest) {
   const ids = await redis.smembers('planos')
   let planos = ids.length > 0 ? ((await redis.mget<(Plano | null)[]>(...ids.map(pid => `plano:${pid}`))).filter(Boolean) as Plano[]) : []
   if (role === 'cliente') planos = planos.filter(p => p.clienteId === sessionClienteId)
+  else {
+    // Esconde planos de cliente ARQUIVADO ou já EXCLUÍDO (órfão).
+    const ativos = await clientesAtivosIds()
+    planos = planos.filter(p => !p.clienteId || ativos.has(p.clienteId))
+  }
   const filtroCliente = req.nextUrl.searchParams.get('clienteId')
   if (filtroCliente) planos = planos.filter(p => p.clienteId === filtroCliente)
   planos.sort((a, b) => (b.ano - a.ano) || (b.mes - a.mes) || a.clienteNome.localeCompare(b.clienteNome, 'pt'))

@@ -91,7 +91,7 @@ async function rodarAlertas(): Promise<NextResponse> {
   const TRINTA_DIAS = 30 * UM_DIA
 
   for (const c of clientes) {
-    if (!c.contratoRenovacao) continue
+    if (!c.contratoRenovacao || (c as any).arquivado) continue
     const faltam = new Date(c.contratoRenovacao).getTime() - agora
     if (faltam < 0 || faltam > TRINTA_DIAS) continue // vencido ou ainda longe
     const chave = `renov_alerta:${c.id}`
