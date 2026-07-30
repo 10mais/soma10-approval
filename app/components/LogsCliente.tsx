@@ -6,6 +6,8 @@ type Log = {
   id: string; ts: number; clienteId: string; clienteNome: string
   tipo: string; acao: string; postId?: string; resumo?: string; motivo?: string; origem?: string
 }
+type Anot = { x: number; y: number; text: string; id?: number; img?: number }
+type PostDet = { id: string; imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string }
 
 const ESTILO: Record<string, { cor: string; bg: string; label: string }> = {
   aprovacao: { cor: '#16a34a', bg: '#f0fdf4', label: 'Aprovação' },
@@ -32,6 +34,22 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
   const [cliente, setCliente] = useState('')
   const [tipo, setTipo] = useState('')
   const [busca, setBusca] = useState('')
+  const [expandido, setExpandido] = useState<string | null>(null)
+  const [postCache, setPostCache] = useState<Record<string, PostDet | 'loading' | 'erro'>>({})
+
+  // Abrir o card = LER o pedido aqui mesmo (busca o material para mostrar os
+  // pontos marcados/legenda). Navegar para o editor fica só no link explícito.
+  function toggleExpand(l: Log) {
+    const novo = expandido === l.id ? null : l.id
+    setExpandido(novo)
+    if (novo && l.postId && !postCache[l.postId]) {
+      const pid = l.postId
+      setPostCache(c => ({ ...c, [pid]: 'loading' }))
+      fetch(`/api/posts?id=${pid}`).then(r => r.ok ? r.json() : Promise.reject())
+        .then((p: PostDet) => setPostCache(c => ({ ...c, [pid]: p })))
+        .catch(() => setPostCache(c => ({ ...c, [pid]: 'erro' })))
+    }
+  }
 
   function carregar() {
     setCarregando(true)
@@ -46,6 +64,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
   }, [logs, tipo, busca])
 
   const inputS: React.CSSProperties = { padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', background: '#fff' }
+  const rotuloExp: React.CSSProperties = { margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -89,19 +108,86 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
             : l.tipo === 'corrigir_legenda' ? 'Ver no Planner — a legenda corrigida já está aplicada'
             : resolvido ? 'Ver o post no Planner'
             : 'Abrir o post no editor para corrigir e reenviar'
+          const expansivel = !!(l.postId || l.motivo || l.resumo)
+          const aberto = expandido === l.id
+          const p = l.postId ? postCache[l.postId] : undefined
+          const post = (p && p !== 'loading' && p !== 'erro') ? p as PostDet : null
+          const anot = post?.anotacoes || []
+          const mostrarPins = (l.tipo === 'ajuste_layout' || l.tipo === 'reprovacao') && anot.length > 0
+          const obs = post ? (post.motivoReprovacao || '') : (l.motivo || '')
+          const legenda = post ? (post.legenda || '') : (l.resumo || '')
+          const imgsComPins = Array.from(new Set(anot.map(a => a.img ?? 0)))
           return (
-            <div key={l.id} onClick={() => abrivel && acaoPost!(l.postId!)} title={titulo}
-              style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: abrivel ? 'pointer' : 'default' }}>
+            <div key={l.id} onClick={() => expansivel && toggleExpand(l)} title={aberto ? undefined : 'Clique para ler o pedido do cliente'}
+              style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: aberto ? '1px solid #dbeafe' : '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: expansivel ? 'pointer' : 'default' }}>
               <span style={{ flexShrink: 0, marginTop: 2, fontSize: 10.5, fontWeight: 800, color: e.cor, background: e.bg, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{e.label}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: '#111' }}><strong>{l.clienteNome}</strong> · {l.acao}</p>
-                {l.resumo && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>“{l.resumo}”</p>}
-                {l.motivo && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 10px', whiteSpace: 'pre-wrap' }}>{l.motivo}</p>}
+                {l.resumo && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#666', ...(aberto ? { whiteSpace: 'pre-wrap' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>“{l.resumo}”</p>}
+                {l.motivo && !aberto && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.motivo}</p>}
+
+                {aberto && (
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {p === 'loading' && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Carregando o material…</p>}
+
+                    {obs && (
+                      <div>
+                        <p style={rotuloExp}>Observação do cliente</p>
+                        <p style={{ margin: 0, fontSize: 13, color: '#111', whiteSpace: 'pre-wrap', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px' }}>{obs}</p>
+                      </div>
+                    )}
+
+                    {mostrarPins && (
+                      <div>
+                        <p style={rotuloExp}>Pontos marcados no layout ({anot.length})</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                          {imgsComPins.map(imgIdx => {
+                            const src = post?.imagens?.[imgIdx]
+                            if (!src) return null
+                            return (
+                              <div key={imgIdx} style={{ position: 'relative', width: 220, maxWidth: '100%', flexShrink: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid #eee', lineHeight: 0 }}>
+                                <img src={src} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                                {anot.filter(a => (a.img ?? 0) === imgIdx).map(a => (
+                                  <span key={a.id ?? `${a.x}-${a.y}`} title={a.text} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%, -50%)', width: 22, height: 22, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff' }}>{anot.indexOf(a) + 1}</span>
+                                ))}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <ol style={{ margin: '8px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {anot.map((a, i) => <li key={a.id ?? i} style={{ fontSize: 12.5, color: '#333' }}>{a.text || <span style={{ color: '#aaa' }}>(sem texto — marca visual)</span>}</li>)}
+                        </ol>
+                      </div>
+                    )}
+
+                    {legenda && (
+                      <div>
+                        <p style={rotuloExp}>Legenda</p>
+                        <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}>{legenda}</p>
+                      </div>
+                    )}
+
+                    {p !== 'loading' && !obs && !mostrarPins && !legenda && (
+                      <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>{p === 'erro' ? 'Não foi possível carregar o material.' : 'Sem detalhes de texto — abra no editor para ver o material.'}</p>
+                    )}
+
+                    {abrivel && (
+                      <div>
+                        <button onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: resolvido ? '#f0fdf4' : '#eff6ff', color: resolvido ? e.cor : '#1d4ed8', border: `1px solid ${resolvido ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {resolvido ? 'Ver no planner' : 'Abrir e corrigir'}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                 <span style={{ fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
                 {abrivel && (
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : '#1d4ed8', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
+                    style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : '#1d4ed8', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                     {resolvido ? 'Ver no planner' : 'Abrir e corrigir'}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </span>
