@@ -1240,7 +1240,11 @@ function Dashboard() {
       nova.setHours(orig.getHours(), orig.getMinutes(), 0, 0)
     }
     const novaISO = nova.toISOString()
-    const status = post.status === 'publicado' ? post.status : 'agendado'
+    // Arrastar SÓ remarca a data — nunca promove a 'agendado'. Forçar 'agendado'
+    // punha post 'aguardando_aprovacao'/'reprovado'/'corrigir'/'rascunho' na fila
+    // do cron, que publicava sem o cliente aprovar. Mantém o status: agendado segue
+    // agendado (remarcado); o resto só muda de dia.
+    const status = post.status
     setPosts(ps => ps.map(p => p && p.id === post.id ? { ...p, dataAgendada: novaISO, status } : p))
     const res = await fetch('/api/posts', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1433,7 +1437,7 @@ function Dashboard() {
   async function excluirSelecionados() {
     const ids = [...bibSelecionados]
     if (ids.length === 0) return
-    if (!(await confirmar(`Excluir definitivamente ${ids.length} post(s)? Esta ação não pode ser desfeita.`, { titulo: 'Excluir posts', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(`Mover ${ids.length} post(s) para a Lixeira? Você pode restaurar em até 30 dias.`, { titulo: 'Excluir posts', okLabel: 'Mover para a Lixeira', perigo: true }))) return
     setPosts(ps => ps.filter(p => !ids.includes(p!.id)))
     setBibSelecionados([])
     const resultados = await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
