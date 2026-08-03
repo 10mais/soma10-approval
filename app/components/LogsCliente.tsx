@@ -5,6 +5,7 @@ type Cliente = { id: string; nome: string }
 type Log = {
   id: string; ts: number; clienteId: string; clienteNome: string
   tipo: string; acao: string; postId?: string; resumo?: string; motivo?: string; origem?: string
+  postStatus?: string; postEtapa?: string; postExiste?: boolean // status ATUAL do criativo
 }
 type Anot = { x: number; y: number; text: string; id?: number; img?: number }
 type PostDet = { id: string; imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string }
@@ -26,6 +27,23 @@ function haQuanto(ts: number): string {
   if (h < 24) return `há ${h}h`
   const d = Math.floor(h / 24)
   return `há ${d} dia${d > 1 ? 's' : ''}`
+}
+
+// Onde o CRIATIVO está AGORA (não o que o cliente pediu, que é o histórico). Um
+// "Ajuste de layout" já refeito e reenviado vira "Em revisão" — deixa de parecer
+// pendência aberta.
+function chipStatusPost(l: Log): { label: string; cor: string; bg: string } | null {
+  if (!l.postId) return null
+  if (l.postExiste === false) return { label: 'Excluído', cor: '#6b7280', bg: '#f3f4f6' }
+  const st = l.postStatus || '', et = l.postEtapa || ''
+  if (st === 'excluido') return { label: 'Na lixeira', cor: '#6b7280', bg: '#f3f4f6' }
+  if (st === 'aguardando_aprovacao' || et === 'aprovacao_copy' || et === 'aprovacao_criativo') return { label: 'Em revisão', cor: '#1d4ed8', bg: '#eff6ff' }
+  if (st === 'corrigir') return { label: 'A refazer', cor: '#b45309', bg: '#fff7ed' }
+  if (st === 'reprovado') return { label: 'Reprovado', cor: '#b91c1c', bg: '#fef2f2' }
+  if (st === 'agendado' || st === 'aprovado') return { label: 'Agendado', cor: '#16a34a', bg: '#f0fdf4' }
+  if (st === 'publicado' || st === 'publicando') return { label: 'Publicado', cor: '#166534', bg: '#dcfce7' }
+  if (st === 'rascunho') return { label: 'Em produção', cor: '#1d4ed8', bg: '#eff6ff' }
+  return null
 }
 
 export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner }: { clientes?: Cliente[]; onAbrirPost?: (postId: string) => void; onVerNoPlanner?: (postId: string) => void }) {
@@ -101,7 +119,11 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           // (api/decision) troca o texto e SEGUE a programação: o post já está no
           // Planner com a legenda nova. Oferecer "Abrir e corrigir" convidava a
           // desfazer, na mão, o ajuste que o cliente acabou de pedir.
-          const resolvido = l.tipo === 'aprovacao' || l.tipo === 'corrigir_legenda'
+          // Já tratado = o criativo saiu de "a refazer/reprovado" (refeito e reenviado,
+          // agendado, publicado…): a solicitação não é mais uma pendência aberta, então
+          // leva ao Planner (ver) em vez do editor (corrigir).
+          const jaTratado = !!(l.postId && l.postStatus && !['corrigir', 'reprovado'].includes(l.postStatus))
+          const resolvido = l.tipo === 'aprovacao' || l.tipo === 'corrigir_legenda' || jaTratado
           const acaoPost = resolvido ? onVerNoPlanner : onAbrirPost
           const abrivel = !!(l.postId && acaoPost) // solicitação de conteúdo não tem post
           const titulo = !abrivel ? undefined
@@ -184,6 +206,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                 )}
               </div>
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                {(() => { const chip = chipStatusPost(l); return chip ? <span title="Onde o criativo está agora" style={{ fontSize: 10.5, fontWeight: 800, color: chip.cor, background: chip.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{chip.label}</span> : null })()}
                 <span style={{ fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
                 {abrivel && (
                   <span onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
