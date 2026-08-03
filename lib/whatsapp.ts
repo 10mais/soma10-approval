@@ -101,6 +101,21 @@ export function explicaFalhaConexao(status: number, corpo: any, instancia: strin
   return `O Evolution não devolveu QR (HTTP ${status}). Se a instância já estiver conectada, clique em Desconectar antes de parear outro número.`
 }
 
+// Traduz a falha de um ENVIO (sendText/sendMedia) para algo acionável no CRM. O
+// envio devolvia o erro cru ("HTTP 400"/mensagem interna). Como o status
+// "Conectado" já prova instância+chave, um 400 aqui costuma ser a versão do host
+// do Evolution ou o número de destino — e agora isso aparece na tela.
+export function explicaFalhaEnvio(status: number, corpo: any, instancia: string): string {
+  const detalhe = [corpo?.response?.message, corpo?.message, corpo?.error]
+    .flat()
+    .filter((x: any) => typeof x === 'string' && x.trim())
+    .join(' · ')
+  if (status === 404) return `A instância "${instancia}" não respondeu ao envio neste host do Evolution. Confira a EVOLUTION_INSTANCE e se o número segue pareado.`
+  if (status === 401 || status === 403) return 'O Evolution recusou a chave no envio: confira se a EVOLUTION_API_KEY é a AUTHENTICATION_API_KEY DESTE host.'
+  if (detalhe) return `O Evolution recusou o envio (HTTP ${status}): ${detalhe}`
+  return `O Evolution recusou o envio (HTTP ${status}) sem detalhe — pode ser a versão do host do Evolution ou o número de destino.`
+}
+
 // Normaliza a URL do Evolution: aceita com ou sem https:// (o fetch exige protocolo)
 // e remove a barra final. Ex.: "xxx.up.railway.app/" -> "https://xxx.up.railway.app".
 // A chave sofre do mesmo mal que a URL: colada de um painel ou de um .env, vem
@@ -454,7 +469,7 @@ export async function enviarWhatsApp(telefone: string, texto: string, autor?: st
         body: JSON.stringify({ number: destinoJid || tel, text: texto }),
       })
       const d = await r.json().catch(() => ({} as any))
-      if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
+      if (!r.ok) return { ok: false, erro: explicaFalhaEnvio(r.status, d, instanciaEvolution(instancia)) }
       const lojaId = instancia ? (await lojaDaInstancia(instancia))?.id : undefined
       await salvarMensagem(tel, { id: d?.key?.id || crypto.randomUUID(), de: 'agente', texto, em: new Date().toISOString(), autor }, undefined, lojaId)
       return { ok: true }
@@ -541,7 +556,7 @@ export async function enviarMidiaWhatsApp(
       })
     }
     const d = await r.json().catch(() => ({} as any))
-    if (!r.ok) return { ok: false, erro: d?.message || d?.error || `HTTP ${r.status}` }
+    if (!r.ok) return { ok: false, erro: explicaFalhaEnvio(r.status, d, instanciaEvolution(instancia)) }
     const lojaId = instancia ? (await lojaDaInstancia(instancia))?.id : undefined
     await salvarMensagem(tel, {
       id: d?.key?.id || crypto.randomUUID(), de: 'agente', em: new Date().toISOString(), autor,
