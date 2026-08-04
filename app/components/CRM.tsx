@@ -111,6 +111,22 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // lib/autoScrollKanban (era daqui que ela vinha; virou hook para não existir
   // em duas versões, e o hook ainda limpa o timer se a tela sair no meio do arraste).
   const { ref: funilRef, aoArrastar: autoScrollDrag, parar: pararAutoScroll } = useAutoScrollKanban<HTMLDivElement>()
+  // Barra de rolagem horizontal fina e discreta ACIMA do funil: o scrollbar
+  // nativo fica no rodapé de colunas de altura cheia e é difícil de alcançar. A
+  // barra do topo e o funil sincronizam o scrollLeft nos dois sentidos.
+  const barraTopoRef = useRef<HTMLDivElement>(null)
+  const [larguraFunil, setLarguraFunil] = useState(0)
+  function aoRolarTopo(e: React.UIEvent<HTMLDivElement>) { if (funilRef.current) funilRef.current.scrollLeft = e.currentTarget.scrollLeft }
+  function aoRolarFunil(e: React.UIEvent<HTMLDivElement>) { if (barraTopoRef.current) barraTopoRef.current.scrollLeft = e.currentTarget.scrollLeft }
+  useEffect(() => {
+    const el = funilRef.current
+    if (vista !== 'funil' || !el) return
+    const medir = () => setLarguraFunil(el.scrollWidth)
+    medir()
+    const ro = new ResizeObserver(medir); ro.observe(el)
+    window.addEventListener('resize', medir)
+    return () => { ro.disconnect(); window.removeEventListener('resize', medir) }
+  }, [vista])
   // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
   // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
   // Sai dos contatos já carregados; nada de chamada extra.
@@ -285,7 +301,12 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'playbook' ? (
         <BibliotecaVendasTela podeEditar={podeEditar} />
       ) : (
-        <div ref={funilRef} className="crm-kanban" onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
+        <>
+        <style>{`.crm-barra-topo::-webkit-scrollbar{height:9px}.crm-barra-topo::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}.crm-barra-topo::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-barra-topo::-webkit-scrollbar-track{background:transparent}.crm-barra-topo{scrollbar-width:thin;scrollbar-color:#d1d5db transparent}`}</style>
+        <div ref={barraTopoRef} onScroll={aoRolarTopo} className="crm-barra-topo" title="Deslizar o funil" style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, marginBottom: 2 }}>
+          <div style={{ width: larguraFunil, height: 1 }} />
+        </div>
+        <div ref={funilRef} className="crm-kanban" onScroll={aoRolarFunil} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
           style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id)
@@ -336,6 +357,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             )
           })}
         </div>
+        </>
       )}
 
       {/* Próximas abordagens — o que precisa ser feito HOJE e na semana, vindo
@@ -416,6 +438,8 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   const ganhosMes = ganhos.filter(n => noMes(n.atualizadoEm))
   const valorAberto = abertos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const valorGanhoMes = ganhosMes.reduce((s, n) => s + (Number(n.valor) || 0), 0)
+  const perdidos = negocios.filter(n => n.status === 'perdido')
+  const valorPerdido = perdidos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const winRate = negocios.length > 0 ? Math.round((ganhos.length / negocios.length) * 100) : 0
   const valorOportunidades = negocios.reduce((s, n) => s + (Number(n.valor) || 0), 0)
   const valorConvertido = ganhos.reduce((s, n) => s + (Number(n.valor) || 0), 0)
@@ -447,6 +471,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
         <Card titulo="Win rate" valor={`${winRate}%`} sub={`${ganhos.length} ganho / ${negocios.length} oportunidade(s)`} />
         <Card titulo="Conversão (R$)" valor={`${conversaoValor}%`} sub={`${fmtR$(valorConvertido)} de ${fmtR$(valorOportunidades)}`} />
         <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
+        <Card titulo="Perdidas" valor={fmtR$(valorPerdido)} sub={`${perdidos.length} oportunidade(s)`} cor="#b91c1c" />
       </div>
 
       <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Funil (em aberto por etapa)</span>
