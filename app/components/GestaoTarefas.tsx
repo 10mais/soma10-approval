@@ -544,7 +544,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(t => (
-                    <div key={t.id} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
+                    <div key={t.id} draggable={quickSubId !== t.id} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
                       style={{ background: '#fff', borderRadius: 10, padding: '26px 10px 10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}`, position: 'relative' }}>
                       {(() => { const tp = tipoInfo(t.tipo); return (
@@ -571,13 +571,27 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                         {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
                         {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === t.id ? null : t.id) }} title="Adicionar subtarefa"
+                          style={{ width: 18, height: 18, borderRadius: 5, border: '1px solid #e0e0e0', background: '#fff', color: '#888', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
                         <span onClick={e => { e.stopPropagation(); alternarSelecao(t.id) }}
                           style={{ width: 16, height: 16, borderRadius: 4, border: selecionadas.includes(t.id) ? '1.5px solid #1877f2' : '1px solid #ccc',
                             background: selecionadas.includes(t.id) ? '#1877f2' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {selecionadas.includes(t.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
                         </span>
                       </div>
+                      {/* Input rápido de subtarefa — mesmo atalho da Lista; o card sai do
+                          draggable enquanto digita (drag roubaria a seleção do texto). */}
+                      {quickSubId === t.id && (
+                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                          <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) criarSubtarefa(t, quickSubTexto); if (e.key === 'Escape') setQuickSubId(null) }}
+                            placeholder="Subtarefa — Enter adiciona"
+                            style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 11.5, fontFamily: 'inherit' }} />
+                          <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()}
+                            style={{ padding: '6px 9px', background: quickSubTexto.trim() ? '#111' : '#f0f0f0', color: quickSubTexto.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Ok</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {cards.length === 0 && <p style={{ margin: 0, fontSize: 11, color: '#bbb', textAlign: 'center', padding: '14px 0' }}>--</p>}
