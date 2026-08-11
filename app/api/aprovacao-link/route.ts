@@ -67,8 +67,29 @@ export async function GET(req: NextRequest) {
       ajusteCopy: (p as any).ajusteCopy || '',
     }))
 
+  // PROGRAMAÇÃO em cascata (painel do link): o que já está aprovado/agendado
+  // deste cliente, da próxima postagem em diante (+ publicados de hoje). O
+  // cliente vê o plano inteiro se materializar a cada aprovação.
+  const ehVideo = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u || '')
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const programacao = todos
+    .filter(p => p.clienteId === clienteId && !(p as any).excluidoEm
+      && ['agendado', 'aprovado', 'publicando', 'publicado'].includes(p.status)
+      && (p as any).dataAgendada && new Date((p as any).dataAgendada).getTime() >= hoje.getTime())
+    .sort((a, b) => ((a as any).dataAgendada || '').localeCompare((b as any).dataAgendada || ''))
+    .map(p => {
+      const imgs = p.imagens || []
+      const primeira = imgs[0] || ''
+      const capa = imgs.find(u => !ehVideo(u)) || ((p as any).capasVideo || {})[primeira] || ''
+      return {
+        id: p.id, dataAgendada: (p as any).dataAgendada, formato: (p as any).formato || 'feed',
+        status: p.status === 'publicado' ? 'publicado' : p.status === 'publicando' ? 'publicando' : 'agendado',
+        capa, legenda: (p.legenda || '').slice(0, 90),
+      }
+    })
+
   // Logo do perfil: cliente.logo pode estar expirado (URL do IG → 403). Manda
   // também o ativo 'logo' da marca (Blob permanente) como fallback pro mockup.
   const assetLogo = (Array.isArray(cliente.assetsMarca) ? cliente.assetsMarca : []).find(a => a?.categoria === 'logo')?.url || ''
-  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo || '', logoAlt: assetLogo, instagram: cliente.instagram || '', posts })
+  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo || '', logoAlt: assetLogo, instagram: cliente.instagram || '', posts, programacao })
 }

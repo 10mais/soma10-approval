@@ -27,9 +27,11 @@ function toLocalInput(iso?: string): string {
 const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', marginBottom: 6 }
 const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
 
+type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string }
+
 export default function AprovacoesPublicas() {
   const { token } = useParams()
-  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[] } | null>(null)
+  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
 
   async function carregar() {
@@ -40,7 +42,9 @@ export default function AprovacoesPublicas() {
   }
   useEffect(() => { carregar() }, [token])
 
-  const removerPost = (id: string) => setDados(d => d ? { ...d, posts: d.posts.filter(p => p.id !== id) } : d)
+  // Decidiu: some da fila na hora (otimista) e recarrega em fundo — o material
+  // aprovado REAPARECE na programação em cascata do painel.
+  const removerPost = (id: string) => { setDados(d => d ? { ...d, posts: d.posts.filter(p => p.id !== id) } : d); carregar() }
 
   if (!dados) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#fff' }}>
@@ -49,15 +53,35 @@ export default function AprovacoesPublicas() {
     </div>
   )
 
+  const temProg = (dados.programacao || []).length > 0
   return (
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <Header clienteName={dados.clienteNome || ''} />
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 60px' }}>
+      {/* Duas colunas no desktop (programação à ESQUERDA); no celular a
+          programação desce para DEPOIS dos cards — aprovar continua sendo a
+          primeira coisa da tela. */}
+      <style>{`
+        .aprov-wrap{display:flex;gap:24px;align-items:flex-start;max-width:1040px;margin:0 auto;padding:24px 16px 60px}
+        .aprov-aside{flex:0 0 280px;position:sticky;top:16px;order:0}
+        .aprov-main{flex:1;min-width:0;max-width:720px;margin:0 auto}
+        @media (max-width: 880px){
+          .aprov-wrap{flex-direction:column}
+          .aprov-aside{flex:1 1 auto;position:static;order:2;width:100%;max-width:468px;margin:0 auto}
+          .aprov-main{order:1;width:100%}
+        }
+      `}</style>
+      <div className="aprov-wrap">
+        {temProg && (
+          <aside className="aprov-aside">
+            <Programacao itens={dados.programacao || []} />
+          </aside>
+        )}
+        <div className="aprov-main">
         {erro && <p style={{ color: '#b91c1c', fontSize: 14 }}>{erro}</p>}
         {!erro && dados.posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <p style={{ fontSize: 17, fontWeight: 700, color: '#111', margin: '0 0 6px' }}>Tudo aprovado! 🎉</p>
-            <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.</p>
+            <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.{temProg ? ' Veja ao lado o que está programado.' : ''}</p>
           </div>
         )}
         {dados.posts.length > 0 && (() => {
@@ -75,8 +99,101 @@ export default function AprovacoesPublicas() {
         ) : (
           <PostCard key={p.id} post={p} token={String(token)} handle={(dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')} onDecidido={() => removerPost(p.id)} />
         ))}
+        </div>
       </div>
       <Footer />
+    </div>
+  )
+}
+
+// Painel "Programação de postagens": a cascata do que já está aprovado —
+// próxima postagem em destaque e as demais em seguida. Lista ou calendário.
+function Programacao({ itens }: { itens: ProgItem[] }) {
+  const [vista, setVista] = useState<'lista' | 'calendario'>('lista')
+  const [mesBase, setMesBase] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  const [diaSel, setDiaSel] = useState('')
+  const fmtDia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const porDia = itens.reduce((acc: Record<string, ProgItem[]>, it) => { const k = ymd(new Date(it.dataAgendada)); (acc[k] = acc[k] || []).push(it); return acc }, {})
+  const STATUS_ROTULO: Record<string, [string, string, string]> = { agendado: ['Agendado', '#166534', '#dcfce7'], publicando: ['Publicando', '#1d4ed8', '#eff6ff'], publicado: ['Publicado', '#475569', '#f1f5f9'] }
+  const FORMATO: Record<string, string> = { feed: 'Feed', reel: 'Reel', story: 'Story' }
+
+  const Linha = ({ it, destaque }: { it: ProgItem; destaque?: boolean }) => {
+    const [rot, cor, bg] = STATUS_ROTULO[it.status] || STATUS_ROTULO.agendado
+    return (
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid #f2f2f2' }}>
+        {it.capa
+          ? <img src={it.capa} alt="" style={{ width: 34, height: 42, objectFit: 'cover', borderRadius: 7, flexShrink: 0, background: '#f0f0f0' }} />
+          : <div style={{ width: 34, height: 42, borderRadius: 7, flexShrink: 0, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
+            </div>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: '#111' }}>
+            {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
+            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: '#94a3b8' }}>· {FORMATO[it.formato] || it.formato}</span>
+          </p>
+          {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda}</p>}
+          <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#111' }}>Programação</p>
+          <p style={{ margin: '1px 0 0', fontSize: 11, color: '#94a3b8' }}>{itens.length} postagem(ns) a caminho</p>
+        </div>
+        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 8, padding: 2 }}>
+          {(['lista', 'calendario'] as const).map(v => (
+            <button key={v} onClick={() => setVista(v)} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
+          ))}
+        </div>
+      </div>
+
+      {vista === 'lista' && (
+        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+          {itens.map((it, i) => <Linha key={it.id} it={it} destaque={i === 0 && it.status !== 'publicado'} />)}
+        </div>
+      )}
+
+      {vista === 'calendario' && (() => {
+        const ano = mesBase.getFullYear(), mes = mesBase.getMonth()
+        const primeiroDow = new Date(ano, mes, 1).getDay()
+        const nDias = new Date(ano, mes + 1, 0).getDate()
+        const celulas: (number | null)[] = [...Array(primeiroDow).fill(null), ...Array.from({ length: nDias }, (_, i) => i + 1)]
+        const doDia = diaSel ? (porDia[diaSel] || []) : []
+        return (
+          <div style={{ padding: '4px 12px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <button onClick={() => { setMesBase(new Date(ano, mes - 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#888', padding: '2px 8px' }}>‹</button>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#111', textTransform: 'capitalize' }}>{mesBase.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+              <button onClick={() => { setMesBase(new Date(ano, mes + 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#888', padding: '2px 8px' }}>›</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={i} style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 800, color: '#c0c6cf', padding: '2px 0' }}>{d}</span>)}
+              {celulas.map((dia, i) => {
+                if (!dia) return <span key={`v${i}`} />
+                const k = ymd(new Date(ano, mes, dia))
+                const n = (porDia[k] || []).length
+                const sel = diaSel === k
+                return (
+                  <button key={k} onClick={() => setDiaSel(sel ? '' : k)} disabled={n === 0}
+                    style={{ aspectRatio: '1', border: 'none', borderRadius: 7, cursor: n > 0 ? 'pointer' : 'default', fontSize: 11, fontWeight: n > 0 ? 800 : 500, background: sel ? '#111' : n > 0 ? '#fff7e0' : 'transparent', color: sel ? '#fff' : n > 0 ? '#111' : '#c4c9d2', position: 'relative', padding: 0 }}>
+                    {dia}
+                    {n > 0 && !sel && <span style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: '#ffc00f' }} />}
+                  </button>
+                )
+              })}
+            </div>
+            {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid #f2f2f2' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
+            {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#b6bcc6', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -339,13 +456,19 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
 // Card de APROVAÇÃO DE COPY — estrutura idêntica ao card de criativo, mas o
 // espaço da imagem mostra o TEXTO da peça (decisão do dono, 23/07): sem os
 // rótulos "headline"/"subheadline" e sem botão de CTA — somente os textos.
-// No ajuste, TUDO fica editável (headline, sub, texto, CTA, legenda) + observação.
+// Revisão PONTO A PONTO (modelo de tabela): cada ponto da copy (frase principal,
+// apoio, texto da arte, lâminas, chamada, legenda) é uma linha que o cliente
+// decide individualmente — Aprovar, Ajustar (edita o texto/deixa nota) ou
+// Refazer (motivo). O envio compila tudo numa decisão só do /api/decision:
+// tudo aprovado = approved · qualquer ajuste = corrected (campos + notas) ·
+// tudo refazer = rejected. Diferente do criativo de propósito (pedido do dono).
+type DecisaoPonto = { decisao: '' | 'aprovar' | 'ajustar' | 'refazer'; texto: string; nota: string }
+
 function CopyCard({ post, token, handle, onDecidido }: { post: PostA; token: string; handle: string; onDecidido: () => void }) {
-  const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
+  const [modo, setModo] = useState<'view' | 'tabela' | 'reject'>('view')
   const [enviando, setEnviando] = useState(false)
   const [logoErro, setLogoErro] = useState(false)
   const [obs, setObs] = useState('')
-  const [campos, setCampos] = useState({ headline: '', subheadline: '', textoImagem: '', cta: '', legenda: '' })
   // Estado local — reflete "EM AJUSTE" e as edições na hora, sem recarregar.
   const [st, setSt] = useState({
     status: post.status || 'aguardando_aprovacao',
@@ -355,33 +478,78 @@ function CopyCard({ post, token, handle, onDecidido }: { post: PostA; token: str
   const emAjuste = st.status === 'corrigir'
   const inicial = (handle || '?').charAt(0).toUpperCase()
   const laminas = (post.laminas || []).filter(l => (l.texto || '').trim())
-  const mudouAlgo = campos.headline !== st.headline || campos.subheadline !== st.subheadline || campos.textoImagem !== st.textoImagem || campos.cta !== st.cta || campos.legenda !== st.legenda
 
-  function abrirAjuste() {
-    setCampos({ headline: st.headline, subheadline: st.subheadline, textoImagem: st.textoImagem, cta: st.cta, legenda: st.legenda })
-    setObs(st.obs || '')
-    setModo('ajuste')
+  // Linhas da tabela: só os pontos que EXISTEM nesta copy. Lâminas são um array
+  // (não editáveis inline) — a linha delas aceita só nota.
+  const PONTOS: { key: string; label: string; soNota?: boolean }[] = [
+    ...(st.headline ? [{ key: 'headline', label: 'Frase principal' }] : []),
+    ...(st.subheadline ? [{ key: 'subheadline', label: 'Frase de apoio' }] : []),
+    ...(st.textoImagem ? [{ key: 'textoImagem', label: 'Texto da arte' }] : []),
+    ...(laminas.length > 0 ? [{ key: 'laminas', label: `Lâminas (${laminas.length})`, soNota: true }] : []),
+    ...(st.cta ? [{ key: 'cta', label: 'Chamada final' }] : []),
+    ...(st.legenda ? [{ key: 'legenda', label: 'Legenda' }] : []),
+  ]
+  const [pontos, setPontos] = useState<Record<string, DecisaoPonto>>({})
+  const setPonto = (k: string, patch: Partial<DecisaoPonto>) => setPontos(p => ({ ...p, [k]: { ...(p[k] || { decisao: '', texto: '', nota: '' }), ...patch } }))
+
+  function abrirTabela() {
+    const ini: Record<string, DecisaoPonto> = {}
+    for (const p of PONTOS) ini[p.key] = { decisao: '', texto: (st as any)[p.key] || '', nota: '' }
+    setPontos(ini); setObs(st.obs || ''); setModo('tabela')
   }
 
-  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', comCampos: boolean) {
+  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', payload?: { novaLegenda?: string; novosCampos?: Record<string, string>; motivo?: string }) {
     setEnviando(true)
     const r = await fetch('/api/decision', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: post.id, type, token, rejectReason: obs.trim() || '',
-        ...(comCampos ? { novaLegenda: campos.legenda, novosCampos: { headline: campos.headline, subheadline: campos.subheadline, textoImagem: campos.textoImagem, cta: campos.cta } } : {}),
+        id: post.id, type, token, rejectReason: (payload?.motivo ?? obs.trim()) || '',
+        ...(payload?.novaLegenda !== undefined ? { novaLegenda: payload.novaLegenda } : {}),
+        ...(payload?.novosCampos ? { novosCampos: payload.novosCampos } : {}),
       }),
     }).then(x => x.json()).catch(() => null)
     setEnviando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
     if (type === 'corrected') {
-      setSt(s => ({ ...s, status: 'corrigir', ...(comCampos ? { ...campos } : {}), obs: obs.trim() }))
+      setSt(s => ({
+        ...s, status: 'corrigir',
+        ...(payload?.novosCampos ? payload.novosCampos : {}),
+        ...(payload?.novaLegenda !== undefined ? { legenda: payload.novaLegenda } : {}),
+        obs: (payload?.motivo ?? obs.trim()) || '',
+      }))
       setModo('view')
-      toast('Ajustes enviados! A copy fica marcada como EM AJUSTE — você pode editar o pedido quando quiser.', 'sucesso')
+      toast('Revisão enviada! A copy fica marcada como EM AJUSTE — você pode editar o pedido quando quiser.', 'sucesso')
       return
     }
     toast(type === 'rejected' ? 'Copy recusada.' : 'Copy aprovada!', type === 'rejected' ? 'erro' : 'sucesso')
     onDecidido()
+  }
+
+  // Compila a tabela na decisão única do backend.
+  function enviarTabela() {
+    for (const p of PONTOS) {
+      const d = pontos[p.key]
+      if (!d?.decisao) { toast(`Decida o ponto "${p.label}" antes de enviar (aprovar, ajustar ou refazer).`, 'erro'); return }
+      if (d.decisao === 'ajustar' && !p.soNota && d.texto === (st as any)[p.key] && !d.nota.trim()) { toast(`Em "${p.label}": edite o texto ou escreva o que quer diferente.`, 'erro'); return }
+      if (d.decisao === 'ajustar' && p.soNota && !d.nota.trim()) { toast(`Em "${p.label}": escreva o que quer diferente.`, 'erro'); return }
+      if (d.decisao === 'refazer' && !d.nota.trim()) { toast(`Em "${p.label}": descreva o motivo de refazer.`, 'erro'); return }
+    }
+    const todosAprovados = PONTOS.every(p => pontos[p.key]?.decisao === 'aprovar')
+    if (todosAprovados) { decidir('approved'); return }
+    const todosRefazer = PONTOS.every(p => pontos[p.key]?.decisao === 'refazer')
+    const notas = PONTOS
+      .map(p => ({ p, d: pontos[p.key] }))
+      .filter(({ d }) => d.decisao !== 'aprovar' && (d.nota.trim() || d.decisao === 'refazer'))
+      .map(({ p, d }) => `${p.label}${d.decisao === 'refazer' ? ' (refazer)' : ''}: ${d.nota.trim() || 'refazer do zero'}`)
+    const motivo = [obs.trim(), ...notas].filter(Boolean).join(' · ')
+    if (todosRefazer) { decidir('rejected', { motivo }); return }
+    const novosCampos: Record<string, string> = {}
+    for (const k of ['headline', 'subheadline', 'textoImagem', 'cta'] as const) {
+      const d = pontos[k]
+      novosCampos[k] = d && d.decisao === 'ajustar' ? d.texto : (st as any)[k]
+    }
+    const dLeg = pontos['legenda']
+    decidir('corrected', { novosCampos, novaLegenda: dLeg && dLeg.decisao === 'ajustar' ? dLeg.texto : st.legenda, motivo })
   }
 
   return (
@@ -447,50 +615,71 @@ function CopyCard({ post, token, handle, onDecidido }: { post: PostA; token: str
             </div>
             {st.obs && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#555' }}><strong>Observação:</strong> {st.obs}</p>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('#ffc00f', '#111') }}>Editar ajuste</button>
-              <button onClick={() => decidir('approved', false)} disabled={enviando} style={{ flex: '1 1 38%', ...btn('#fff', '#166534', '#bbf7d0') }}>Aprovar assim mesmo</button>
+              <button onClick={abrirTabela} disabled={enviando} style={{ flex: '1 1 55%', ...btn('#ffc00f', '#111') }}>Editar revisão</button>
+              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('#fff', '#166534', '#bbf7d0') }}>Aprovar assim mesmo</button>
             </div>
           </div>
         )}
 
         {!emAjuste && modo === 'view' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Solicitar ajustes</button>
+            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar tudo</button>
+            {PONTOS.length > 0 && <button onClick={abrirTabela} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Revisar ponto a ponto</button>}
             <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
           </div>
         )}
 
-        {/* Solicitar ajustes — TUDO fica ajustável + observação */}
-        {modo === 'ajuste' && (
+        {/* Revisão PONTO A PONTO — cada linha da tabela é decidida individualmente */}
+        {modo === 'tabela' && (
           <div>
-            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#111' }}>Solicitar ajustes</p>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>Edite o texto do seu jeito e/ou deixe uma observação. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
+            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#111' }}>Revisar ponto a ponto</p>
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>Leia cada ponto e decida: <strong>Aprovar</strong>, <strong>Ajustar</strong> (edite o texto do seu jeito) ou <strong>Refazer</strong>. Nada é enviado até você clicar em <strong>Enviar revisão</strong>.</p>
 
-            <label style={rotuloAj}>Frase principal</label>
-            <textarea value={campos.headline} onChange={e => setCampos(c => ({ ...c, headline: e.target.value }))} style={{ ...campoAj, minHeight: 48 }} />
-            <label style={{ ...rotuloAj, marginTop: 12 }}>Frase de apoio</label>
-            <textarea value={campos.subheadline} onChange={e => setCampos(c => ({ ...c, subheadline: e.target.value }))} style={{ ...campoAj, minHeight: 48 }} />
-            {(st.textoImagem || campos.textoImagem) && (<>
-              <label style={{ ...rotuloAj, marginTop: 12 }}>Texto da arte</label>
-              <textarea value={campos.textoImagem} onChange={e => setCampos(c => ({ ...c, textoImagem: e.target.value }))} style={{ ...campoAj, minHeight: 64 }} />
-            </>)}
-            <label style={{ ...rotuloAj, marginTop: 12 }}>Chamada final</label>
-            <textarea value={campos.cta} onChange={e => setCampos(c => ({ ...c, cta: e.target.value }))} style={{ ...campoAj, minHeight: 44 }} />
-            <label style={{ ...rotuloAj, marginTop: 12 }}>Legenda</label>
-            <textarea value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} style={{ ...campoAj, minHeight: 84 }} />
-            <label style={{ ...rotuloAj, marginTop: 12 }}>Observação</label>
-            <textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="O que você quer diferente? (opcional se você já editou acima)" style={{ ...campoAj, minHeight: 56 }} />
+            <div style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden' }}>
+              {PONTOS.map((p, i) => {
+                const d = pontos[p.key] || { decisao: '' as const, texto: '', nota: '' }
+                const original = p.soNota ? '' : ((st as any)[p.key] || '')
+                const CORES = { aprovar: ['#16a34a', '#f0fdf4', '#bbf7d0'], ajustar: ['#b45309', '#fffbeb', '#fde68a'], refazer: ['#dc2626', '#fef2f2', '#fecaca'] } as const
+                const chip = (dec: 'aprovar' | 'ajustar' | 'refazer', label: string) => {
+                  const ativo = d.decisao === dec
+                  const [cor, bg, borda] = CORES[dec]
+                  return (
+                    <button key={dec} onClick={() => setPonto(p.key, { decisao: ativo ? '' : dec })} disabled={enviando}
+                      style={{ padding: '6px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 800, cursor: 'pointer', border: `1.5px solid ${ativo ? cor : '#e0e0e0'}`, background: ativo ? bg : '#fff', color: ativo ? cor : '#888', ...(ativo ? { boxShadow: `inset 0 0 0 1px ${borda}` } : {}) }}>{label}</button>
+                  )
+                }
+                return (
+                  <div key={p.key} style={{ padding: '12px 14px', borderTop: i > 0 ? '1px solid #f0f0f0' : 'none', background: d.decisao ? CORES[d.decisao][1] : '#fff' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{p.label}</p>
+                    {p.soNota
+                      ? <div style={{ margin: '0 0 8px' }}>{laminas.map((l, li) => <p key={li} style={{ margin: '0 0 4px', fontSize: 12.5, color: '#333', lineHeight: 1.45 }}><strong style={{ color: '#94a3b8' }}>{li + 1}.</strong> {l.texto}</p>)}</div>
+                      : d.decisao === 'ajustar'
+                        ? <textarea autoFocus value={d.texto} onChange={e => setPonto(p.key, { texto: e.target.value })} style={{ ...campoAj, minHeight: p.key === 'legenda' ? 84 : 48, marginBottom: 8, background: '#fff' }} />
+                        : <p style={{ margin: '0 0 8px', fontSize: 13, color: '#222', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{original}</p>}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {chip('aprovar', 'Aprovar')}
+                      {chip('ajustar', 'Ajustar')}
+                      {chip('refazer', 'Refazer')}
+                    </div>
+                    {(d.decisao === 'ajustar' || d.decisao === 'refazer') && (
+                      <textarea value={d.nota} onChange={e => setPonto(p.key, { nota: e.target.value })}
+                        placeholder={d.decisao === 'refazer' ? 'Por que refazer? Descreva o que você espera...' : p.soNota ? 'O que você quer diferente nas lâminas?' : 'Observação (opcional se você já editou o texto acima)'}
+                        style={{ ...campoAj, minHeight: 44, marginTop: 8, background: '#fff' }} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+            <label style={{ ...rotuloAj, marginTop: 12 }}>Observação geral (opcional)</label>
+            <textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="Algo que vale para a peça toda..." style={{ ...campoAj, minHeight: 48 }} />
+
+            {(() => { const decididos = PONTOS.filter(p => pontos[p.key]?.decisao).length; return (
+              <p style={{ margin: '10px 0 0', fontSize: 12, fontWeight: 700, color: decididos === PONTOS.length ? '#16a34a' : '#94a3b8' }}>{decididos}/{PONTOS.length} ponto(s) decidido(s)</p>
+            )})()}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('#f5f5f5', '#555'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
-              {mudouAlgo && !obs.trim() && (
-                <button onClick={() => decidir('caption', true)} disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>Aprovar com meus ajustes</button>
-              )}
-              <button onClick={() => {
-                if (!mudouAlgo && !obs.trim()) { toast('Edite algum texto ou deixe uma observação antes de enviar.', 'erro'); return }
-                decidir('corrected', true)
-              }} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('#ffc00f', '#111') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
+              <button onClick={enviarTabela} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('#ffc00f', '#111') }}>{enviando ? '...' : 'Enviar revisão'}</button>
             </div>
           </div>
         )}
@@ -501,7 +690,7 @@ function CopyCard({ post, token, handle, onDecidido }: { post: PostA; token: str
             <textarea autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
-              <button onClick={() => { if (!obs.trim()) { toast('Descreva o motivo da recusa.', 'erro'); return } decidir('rejected', false) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar recusa'}</button>
+              <button onClick={() => { if (!obs.trim()) { toast('Descreva o motivo da recusa.', 'erro'); return } decidir('rejected') }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar recusa'}</button>
             </div>
           </div>
         )}
