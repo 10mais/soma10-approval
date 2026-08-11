@@ -5,6 +5,23 @@
 > Números do repo nesta data: **140 rotas de API · 106 libs · 7 crons · 3 webhooks ·
 > ~60 famílias de chave no Redis · 755 testes verdes**.
 
+## STATUS
+
+- **F0 EM ANDAMENTO — branch `multitenant-f0`** (2026-08-11): `lib/orgPrefix.ts`
+  (núcleo puro) + `lib/dbOrg.ts` (wrapper) + `lib/orgs.ts` (registro/resolução
+  por host) + testes de unidade e a trava estática (`tests/isolamentoOrg.test.ts`)
+  + rota piloto migrada (`/api/agentes`) + inventário gerado
+  (`MULTITENANT-CHECKLIST.md`, 125 arquivos / 695 chamadas, via
+  `node scripts/mapear-chaves.mjs`). **Dono valida o padrão no diff/preview do
+  branch antes de qualquer merge.**
+- Refinamentos sobre o plano original: (a) o registro da org grava em
+  **`org-reg:{id}`** (não `org:{id}`) para nunca ambiguar com chaves de DADO
+  `org:{id}:...`; (b) **modo legado**: com nenhuma org registrada, o wrapper não
+  prefixa nada — rotas migradas podem ir à MAIN aos poucos com comportamento
+  idêntico nas instâncias atuais, e o "corte" final vira apenas registrar orgs e
+  hosts (mata o big-bang das fases F1-F3); (c) o checklist §3 é GERADO do código
+  e encolhe sozinho: arquivo migrado deixa de usar `redis.` e sai do inventário.
+
 ## 0. Estado atual e objetivo
 
 Hoje (Caminho A): **uma instância por cliente** — mesmo repo, mas cada cliente tem
