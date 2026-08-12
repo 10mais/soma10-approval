@@ -317,8 +317,8 @@ function Header({ clienteName }: { clienteName: string }) {
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Logomarca oficial do Soma10 (mesma do portal) — antes era um "10+" chumbado. */}
-        <img src="/logo.svg" alt="Soma10" style={{ height: 30, maxWidth: 120, objectFit: 'contain', display: 'block' }} />
+        {/* Logomarca oficial do Soma10 (mesma da sidebar do painel) — antes era um "10+" chumbado. */}
+        <img src="/soma10-logo.png" alt="Soma10" style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}><SystemName /></div>
           <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>

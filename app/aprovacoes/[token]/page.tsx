@@ -622,19 +622,20 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
 
 function Header({ clienteName }: { clienteName: string }) {
   // A logo da agência vem de /api/marca (público). Sem logo configurada (ou se
-  // ela falhar ao carregar), o fallback é a LOGOMARCA oficial do Soma10
-  // (/logo.svg, a mesma do portal do cliente) — nunca mais o "10+" chumbado.
+  // ela falhar ao carregar), o fallback é a LOGOMARCA oficial do Soma10 —
+  // /soma10-logo.png, a MESMA da sidebar do painel (o /logo.svg é só o ícone
+  // quadrado da sidebar recolhida; confundi os dois e o dono corrigiu, 12/08).
   const [logo, setLogo] = useState('')
   const [logoErro, setLogoErro] = useState(false)
   useEffect(() => {
     fetch('/api/marca').then(r => r.json()).then(d => { if (d?.logo) setLogo(d.logo) }).catch(() => {})
   }, [])
-  const src = (logo && !logoErro) ? logo : '/logo.svg'
+  const src = (logo && !logoErro) ? logo : '/soma10-logo.png'
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img src={src} alt="Soma10" onError={() => setLogoErro(true)}
-          style={{ height: 30, maxWidth: 120, objectFit: 'contain', display: 'block' }} />
+          style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}><SystemName /></div>
           <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
