@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
-import SystemName from '@/app/components/SystemName'
 
 const ehVideoUrl = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u || '')
 type Anot = { x: number; y: number; text: string; id: number; img: number }
@@ -636,10 +635,8 @@ function Header({ clienteName }: { clienteName: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img src={src} alt="Soma10" onError={() => setLogoErro(true)}
           style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}><SystemName /></div>
-          <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
-        </div>
+        {/* Sem o nome escrito ao lado — a logomarca já diz quem é (pedido do dono, 12/08). */}
+        <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
       </div>
       {clienteName && <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>{clienteName}</div>}
     </div>

@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
-import SystemName from '@/app/components/SystemName'
 
 type Annotation = { x: number; y: number; text: string; id: number }
 type Brief = { id: string; cliente: string; clienteNome?: string; imagens: string[]; legenda: string; status: string; formato?: string; dataAgendada?: string; capasVideo?: Record<string, string> }
@@ -317,12 +316,9 @@ function Header({ clienteName }: { clienteName: string }) {
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Logomarca oficial do Soma10 (mesma da sidebar do painel) — antes era um "10+" chumbado. */}
+        {/* Logomarca oficial do Soma10 (mesma da sidebar do painel), sem o nome escrito ao lado. */}
         <img src="/soma10-logo.png" alt="Soma10" style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.2 }}><SystemName /></div>
-          <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
-        </div>
+        <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
       </div>
       <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>
         {clienteName}
