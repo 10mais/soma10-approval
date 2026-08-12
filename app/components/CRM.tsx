@@ -118,15 +118,6 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [larguraFunil, setLarguraFunil] = useState(0)
   function aoRolarTopo(e: React.UIEvent<HTMLDivElement>) { if (funilRef.current) funilRef.current.scrollLeft = e.currentTarget.scrollLeft }
   function aoRolarFunil(e: React.UIEvent<HTMLDivElement>) { if (barraTopoRef.current) barraTopoRef.current.scrollLeft = e.currentTarget.scrollLeft }
-  useEffect(() => {
-    const el = funilRef.current
-    if (vista !== 'funil' || !el) return
-    const medir = () => setLarguraFunil(el.scrollWidth)
-    medir()
-    const ro = new ResizeObserver(medir); ro.observe(el)
-    window.addEventListener('resize', medir)
-    return () => { ro.disconnect(); window.removeEventListener('resize', medir) }
-  }, [vista])
   // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
   // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
   // Sai dos contatos já carregados; nada de chamada extra.
@@ -158,6 +149,19 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; ordem: number }[]>([])
   const [pipelineSel, setPipelineSel] = useState('')
   const [pipelinesModal, setPipelinesModal] = useState(false)
+  // Mede a largura rolável do funil para a barra do topo. PRECISA remedir quando
+  // os DADOS mudam (negócios/etapas/pipeline): as colunas chegam depois do fetch
+  // e o ResizeObserver não dispara por conteúdo interno (o container não muda de
+  // caixa) — só com [vista] a barra ficava sem nada pra rolar e "sumia".
+  useEffect(() => {
+    const el = funilRef.current
+    if (vista !== 'funil' || !el) return
+    const medir = () => setLarguraFunil(el.scrollWidth)
+    medir()
+    const ro = new ResizeObserver(medir); ro.observe(el)
+    window.addEventListener('resize', medir)
+    return () => { ro.disconnect(); window.removeEventListener('resize', medir) }
+  }, [vista, negocios, estagios, pipelineSel])
   const [etapasModal, setEtapasModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
