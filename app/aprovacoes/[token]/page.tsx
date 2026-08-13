@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { toast, confirmar } from '@/lib/toast'
+import { toast } from '@/lib/toast'
 
 const ehVideoUrl = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u || '')
 type Anot = { x: number; y: number; text: string; id: number; img: number }
@@ -32,12 +32,6 @@ export default function AprovacoesPublicas() {
   const { token } = useParams()
   const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
-  // Quem abriu o link é da EQUIPE (tem sessão)? Libera o "voltar para produção"
-  // em cada material. Cliente e visitante anônimo recebem equipe:false.
-  const [ehEquipe, setEhEquipe] = useState(false)
-  useEffect(() => {
-    fetch('/api/posts/voltar-aprovacao').then(r => r.json()).then(d => setEhEquipe(!!d?.equipe)).catch(() => {})
-  }, [])
 
   async function carregar() {
     const d = await fetch(`/api/aprovacao-link?token=${token}`).then(r => r.json()).catch(() => null)
@@ -104,8 +98,8 @@ export default function AprovacoesPublicas() {
           const criativos = dados.posts.filter(p => !p.ehCopy)
           const handle = (dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')
           return (<>
-            {copies.length > 0 && <TabelaCopies posts={copies} token={String(token)} onDecidido={removerPost} ehEquipe={ehEquipe} />}
-            {criativos.map(p => <PostCard key={p.id} post={p} token={String(token)} handle={handle} onDecidido={() => removerPost(p.id)} ehEquipe={ehEquipe} />)}
+            {copies.length > 0 && <TabelaCopies posts={copies} token={String(token)} onDecidido={removerPost} />}
+            {criativos.map(p => <PostCard key={p.id} post={p} token={String(token)} handle={handle} onDecidido={() => removerPost(p.id)} />)}
           </>)
         })()}
         </div>
@@ -211,7 +205,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
 // cliente.logo → ativo 'logo' → ícone → qualquer ativo → referência visual, conserta
 // o cliente.logo quebrado e, no pior caso, devolve um SVG com a inicial. Por isso o
 // card não recebe mais `logo`/`logoAlt`: eram props mortas que fingiam ser fallback.
-function PostCard({ post, token, handle, onDecidido, ehEquipe }: { post: PostA; token: string; handle: string; onDecidido: () => void; ehEquipe?: boolean }) {
+function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: string; handle: string; onDecidido: () => void }) {
   const [cur, setCur] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')          // observação geral do ajuste / motivo da reprovação
@@ -457,42 +451,18 @@ function PostCard({ post, token, handle, onDecidido, ehEquipe }: { post: PostA; 
             </div>
           </div>
         )}
-        {ehEquipe && modo === 'view' && <VoltarEquipe postId={post.id} onVoltado={onDecidido} />}
       </div>
     </div>
   )
 }
 
 
-// Botão SÓ DA EQUIPE (aparece quando quem abriu o link tem sessão de equipe):
-// tira o material da fila de aprovação e devolve à produção, SEM excluir a
-// pauta do Studio/Planner — para criativo/briefing que subiu como teste ou por
-// engano. O cliente nunca vê este botão.
-function VoltarEquipe({ postId, ehCopy, onVoltado }: { postId: string; ehCopy?: boolean; onVoltado: () => void }) {
-  const [enviando, setEnviando] = useState(false)
-  async function voltar() {
-    if (!(await confirmar(`Tirar este ${ehCopy ? 'briefing' : 'criativo'} da aprovação e voltar para a produção? O cliente deixa de vê-lo aqui — a pauta continua no Studio/Planner, nada é excluído.`, { titulo: 'Voltar para produção', okLabel: 'Voltar para produção' }))) return
-    setEnviando(true)
-    const r = await fetch('/api/posts/voltar-aprovacao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: postId }) }).then(x => x.json()).catch(() => null)
-    setEnviando(false)
-    if (!r?.ok) { toast(r?.error || 'Não foi possível voltar o material.', 'erro'); return }
-    toast('Material fora da aprovação — de volta à produção no Studio.', 'sucesso')
-    onVoltado()
-  }
-  return (
-    <button onClick={voltar} disabled={enviando} title="Visível só para a equipe (você está logado). Tira da aprovação sem excluir a pauta do Studio."
-      style={{ width: '100%', marginTop: 8, padding: '8px 10px', background: '#f8fafc', color: '#475569', border: '1px dashed #cbd5e1', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>
-      {enviando ? '...' : 'Equipe: voltar para produção'}
-    </button>
-  )
-}
-
 // Aprovação de COPY/BRIEFING em TABELA (pedido do dono, 12/08): uma LINHA por
 // postagem — Imagem | Copy (texto na imagem) | Legenda | Aprovação — no molde
 // da planilha que a equipe usava no Notion. Substitui o card estilo Instagram
 // e a revisão ponto a ponto (confundiam o cliente). Criativos com arte
 // continuam no PostCard. No celular a grade empilha (rótulo por célula).
-function TabelaCopies({ posts, token, onDecidido, ehEquipe }: { posts: PostA[]; token: string; onDecidido: (id: string) => void; ehEquipe?: boolean }) {
+function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: string; onDecidido: (id: string) => void }) {
   return (
     <div style={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', marginBottom: 26 }}>
       <style>{`
@@ -514,12 +484,12 @@ function TabelaCopies({ posts, token, onDecidido, ehEquipe }: { posts: PostA[]; 
           <span key={h} style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
         ))}
       </div>
-      {posts.map((p, i) => <LinhaCopy key={p.id} post={p} idx={i} token={token} onDecidido={() => onDecidido(p.id)} ehEquipe={ehEquipe} />)}
+      {posts.map((p, i) => <LinhaCopy key={p.id} post={p} idx={i} token={token} onDecidido={() => onDecidido(p.id)} />)}
     </div>
   )
 }
 
-function LinhaCopy({ post, idx, token, onDecidido, ehEquipe }: { post: PostA; idx: number; token: string; onDecidido: () => void; ehEquipe?: boolean }) {
+function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number; token: string; onDecidido: () => void }) {
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [enviando, setEnviando] = useState(false)
   const [obs, setObs] = useState('')
@@ -644,7 +614,6 @@ function LinhaCopy({ post, idx, token, onDecidido, ehEquipe }: { post: PostA; id
             <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('#f5f5f5', '#555')}>Voltar</button>
           </div>
         )}
-        {ehEquipe && modo === 'view' && <VoltarEquipe postId={post.id} ehCopy onVoltado={onDecidido} />}
       </div>
     </div>
   )

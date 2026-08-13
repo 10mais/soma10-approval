@@ -2823,6 +2823,22 @@ function Dashboard() {
                         ))}
                       </div>
                     )}
+                    {/* VOLTAR da aprovação (equipe): tira do link/portal do cliente sem excluir —
+                        material que subiu como teste/engano. Vive AQUI e no Studio (decisão do
+                        dono, 13/08: nunca no link público). Mesma rota do Studio. */}
+                    {role !== 'cliente' && (postPreview.status === 'aguardando_aprovacao' || postPreview.status === 'corrigir' || (postPreview as any).etapa === 'aprovacao_copy' || (postPreview as any).etapa === 'aprovacao_criativo') && (
+                      <button onClick={async () => {
+                        if (!(await confirmar('Tirar este material da aprovação do cliente e voltar para a produção? Ele some do link/portal do cliente — o post continua aqui, nada é excluído.', { titulo: 'Voltar para produção', okLabel: 'Voltar para produção' }))) return
+                        const r = await fetch('/api/posts/voltar-aprovacao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: postPreview.id }) }).then(x => x.json()).catch(() => null)
+                        if (!r?.ok) { toast(r?.error || 'Não foi possível voltar o material.', 'erro'); return }
+                        toast('Material fora da aprovação — de volta à produção.', 'sucesso')
+                        setPostPreview(null)
+                        fetch('/api/posts').then(x => x.json()).then(setPosts)
+                      }} title="Tira da aprovação do cliente sem excluir o material"
+                        style={{ width: '100%', marginTop: 12, padding: '10px 0', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                        Voltar da aprovação (tirar do cliente)
+                      </button>
+                    )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Editar
