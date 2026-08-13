@@ -1460,7 +1460,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         )}
                         <span style={{ flex: 1 }} />
                         {podeEditar && onAbrirComposer && (
-                          <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no editor'}</button>
+                          <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no Planner'}</button>
                         )}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
                           <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
