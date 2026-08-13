@@ -26,7 +26,7 @@ function toLocalInput(iso?: string): string {
 const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', marginBottom: 6 }
 const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
 
-type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string }
+type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string; imagens?: string[]; capasVideo?: Record<string, string> }
 
 export default function AprovacoesPublicas() {
   const { token } = useParams()
@@ -60,11 +60,14 @@ export default function AprovacoesPublicas() {
           programação desce para DEPOIS dos cards — aprovar continua sendo a
           primeira coisa da tela. */}
       <style>{`
-        .aprov-wrap{display:flex;gap:24px;align-items:flex-start;max-width:1040px;margin:0 auto;padding:24px 16px 60px}
-        .aprov-aside{flex:0 0 280px;position:sticky;top:16px;order:0}
-        .aprov-main{flex:1;min-width:0;max-width:720px;margin:0 auto}
+        .aprov-wrap{display:flex;gap:24px;align-items:flex-start;padding:24px 24px 60px}
+        .aprov-aside{flex:0 0 300px;position:sticky;top:16px;order:0}
+        .aprov-espaco{flex:0 0 300px}
+        .aprov-main{flex:1;min-width:0}
+        .aprov-main-inner{max-width:720px;margin:0 auto}
+        @media (max-width: 1180px){ .aprov-espaco{display:none} }
         @media (max-width: 880px){
-          .aprov-wrap{flex-direction:column}
+          .aprov-wrap{flex-direction:column;padding:24px 16px 60px}
           .aprov-aside{flex:1 1 auto;position:static;order:2;width:100%;max-width:468px;margin:0 auto}
           .aprov-main{order:1;width:100%}
         }
@@ -76,6 +79,7 @@ export default function AprovacoesPublicas() {
           </aside>
         )}
         <div className="aprov-main">
+        <div className="aprov-main-inner">
         {erro && <p style={{ color: '#b91c1c', fontSize: 14 }}>{erro}</p>}
         {!erro && dados.posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -103,6 +107,10 @@ export default function AprovacoesPublicas() {
           </>)
         })()}
         </div>
+        </div>
+        {/* Espelho da largura do painel à direita: mantém os materiais CENTRALIZADOS
+            na tela mesmo com a Programação encostada à esquerda. */}
+        {temProg && <div className="aprov-espaco" />}
       </div>
       <Footer />
     </div>
@@ -115,6 +123,9 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
   const [vista, setVista] = useState<'lista' | 'calendario'>('lista')
   const [mesBase, setMesBase] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [diaSel, setDiaSel] = useState('')
+  // Prévia do criativo: clicar num item abre a mídia (carrossel/vídeo) + legenda.
+  const [preview, setPreview] = useState<ProgItem | null>(null)
+  const [slide, setSlide] = useState(0)
   const fmtDia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -125,7 +136,8 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
   const Linha = ({ it, destaque }: { it: ProgItem; destaque?: boolean }) => {
     const [rot, cor, bg] = STATUS_ROTULO[it.status] || STATUS_ROTULO.agendado
     return (
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid #f2f2f2' }}>
+      <div onClick={() => { setSlide(0); setPreview(it) }} title="Ver prévia do criativo"
+        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid #f2f2f2', cursor: 'pointer' }}>
         {it.capa
           ? <img src={it.capa} alt="" style={{ width: 34, height: 42, objectFit: 'cover', borderRadius: 7, flexShrink: 0, background: '#f0f0f0' }} />
           : <div style={{ width: 34, height: 42, borderRadius: 7, flexShrink: 0, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -194,6 +206,40 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
             </div>
             {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid #f2f2f2' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
             {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#b6bcc6', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
+          </div>
+        )
+      })()}
+
+      {/* PRÉVIA do criativo programado — mídia real (imagem/carrossel/vídeo) + legenda */}
+      {preview && (() => {
+        const imgs = (preview.imagens || []).filter(Boolean)
+        const atual = imgs[slide] || ''
+        const video = ehVideoUrl(atual)
+        const [rot, cor, bg] = STATUS_ROTULO[preview.status] || STATUS_ROTULO.agendado
+        return (
+          <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.72)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 430, width: '100%', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+              <div style={{ position: 'relative', background: '#000', lineHeight: 0 }}>
+                {atual ? (video
+                  ? <video key={atual} src={atual} controls playsInline poster={(preview.capasVideo || {})[atual]} style={{ width: '100%', maxHeight: '62vh', display: 'block' }} />
+                  : <img key={atual} src={atual} alt="" style={{ width: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block' }} />)
+                  : <div style={{ padding: '48px 20px', textAlign: 'center', color: '#888', fontSize: 12.5, lineHeight: 1.5 }}>Sem mídia para exibir.</div>}
+                {imgs.length > 1 && (<>
+                  {slide > 0 && <button onClick={() => setSlide(s => s - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer' }}>‹</button>}
+                  {slide < imgs.length - 1 && <button onClick={() => setSlide(s => s + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer' }}>›</button>}
+                  <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{slide + 1}/{imgs.length}</span>
+                </>)}
+              </div>
+              <div style={{ padding: '12px 16px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>{FORMATO[preview.formato] || preview.formato}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
+                  <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1, padding: 0 }}>×</button>
+                </div>
+                {preview.legenda && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#333', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.legenda}</p>}
+              </div>
+            </div>
           </div>
         )
       })()}

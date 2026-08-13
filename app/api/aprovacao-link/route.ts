@@ -84,7 +84,9 @@ export async function GET(req: NextRequest) {
       return {
         id: p.id, dataAgendada: (p as any).dataAgendada, formato: (p as any).formato || 'feed',
         status: p.status === 'publicado' ? 'publicado' : p.status === 'publicando' ? 'publicando' : 'agendado',
-        capa, legenda: (p.legenda || '').slice(0, 90),
+        capa, legenda: (p.legenda || '').slice(0, 400),
+        // Mídia completa para a PRÉVIA (clicar no item abre o criativo).
+        imagens: imgs, capasVideo: (p as any).capasVideo || {},
       }
     })
 
