@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
 
@@ -214,8 +215,11 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
         )
       })()}
 
-      {/* PRÉVIA do criativo programado — mídia real (imagem/carrossel/vídeo) + legenda */}
-      {preview && (() => {
+      {/* PRÉVIA do criativo programado — mídia real (imagem/carrossel/vídeo) + legenda.
+          Em PORTAL no <body>: o aside é position:sticky, que cria stacking context
+          próprio — renderizado aqui dentro, o modal ficava ATRÁS dos cards
+          (zIndex só vale dentro do contexto). */}
+      {preview && createPortal((() => {
         const imgs = (preview.imagens || []).filter(Boolean)
         const atual = imgs[slide] || ''
         const video = ehVideoUrl(atual)
@@ -246,7 +250,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
             </div>
           </div>
         )
-      })()}
+      })(), document.body)}
     </div>
   )
 }
