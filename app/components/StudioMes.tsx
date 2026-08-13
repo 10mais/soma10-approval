@@ -460,6 +460,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
+  // VOLTAR da aprovação (sem excluir): tira a pauta do link/portal do cliente e
+  // devolve à produção — briefing/criativo que subiu como teste ou por engano
+  // (pedido do dono, 13/08). Mesma rota do botão de equipe do link público.
+  async function voltarDaAprovacao(p: Pauta) {
+    const ok = await confirmar('Tirar esta pauta da aprovação do cliente e voltar para a produção? Ela some do link/portal dele — a pauta continua aqui no Studio, nada é excluído.', { titulo: 'Voltar para produção', okLabel: 'Voltar para produção' })
+    if (!ok) return
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/posts/voltar-aprovacao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id }) }).then(x => x.json()).catch(() => null)
+      if (!r?.ok) { toast(r?.error || 'Não foi possível voltar a pauta.', 'erro'); return }
+      toast('Pauta fora da aprovação — de volta à produção.', 'sucesso')
+      carregarPautas(planoSel)
+    } finally { setAcaoPauta(null) }
+  }
   // Lâminas do carrossel: copy separada lâmina a lâmina, cada uma com seu anexo.
   const [anexandoLamina, setAnexandoLamina] = useState<string | null>(null)
   async function salvarLaminas(id: string, laminas: NonNullable<Pauta['laminas']>) {
@@ -1242,6 +1256,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       {p.status === 'aguardando_aprovacao' && (
                         <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
                       )}
+                      {podeEditar && (p.status === 'aguardando_aprovacao' || p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo') && (
+                        <button className="st-btn" onClick={() => voltarDaAprovacao(p)} disabled={acaoPauta === p.id} title="Tira da aprovação do cliente sem excluir a pauta"
+                          style={{ padding: '8px 13px', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>Voltar</button>
+                      )}
                       {podeExcluir && (
                         <button onClick={() => excluir(p)} title="Excluir pauta"
                           onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#b91c1c' }}
@@ -1455,6 +1473,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
                             style={{ padding: '10px 14px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Aprovar copy internamente
+                          </button>
+                        )}
+                        {podeEditar && (p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo' || p.status === 'aguardando_aprovacao') && (
+                          <button className="st-btn" onClick={() => voltarDaAprovacao(p)} disabled={acaoPauta === p.id}
+                            title="Subiu como teste ou por engano? Tira do link/portal do cliente sem excluir a pauta"
+                            style={{ padding: '10px 14px', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            Voltar da aprovação
                           </button>
                         )}
                         {podeEditar && p.etapa === 'criativo' && (
