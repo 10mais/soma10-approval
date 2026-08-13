@@ -32,6 +32,15 @@ export default function AprovacoesPublicas() {
   const { token } = useParams()
   const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
+  // Largura da tela SEM media query (o layout usa só estilo inline — ver nota
+  // no wrap): desktop = 2 colunas + espelho · medio = 2 colunas · mobile = pilha.
+  const [tela, setTela] = useState<'desktop' | 'medio' | 'mobile'>('desktop')
+  useEffect(() => {
+    const aplicar = () => setTela(window.innerWidth <= 880 ? 'mobile' : window.innerWidth <= 1280 ? 'medio' : 'desktop')
+    aplicar()
+    window.addEventListener('resize', aplicar)
+    return () => window.removeEventListener('resize', aplicar)
+  }, [])
 
   async function carregar() {
     const d = await fetch(`/api/aprovacao-link?token=${token}`).then(r => r.json()).catch(() => null)
@@ -56,30 +65,19 @@ export default function AprovacoesPublicas() {
   return (
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <Header clienteName={dados.clienteNome || ''} />
-      {/* Duas colunas no desktop (programação à ESQUERDA); no celular a
-          programação desce para DEPOIS dos cards — aprovar continua sendo a
-          primeira coisa da tela. */}
-      <style>{`
-        .aprov-wrap{display:flex;gap:24px;align-items:flex-start;padding:24px 24px 60px}
-        .aprov-aside{flex:0 0 300px;position:sticky;top:16px;order:0}
-        .aprov-espaco{flex:0 0 300px}
-        .aprov-main{flex:1;min-width:0}
-        .aprov-main-inner{max-width:720px;margin:0 auto}
-        @media (max-width: 1180px){ .aprov-espaco{display:none} }
-        @media (max-width: 880px){
-          .aprov-wrap{flex-direction:column;padding:24px 16px 60px}
-          .aprov-aside{flex:1 1 auto;position:static;order:2;width:100%;max-width:468px;margin:0 auto}
-          .aprov-main{order:1;width:100%}
-        }
-      `}</style>
-      <div className="aprov-wrap">
-        {temProg && (
-          <aside className="aprov-aside">
+      {/* Duas colunas no desktop: Programação à ESQUERDA (largura TRAVADA em
+          300px), materiais CENTRALIZADOS; no celular a programação desce para
+          DEPOIS dos cards. Layout todo em estilo INLINE de propósito: a versão
+          com <style>/classes falhou em produção (o painel esticou a tela
+          inteira) e os inline nunca deixam de aplicar. */}
+      <div style={{ display: 'flex', flexDirection: tela === 'mobile' ? 'column' : 'row', gap: 24, alignItems: 'flex-start', padding: tela === 'mobile' ? '24px 16px 60px' : '24px 24px 60px' }}>
+        {temProg && tela !== 'mobile' && (
+          <aside style={{ flex: '0 0 300px', width: 300, minWidth: 300, maxWidth: 300, position: 'sticky', top: 16, overflow: 'hidden' }}>
             <Programacao itens={dados.programacao || []} />
           </aside>
         )}
-        <div className="aprov-main">
-        <div className="aprov-main-inner">
+        <div style={{ flex: 1, minWidth: 0, width: tela === 'mobile' ? '100%' : undefined }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
         {erro && <p style={{ color: '#b91c1c', fontSize: 14 }}>{erro}</p>}
         {!erro && dados.posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -108,9 +106,15 @@ export default function AprovacoesPublicas() {
         })()}
         </div>
         </div>
-        {/* Espelho da largura do painel à direita: mantém os materiais CENTRALIZADOS
-            na tela mesmo com a Programação encostada à esquerda. */}
-        {temProg && <div className="aprov-espaco" />}
+        {/* Espelho da largura do painel no lado direito: mantém os materiais
+            CENTRALIZADOS na tela mesmo com a Programação encostada à esquerda. */}
+        {temProg && tela === 'desktop' && <div style={{ flex: '0 0 300px' }} />}
+        {/* Celular: a programação vem DEPOIS dos materiais (aprovar é a 1ª coisa). */}
+        {temProg && tela === 'mobile' && (
+          <div style={{ width: '100%', maxWidth: 468, margin: '0 auto' }}>
+            <Programacao itens={dados.programacao || []} />
+          </div>
+        )}
       </div>
       <Footer />
     </div>
@@ -148,7 +152,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
             {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
             {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: '#94a3b8' }}>· {FORMATO[it.formato] || it.formato}</span>
           </p>
-          {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda}</p>}
+          {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
           <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
         </div>
       </div>
