@@ -215,12 +215,21 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       if (perfilClinica) fetch('/api/agenda').then(r => r.json()).then(d => { if (Array.isArray(d?.agendamentos)) setAgendamentos(d.agendamentos) }).catch(() => {})
       // Turismo: as viagens cadastradas alimentam o vínculo "viagem de interesse"
       // e o filtro de interessados por viagem no funil.
-      if (perfilTurismo) fetch('/api/viagens').then(r => r.json()).then(d => { if (Array.isArray(d?.viagens)) setViagens(d.viagens) }).catch(() => {})
+      if (perfilTurismo) carregarViagens()
       setPipelineSel(prev => (prev && pls.some((p: any) => p.id === prev)) ? prev : (pls[0]?.id || ''))
       setCarregando(false)
     }).catch(() => setCarregando(false))
   }
   useEffect(() => { carregar() }, [lojaAtiva])
+
+  function carregarViagens() {
+    fetch('/api/viagens').then(r => r.json()).then(d => { if (Array.isArray(d?.viagens)) setViagens(d.viagens) }).catch(() => {})
+  }
+  // O perfil da instância chega DEPOIS que o CRM monta (a aba fica salva na
+  // sessão e abre direto, enquanto /api/perfil-instancia ainda está no ar). O
+  // carregar() do mount rodou com perfilTurismo=false e pulou as viagens — sem
+  // este efeito, o seletor de viagem e os chips ficavam só com "Outro".
+  useEffect(() => { if (perfilTurismo) carregarViagens() }, [perfilTurismo])
 
   async function moverEstagio(neg: Negocio, estagioId: string) {
     if (neg.estagioId === estagioId) return
