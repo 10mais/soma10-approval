@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await sessao()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id, titulo, conteudo, gerarLink, revogarLink, clienteId, clienteNome, fontSize, acessoCliente } = await req.json()
+  const { id, titulo, conteudo, gerarLink, revogarLink, clienteId, clienteNome, fontSize, acessoCliente, acessoLink } = await req.json()
   const doc = await redis.get<Documento>(`documento:${id}`)
   if (!doc) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
 
@@ -115,6 +115,9 @@ export async function PUT(req: NextRequest) {
     // Permissão do cliente: 'ver' | 'editar' | '' (sem acesso). Sem cliente
     // vinculado não há com quem compartilhar — a permissão é limpa junto.
     ...(acessoCliente !== undefined ? { acessoCliente: acessoCliente === 'ver' || acessoCliente === 'editar' ? acessoCliente : undefined } : {}),
+    // Permissão do LINK público: 'editar' libera edição sem login; qualquer
+    // outro valor volta ao padrão (leitura).
+    ...(acessoLink !== undefined ? { acessoLink: acessoLink === 'editar' ? 'editar' as const : undefined } : {}),
     atualizadoPorNome: session.user?.name || '',
     atualizadoEm: new Date().toISOString(),
   }

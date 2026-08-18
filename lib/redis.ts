@@ -1195,6 +1195,10 @@ export type Documento = {
   // sem acesso (como sempre foi) · 'ver' = leitura no portal · 'editar' = o
   // cliente edita título/conteúdo pelo portal. Exige clienteId.
   acessoCliente?: 'ver' | 'editar'
+  // Permissão do LINK PÚBLICO (o token acima): ausente/'ver' = qualquer pessoa
+  // com o link LÊ (como sempre foi) · 'editar' = qualquer pessoa com o link
+  // edita título/conteúdo, sem login (estilo Google Docs "qualquer um com o link").
+  acessoLink?: 'ver' | 'editar'
   fontSize?: number // tamanho base da fonte do documento (conforto de leitura)
   criadoPor?: string
   criadoPorNome?: string

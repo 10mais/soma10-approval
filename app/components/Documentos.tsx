@@ -6,7 +6,7 @@ import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
 
 type ClienteLite = { id: string; nome: string; logo?: string }
-type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; acessoCliente?: 'ver' | 'editar'; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; acessoCliente?: 'ver' | 'editar'; acessoLink?: 'ver' | 'editar'; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
 
 const FONTE_MIN = 11, FONTE_MAX = 28, FONTE_PADRAO = 15
 
@@ -39,7 +39,7 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
     const alvo = aberto?.id
     timer.current = setTimeout(async () => {
       const atual = { ...(aberto as Doc), ...patch }
-      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId || '', clienteNome: atual.clienteNome || '', fontSize: atual.fontSize || FONTE_PADRAO, acessoCliente: atual.acessoCliente || '' }) }).then(x => x.json()).catch(() => null)
+      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId || '', clienteNome: atual.clienteNome || '', fontSize: atual.fontSize || FONTE_PADRAO, acessoCliente: atual.acessoCliente || '', acessoLink: atual.acessoLink || '' }) }).then(x => x.json()).catch(() => null)
       if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId, clienteNome: atual.clienteNome, acessoCliente: atual.acessoCliente, fontSize: atual.fontSize, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
       else setSalvo('idle')
     }, 700)
@@ -174,6 +174,13 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid #f0f0f0', fontSize: 11.5 }}>
                 <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>● Link público ativo</span>
                 <span style={{ flex: 1, minWidth: 0, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{typeof location !== 'undefined' ? `${location.origin}/doc/${aberto.token}` : ''}</span>
+                {/* Permissão do link (estilo Google Docs): qualquer pessoa com o link lê ou edita */}
+                <select value={aberto.acessoLink === 'editar' ? 'editar' : 'ver'} onChange={e => editar({ acessoLink: e.target.value === 'editar' ? 'editar' : undefined })}
+                  title="O que qualquer pessoa com o link pode fazer"
+                  style={{ flexShrink: 0, padding: '4px 6px', borderRadius: 7, border: aberto.acessoLink === 'editar' ? '1.5px solid #b45309' : '1px solid #e6e6e6', fontSize: 11, fontFamily: 'inherit', background: aberto.acessoLink === 'editar' ? '#fffbeb' : '#fff', color: aberto.acessoLink === 'editar' ? '#b45309' : '#555', fontWeight: 700 }}>
+                  <option value="ver">Com o link: pode ler</option>
+                  <option value="editar">Com o link: pode editar</option>
+                </select>
                 <button onClick={revogarLink} style={{ flexShrink: 0, background: 'none', border: 'none', color: '#b91c1c', fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Revogar</button>
               </div>
             )}
