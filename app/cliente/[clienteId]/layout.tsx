@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { key: '/entregas', label: 'Entregas', todos: true, perm: 'entregas' as const },
   { key: '/aprovacoes', label: 'Aprovações', todos: true, perm: 'aprovacoes' as const },
   { key: '/solicitar', label: 'Solicitar conteúdo', todos: true, perm: 'solicitar' as const },
+  { key: '/documentos', label: 'Documentos', todos: true, perm: 'documentos' as const }, // docs compartilhados pela equipe (ver/editar por documento)
   { key: '/planner', label: 'Planner', equipe: true }, // movido p/ Produção (agência); no portal só a equipe alcança
   // Add-ons do plano modular: equipe sempre vê (ferramenta); cliente vê se contratou.
   { key: '/playbook', label: 'Playbook', equipe: true, modulo: 'playbook' as const },

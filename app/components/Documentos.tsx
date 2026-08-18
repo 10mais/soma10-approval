@@ -6,7 +6,7 @@ import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
 
 type ClienteLite = { id: string; nome: string; logo?: string }
-type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
+type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; acessoCliente?: 'ver' | 'editar'; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
 
 const FONTE_MIN = 11, FONTE_MAX = 28, FONTE_PADRAO = 15
 
@@ -39,8 +39,8 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
     const alvo = aberto?.id
     timer.current = setTimeout(async () => {
       const atual = { ...(aberto as Doc), ...patch }
-      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId || '', clienteNome: atual.clienteNome || '', fontSize: atual.fontSize || FONTE_PADRAO }) }).then(x => x.json()).catch(() => null)
-      if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId, clienteNome: atual.clienteNome, fontSize: atual.fontSize, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
+      const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: alvo, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId || '', clienteNome: atual.clienteNome || '', fontSize: atual.fontSize || FONTE_PADRAO, acessoCliente: atual.acessoCliente || '' }) }).then(x => x.json()).catch(() => null)
+      if (r?.ok) { setSalvo('ok'); setTimeout(() => setSalvo('idle'), 1500); setDocs(ds => ds.map(d => d.id === alvo ? { ...d, titulo: atual.titulo, conteudo: atual.conteudo, clienteId: atual.clienteId, clienteNome: atual.clienteNome, acessoCliente: atual.acessoCliente, fontSize: atual.fontSize, atualizadoEm: r.documento?.atualizadoEm || d.atualizadoEm, atualizadoPorNome: r.documento?.atualizadoPorNome } : d)) }
       else setSalvo('idle')
     }, 700)
   }
@@ -97,7 +97,7 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Documentos</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Documentos internos da equipe (processos, wikis, briefings). Compartilhados com o time — clientes não veem.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Documentos da equipe (processos, wikis, briefings). Por padrão o cliente não vê; num documento atribuído a um cliente você escolhe se ele pode visualizar ou editar (aparece no portal dele).</p>
         </div>
         <button onClick={novo} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo documento</button>
       </div>
@@ -116,7 +116,7 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.titulo.trim() || 'Sem título'}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.clienteNome ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{d.clienteNome} · </span> : ''}{textoDe(d.conteudo).slice(0, 90) || 'Documento vazio'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.clienteNome ? <span style={{ color: '#7c3aed', fontWeight: 700 }}>{d.clienteNome} · </span> : ''}{d.acessoCliente ? <span style={{ color: '#16a34a', fontWeight: 700 }}>{d.acessoCliente === 'editar' ? 'cliente edita' : 'cliente vê'} · </span> : ''}{textoDe(d.conteudo).slice(0, 90) || 'Documento vazio'}</p>
               </div>
               <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0, textAlign: 'right' }}>{quando(d.atualizadoEm)}{d.atualizadoPorNome ? <><br />{d.atualizadoPorNome}</> : ''}</span>
               <button onClick={e => { e.stopPropagation(); excluir(d.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
@@ -144,10 +144,20 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
                     <AvatarCliente logo={clientes.find(c => c.id === aberto.clienteId)?.logo} nome={aberto.clienteNome} clienteId={aberto.clienteId} />
                   </span>
                 )}
-                <select value={aberto.clienteId || ''} onChange={e => { const c = clientes.find(x => x.id === e.target.value); editar({ clienteId: e.target.value, clienteNome: c?.nome || '' }) }} title="Atribuir a um cliente" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: aberto.clienteId ? '#111' : '#888', maxWidth: 130 }}>
+                <select value={aberto.clienteId || ''} onChange={e => { const c = clientes.find(x => x.id === e.target.value); editar({ clienteId: e.target.value, clienteNome: c?.nome || '', ...(e.target.value ? {} : { acessoCliente: undefined }) }) }} title="Atribuir a um cliente" style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: aberto.clienteId ? '#111' : '#888', maxWidth: 130 }}>
                   <option value="">Sem cliente</option>
                   {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
+                {/* Permissão do CLIENTE (estilo Google Docs) — só com cliente atribuído */}
+                {aberto.clienteId && (
+                  <select value={aberto.acessoCliente || ''} onChange={e => editar({ acessoCliente: (e.target.value || undefined) as Doc['acessoCliente'] })}
+                    title="O que o cliente pode fazer com este documento no portal dele"
+                    style={{ padding: '6px 8px', borderRadius: 8, border: aberto.acessoCliente ? '1.5px solid #16a34a' : '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: aberto.acessoCliente ? '#f0fdf4' : '#fff', color: aberto.acessoCliente ? '#166534' : '#888', fontWeight: aberto.acessoCliente ? 700 : 400, maxWidth: 150 }}>
+                    <option value="">Cliente: sem acesso</option>
+                    <option value="ver">Cliente: pode visualizar</option>
+                    <option value="editar">Cliente: pode editar</option>
+                  </select>
+                )}
               </div>
               {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
               {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}

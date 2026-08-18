@@ -1191,6 +1191,10 @@ export type Documento = {
   token?: string // link público de leitura (compartilhar externamente)
   clienteId?: string // atribuído a um cliente (fixa a logomarca no editor)
   clienteNome?: string
+  // Compartilhamento com o CLIENTE do documento (estilo Google Docs): ausente =
+  // sem acesso (como sempre foi) · 'ver' = leitura no portal · 'editar' = o
+  // cliente edita título/conteúdo pelo portal. Exige clienteId.
+  acessoCliente?: 'ver' | 'editar'
   fontSize?: number // tamanho base da fonte do documento (conforto de leitura)
   criadoPor?: string
   criadoPorNome?: string
