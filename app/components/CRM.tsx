@@ -246,25 +246,35 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // "Outro (não especificado)". O filtro corta o funil e os chips CONTAM os
   // interessados de cada viagem — a clareza que a secretária pediu.
   const [viagens, setViagens] = useState<ViagemLite[]>([])
-  const [filtroViagem, setFiltroViagem] = useState('') // '' = todas · 'outro' · viagemId
+  const [filtroViagem, setFiltroViagem] = useState('') // '' = todas · 'outro' · 'fretamento' · viagemId
   const viagemDe = (id?: string) => viagens.find(v => v.id === id)
+  const idsFretamento = useMemo(() => new Set(viagens.filter(v => v.tipo === 'fretamento').map(v => v.id)), [viagens])
   const passaFiltroViagem = (n: Negocio) =>
-    !perfilTurismo || !filtroViagem || (filtroViagem === 'outro' ? !n.viagemId : n.viagemId === filtroViagem)
-  // Chips: viagens abertas/planejadas sempre (mesmo com 0 — mostra que ninguém
-  // se interessou ainda) + qualquer viagem que tenha interessado + "Outro".
+    !perfilTurismo || !filtroViagem || (
+      filtroViagem === 'outro' ? !n.viagemId
+      : filtroViagem === 'fretamento' ? (!!n.viagemId && idsFretamento.has(n.viagemId))
+      : n.viagemId === filtroViagem)
+  // Chips: PACOTES abertos/planejados um a um (mesmo com 0 — mostra que ninguém
+  // se interessou ainda) + FRETAMENTOS agrupados num chip só (fretamento não
+  // vende poltrona a interessado; listar cada um vira poluição — pedido do dono)
+  // + "Outro (não especificado)".
   const chipsViagem = useMemo(() => {
     if (!perfilTurismo) return []
     const padrao = pipelines[0]?.id || '' // (padraoId é declarado mais abaixo)
     const doPipe = negocios.filter(n => (n.pipelineId || padrao) === pipelineSel)
     const conta = (f: (n: Negocio) => boolean) => doPipe.filter(f).length
-    const relevantes = viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') || doPipe.some(n => n.viagemId === v.id))
+    const pacotes = viagens
+      .filter(v => (v.tipo || 'pacote') === 'pacote' && (['planejada', 'aberta'].includes(v.status || '') || doPipe.some(n => n.viagemId === v.id)))
       .sort((a, b) => (a.dataIda || '9999').localeCompare(b.dataIda || '9999'))
+    const nFretamento = conta(x => !!x.viagemId && idsFretamento.has(x.viagemId))
+    const temFretamento = nFretamento > 0 || viagens.some(v => v.tipo === 'fretamento' && ['planejada', 'aberta'].includes(v.status || ''))
     return [
       { id: '', rotulo: 'Todas', n: doPipe.length },
-      ...relevantes.map(v => ({ id: v.id, rotulo: `${v.titulo}${v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}`, n: conta(x => x.viagemId === v.id) })),
+      ...pacotes.map(v => ({ id: v.id, rotulo: `${v.titulo}${v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}`, n: conta(x => x.viagemId === v.id) })),
+      ...(temFretamento ? [{ id: 'fretamento', rotulo: 'Fretamento', n: nFretamento }] : []),
       { id: 'outro', rotulo: 'Outro (não especificado)', n: conta(x => !x.viagemId) },
     ]
-  }, [perfilTurismo, negocios, viagens, pipelineSel, pipelines])
+  }, [perfilTurismo, negocios, viagens, pipelineSel, pipelines, idsFretamento])
   // Filtros por pipeline (negócio/etapa sem pipelineId caem no pipeline padrão = o primeiro)
   const padraoId = pipelines[0]?.id || ''
   const estagiosDoPipeline = (pid: string) => estagios.filter(e => (e.pipelineId || padraoId) === pid)
@@ -350,15 +360,15 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         {/* Turismo: interessados por VIAGEM — cada chip conta os negócios do
             pipeline vinculados àquela viagem; sem vínculo = "Outro". */}
         {perfilTurismo && chipsViagem.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
             {chipsViagem.map(c => {
               const on = filtroViagem === c.id
               return (
-                <button key={c.id || 'todas'} onClick={() => setFiltroViagem(on && c.id ? '' : c.id)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, border: on ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: on ? '#eff6ff' : '#fff', color: on ? '#1d4ed8' : '#666', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  {c.rotulo}
-                  <span style={{ background: on ? '#1d4ed8' : '#f0f0f0', color: on ? '#fff' : '#888', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{c.n}</span>
+                <button key={c.id || 'todas'} onClick={() => setFiltroViagem(on && c.id ? '' : c.id)} title={c.rotulo}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 999, border: on ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: on ? '#eff6ff' : '#fff', color: on ? '#1d4ed8' : '#777', fontSize: 10.5, fontWeight: 700, cursor: 'pointer', maxWidth: 240 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.rotulo}</span>
+                  <span style={{ background: on ? '#1d4ed8' : '#f0f0f0', color: on ? '#fff' : '#888', borderRadius: 999, fontSize: 9.5, fontWeight: 800, padding: '0 6px', flexShrink: 0 }}>{c.n}</span>
                 </button>
               )
             })}
