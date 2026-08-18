@@ -1128,6 +1128,9 @@ export type CrmNegocio = {
   queixaPrincipal?: string // clínica: queixa principal relatada pela paciente (espelha o campo da Agenda)
   // Turismo: a qualificação é DA VIAGEM, não de marketing — destino, quantas
   // pessoas, quando e o que o cliente deseja. Campos de agência ficam vazios lá.
+  viagemId?: string          // VIAGEM CADASTRADA de interesse (vínculo, não texto) —
+                             // é o que agrupa os interessados por viagem no funil.
+                             // Ausente = "Outro (não especificado)".
   destinoDesejado?: string   // destino ou viagem de interesse
   qtdPassageiros?: number    // quantas pessoas pretendem viajar
   epocaDesejada?: string     // quando querem viajar (texto livre: "setembro", "férias")

@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
     instagram: b.instagram || '', dores: b.dores || '', solucoes: b.solucoes || '',
     ...(b.queixaPrincipal ? { queixaPrincipal: String(b.queixaPrincipal).slice(0, 300) } : {}),
     // Turismo: qualificação da VIAGEM (destino, pessoas, época, desejos)
+    ...(b.viagemId ? { viagemId: String(b.viagemId).slice(0, 60) } : {}),
     ...(b.destinoDesejado ? { destinoDesejado: String(b.destinoDesejado).slice(0, 140) } : {}),
     ...(Number(b.qtdPassageiros) >= 1 ? { qtdPassageiros: Math.floor(Number(b.qtdPassageiros)) } : {}),
     ...(b.epocaDesejada ? { epocaDesejada: String(b.epocaDesejada).slice(0, 80) } : {}),
@@ -206,7 +207,7 @@ export async function PUT(req: NextRequest) {
     if (/reuni/i.test(novo?.nome || '')) entrouEmReuniao = true
   }
 
-  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias', 'paisInteresse', 'ascendenteOrigem', 'grauParentesco', 'processoId']
+  const campos = ['titulo', 'valor', 'dono', 'donoNome', 'contatoId', 'empresaId', 'pipelineId', 'origem', 'probabilidade', 'previsaoFechamento', 'proximoFollowUp', 'motivoPerdido', 'descricao', 'handoff', 'status', 'clienteId', 'templateId', 'empresa', 'segmento', 'faturamentoEstimado', 'instagram', 'dores', 'solucoes', 'queixaPrincipal', 'viagemId', 'destinoDesejado', 'qtdPassageiros', 'epocaDesejada', 'preferencias', 'paisInteresse', 'ascendenteOrigem', 'grauParentesco', 'processoId']
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   // Linhagem fica FORA da whitelist genérica: ela é estrutura, não texto — entra
   // sanitizada (mesma regra da rota de processos) em vez de crua do corpo.

@@ -35,11 +35,15 @@ type Negocio = {
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
   paisInteresse?: string; ascendenteOrigem?: string; grauParentesco?: string; processoId?: string; linhagem?: PessoaLinhagem[]
   queixaPrincipal?: string
-  destinoDesejado?: string; qtdPassageiros?: number; epocaDesejada?: string; preferencias?: string
+  viagemId?: string; destinoDesejado?: string; qtdPassageiros?: number; epocaDesejada?: string; preferencias?: string
   clienteId?: string; handoff?: { escopoVendido?: string; expectativas?: string; detalhes?: string; observacoes?: string }
   empresaId?: string
   agendamentos?: { id: string; quando: string; canal: string; titulo: string; nota?: string; feito?: boolean }[]
 }
+
+// Turismo: viagem cadastrada que a oportunidade referencia (interessados por viagem).
+type ViagemLite = { id: string; titulo: string; dataIda?: string; status?: string; tipo?: string }
+const fmtDataViagem = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(5).split('-').reverse().join('/') : '')
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
@@ -209,6 +213,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       setPipelines(pls)
       // Frequência dos pacientes: carrega os atendimentos (clínica) para a lista
       if (perfilClinica) fetch('/api/agenda').then(r => r.json()).then(d => { if (Array.isArray(d?.agendamentos)) setAgendamentos(d.agendamentos) }).catch(() => {})
+      // Turismo: as viagens cadastradas alimentam o vínculo "viagem de interesse"
+      // e o filtro de interessados por viagem no funil.
+      if (perfilTurismo) fetch('/api/viagens').then(r => r.json()).then(d => { if (Array.isArray(d?.viagens)) setViagens(d.viagens) }).catch(() => {})
       setPipelineSel(prev => (prev && pls.some((p: any) => p.id === prev)) ? prev : (pls[0]?.id || ''))
       setCarregando(false)
     }).catch(() => setCarregando(false))
@@ -224,6 +231,31 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
 
   const contatoDe = (id?: string) => contatos.find(c => c.id === id)
   const totalPorEstagio = (eid: string) => negocios.filter(n => n.estagioId === eid).reduce((s, n) => s + (Number(n.valor) || 0), 0)
+
+  // ── Turismo: interessados POR VIAGEM ────────────────────────────────────────
+  // A oportunidade referencia a viagem cadastrada (viagemId); sem viagem, cai em
+  // "Outro (não especificado)". O filtro corta o funil e os chips CONTAM os
+  // interessados de cada viagem — a clareza que a secretária pediu.
+  const [viagens, setViagens] = useState<ViagemLite[]>([])
+  const [filtroViagem, setFiltroViagem] = useState('') // '' = todas · 'outro' · viagemId
+  const viagemDe = (id?: string) => viagens.find(v => v.id === id)
+  const passaFiltroViagem = (n: Negocio) =>
+    !perfilTurismo || !filtroViagem || (filtroViagem === 'outro' ? !n.viagemId : n.viagemId === filtroViagem)
+  // Chips: viagens abertas/planejadas sempre (mesmo com 0 — mostra que ninguém
+  // se interessou ainda) + qualquer viagem que tenha interessado + "Outro".
+  const chipsViagem = useMemo(() => {
+    if (!perfilTurismo) return []
+    const padrao = pipelines[0]?.id || '' // (padraoId é declarado mais abaixo)
+    const doPipe = negocios.filter(n => (n.pipelineId || padrao) === pipelineSel)
+    const conta = (f: (n: Negocio) => boolean) => doPipe.filter(f).length
+    const relevantes = viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') || doPipe.some(n => n.viagemId === v.id))
+      .sort((a, b) => (a.dataIda || '9999').localeCompare(b.dataIda || '9999'))
+    return [
+      { id: '', rotulo: 'Todas', n: doPipe.length },
+      ...relevantes.map(v => ({ id: v.id, rotulo: `${v.titulo}${v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}`, n: conta(x => x.viagemId === v.id) })),
+      { id: 'outro', rotulo: 'Outro (não especificado)', n: conta(x => !x.viagemId) },
+    ]
+  }, [perfilTurismo, negocios, viagens, pipelineSel, pipelines])
   // Filtros por pipeline (negócio/etapa sem pipelineId caem no pipeline padrão = o primeiro)
   const padraoId = pipelines[0]?.id || ''
   const estagiosDoPipeline = (pid: string) => estagios.filter(e => (e.pipelineId || padraoId) === pid)
@@ -306,6 +338,23 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <BibliotecaVendasTela podeEditar={podeEditar} />
       ) : (
         <>
+        {/* Turismo: interessados por VIAGEM — cada chip conta os negócios do
+            pipeline vinculados àquela viagem; sem vínculo = "Outro". */}
+        {perfilTurismo && chipsViagem.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
+            {chipsViagem.map(c => {
+              const on = filtroViagem === c.id
+              return (
+                <button key={c.id || 'todas'} onClick={() => setFiltroViagem(on && c.id ? '' : c.id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, border: on ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: on ? '#eff6ff' : '#fff', color: on ? '#1d4ed8' : '#666', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  {c.rotulo}
+                  <span style={{ background: on ? '#1d4ed8' : '#f0f0f0', color: on ? '#fff' : '#888', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{c.n}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
         <style>{`.crm-barra-topo::-webkit-scrollbar{height:9px}.crm-barra-topo::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}.crm-barra-topo::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-barra-topo::-webkit-scrollbar-track{background:transparent}.crm-barra-topo{scrollbar-width:thin;scrollbar-color:#d1d5db transparent}`}</style>
         <div ref={barraTopoRef} onScroll={aoRolarTopo} className="crm-barra-topo" title="Deslizar o funil" style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, marginBottom: 2 }}>
           <div style={{ width: larguraFunil, height: 1 }} />
@@ -313,7 +362,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <div ref={funilRef} className="crm-kanban" onScroll={aoRolarFunil} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
           style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
-            const cards = negocios.filter(n => n.estagioId === est.id)
+            const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
             const cor = est.ganho ? '#16a34a' : est.perdido ? '#b91c1c' : '#111'
             return (
               <div key={est.id}
@@ -333,6 +382,11 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                         onClick={() => setAberto(n)}
                         style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #eee' }}>
                         <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
+                        {perfilTurismo && (
+                          <span style={{ display: 'inline-block', marginBottom: 4, fontSize: 10, fontWeight: 800, color: n.viagemId ? '#1d4ed8' : '#9ca3af', background: n.viagemId ? '#eff6ff' : '#f4f4f5', borderRadius: 999, padding: '2px 8px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {viagemDe(n.viagemId)?.titulo || n.destinoDesejado || 'Outro (não especificado)'}
+                          </span>
+                        )}
                         {!!n.valor && <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>{fmtR$(n.valor)}</p>}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                           <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || 'Sem contato'}</span>
@@ -403,8 +457,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         </div>
       )}
 
-      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} lojaAtiva={lojaAtiva} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
-      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} onIrProcessos={onIrProcessos} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
+      {novoModal && <NovoNegocioModal estagios={estagiosDoPipeline(pipelineSel)} pipelineId={pipelineSel} usuarios={usuarios} contatos={contatos} viagens={viagens} origens={origensConhecidas} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} lojaAtiva={lojaAtiva} contatoIdInicial={novoNegocioContatoId} onClose={() => { setNovoModal(false); setNovoNegocioContatoId('') }} onSalvo={() => { setNovoModal(false); setNovoNegocioContatoId(''); carregar() }} />}
+      {aberto && <NegocioModal negocio={aberto} estagios={estagios} pipelines={pipelines} padraoId={padraoId} contato={contatoDe(aberto.contatoId)} usuarios={usuarios} viagens={viagens} podeExcluir={podeExcluir} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilCidadania={perfilCidadania} perfilTelefonia={perfilTelefonia} onIrProcessos={onIrProcessos} onAgendar={perfilClinica ? agendarNoCrm : undefined} onAbrirWhatsApp={abrirWhatsAppInterno} onClose={() => setAberto(null)} onMudou={() => carregar()} onFechar={() => { setAberto(null); carregar() }} onClienteCriado={onClienteCriado} />}
       {abordar && <AbordagemModal contato={abordar} podeEditar={podeEditar}
         onClose={() => setAbordar(null)}
         onAbrirConversa={(tel, cid) => { setAbordar(null); abrirWhatsAppInterno(tel, cid) }}
@@ -1753,8 +1807,11 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   )
 }
 
-function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
-  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
+function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = [], origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; viagens?: ViagemLite[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
+  const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', viagemId: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
+  // Viagens que dá para vincular: pacote planejada/aberta (fretamento e viagem já
+  // realizada/cancelada não recebem interessado novo).
+  const viagensAbertas = viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') && (v.tipo || 'pacote') === 'pacote')
   // A oportunidade nasce do contato, sem exigir empresa. A regra é a MESMA que a
   // rota aplica (perfilVendeParaPessoa) — repetir a lista de perfis aqui foi o
   // que deixou a tela e o servidor discordarem na cidadania.
@@ -1794,7 +1851,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', ...(lojaAtiva ? { lojaId: lojaAtiva } : {}), profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, destinoDesejado: f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
+      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', ...(lojaAtiva ? { lojaId: lojaAtiva } : {}), profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, viagemId: f.viagemId, destinoDesejado: f.viagemId ? '' : f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
@@ -1876,7 +1933,20 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
             {/* Turismo: a qualificação é DA VIAGEM — destino, pessoas, época e desejos */}
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Sobre a viagem</span>
-            <div><label style={labelStyle}>Destino / viagem de interesse</label><input value={f.destinoDesejado} onChange={e => setF({ ...f, destinoDesejado: e.target.value })} placeholder="Ex.: Foz do Iguaçu, praia no verão..." style={inputStyle} /></div>
+            {/* SELECIONA a viagem cadastrada (é o que agrupa os interessados por
+                viagem no funil). Sem viagem específica = "Outro (não especificado)",
+                aí sim o destino é digitado à mão. */}
+            <div>
+              <label style={labelStyle}>Viagem de interesse</label>
+              <select value={f.viagemId} onChange={e => setF({ ...f, viagemId: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">Outro (não especificado)</option>
+                {viagensAbertas.map(v => <option key={v.id} value={v.id}>{v.titulo}{v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}</option>)}
+              </select>
+              {viagensAbertas.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Nenhuma viagem aberta cadastrada — cadastre em Viagens para vincular interessados.</p>}
+            </div>
+            {!f.viagemId && (
+              <div><label style={labelStyle}>Destino desejado (texto livre)</label><input value={f.destinoDesejado} onChange={e => setF({ ...f, destinoDesejado: e.target.value })} placeholder="Ex.: Gramado, praia no verão..." style={inputStyle} /></div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={f.qtdPassageiros} onChange={e => setF({ ...f, qtdPassageiros: e.target.value })} placeholder="Ex.: 4" style={inputStyle} /></div>
               <div><label style={labelStyle}>Época desejada</label><input value={f.epocaDesejada} onChange={e => setF({ ...f, epocaDesejada: e.target.value })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
@@ -1925,7 +1995,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, origens = 
   )
 }
 
-function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, onAgendar, onAbrirWhatsApp, onIrProcessos }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void; onIrProcessos?: () => void }) {
+function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, viagens = [], onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, onAgendar, onAbrirWhatsApp, onIrProcessos }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; viagens?: ViagemLite[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void; onIrProcessos?: () => void }) {
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -2139,7 +2209,18 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Sobre a viagem</span>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Destino / viagem de interesse</label><input value={neg.destinoDesejado || ''} onChange={e => setNeg({ ...neg, destinoDesejado: e.target.value })} onBlur={() => patch({ destinoDesejado: neg.destinoDesejado })} placeholder="Ex.: Foz do Iguaçu, praia no verão..." style={inputStyle} /></div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={labelStyle}>Viagem de interesse</label>
+              <select value={neg.viagemId || ''} onChange={e => { const viagemId = e.target.value; setNeg({ ...neg, viagemId }); patch({ viagemId, ...(viagemId ? { destinoDesejado: '' } : {}) }) }} style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">Outro (não especificado)</option>
+                {/* Viagens abertas + a já vinculada (mesmo fechada — o vínculo não some sozinho) */}
+                {viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') && (v.tipo || 'pacote') === 'pacote' || v.id === neg.viagemId)
+                  .map(v => <option key={v.id} value={v.id}>{v.titulo}{v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}</option>)}
+              </select>
+            </div>
+            {!neg.viagemId && (
+              <div style={{ marginBottom: 10 }}><label style={labelStyle}>Destino desejado (texto livre)</label><input value={neg.destinoDesejado || ''} onChange={e => setNeg({ ...neg, destinoDesejado: e.target.value })} onBlur={() => patch({ destinoDesejado: neg.destinoDesejado })} placeholder="Ex.: Gramado, praia no verão..." style={inputStyle} /></div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={neg.qtdPassageiros || ''} onChange={e => setNeg({ ...neg, qtdPassageiros: Number(e.target.value) || undefined })} onBlur={() => patch({ qtdPassageiros: neg.qtdPassageiros || 0 })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Época desejada</label><input value={neg.epocaDesejada || ''} onChange={e => setNeg({ ...neg, epocaDesejada: e.target.value })} onBlur={() => patch({ epocaDesejada: neg.epocaDesejada })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
