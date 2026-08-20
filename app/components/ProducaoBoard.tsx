@@ -147,7 +147,7 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
             const resp = responsavel(p)
             return (
               <div key={p.id} onClick={() => onAbrirPauta(p)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: '1px solid #f4f4f5', cursor: 'pointer', background: atras ? '#fffafa' : undefined }}>
+                style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: '11px 16px', borderBottom: '1px solid #f4f4f5', cursor: 'pointer', background: atras ? '#fffafa' : undefined }}>
                 {capa
                   ? <img src={capa} alt="" style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#f0f0f0' }} />
                   : <div style={{ width: 40, height: 50, borderRadius: 8, flexShrink: 0, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -159,12 +159,17 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
                   </span>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome}</span>
                 </div>
-                <span style={{ flex: 1, minWidth: 120, fontSize: 12.5, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{excerto(p)}</span>
-                {resp && <span style={{ flexShrink: 0, fontSize: 11.5, color: '#999', whiteSpace: 'nowrap' }}>{resp}</span>}
-                <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 999, background: t.bg, color: t.cor, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
-                <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: atras ? 800 : 600, color: atras ? '#b91c1c' : '#9a9a9a', whiteSpace: 'nowrap', minWidth: 82, textAlign: 'right' }}>
-                  {atras ? (diasDeAtraso(p) === 0 ? 'venceu hoje' : `atrasado ${diasDeAtraso(p)}d`) : dataCurta(p.dataAgendada)}
-                </span>
+                <span style={{ flex: '1 1 120px', minWidth: 0, fontSize: 12.5, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{excerto(p)}</span>
+                {/* Responsável + status + prazo AGRUPADOS: no celular o grupo desce
+                    inteiro pra 2ª linha — antes a linha não quebrava e o status
+                    ficava CORTADO fora da tela (medido em produção a 375px). */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
+                  {resp && <span style={{ flexShrink: 0, fontSize: 11.5, color: '#999', whiteSpace: 'nowrap' }}>{resp}</span>}
+                  <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 999, background: t.bg, color: t.cor, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
+                  <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: atras ? 800 : 600, color: atras ? '#b91c1c' : '#9a9a9a', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    {atras ? (diasDeAtraso(p) === 0 ? 'venceu hoje' : `atrasado ${diasDeAtraso(p)}d`) : dataCurta(p.dataAgendada)}
+                  </span>
+                </div>
               </div>
             )
           })}

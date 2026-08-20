@@ -2558,6 +2558,16 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
   const [configurado, setConfigurado] = useState(true)
   const [contas, setContas] = useState<any[]>([])
   const [sel, setSel] = useState<string>('')
+  // Celular: o inbox vira UMA coluna (lista OU conversa, estilo WhatsApp) —
+  // as duas lado a lado espremiam a conversa a ~50px de largura (inutilizável;
+  // medido em produção a 375px, 2026-08-20).
+  const [inboxMovel, setInboxMovel] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const ap = () => setInboxMovel(mq.matches)
+    ap(); mq.addEventListener('change', ap)
+    return () => mq.removeEventListener('change', ap)
+  }, [])
   const [mensagens, setMensagens] = useState<MsgItem[]>([])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -2973,8 +2983,8 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
         </div>
       )}
       <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
-        {/* Lista de conversas */}
-        <div style={{ width: 280, borderRight: '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Lista de conversas — no celular ocupa tudo e some quando uma conversa abre */}
+        <div style={{ width: inboxMovel ? '100%' : 280, borderRight: inboxMovel ? 'none' : '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0, display: inboxMovel && sel ? 'none' : 'flex', flexDirection: 'column' }}>
           <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou dentro da conversa..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
             {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: '#bbb' }}>Procurando no histórico das conversas…</p>}
@@ -3000,12 +3010,17 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
               )
             })}
         </div>
-        {/* Conversa */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* Conversa — no celular só aparece com uma conversa aberta (voltar = lista) */}
+        <div style={{ flex: 1, display: inboxMovel && !sel ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
           {!sel ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13 }}>Selecione uma conversa</div>
           ) : (<>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {inboxMovel && (
+                <button onClick={() => setSel('')} title="Voltar para as conversas" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid #e8e8e8', background: '#fff', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </button>
+              )}
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                 {conversaSel && <AvatarConv foto={conversaSel.foto} nome={nomeDe(conversaSel)} cor={cfg.cor} />}
                 <div style={{ minWidth: 0 }}>
