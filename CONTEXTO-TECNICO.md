@@ -1296,3 +1296,87 @@ não são tocados.
   como o produto agora é da loja, transferir p/ outra loja precisa casar/criar por SKU no destino
   (revisitar — a UI de transferência ainda assume o modelo antigo).
 - Gate `build` = `vitest && next build` — teste vermelho não deploya (vale pra TODAS as instâncias).
+
+## 41. Evolução 2026-07-29→08-20 — CRM/Aprovações/Documentos/Mobile/MCP + multi-tenant F0
+
+### 41.1 CRM (agência e todos os perfis)
+- Win rate = ganhos ÷ TODAS as oportunidades (não só fechadas); card "Conversão (R$)"
+  (R$ ganho ÷ R$ total) e card "Perdidas" no Painel de vendas (CRM.tsx + /api/dashboard-vendas).
+- Funil: barra de rolagem fina no TOPO sincronizada com o quadro. GOTCHA: a medição
+  (scrollWidth) precisa re-rodar quando negócios/etapas/pipeline mudam — ResizeObserver
+  NÃO dispara por conteúdo interno; deps do efeito ficam DEPOIS de pipelineSel (TDZ).
+
+### 41.2 Aprovações (link público /aprovacoes/[token])
+- Briefings de copy = TABELA (Imagem | Copy | Legenda | Aprovação), uma linha por
+  postagem; "Pedir ajustes" edita textos NA linha; backend /api/decision intacto.
+  Criativos com arte seguem no PostCard. (TabelaCopies/LinhaCopy substituíram CopyCard.)
+- Painel "Programação" à ESQUERDA (300px TRAVADOS, layout 100% INLINE — a versão com
+  <style>/classes falhou em produção; não voltar a classes aqui), materiais centralizados
+  (espaçador espelho), prévia do criativo em modal via createPortal no body (aside sticky
+  cria stacking context — modal dentro dele fica ATRÁS dos cards). /api/aprovacao-link
+  devolve `programacao` (agendados de hoje+, com imagens/capasVideo p/ prévia).
+- Logomarca: /soma10-logo.png (a SōMA da sidebar; /logo.svg é só o ícone quadrado) e
+  SEM o nome "Soma10 Agency" escrito ao lado.
+- "VOLTAR da aprovação" (tira do cliente SEM excluir): rota /api/posts/voltar-aprovacao
+  (aprovacao_copy→copy · aprovacao_criativo→criativo · avulso→rascunho, sai de
+  `agendados`). Botões SÓ no Studio (linha + expandida) e no modal de preview do
+  Planner — o dono vetou o botão no link público (chegou a existir e foi removido).
+
+### 41.3 Planner
+- BUG CRÍTICO corrigido: arrastar post no calendário forçava status 'agendado' e o cron
+  PUBLICAVA sem aprovação. Arrastar agora SÓ remarca a data (preserva status).
+- Pendência aceita: filtro de cliente da Lista/Calendário casa por NOME (frágil) — trocar
+  por clienteId numa rodada futura.
+
+### 41.4 Documentos (estilo Google Docs)
+- `Documento.acessoCliente` ('ver'|'editar') → portal do cliente ganhou /cliente/{id}/documentos
+  (leitura sanitizada ou RichText com autosave); cliente só edita título/conteúdo, nunca
+  vínculo/link/permissão; item "Documentos" na nav do portal (perm 'documentos').
+- `Documento.acessoLink` ('editar') → o LINK público /doc/[token] pode liberar EDIÇÃO sem
+  login (PUT em /api/doc-publico autorizado pelo token, rate-limited, assina "Link público").
+  Ausente = leitura (links antigos inalterados).
+
+### 41.5 Painel (agência)
+- Meta de postagens = publicadas + PROGRAMADAS com data no mês (agendado/publicando/
+  falha_publicacao/aguardando_aprovacao, etapa aprovacao_criativo liberada). Fora: copy em
+  aprovação (sem arte) e 'corrigir'.
+
+### 41.6 Mobile — rodada 1 (auditoria em produção a 375px, login de teste + medição JS)
+- ProducaoBoard: linha com flexWrap + grupo responsável/status/prazo desce inteiro (antes
+  o status ficava CORTADO fora da tela, sem rolagem).
+- CRM>Mensagens: inbox vira UMA coluna ≤768px (lista cheia → conversa cheia com voltar);
+  antes a conversa ficava com ~50px.
+- Backlog mobile: calendário do Planner (células ~49px → padrão dia+lista), linhas do
+  Studio com plano aberto, modais grandes (ficha do cliente/editor).
+- Técnica de auditoria que funcionou: logar com revisor.meta@ no preview, viewport 375,
+  medir overflow/tap targets via javascript_tool (screenshots indisponíveis com pane oculto).
+
+### 41.7 Conector MCP (Soma10 dentro do claude.ai)
+- Rota /api/mcp/[segredo] (Streamable HTTP, JSON-RPC POST stateless: initialize/tools/
+  list/tools/call/ping; GET 405; notificações 202). Tools = as do assistente interno
+  (lib/assistenteTools, role admin, SÓ leitura): tarefas/clientes/CRM/brandboard/financeiro.
+- Env `MCP_CONNECTOR_SECRET` (Vercel, SETADA em 20/08) = segredo do fim da URL do conector
+  (https://approval.soma10.com.br/api/mcp/<segredo>). Endpoint VALIDADO por curl (initialize
+  e tools/list ok). Estado: conector "SOMA10" já registrado no claude.ai — falta o dono
+  clicar VINCULAR (erro "already exists" = não re-adicionar, usar o card existente).
+  Evolução futura: OAuth de verdade + tools de escrita.
+
+### 41.8 Multi-tenant (Caminho A→B)
+- MULTITENANT-PLANO.md (7 fases, isolamento por PREFIXO de chave, teste estático que
+  bloqueia deploy, 10-14 dias úteis) + MULTITENANT-CHECKLIST.md (gerado por
+  scripts/mapear-chaves.mjs; 125 arquivos/695 chamadas; encolhe sozinho).
+- F0 PRONTA no branch `multitenant-f0` (commit 7861218, preview READY): lib/orgPrefix
+  (puro) + lib/dbOrg + lib/orgs (org-reg:{id}, mapa hosts, dbDaRequest) + testes (770) +
+  rota piloto /api/agentes migrada. MODO LEGADO: sem org registrada o wrapper não prefixa
+  — migração pode ser incremental na main sem big-bang. AGUARDA validação do dono no diff
+  do branch para merge e F1 (auth/usuários).
+
+### 41.9 Outras pendências vivas (fila do dono)
+- Notificações: 1º acesso do dia notifica TUDO de uma vez (cascata), resto do dia normal.
+- Studio: CHECK de conteúdo feito (para de atrasar/notificar) + memória de conteúdos já
+  produzidos (não repetir tema).
+- Turismo (Deny): contatos com Origem+Destino+Histórico + colunas no import — aguardando
+  o dono mandar os TÍTULOS DAS COLUNAS da planilha (CSV UTF-8). Depois: fases 4-5 (croqui
+  de memória: Passageiros/Hotéis, Equipe/carteira).
+- WhatsApp: feedback no botão Desconectar + "Forçar reset" da instância (oferecido, não feito).
+- Arquivar clientes: botão "Limpar órfãos" (purga o que o filtro só esconde) — opcional.
