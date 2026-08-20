@@ -48,7 +48,16 @@ export async function POST(req: NextRequest, { params }: { params: { segredo: st
         // Ecoa a versão do cliente (somos compatíveis com o fluxo básico de tools).
         protocolVersion: typeof pedida === 'string' && pedida ? pedida : '2025-06-18',
         capabilities: { tools: {} },
-        serverInfo: { name: 'Soma10', version: '1.0.0' },
+        serverInfo: {
+          name: 'Soma10',
+          version: '1.0.0',
+          // Ícone do card no cliente MCP (spec 2025-11-25). Cliente que não
+          // conhece o campo simplesmente ignora.
+          icons: [
+            { src: 'https://approval.soma10.com.br/icon-192.png', mimeType: 'image/png', sizes: ['192x192'] },
+            { src: 'https://approval.soma10.com.br/icon-512.png', mimeType: 'image/png', sizes: ['512x512'] },
+          ],
+        },
         instructions: 'Soma10 — sistema de gestão da agência Grupo 10+. Ferramentas de consulta: tarefas da equipe, carteira de clientes, funil de vendas (CRM), Brand Board/Playbook por cliente e resultado financeiro do mês. Responda em português.',
       },
     })
