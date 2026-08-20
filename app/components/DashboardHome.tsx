@@ -121,14 +121,19 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   const clientesSM = useMemo(() => clientes.filter(c => c.tipo !== 'interno' && temSocialMedia(c)), [clientes])
 
   const postsMes = useMemo(() => posts.filter(p => {
-    if (p.etapa && p.etapa !== 'pronto') return false
+    // Meta = trabalho FEITO no mês (pedido do dono, 20/08): publicadas E
+    // programadas. Programada = criativo pronto com data marcada — inclui a
+    // fila de publicação, o que aguarda o cliente aprovar (etapa
+    // aprovacao_criativo: a arte existe) e a falha técnica de publicação.
+    // Fora da régua: copy em aprovação (sem arte) e o que voltou p/ ajuste.
+    if (p.etapa && p.etapa !== 'pronto' && p.etapa !== 'aprovacao_criativo') return false
     const ehDoMes = (iso: string | undefined) => {
       if (!iso) return false
       const d = new Date(iso)
       return d.getMonth() === mesAtual && d.getFullYear() === anoAtual
     }
     if (p.status === 'publicado') return ehDoMes(p.atualizadoEm || p.criadoEm)
-    if (p.status === 'agendado') return ehDoMes(p.dataAgendada)
+    if (['agendado', 'publicando', 'falha_publicacao', 'aguardando_aprovacao'].includes(p.status)) return ehDoMes(p.dataAgendada)
     return false
   }), [posts, mesAtual, anoAtual])
 
@@ -558,7 +563,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {clientesOrdenados.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Meta de postagens — {MESES[mesAtual]}</h3>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Meta de postagens — {MESES[mesAtual]} <span style={{ fontSize: 11, fontWeight: 500, color: '#94a3b8' }}>(publicadas + programadas)</span></h3>
             <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#888' }}>
               <span>Min: {META_MIN}</span><span>|</span><span>Bom: {META_BOA}</span><span>|</span><span>Exc: {META_EXC}+</span>
             </div>
@@ -601,7 +606,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
                 <p key={c.id} style={{ margin: 0, fontSize: 12.5, color: '#b91c1c' }}><strong>{c.nome}</strong> esta em nivel critico ({contagemPorCliente[c.id] || 0} posts no mes).</p>
               ))}
               {clientesEmRisco.map(c => { const meta = Number(c.postsMensais) || META_MIN; return (
-                <p key={'r' + c.id} style={{ margin: 0, fontSize: 12.5, color: '#a16207' }}>⚠ <strong>{c.nome}</strong> abaixo da meta do mês: {contagemPorCliente[c.id] || 0} de {meta} (publicado + agendado). Faltam {meta - (contagemPorCliente[c.id] || 0)} a planejar.</p>
+                <p key={'r' + c.id} style={{ margin: 0, fontSize: 12.5, color: '#a16207' }}>⚠ <strong>{c.nome}</strong> abaixo da meta do mês: {contagemPorCliente[c.id] || 0} de {meta} (publicadas + programadas). Faltam {meta - (contagemPorCliente[c.id] || 0)} a planejar.</p>
               ) })}
               {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido: {clientesSemBrandLista.map(c => c.nome).join(', ')}.</p>}
               {clientesSemEntregaveis > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemEntregaveis} cliente(s) sem entregaveis definidos (configure em Clientes).</p>}
