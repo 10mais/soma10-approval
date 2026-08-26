@@ -28,7 +28,11 @@ export async function GET(req: NextRequest) {
   // Sem cliente + mensagens = conexão da PRÓPRIA AGÊNCIA (state soma10msg)
   const state = clienteAlvo ? `soma10:${clienteAlvo}${comoNova ? ':nova' : ''}` : (comMensagens ? 'soma10msg' : 'soma10')
 
-  const scopeArr = ['instagram_business_basic', 'instagram_business_content_publish']
+  // insights entra no consentimento desde o 1º clique: o App Review exige VER o
+  // usuário concedendo a permissão (reprovação de 20/08), e sem ela as métricas de
+  // CONTA do Analytics (alcance/visitas/demografia) falham caladas. Token JÁ salvo
+  // não muda — só vale para conexão nova.
+  const scopeArr = ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_insights']
   if (comMensagens) scopeArr.push('instagram_business_manage_messages', 'instagram_business_manage_comments')
   const scope = scopeArr.join(',')
 
