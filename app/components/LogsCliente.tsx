@@ -6,6 +6,7 @@ type Log = {
   id: string; ts: number; clienteId: string; clienteNome: string
   tipo: string; acao: string; postId?: string; resumo?: string; motivo?: string; origem?: string
   postStatus?: string; postEtapa?: string; postExiste?: boolean // status ATUAL do criativo
+  mudancas?: { campo: string; antes: string; depois: string }[] // antes -> depois do pedido
 }
 type Anot = { x: number; y: number; text: string; id?: number; img?: number }
 type PostDet = { id: string; imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string }
@@ -138,6 +139,11 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           const mostrarPins = (l.tipo === 'ajuste_layout' || l.tipo === 'reprovacao') && anot.length > 0
           const obs = post ? (post.motivoReprovacao || '') : (l.motivo || '')
           const legenda = post ? (post.legenda || '') : (l.resumo || '')
+          const mudancas = l.mudancas || []
+          const mudouLegenda = mudancas.some(m => m.campo === 'Legenda')
+          // Log gravado antes de 27/08 não tem o antes/depois: dizer isso é melhor
+          // do que mostrar dois textos parecidos sem rótulo (a confusão original).
+          const semHistorico = !mudancas.length && (l.tipo === 'ajuste_layout' || l.tipo === 'ajuste_copy' || l.tipo === 'corrigir_legenda')
           const imgsComPins = Array.from(new Set(anot.map(a => a.img ?? 0)))
           return (
             <div key={l.id} onClick={() => expansivel && toggleExpand(l)} title={aberto ? undefined : 'Clique para ler o pedido do cliente'}
@@ -154,8 +160,31 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
 
                     {obs && (
                       <div>
-                        <p style={rotuloExp}>Observação do cliente</p>
+                        <p style={rotuloExp}>O que o cliente pediu</p>
                         <p style={{ margin: 0, fontSize: 13, color: '#111', whiteSpace: 'pre-wrap', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px' }}>{obs}</p>
+                      </div>
+                    )}
+
+                    {mudancas.length > 0 && (
+                      <div>
+                        <p style={rotuloExp}>O que o cliente alterou ({mudancas.length})</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {mudancas.map((m, i) => (
+                            <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+                              <p style={{ margin: 0, padding: '5px 10px', fontSize: 11, fontWeight: 800, color: '#475569', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.campo}</p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: '#fef2f2', borderRight: '1px solid #fee2e2' }}>
+                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: '#b91c1c' }}>ANTES</p>
+                                  <p style={{ margin: 0, fontSize: 12.5, color: '#7f1d1d', whiteSpace: 'pre-wrap' }}>{m.antes || <span style={{ color: '#c4b5b5' }}>(vazio)</span>}</p>
+                                </div>
+                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: '#f0fdf4' }}>
+                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: '#15803d' }}>DEPOIS (pedido do cliente)</p>
+                                  <p style={{ margin: 0, fontSize: 12.5, color: '#14532d', whiteSpace: 'pre-wrap' }}>{m.depois || <span style={{ color: '#a7c4b0' }}>(vazio)</span>}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -182,14 +211,19 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                       </div>
                     )}
 
-                    {legenda && (
+                    {legenda && !mudouLegenda && (
                       <div>
-                        <p style={rotuloExp}>Legenda</p>
+                        <p style={rotuloExp}>Legenda atual do material</p>
                         <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}>{legenda}</p>
+                        {semHistorico && (
+                          <p style={{ margin: '5px 0 0', fontSize: 11.5, color: '#94a3b8' }}>
+                            Esta solicitação é anterior ao registro de alterações — o sistema não guardou como a legenda estava antes do pedido.
+                          </p>
+                        )}
                       </div>
                     )}
 
-                    {p !== 'loading' && !obs && !mostrarPins && !legenda && (
+                    {p !== 'loading' && !obs && !mostrarPins && !legenda && !mudancas.length && (
                       <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>{p === 'erro' ? 'Não foi possível carregar o material.' : 'Sem detalhes de texto — abra no editor para ver o material.'}</p>
                     )}
 

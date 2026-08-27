@@ -14,6 +14,14 @@ export const maxDuration = 300
 
 const NOTIFY_EMAIL = 'marketing@grupo10mais.com.br'
 
+// Data legível no histórico de mudanças ("12/09/2026 14:30"). ISO vazio = "sem data".
+function fmtData(iso: string): string {
+  if (!iso) return 'sem data'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return 'sem data'
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export async function POST(req: NextRequest) {
   try {
     return await decidir(req)
@@ -65,6 +73,25 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'acesso suspenso por pendência de pagamento' }, { status: 403 })
   }
 
+  // FOTOGRAFIA do material ANTES de qualquer alteração. A partir daqui o código
+  // sobrescreve post.legenda/headline/etc com o que o cliente mandou; sem esta
+  // cópia o valor ORIGINAL some para sempre e a tela de Solicitações fica sem ter
+  // como mostrar "antes -> depois" (pedido do dono, 27/08).
+  const antesDoPedido: Record<string, unknown> = {
+    legenda: (post as any).legenda || '',
+    headline: (post as any).headline || '',
+    subheadline: (post as any).subheadline || '',
+    textoImagem: (post as any).textoImagem || '',
+    cta: (post as any).cta || '',
+  }
+  const CAMPOS_COPY = [
+    { chave: 'headline', rotulo: 'Headline' },
+    { chave: 'subheadline', rotulo: 'Subtítulo' },
+    { chave: 'textoImagem', rotulo: 'Texto na arte' },
+    { chave: 'cta', rotulo: 'CTA' },
+    { chave: 'legenda', rotulo: 'Legenda' },
+  ]
+
   // ===== LINHA DE MONTAGEM: COPY em aprovação (etapa aprovacao_copy) =====
   // Pelo mesmo link público do criativo, a decisão aqui é sobre o TEXTO.
   // approved -> copy aprovada (nasce a tarefa do designer); corrected/rejected ->
@@ -81,13 +108,20 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       if (typeof novaLegenda === 'string') (post as any).legenda = novaLegenda
     }
     try {
-      const { registrarLogCliente } = await import('@/lib/logCliente')
+      const { registrarLogCliente, diffCampos } = await import('@/lib/logCliente')
+      // O que o cliente REESCREVEU: compara o material original com os campos que
+      // vieram no pedido. `aplicarCampos()` ainda não rodou, então `antesDoPedido`
+      // e o post são o estado original.
+      const editados: Record<string, unknown> = { ...novos }
+      if (typeof novaLegenda === 'string') editados.legenda = novaLegenda
+      const mudancas = diffCampos(antesDoPedido, editados, CAMPOS_COPY)
       await registrarLogCliente({
         clienteId: (post as any).clienteId || '', clienteNome: clienteNomeCopy,
         tipo: type === 'approved' || type === 'caption' ? 'aprovacao' : type === 'rejected' ? 'reprovacao' : 'ajuste_copy',
         acao: type === 'approved' || type === 'caption' ? 'Aprovou a copy' : type === 'rejected' ? 'Recusou a copy' : 'Pediu ajuste na copy',
         postId: id, resumo: ((post as any).headline || post.legenda || (post as any).briefing || '').slice(0, 140),
         motivo: rejectReason || undefined, origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+        mudancas: mudancas.length ? mudancas : undefined,
       })
     } catch { /* nunca bloqueia */ }
 
@@ -117,6 +151,8 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true })
   }
 
+  const dataAnterior = String((post as any).dataAgendada || '')
+
   // Correção SÓ da legenda: substitui o texto e SEGUE a programação (= aprova).
   const soLegenda = type === 'caption'
   if (soLegenda) {
@@ -138,8 +174,13 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
 
   // LOG da solicitação do cliente (30 dias) — para reencontrar mesmo depois de editar.
   try {
-    const { registrarLogCliente } = await import('@/lib/logCliente')
+    const { registrarLogCliente, diffCampos } = await import('@/lib/logCliente')
     const pontos = Array.isArray(annotations) ? annotations.map((a: any) => a?.text).filter(Boolean).join(' · ') : ''
+    // A legenda já foi sobrescrita acima — o original está em `antesDoPedido`.
+    const mudancas = diffCampos(antesDoPedido, { legenda: post.legenda || '' }, [{ chave: 'legenda', rotulo: 'Legenda' }])
+    if (novaData && (post as any).dataAgendada !== dataAnterior) {
+      mudancas.push({ campo: 'Data de publicação', antes: fmtData(dataAnterior), depois: fmtData((post as any).dataAgendada) })
+    }
     await registrarLogCliente({
       clienteId: (post as any).clienteId || '',
       clienteNome: (post as any).clienteNome || (post as any).cliente || 'Cliente',
@@ -149,6 +190,7 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       resumo: (post.legenda || '').slice(0, 140),
       motivo: [rejectReason, pontos].filter(Boolean).join(' — ') || undefined,
       origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+      mudancas: mudancas.length ? mudancas : undefined,
     })
   } catch { /* nunca bloqueia a decisão */ }
 

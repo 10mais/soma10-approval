@@ -26,6 +26,36 @@ export type LogCliente = {
   resumo?: string       // trecho da legenda/título do material
   motivo?: string       // texto do pedido / observação do cliente
   origem?: string       // 'portal' | 'link' | 'codigo'
+  // O QUE MUDOU nesta solicitação (antes -> depois). Sem isto o valor antigo se
+  // PERDE: /api/decision sobrescreve post.legenda e grava o log depois, então a
+  // tela mostrava dois textos parecidos sem dizer qual era qual. Só vem
+  // preenchido quando o cliente de fato alterou algo; logs antigos não têm.
+  mudancas?: MudancaLog[]
+}
+
+export type MudancaLog = {
+  campo: string   // rótulo legível: 'Legenda', 'Headline', 'Data de publicação'
+  antes: string
+  depois: string
+}
+
+// Monta a lista de mudanças comparando o material ANTES com o que o cliente
+// mandou. Só entra o que realmente mudou (ignora espaços nas pontas).
+export function diffCampos(
+  antes: Record<string, unknown>,
+  depois: Record<string, unknown>,
+  campos: { chave: string; rotulo: string }[],
+): MudancaLog[] {
+  const saida: MudancaLog[] = []
+  for (const { chave, rotulo } of campos) {
+    const a = typeof antes[chave] === 'string' ? (antes[chave] as string) : ''
+    const d = typeof depois[chave] === 'string' ? (depois[chave] as string) : ''
+    // depois indefinido = campo não veio no pedido = não mudou
+    if (typeof depois[chave] !== 'string') continue
+    if (a.trim() === d.trim()) continue
+    saida.push({ campo: rotulo, antes: a, depois: d })
+  }
+  return saida
 }
 
 export async function registrarLogCliente(e: Omit<LogCliente, 'id' | 'ts'>): Promise<void> {

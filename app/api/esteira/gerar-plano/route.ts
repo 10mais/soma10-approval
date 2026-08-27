@@ -169,11 +169,17 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
   }
 ]`
 
+  // O teto de saída ESCALA com o pedido: o `thinking` adaptativo consome do MESMO
+  // orçamento de max_tokens que o JSON, e cada pauta custa ~120 tokens. Com 4000
+  // fixos, pedir 30 pautas cortava o array no meio -> o regex não achava o `]` e
+  // caia no 502 "formato esperado" (4 ocorrências em 27/08).
+  const tetoSaida = Math.min(16000, 6000 + qtd * 200)
+
   try {
     const client = new Anthropic({ apiKey: KEY })
     const msg = await client.messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 4000,
+      max_tokens: tetoSaida,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' } as any,
       messages: [{ role: 'user', content: prompt }],
@@ -185,7 +191,20 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
     // Extrai JSON do texto (pode vir com backticks ou texto extra)
     const jsonMatch = texto.match(/\[[\s\S]*\]/)
     if (!jsonMatch) {
-      return NextResponse.json({ error: 'A IA não retornou o formato esperado. Tente novamente.' }, { status: 502 })
+      // Sem log aqui, a falha vira adivinhação: `stop_reason` diz se cortou no teto
+      // (max_tokens) ou se a IA respondeu outra coisa (end_turn).
+      console.error('[gerar-plano] sem JSON na resposta:', {
+        stop_reason: (msg as any).stop_reason,
+        qtd, tetoSaida,
+        saida: (msg as any).usage?.output_tokens,
+        trecho: texto.slice(-300),
+      })
+      const cortou = (msg as any).stop_reason === 'max_tokens'
+      return NextResponse.json({
+        error: cortou
+          ? `A IA começou a lista mas não coube no limite de resposta. Tente pedir menos pautas de uma vez (você pediu ${qtd}).`
+          : 'A IA não retornou o formato esperado. Tente novamente.',
+      }, { status: 502 })
     }
 
     let pautasGeradas: any[]
