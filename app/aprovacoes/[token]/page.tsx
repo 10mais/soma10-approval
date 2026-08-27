@@ -313,6 +313,16 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
     setEnviando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
     if (type === 'corrected') {
+      // Só legenda/data, sem marcação no layout: o servidor APLICA e reprograma na
+      // hora (não há retrabalho). O card não pode dizer "em ajuste" nesse caso.
+      if (r.aplicadoAutomaticamente) {
+        const quando = r.agendadoPara ? new Date(r.agendadoPara) : null
+        toast(quando
+          ? `Pronto! Ajustes aplicados e publicação reprogramada para ${quando.toLocaleString('pt-BR')}.`
+          : 'Pronto! Ajustes aplicados — a publicação segue programada.', 'sucesso')
+        onDecidido()
+        return
+      }
       // Fica EM AJUSTE — não some. Atualiza o card no lugar.
       setSt(s => ({
         ...s, status: 'corrigir',
@@ -486,8 +496,13 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
 
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
               <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('#f5f5f5', '#555'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
-              {legendaMudou && annotations.length === 0 && !texto.trim() && !dataMudou && (
-                <button onClick={() => decidir('caption', { novaLegenda: legendaTxt })} disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>Aprovar com esta legenda</button>
+              {(legendaMudou || dataMudou) && annotations.length === 0 && !texto.trim() && (
+                <button onClick={() => dataMudou
+                  ? decidir('corrected', { novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataTxt })
+                  : decidir('caption', { novaLegenda: legendaTxt })}
+                  disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>
+                  {legendaMudou && dataMudou ? 'Aprovar com estes ajustes' : dataMudou ? 'Aprovar nesta data' : 'Aprovar com esta legenda'}
+                </button>
               )}
               <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('#ffc00f', '#111') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
             </div>

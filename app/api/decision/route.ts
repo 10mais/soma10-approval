@@ -8,6 +8,7 @@ import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
 import { clienteSuspenso } from '@/lib/suspensao'
 import { checarRate } from '@/lib/rateLimit'
 import { capturarErro } from '@/lib/erros'
+import { ajusteSemRetrabalho, dataValida } from '@/lib/ajusteCliente'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -160,6 +161,26 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     type = 'approved'
   }
 
+  // AJUSTE SEM RETRABALHO (pedido do dono, 27/08): quando o cliente só reescreve a
+  // LEGENDA e/ou remarca DATA/HORA — sem marcar ponto no layout e sem observação —
+  // não há nada para a equipe refazer. Antes isso virava 'corrigir': saía dos
+  // agendados e esperava alguém reeditar e reenviar, à toa. Agora aplica e
+  // reprograma sozinho, exatamente como o "Aprovar com esta legenda" já fazia.
+  //
+  // A porta continua estreita de propósito: UM ponto marcado ou UMA palavra de
+  // observação significa que o CRIATIVO mudou, e aí o material tem de voltar para a
+  // produção. Quem decide é o servidor — a tela do cliente não é autoridade.
+  const temNovaLegenda = typeof novaLegenda === 'string' && novaLegenda.trim() !== ''
+  const temNovaData = dataValida(novaData)
+  const semRetrabalho = ajusteSemRetrabalho({
+    tipo: type, anotacoes: annotations, observacao: rejectReason, novaLegenda, novaData,
+  })
+  if (semRetrabalho) {
+    if (temNovaLegenda) post.legenda = novaLegenda
+    if (temNovaData) (post as any).dataAgendada = new Date(novaData).toISOString()
+    type = 'approved' // daqui pra baixo é uma aprovação: agenda, não reabre tarefa
+  }
+
   // Solicitação de ajuste CONSOLIDADA: junto das marcações de layout, o cliente pode
   // pedir nova legenda e/ou nova data. Aplica o que veio (fica EM AJUSTE, não aprova).
   if (type === 'corrected') {
@@ -184,8 +205,10 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     await registrarLogCliente({
       clienteId: (post as any).clienteId || '',
       clienteNome: (post as any).clienteNome || (post as any).cliente || 'Cliente',
-      tipo: soLegenda ? 'corrigir_legenda' : type === 'approved' ? 'aprovacao' : type === 'corrected' ? 'ajuste_layout' : 'reprovacao',
-      acao: soLegenda ? 'Corrigiu a legenda' : type === 'approved' ? 'Aprovou' : type === 'corrected' ? 'Pediu ajuste no layout' : 'Reprovou',
+      tipo: soLegenda ? 'corrigir_legenda' : semRetrabalho ? 'ajuste_aplicado' : type === 'approved' ? 'aprovacao' : type === 'corrected' ? 'ajuste_layout' : 'reprovacao',
+      acao: soLegenda ? 'Corrigiu a legenda'
+        : semRetrabalho ? (temNovaLegenda && temNovaData ? 'Ajustou a legenda e reprogramou' : temNovaData ? 'Reprogramou a publicação' : 'Ajustou a legenda')
+        : type === 'approved' ? 'Aprovou' : type === 'corrected' ? 'Pediu ajuste no layout' : 'Reprovou',
       postId: id,
       resumo: (post.legenda || '').slice(0, 140),
       motivo: [rejectReason, pontos].filter(Boolean).join(' — ') || undefined,
@@ -208,7 +231,9 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       corrected: { tipo: 'post_corrigir', titulo: `Ajuste de layout — ${clienteNome}`, mensagem: `${clienteNome} pediu ajuste no layout.${rejectReason ? ' Motivo: ' + rejectReason : ''} A programação foi cancelada.` },
       rejected: { tipo: 'post_reprovado', titulo: `Post reprovado — ${clienteNome}`, mensagem: `${clienteNome} reprovou um post.${rejectReason ? ' Motivo: ' + rejectReason : ''}` },
     }
-    const info = notifInfo[type]
+    const info = semRetrabalho
+      ? { tipo: 'post_aprovado' as any, titulo: `Ajuste aplicado — ${clienteNome}`, mensagem: `${clienteNome} ${temNovaLegenda && temNovaData ? 'ajustou a legenda e remarcou a publicação' : temNovaData ? 'remarcou a publicação' : 'ajustou a legenda'}. Nada a refazer: já aplicado e reprogramado automaticamente.` }
+      : notifInfo[type]
     if (info) await notificarEquipe(info.tipo, info.titulo, info.mensagem, id)
   } catch (e) { console.error('Erro ao notificar equipe:', e) }
 
@@ -312,5 +337,10 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     } catch { /* não bloqueia */ }
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    // A tela do cliente usa isto para dizer "já reprogramado" em vez de "em ajuste".
+    aplicadoAutomaticamente: semRetrabalho || undefined,
+    agendadoPara: semRetrabalho ? (post as any).dataAgendada : undefined,
+  })
 }

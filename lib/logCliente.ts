@@ -13,6 +13,7 @@ export type TipoLogCliente =
   | 'ajuste_copy'
   | 'reprovacao'
   | 'corrigir_legenda'
+  | 'ajuste_aplicado'   // legenda/data trocadas pelo cliente e JÁ reprogramadas (sem retrabalho)
   | 'solicitacao_conteudo'
 
 export type LogCliente = {

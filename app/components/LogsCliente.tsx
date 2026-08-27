@@ -17,6 +17,9 @@ const ESTILO: Record<string, { cor: string; bg: string; label: string }> = {
   ajuste_copy: { cor: '#ca8a04', bg: '#fefce8', label: 'Ajuste de copy' },
   reprovacao: { cor: '#dc2626', bg: '#fef2f2', label: 'Reprovação' },
   corrigir_legenda: { cor: '#1d4ed8', bg: '#eff6ff', label: 'Correção de legenda' },
+  // Verde: o cliente mexeu só em legenda/data, o sistema aplicou e reprogramou —
+  // não é pendência da equipe, é aviso do que já aconteceu.
+  ajuste_aplicado: { cor: '#0f766e', bg: '#f0fdfa', label: 'Ajuste aplicado' },
   solicitacao_conteudo: { cor: '#7c3aed', bg: '#f3e8ff', label: 'Solicitação de conteúdo' },
 }
 
@@ -124,7 +127,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           // agendado, publicado…): a solicitação não é mais uma pendência aberta, então
           // leva ao Planner (ver) em vez do editor (corrigir).
           const jaTratado = !!(l.postId && l.postStatus && !['corrigir', 'reprovado'].includes(l.postStatus))
-          const resolvido = l.tipo === 'aprovacao' || l.tipo === 'corrigir_legenda' || jaTratado
+          const resolvido = l.tipo === 'aprovacao' || l.tipo === 'corrigir_legenda' || l.tipo === 'ajuste_aplicado' || jaTratado
           const acaoPost = resolvido ? onVerNoPlanner : onAbrirPost
           const abrivel = !!(l.postId && acaoPost) // solicitação de conteúdo não tem post
           const titulo = !abrivel ? undefined
@@ -144,6 +147,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           // Log gravado antes de 27/08 não tem o antes/depois: dizer isso é melhor
           // do que mostrar dois textos parecidos sem rótulo (a confusão original).
           const semHistorico = !mudancas.length && (l.tipo === 'ajuste_layout' || l.tipo === 'ajuste_copy' || l.tipo === 'corrigir_legenda')
+          const jaReprogramado = l.tipo === 'ajuste_aplicado'
           const imgsComPins = Array.from(new Set(anot.map(a => a.img ?? 0)))
           return (
             <div key={l.id} onClick={() => expansivel && toggleExpand(l)} title={aberto ? undefined : 'Clique para ler o pedido do cliente'}
@@ -163,6 +167,12 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                         <p style={rotuloExp}>O que o cliente pediu</p>
                         <p style={{ margin: 0, fontSize: 13, color: '#111', whiteSpace: 'pre-wrap', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px' }}>{obs}</p>
                       </div>
+                    )}
+
+                    {jaReprogramado && (
+                      <p style={{ margin: 0, fontSize: 12.5, color: '#0f766e', background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 8, padding: '8px 10px' }}>
+                        Aplicado automaticamente — o material já está com estes ajustes e reprogramado. Nada a refazer.
+                      </p>
                     )}
 
                     {mudancas.length > 0 && (
