@@ -1254,6 +1254,56 @@ function Dashboard() {
     if (!res.ok) fetch(`/api/posts?id=${post.id}`).then(r => r.json()).then(p => p && !p.error && setPosts(ps => ps.map(x => x && x.id === post.id ? p : x))).catch(() => {})
   }
 
+  // "Programar novamente" — remarca data/hora de uma peça sem passar pelo editor.
+  // REGRA (a mesma de moverPostData): remarcar NUNCA promove material que o cliente
+  // ainda não aprovou, senão o cron publicaria sem aprovação. A única mudança de
+  // status é 'aprovado' -> 'agendado', que é exatamente o que "programar" significa
+  // (aprovado com data ainda NÃO entra no índice `agendados` que o cron lê).
+  async function reprogramarPost(post: Post, valorLocal: string) {
+    const d = new Date(valorLocal)
+    if (!valorLocal || isNaN(d.getTime())) { toast('Escolha uma data e hora válidas.', 'erro'); return }
+    const novaISO = d.toISOString()
+    const status = post.status === 'aprovado' ? 'agendado' : post.status
+    if (d.getTime() < Date.now() && status === 'agendado') {
+      if (!(await confirmar('Essa data já passou. Com o material agendado, o robô de publicação vai postar na próxima verificação (até 1 minuto). Confirma?', { titulo: 'Data no passado', okLabel: 'Programar mesmo assim' }))) return
+    }
+    setSalvandoReprog(true)
+    const antes = post.dataAgendada
+    setPosts(ps => ps.map(x => x && x.id === post.id ? { ...x, dataAgendada: novaISO, status } as any : x))
+    setPostPreview(x => x && x.id === post.id ? { ...x, dataAgendada: novaISO, status } as any : x)
+    const res = await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: post.id, dataAgendada: novaISO, status }),
+    }).catch(() => null)
+    setSalvandoReprog(false)
+    if (!res || !res.ok) {
+      // Desfaz o otimismo: melhor a data velha na tela do que uma mentira.
+      setPosts(ps => ps.map(x => x && x.id === post.id ? { ...x, dataAgendada: antes, status: post.status } as any : x))
+      setPostPreview(x => x && x.id === post.id ? { ...x, dataAgendada: antes, status: post.status } as any : x)
+      toast('Não foi possível reprogramar. Tente novamente.', 'erro')
+      return
+    }
+    setReprogramandoId(null)
+    toast(status === 'agendado'
+      ? `Programado para ${d.toLocaleString('pt-BR')}.`
+      : `Data remarcada para ${d.toLocaleString('pt-BR')}. Entra na fila de publicação quando o cliente aprovar.`, 'sucesso')
+  }
+
+  // Vindo das Solicitações, o post PRECISA vir do servidor: `posts` foi carregado
+  // quando o painel abriu e o cliente pode ter mexido depois (a atualização de 30s
+  // só cuida de notificação/chat). Antes a memória vinha primeiro e a rede era só
+  // fallback — ou seja, justamente o post já carregado podia abrir desatualizado,
+  // e "Programar novamente"/"Abrir e corrigir" gravariam por cima de dado velho.
+  async function buscarPostFresco(postId: string): Promise<Post | null> {
+    const p = await fetch(`/api/posts?id=${postId}`).then(r => r.ok ? r.json() : null).catch(() => null)
+    if (p && !p.error && p.id) {
+      setPosts(ps => ps.some(x => x && x.id === postId) ? ps.map(x => x && x.id === postId ? p : x) : [p, ...ps])
+      return p as Post
+    }
+    // Rede falhou: melhor abrir com o que temos do que travar o fluxo.
+    return (posts.find(x => x.id === postId) as Post) || null
+  }
+
   // Link público de status (sem login) do cliente
   async function statusPublico(clienteId: string) {
     const r = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
@@ -1409,6 +1459,10 @@ function Dashboard() {
   }
 
   const [republicandoId, setRepublicandoId] = useState<string | null>(null)
+  // "Programar novamente": remarcar data/hora direto na prévia, sem abrir o editor inteiro
+  const [reprogramandoId, setReprogramandoId] = useState<string | null>(null)
+  const [novaDataReprog, setNovaDataReprog] = useState('')
+  const [salvandoReprog, setSalvandoReprog] = useState(false)
   async function republicarPost(post: Post) {
     setRepublicandoId(post.id)
     fetch('/api/publicar', {
@@ -2761,6 +2815,42 @@ function Dashboard() {
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
+                    )}
+                    {/* PROGRAMAR NOVAMENTE — remarca data/hora aqui mesmo. O caminho
+                        antigo era abrir o editor inteiro só para trocar a data (é também
+                        onde o cliente cai vindo de "Ver no planner", nas Solicitações). */}
+                    {role !== 'cliente' && !['publicado', 'publicando'].includes(postPreview.status) && (
+                      reprogramandoId === postPreview.id ? (
+                        <div style={{ margin: '0 0 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px' }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Nova data e hora</label>
+                          <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', background: '#fff' }} />
+                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#64748b', lineHeight: 1.45 }}>
+                            {postPreview.status === 'aprovado'
+                              ? 'O material já está aprovado — salvar coloca ele na fila de publicação nesta data.'
+                              : postPreview.status === 'agendado'
+                              ? 'Já está na fila de publicação: salvar só muda o horário em que vai ao ar.'
+                              : 'Remarcar só muda a data. O material entra na fila de publicação quando o cliente aprovar — nada é publicado sem aprovação.'}
+                          </p>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                            <button onClick={() => reprogramarPost(postPreview, novaDataReprog)} disabled={salvandoReprog} className="soma10-no-invert"
+                              style={{ flex: 1, padding: '9px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: salvandoReprog ? 'not-allowed' : 'pointer' }}>
+                              {salvandoReprog ? 'Salvando...' : 'Salvar programação'}
+                            </button>
+                            <button onClick={() => setReprogramandoId(null)} disabled={salvandoReprog}
+                              style={{ padding: '9px 16px', background: '#fff', color: '#666', border: '1px solid #e5e7eb', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setNovaDataReprog(paraDatetimeLocal(postPreview.dataAgendada)); setReprogramandoId(postPreview.id) }}
+                          title="Remarcar a data e a hora sem abrir o editor"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 0 10px', padding: '7px 13px', background: '#eef2ff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                          {postPreview.dataAgendada ? 'Programar novamente' : 'Programar'}
+                        </button>
+                      )
                     )}
                     {((postPreview as any).motivoReprovacao || (postPreview as any).ajusteCriativo || (postPreview as any).ajusteCopy || (Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.length > 0)) && (() => {
                       const anot: any[] = Array.isArray((postPreview as any).anotacoes) ? (postPreview as any).anotacoes : []
@@ -4804,22 +4894,13 @@ function Dashboard() {
         {aba === 'solicitacoes' && role !== 'cliente' && (
           <LogsCliente clientes={clientes} onAbrirPost={async (postId: string) => {
             // Abre o post da solicitação no editor (corrigir → "Enviar para aprovação" reenvia ao cliente).
-            let p = posts.find(x => x.id === postId)
-            if (!p) {
-              // Post fora da janela carregada — consulta a base completa uma vez
-              const todos = await fetch('/api/posts?tudo=1').then(r => r.json()).catch(() => null)
-              if (Array.isArray(todos)) p = todos.find((x: any) => x.id === postId)
-            }
+            const p = await buscarPostFresco(postId)
             if (p) iniciarEdicaoPost(p as any)
             else toast('Post não encontrado — pode ter sido excluído.', 'erro')
           }} onVerNoPlanner={async (postId: string) => {
             // Já aprovado: não há o que corrigir. Leva para o Planner (Lista, filtrado no cliente)
             // e abre a pré-visualização da peça.
-            let p = posts.find(x => x.id === postId)
-            if (!p) {
-              const todos = await fetch('/api/posts?tudo=1').then(r => r.json()).catch(() => null)
-              if (Array.isArray(todos)) p = todos.find((x: any) => x.id === postId)
-            }
+            const p = await buscarPostFresco(postId)
             if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
             if (apareceNoPlanner(p as any)) {
               setBibCliente(p.clienteNome || '')
