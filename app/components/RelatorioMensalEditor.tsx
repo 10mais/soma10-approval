@@ -63,7 +63,7 @@ export default function RelatorioMensalEditor({ cliente, inicial, onClose }: { c
         {m.incluir.observacoes && (
           <div style={{ marginBottom: 16 }}>
             <p style={secTitle}>Destaques do mês (texto livre)</p>
-            <textarea lang="pt-BR" spellCheck value={m.observacoes} onChange={e => set({ observacoes: e.target.value })} placeholder="Resumo, conquistas, próximos passos…" style={{ ...inp, width: '100%', minHeight: 70, resize: 'vertical' }} />
+            <textarea lang="pt-BR" value={m.observacoes} onChange={e => set({ observacoes: e.target.value })} placeholder="Resumo, conquistas, próximos passos…" style={{ ...inp, width: '100%', minHeight: 70, resize: 'vertical' }} />
           </div>
         )}
 

@@ -357,12 +357,12 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Tema / ideia da pauta *</label>
-                <textarea lang="pt-BR" spellCheck value={formPauta.briefing} onChange={e => setFormPauta(f => ({ ...f, briefing: e.target.value }))} placeholder="Ex.: Post sobre cuidados com joias no inverno..."
+                <textarea lang="pt-BR" value={formPauta.briefing} onChange={e => setFormPauta(f => ({ ...f, briefing: e.target.value }))} placeholder="Ex.: Post sobre cuidados com joias no inverno..."
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem (opcional)</label>
-                <textarea lang="pt-BR" spellCheck value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder="Descreva a ideia visual: foto de produto, lifestyle, bastidores..."
+                <textarea lang="pt-BR" value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder="Descreva a ideia visual: foto de produto, lifestyle, bastidores..."
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
@@ -402,7 +402,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                   </button>
                 </div>
                 {legendaNovaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaNovaMsg.includes('Erro') || legendaNovaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaNovaMsg}</p>}
-                <textarea lang="pt-BR" spellCheck value={formPauta.sugestaoLegenda} onChange={e => setFormPauta(f => ({ ...f, sugestaoLegenda: e.target.value }))} placeholder="Rascunho da legenda/copy para o post..."
+                <textarea lang="pt-BR" value={formPauta.sugestaoLegenda} onChange={e => setFormPauta(f => ({ ...f, sugestaoLegenda: e.target.value }))} placeholder="Rascunho da legenda/copy para o post..."
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
             </div>
@@ -545,11 +545,11 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>Pauta — {pauta.clienteNome}</h3>
 
         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Briefing / ideia</label>
-        <textarea lang="pt-BR" spellCheck value={briefing} onChange={e => setBriefing(e.target.value)} placeholder="Tema, ângulo, objetivo..."
+        <textarea lang="pt-BR" value={briefing} onChange={e => setBriefing(e.target.value)} placeholder="Tema, ângulo, objetivo..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem</label>
-        <textarea lang="pt-BR" spellCheck value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder="Descreva a ideia visual..."
+        <textarea lang="pt-BR" value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder="Descreva a ideia visual..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
@@ -598,7 +598,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
           </button>
         </div>
         {legendaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaMsg.includes('Erro') || legendaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaMsg}</p>}
-        <textarea lang="pt-BR" spellCheck value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicacao..."
+        <textarea lang="pt-BR" value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicacao..."
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 100, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
         <div style={{ marginBottom: 12 }}>

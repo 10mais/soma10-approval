@@ -401,7 +401,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
           <div onClick={() => { setPendingPin(null); setPinText('') }} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
             <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', left, top, width: W, background: '#fff', borderRadius: 12, padding: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.24)', border: '1px solid #e0e0e0', lineHeight: 1.35 }}>
               <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: '#111' }}>O que ajustar aqui?</p>
-              <textarea lang="pt-BR" spellCheck autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
+              <textarea lang="pt-BR" autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: '#f5f5f5', color: '#666' }}>Cancelar</button>
@@ -474,7 +474,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
             <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>Peça tudo de uma vez — legenda, layout e/ou data. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
 
             <label style={rotuloAj}>Legenda</label>
-            <textarea lang="pt-BR" spellCheck value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Deixe como está ou reescreva do seu jeito..." style={{ ...campoAj, minHeight: 84 }} />
+            <textarea lang="pt-BR" value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Deixe como está ou reescreva do seu jeito..." style={{ ...campoAj, minHeight: 84 }} />
 
             <label style={{ ...rotuloAj, marginTop: 14 }}>Layout do criativo</label>
             <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>Clique sobre o criativo acima</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
@@ -489,7 +489,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
                 ))}
               </div>
             )}
-            <textarea lang="pt-BR" spellCheck value={texto} onChange={e => setTexto(e.target.value)} placeholder="Observação geral sobre o layout (opcional)..." style={{ ...campoAj, minHeight: 56 }} />
+            <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder="Observação geral sobre o layout (opcional)..." style={{ ...campoAj, minHeight: 56 }} />
 
             <label style={{ ...rotuloAj, marginTop: 14 }}>Data e horário da publicação</label>
             <input type="datetime-local" value={dataTxt} onChange={e => setDataTxt(e.target.value)} style={campoAj} />
@@ -513,7 +513,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {modo === 'reject' && (
           <div>
             <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>Motivo da reprovação</p>
-            <textarea lang="pt-BR" spellCheck autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
+            <textarea lang="pt-BR" autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
               <button onClick={() => { if (!texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return } decidir('rejected', { motivo: texto }) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar reprovação'}</button>
@@ -625,10 +625,10 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         <span className="copy-cell-label">Copy (texto na imagem)</span>
         {modo === 'ajuste' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(st.headline || campos.headline) && <textarea lang="pt-BR" spellCheck value={campos.headline} onChange={e => setCampos(c => ({ ...c, headline: e.target.value }))} placeholder="Frase principal" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
-            {(st.subheadline || campos.subheadline) && <textarea lang="pt-BR" spellCheck value={campos.subheadline} onChange={e => setCampos(c => ({ ...c, subheadline: e.target.value }))} placeholder="Frase de apoio" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
-            {(st.textoImagem || campos.textoImagem) && <textarea lang="pt-BR" spellCheck value={campos.textoImagem} onChange={e => setCampos(c => ({ ...c, textoImagem: e.target.value }))} placeholder="Texto da arte" style={{ ...campoAj, minHeight: 64, fontSize: 12.5 }} />}
-            {(st.cta || campos.cta) && <textarea lang="pt-BR" spellCheck value={campos.cta} onChange={e => setCampos(c => ({ ...c, cta: e.target.value }))} placeholder="Chamada final" style={{ ...campoAj, minHeight: 38, fontSize: 12.5 }} />}
+            {(st.headline || campos.headline) && <textarea lang="pt-BR" value={campos.headline} onChange={e => setCampos(c => ({ ...c, headline: e.target.value }))} placeholder="Frase principal" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
+            {(st.subheadline || campos.subheadline) && <textarea lang="pt-BR" value={campos.subheadline} onChange={e => setCampos(c => ({ ...c, subheadline: e.target.value }))} placeholder="Frase de apoio" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
+            {(st.textoImagem || campos.textoImagem) && <textarea lang="pt-BR" value={campos.textoImagem} onChange={e => setCampos(c => ({ ...c, textoImagem: e.target.value }))} placeholder="Texto da arte" style={{ ...campoAj, minHeight: 64, fontSize: 12.5 }} />}
+            {(st.cta || campos.cta) && <textarea lang="pt-BR" value={campos.cta} onChange={e => setCampos(c => ({ ...c, cta: e.target.value }))} placeholder="Chamada final" style={{ ...campoAj, minHeight: 38, fontSize: 12.5 }} />}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -646,7 +646,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
       <div style={{ minWidth: 0 }}>
         <span className="copy-cell-label">Legenda</span>
         {modo === 'ajuste'
-          ? <textarea lang="pt-BR" spellCheck value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} placeholder="Legenda" style={{ ...campoAj, minHeight: 120, fontSize: 12.5 }} />
+          ? <textarea lang="pt-BR" value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} placeholder="Legenda" style={{ ...campoAj, minHeight: 120, fontSize: 12.5 }} />
           : (st.legenda ? bloco(st.legenda) : <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem legenda.</p>)}
       </div>
 
@@ -670,7 +670,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         )}
         {modo === 'ajuste' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <textarea lang="pt-BR" spellCheck value={obs} onChange={e => setObs(e.target.value)} placeholder="Observação (opcional se você já editou os textos)" style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
+            <textarea lang="pt-BR" value={obs} onChange={e => setObs(e.target.value)} placeholder="Observação (opcional se você já editou os textos)" style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
             {mudouAlgo && !obs.trim() && <button onClick={() => decidir('caption', true)} disabled={enviando} style={mini('#16a34a', '#fff')}>Aprovar com meus ajustes</button>}
             <button onClick={() => { if (!mudouAlgo && !obs.trim()) { toast('Edite algum texto ou escreva uma observação.', 'erro'); return } decidir('corrected', true) }} disabled={enviando} style={mini('#ffc00f', '#111')}>{enviando ? '...' : 'Enviar ajustes'}</button>
             <button onClick={() => setModo('view')} disabled={enviando} style={mini('#f5f5f5', '#555')}>Cancelar</button>
@@ -678,7 +678,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         )}
         {modo === 'reject' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <textarea lang="pt-BR" spellCheck autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder="Motivo da rejeição..." style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
+            <textarea lang="pt-BR" autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder="Motivo da rejeição..." style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
             <button onClick={() => { if (!obs.trim()) { toast('Descreva o motivo da rejeição.', 'erro'); return } decidir('rejected', false) }} disabled={enviando} style={mini('#dc2626', '#fff')}>{enviando ? '...' : 'Confirmar rejeição'}</button>
             <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('#f5f5f5', '#555')}>Voltar</button>
           </div>

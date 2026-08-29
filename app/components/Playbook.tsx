@@ -319,7 +319,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição</label>
-            <textarea lang="pt-BR" spellCheck value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, objetivos, KPIs..."
+            <textarea lang="pt-BR" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, objetivos, KPIs..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

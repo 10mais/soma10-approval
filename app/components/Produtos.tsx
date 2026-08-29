@@ -480,7 +480,7 @@ function ImportarProdutosModal({ lojas, lojaAtiva, onFechar, onImportado }: { lo
           </label>
         </div>
         <div style={{ margin: '0 0 6px', fontSize: 11, color: '#aaa' }}>Reconhece o export do seu ERP (Descrição, Preço Venda, Estoque, Custo, Est. Mínimo, Código Barras…) OU o formato simples: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mín · Quantidade</code>.</div>
-        <textarea lang="pt-BR" spellCheck value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\niPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10'} style={{ ...inp, width: '100%', minHeight: 150, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
+        <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\niPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10'} style={{ ...inp, width: '100%', minHeight: 150, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
         <div style={{ margin: '10px 0 16px', fontSize: 12.5, color: '#444' }}>
           {texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> produto(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} linha(s) ignorada(s) (sem preço)</span>}</> : <span style={{ color: '#aaa' }}>Cole os dados para ver a prévia.</span>}
         </div>

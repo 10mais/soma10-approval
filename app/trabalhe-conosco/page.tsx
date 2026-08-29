@@ -114,7 +114,7 @@ export default function TrabalheConoscoPage() {
               </div>
               <div>
                 <label style={label}>Mensagem / sobre você</label>
-                <textarea lang="pt-BR" spellCheck value={form.mensagem} onChange={e => setForm(f => ({ ...f, mensagem: e.target.value }))} placeholder="Conte um pouco da sua experiência..." style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }} />
+                <textarea lang="pt-BR" value={form.mensagem} onChange={e => setForm(f => ({ ...f, mensagem: e.target.value }))} placeholder="Conte um pouco da sua experiência..." style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }} />
               </div>
               <div>
                 <label style={label}>Currículo (PDF)</label>

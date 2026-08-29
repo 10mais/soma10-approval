@@ -1,6 +1,7 @@
 import './globals.css'
 import { Providers } from './providers'
 import PushSetup from './components/PushSetup'
+import Ortografia from './components/Ortografia'
 import AssistenteIA from './components/AssistenteIA'
 import Toaster from './components/Toaster'
 import { getPerfilCache } from '@/lib/cache'
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
-        <Providers>{children}<PushSetup /><AssistenteIA /><Toaster /></Providers>
+        <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /></Providers>
       </body>
     </html>
   )

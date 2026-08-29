@@ -97,7 +97,7 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
             {CAMPOS.map(f => (
               <div key={f.key}>
                 <label style={label}>{f.label}</label>
-                <textarea lang="pt-BR" spellCheck value={(pb[f.key] as string) || ''} onChange={e => set(f.key, e.target.value)} placeholder={f.ph} style={ta} />
+                <textarea lang="pt-BR" value={(pb[f.key] as string) || ''} onChange={e => set(f.key, e.target.value)} placeholder={f.ph} style={ta} />
               </div>
             ))}
             {pb.atualizadoEm && (

@@ -4,6 +4,7 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import UploadProgress from './UploadProgress'
 import NotificacoesConfig from './NotificacoesConfig'
+import { ortografiaLigada, definirOrtografia } from '@/lib/ortografia'
 
 const FUSOS = [
   { value: 'America/Sao_Paulo', label: '(GMT-03:00) Brasilia' },
@@ -16,6 +17,11 @@ const FUSOS = [
 ]
 
 export default function MinhaConta() {
+  // Corretor do navegador: preferência DESTE navegador (localStorage), não do
+  // usuário no banco — quem tem o dicionário pt-BR num computador e não no
+  // outro precisa da escolha em cada um. Ver lib/ortografia.
+  const [corretor, setCorretor] = useState(true)
+  useEffect(() => { setCorretor(ortografiaLigada()) }, [])
   const [perfil, setPerfil] = useState<any>(null)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
@@ -163,7 +169,7 @@ export default function MinhaConta() {
           {!ehCliente && (
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Biografia</label>
-              <textarea lang="pt-BR" spellCheck value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre você..."
+              <textarea lang="pt-BR" value={perfil.bio || ''} onChange={e => setPerfil((p: any) => ({ ...p, bio: e.target.value }))} placeholder="Conte um pouco sobre você..."
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
           )}
@@ -301,6 +307,32 @@ export default function MinhaConta() {
               <span style={{ fontSize: 12, fontWeight: 700, background: '#f0f0f0', borderRadius: 999, padding: '2px 10px', color: '#333' }}>{perfil.role}</span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* CORRETOR ORTOGRAFICO (deste navegador) */}
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 24 }}>
+        <div style={{ flex: '0 0 220px' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Corretor ortográfico</h3>
+          <p style={{ margin: 0, fontSize: 12, color: '#888', lineHeight: 1.5 }}>Vale só neste navegador.</p>
+        </div>
+        <div style={{ flex: 1, minWidth: 300, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={corretor} onChange={e => { setCorretor(e.target.checked); definirOrtografia(e.target.checked) }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Sublinhar palavras que o navegador acha erradas</span>
+          </label>
+          <p style={{ margin: '10px 0 0', fontSize: 12, color: '#888', lineHeight: 1.6 }}>
+            O sistema já declara <b>português do Brasil</b> em todos os campos de texto. Quem corrige, porém, é o
+            navegador — e ele só corrige nos idiomas que você habilitou nele. Se as palavras certas aparecem
+            sublinhadas de vermelho, é sinal de que ele está corrigindo pelo dicionário de <b>inglês</b>:
+            adicione <b>Português (Brasil)</b> em <code style={{ fontSize: 11.5 }}>chrome://settings/languages</code> e
+            ligue a verificação ortográfica nesse idioma. Extensões de escrita (Grammarly e parecidas) também
+            sublinham por conta própria, só em inglês.
+          </p>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#888', lineHeight: 1.6 }}>
+            Enquanto isso não estiver resolvido, desmarque a caixa acima: melhor sem correção do que com um mar de
+            vermelho embaixo de texto certo.
+          </p>
         </div>
       </div>
 

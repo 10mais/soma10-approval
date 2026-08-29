@@ -1518,3 +1518,14 @@ não são tocados.
 - Gotcha do sweep: o `<textarea>` do compositor tem `e => {…}` nos atributos, e a seta `=>`
   cortou o lookahead do regex — ele ganhou `lang` duas vezes e o build acusou atributo
   duplicado. Conferido com `tsc` antes do push.
+- **Não resolveu (relato do dono) — MEDIDO em produção:** `document.documentElement.lang` =
+  `pt-BR`, o campo resolve `lang` para pt-BR e `spellcheck` está ligado. O app está correto;
+  o dicionário é 100% do navegador (Chrome só corrige nos idiomas habilitados pelo usuário;
+  extensões tipo Grammarly sublinham por conta própria, só em inglês). **Não insistir em
+  mudança de código para isso.**
+- **O que passou a existir:** `lib/ortografia.ts` + `app/components/Ortografia.tsx` (montado
+  no layout) + caixa em **Minha Conta → Corretor ortográfico**: desliga o corretor do
+  navegador escrevendo `spellcheck="false"` no `<html>` (herança), preferência por
+  NAVEGADOR (localStorage `soma10_ortografia`), padrão ligado. Religar **apaga** o atributo
+  em vez de escrever "true". Por isso os 96 campos ficaram só com `lang="pt-BR"`: campo que
+  fixa `spellCheck` ganha da herança e transformaria a caixa em decoração. 6 testes.
