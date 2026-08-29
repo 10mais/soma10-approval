@@ -214,6 +214,12 @@ export async function PUT(req: NextRequest) {
   if ('linhagem' in updates) atualizado.linhagem = sanitizarLinhagem(updates.linhagem, uuid)
   atualizado.atividades = atividades
 
+  // DATA DO FECHAMENTO — é ela que ancora a venda no mês certo da meta. Sem
+  // isso, `atualizadoEm` faria uma venda de agosto migrar para outubro na
+  // primeira edição, e a meta do mês passaria a mentir para sempre.
+  if (atualizado.status === 'ganho' && negocio.status !== 'ganho') atualizado.fechadoEm = new Date().toISOString()
+  if (atualizado.status !== 'ganho' && negocio.status === 'ganho') delete atualizado.fechadoEm
+
   await redis.set(`negocio:${id}`, atualizado)
 
   // #6 — dispara o briefing aos closers (best-effort, nao bloqueia a resposta)

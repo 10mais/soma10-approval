@@ -1436,3 +1436,31 @@ não são tocados.
 - Conferido em imagem antes do deploy: HTML gerado a partir da lib REAL (fatias, ângulos,
   fatia saltada, cartão) — o login local é impossível (sem Redis no `.env.local`), então a
   geometria foi validada assim e o resto em produção. Testes 801.
+
+### 42.4 METAS de vendas (tela nova, perfil clínica)
+- **Onde:** nav Vendas → **Metas** (`aba: 'metas'`, grupo de permissão `crm`, entrada em
+  `ABAS_PERM` com `perfil: 'clinica'`). O papel **Comercial (`vendas`)** também vê — ele
+  não passa por `podeNivel`, então entrou em `ABAS_VENDAS` + NavBtn próprio + guard do
+  render (o gotcha dos 4 lugares do papel `vendas`).
+- **Quem define:** **só admin** (PUT `/api/metas` responde 403 para o resto). Quem *vê*: a
+  equipe — meta que o time não enxerga não é régua.
+- **Modelo (`lib/metas.ts`):** a meta é guardada **por mês** (12 valores, `meta:{ano}` +
+  set `metas`), não como um número anual — dezembro não vale o que fevereiro vale. O anual
+  é a soma; `distribuirAnual` divide igual e joga a sobra dos centavos em dezembro para a
+  soma bater EXATO com o que o dono digitou.
+- **Um recorte só:** `metaIntervalo(meta, de, ate)` fatia cada mês proporcionalmente aos
+  dias. Daí saem ano, trimestre, mês e **semana** (segunda a domingo) — inclusive a semana
+  que **cruza a virada do mês**, que soma as duas partes em vez de chutar.
+- **Realizado não é digitado:** vem das oportunidades **ganhas** no CRM. Para ancorar a
+  venda no mês certo, `negocio.fechadoEm` passou a ser gravado quando o negócio vira ganho
+  (e apagado se sair de ganho); negócio antigo cai na atividade "ganho" da timeline e só
+  então em `atualizadoEm` (`dataDoGanho`). Sem isso, editar em outubro uma venda de agosto
+  moveria o faturamento de mês.
+- **A tela:** anel do ano · 4 cards de trimestre (clicáveis) · 12 colunas de mês (cinza =
+  meta, colorida = ganho; clicar troca o foco) · foco do mês com **quanto falta**, **onde a
+  régua deveria estar hoje** (traço na barra) e **projeção no ritmo atual** · **semana
+  corrente** · lista das vendas que formaram o número · filtro por funil (a clínica tem
+  Agendamentos e Tratamentos). Situação com folga de 5% para os dois lados — sem ela
+  "no ritmo" nunca aconteceria e o painel viveria vermelho.
+- `tests/metas.test.ts` (22 casos) + conferência do layout em imagem antes do deploy.
+  Testes 823.

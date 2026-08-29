@@ -30,6 +30,7 @@ export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?
   { key: 'listening', label: 'Social Listening', categoria: 'Estratégia' },
   { key: 'analytics', label: 'Analytics', categoria: 'Estratégia' },
   { key: 'crm', label: 'CRM', categoria: 'Vendas' },
+  { key: 'metas', label: 'Metas', categoria: 'Vendas', perfil: 'clinica' },
   { key: 'conversao', label: 'Conversão & Retenção', categoria: 'Vendas' },
   { key: 'inbox', label: 'Inbox', categoria: 'Comunicação' },
   { key: 'mensagens', label: 'Chat interno', categoria: 'Comunicação' },

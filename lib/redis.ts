@@ -1123,6 +1123,7 @@ export type CrmNegocio = {
   empresaId?: string // vínculo com a entidade Empresa
   origem?: string
   probabilidade?: number
+  fechadoEm?: string // quando virou GANHO — ancora a venda no mês da meta (ver lib/metas)
   previsaoFechamento?: string // ISO date
   proximoFollowUp?: string // ISO date — lembrete do próximo contato (cron avisa o dono)
   queixaPrincipal?: string // clínica: queixa principal relatada pela paciente (espelha o campo da Agenda)

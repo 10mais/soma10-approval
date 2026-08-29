@@ -35,6 +35,7 @@ const Modelos = dynamic(() => import('../components/Modelos'), { ssr: false, loa
 const Automacoes = dynamic(() => import('../components/Automacoes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Agentes = dynamic(() => import('../components/Agentes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Procedimentos = dynamic(() => import('../components/Procedimentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const Metas = dynamic(() => import('../components/Metas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Documentos = dynamic(() => import('../components/Documentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardVendas = dynamic(() => import('../components/DashboardVendas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MapasMentais = dynamic(() => import('../components/MapasMentais'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -213,6 +214,7 @@ const ICONE_ABA: Record<string, string> = {
   marca: 'M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L7.7 21l2.3-7.4-6-4.6h7.6z',
   listening: 'M22 12h-4l-3 9L9 3l-3 9H2',
   analytics: 'M3 3v18h18M7 14v4M12 9v9M17 5v13',
+  metas: 'M3 17l6-6 4 4 7-7M21 8V4h-4',
   crm: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
   frota: 'M4 17V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11M4 17h16M4 17v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-2M20 17v2a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-2M5 8h14M5 12h14M9 8v4M15 8v4',
   viagens: 'M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zM12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
@@ -420,7 +422,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -892,7 +894,7 @@ function Dashboard() {
   // Vendas: papel isolado da operacao. So acessa CRM, Meu dia, Personal list,
   // Mensagens (direct) e a propria conta. Qualquer outra aba cai no CRM.
   const ehVendas = role === 'vendas'
-  const ABAS_VENDAS = ['crm', 'conversao', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
+  const ABAS_VENDAS = ['crm', 'metas', 'conversao', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
   useEffect(() => {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
@@ -998,7 +1000,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', metas: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -2182,6 +2184,7 @@ function Dashboard() {
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
               <NavBtn chave="crm" label="CRM" />
+              {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
               <NavBtn chave="meu-dia" label="Meu dia" />
               <NavBtn chave="lista-pessoal" label="Personal list" />
@@ -2245,7 +2248,7 @@ function Dashboard() {
               </nav>
               {([
                 { titulo: 'Estratégia', grupo: 'estrategia', itens: [['playbook', 'Playbook'], ['campanhas', 'Campanhas'], ['modelos', 'Modelos'], ['automacoes', 'Automações']] },
-                { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ['conversao', 'Conversão & Retenção']]) as [string, string][] },
+                { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ...(perfilClinica ? [['metas', 'Metas']] : []), ['conversao', 'Conversão & Retenção']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
@@ -4858,6 +4861,11 @@ function Dashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* METAS — régua de vendas (perfil clínica). Equipe VÊ; só admin DEFINE. */}
+        {aba === 'metas' && role !== 'cliente' && (role === 'vendas' || podeGrupo('crm')) && (
+          <Metas podeEditar={role === 'admin'} />
         )}
 
         {/* RENTABILIDADE (admin only) */}
