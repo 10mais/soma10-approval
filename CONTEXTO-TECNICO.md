@@ -1402,3 +1402,22 @@ não são tocados.
 - Arquivos: `lib/conversaInterna.ts` · `tests/conversaInterna.test.ts` (9 casos) ·
   `app/components/DashboardHome.tsx` (KPI clicável + modal) · `app/components/CRM.tsx`.
   Testes 782.
+
+### 42.2 CRM da clínica — origem do lead vira lista fechada + pizza
+- **Dropdown fechado** (`lib/origensLead.ts`): Indicação · Recorrente · Link da bio ·
+  Meta Ads · Orgânico · Google · Outros. Vale ao **criar** a oportunidade e ao **editar**
+  (NegocioModal, clínica) — sem o segundo, lead cadastrado sem origem ficaria fora do
+  gráfico para sempre. Outros perfis (agência/turismo/cidadania/telefonia) seguem com o
+  dropdown editável de texto livre; nada muda para eles.
+- **Por que fechada:** texto livre produz "Instagram"/"insta"/"IG" e o gráfico passa a
+  medir grafia, não canal — e esse gráfico decide onde a clínica põe dinheiro de mídia.
+- **`normalizaOrigem`** dobra o histórico da Norah nos baldes novos (Ex-paciente/retorno →
+  Recorrente · Tráfego pago/Facebook Ads → Meta Ads · Instagram/tráfego orgânico → Orgânico ·
+  link na bio → Link da bio · **Google Ads → Google**, testado antes de "ads"). Desconhecido
+  → Outros; **vazio → fatia própria "Sem origem"** (ausência de dado não se esconde dentro
+  de "Outros").
+- **Pizza (rosca)** no painel do CRM, perfil clínica: SVG puro (`fatiaPath`, sem lib de
+  gráfico), total de leads no miolo, legenda com quantidade e %, tooltip por fatia; canal
+  único vira anel (arco de 360° não desenha). Respeita o **funil selecionado** — Agendamentos
+  e Tratamentos têm cada um a sua pizza. `tests/origensLead.test.ts` (13 casos: ângulos
+  fechando 360, soma = total, Outros/Sem origem no fim). Testes 795.

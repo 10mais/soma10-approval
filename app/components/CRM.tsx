@@ -5,6 +5,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp, consumirFichaContato } from '@/lib/conversaInterna'
+import { ORIGENS_CLINICA, pizzaOrigens, fatiaPath, fatiaUnica } from '@/lib/origensLead'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDoc, soDigitosDoc } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
@@ -547,6 +548,8 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
     const k = (n.origem || '').trim(); if (!k) return acc
     acc[k] = acc[k] || { nome: k, qtd: 0 }; acc[k].qtd++; return acc
   }, {})) as { nome: string; qtd: number }[]).sort((a, b) => b.qtd - a.qtd).slice(0, 8)
+  // Clínica: mesma pergunta, resposta em pizza e pela lista FECHADA do dropdown.
+  const pizza = pizzaOrigens(negocios)
 
   const Card = ({ titulo, valor, sub, cor }: { titulo: string; valor: string; sub?: string; cor?: string }) => (
     <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -585,7 +588,44 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
         })}
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Origem dos negócios</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Origem dos leads' : 'Origem dos negócios'}</span>
+      {perfilClinica ? (
+        /* Pizza (rosca) da origem — a lista do dropdown é fechada (lib/origensLead),
+           então cada fatia é um canal de verdade e a soma fecha o total de leads
+           deste funil. Grafias antigas caem no balde certo; o que ninguém
+           preencheu aparece como "Sem origem", em vez de sumir. */
+        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+          {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma oportunidade neste funil ainda.</p> : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
+              <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
+                <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Origem dos leads">
+                  {fatiaUnica(pizza.fatias)
+                    ? <circle cx="90" cy="90" r="66" fill="none" stroke={pizza.fatias[0].cor} strokeWidth="42"><title>{`${pizza.fatias[0].nome}: ${pizza.fatias[0].qtd} (100%)`}</title></circle>
+                    : pizza.fatias.map(f => (
+                      <path key={f.nome} d={fatiaPath(90, 90, 87, 45, f.anguloInicio, f.anguloFim)} fill={f.cor} stroke="#fff" strokeWidth="1.5">
+                        <title>{`${f.nome}: ${f.qtd} lead(s) · ${Math.round(f.pct)}%`}</title>
+                      </path>
+                    ))}
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: '#111', lineHeight: 1 }}>{pizza.total}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>{pizza.total === 1 ? 'lead' : 'leads'}</span>
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 210 }}>
+                {pizza.fatias.map(f => (
+                  <div key={f.nome} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.qtd}</span>
+                    <span style={{ fontSize: 11.5, color: '#999', width: 42, textAlign: 'right' }}>{Math.round(f.pct)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
         {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum negócio com origem preenchida ainda.</p> : porOrigem.map(o => (
           <div key={o.nome} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -597,6 +637,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
           </div>
         ))}
       </div>
+      )}
 
       <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Pipeline por responsável' : 'Pipeline por vendedor'}</span>
       <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -1956,9 +1997,19 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
             </div>
             <div><label style={labelStyle}>Previsão</label><input type="date" value={f.previsaoFechamento} onChange={e => setF({ ...f, previsaoFechamento: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div><label style={labelStyle}>Origem</label>
-            <input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} list="crm-origens" placeholder="Selecione ou digite..." style={inputStyle} />
-            <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
+          <div><label style={labelStyle}>Origem{perfilClinica ? ' do lead' : ''}</label>
+            {/* Clínica: lista FECHADA (lib/origensLead). Texto livre viraria
+                "Instagram"/"insta"/"IG" e o gráfico de origem mediria grafia, não
+                canal. Os outros perfis seguem com o dropdown editável. */}
+            {perfilClinica ? (
+              <select value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">Selecione…</option>
+                {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (<>
+              <input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} list="crm-origens" placeholder="Selecione ou digite..." style={inputStyle} />
+              <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
+            </>)}
           </div>
 
           {perfilClinica ? (<>
@@ -2240,6 +2291,17 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             agência tem a ficha B2B de marketing */}
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 14 }}>
           {perfilClinica ? (<>
+            {/* Origem editável também aqui: sem isto, lead cadastrado sem origem
+                (ou na grafia antiga) ficaria para sempre fora do gráfico. */}
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Origem do lead</label>
+              <select value={neg.origem || ''} onChange={e => { const origem = e.target.value; setNeg({ ...neg, origem }); patch({ origem }) }} style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">Sem origem</option>
+                {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
+                {/* grafia antiga (ex.: "Ex-paciente") continua selecionável até
+                    alguém trocar — o gráfico já a soma no balde certo */}
+                {neg.origem && !(ORIGENS_CLINICA as readonly string[]).includes(neg.origem) && <option value={neg.origem}>{neg.origem}</option>}
+              </select>
+            </div>
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
             <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
