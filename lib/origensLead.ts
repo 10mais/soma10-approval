@@ -61,6 +61,8 @@ export function normalizaOrigem(bruta?: string): OrigemClinica | '' {
   return 'Outros'
 }
 
+export type ItemOrigem = { origem?: string; status?: string; valor?: number }
+
 export type FatiaOrigem = {
   nome: string
   qtd: number
@@ -68,35 +70,53 @@ export type FatiaOrigem = {
   cor: string
   anguloInicio: number // graus, 0 = meio-dia, sentido horário
   anguloFim: number
+  // O que o canal virou. É isto que responde a pergunta seguinte à do gráfico:
+  // não "de onde vêm os leads", mas "de onde vêm os que FECHAM".
+  abertos: number
+  ganhos: number
+  perdidos: number
+  valorGanho: number
+  conversao: number    // ganhos ÷ leads do canal, 0-100
 }
 
 // Soma os negócios por origem já normalizada. Ordena por quantidade, mas
 // "Outros" e "Sem origem" vão sempre para o fim: são resto, não canal — deixá-los
 // no topo por volume esconderia o canal que de fato traz gente.
-export function pizzaOrigens(itens: { origem?: string }[]): { total: number; fatias: FatiaOrigem[] } {
+export function pizzaOrigens(itens: ItemOrigem[]): { total: number; fatias: FatiaOrigem[] } {
   const total = itens.length
   if (!total) return { total: 0, fatias: [] }
 
-  const contagem = new Map<string, number>()
+  type Acc = { qtd: number; abertos: number; ganhos: number; perdidos: number; valorGanho: number }
+  const contagem = new Map<string, Acc>()
   for (const it of itens) {
     const nome = normalizaOrigem(it.origem) || SEM_ORIGEM
-    contagem.set(nome, (contagem.get(nome) || 0) + 1)
+    const a = contagem.get(nome) || { qtd: 0, abertos: 0, ganhos: 0, perdidos: 0, valorGanho: 0 }
+    a.qtd++
+    // Status ausente conta como aberto (é o padrão do CRM ao criar).
+    if (it.status === 'ganho') { a.ganhos++; a.valorGanho += Number(it.valor) || 0 }
+    else if (it.status === 'perdido') a.perdidos++
+    else a.abertos++
+    contagem.set(nome, a)
   }
 
   const resto = (nome: string) => (nome === SEM_ORIGEM ? 2 : nome === 'Outros' ? 1 : 0)
   const ordem = Array.from(contagem.entries()).sort((a, b) => {
     const r = resto(a[0]) - resto(b[0])
     if (r) return r
-    if (b[1] !== a[1]) return b[1] - a[1]
+    if (b[1].qtd !== a[1].qtd) return b[1].qtd - a[1].qtd
     return a[0].localeCompare(b[0], 'pt')
   })
 
   let angulo = 0
-  const fatias = ordem.map(([nome, qtd]) => {
-    const pct = (qtd / total) * 100
+  const fatias = ordem.map(([nome, a]) => {
+    const pct = (a.qtd / total) * 100
     const inicio = angulo
-    angulo += (qtd / total) * 360
-    return { nome, qtd, pct, cor: COR_ORIGEM[nome] || '#64748b', anguloInicio: inicio, anguloFim: angulo }
+    angulo += (a.qtd / total) * 360
+    return {
+      nome, qtd: a.qtd, pct, cor: COR_ORIGEM[nome] || '#64748b', anguloInicio: inicio, anguloFim: angulo,
+      abertos: a.abertos, ganhos: a.ganhos, perdidos: a.perdidos, valorGanho: a.valorGanho,
+      conversao: (a.ganhos / a.qtd) * 100,
+    }
   })
   return { total, fatias }
 }
@@ -122,4 +142,12 @@ export function fatiaPath(cx: number, cy: number, rExt: number, rInt: number, a0
 // Todo mundo veio do mesmo canal: vira anel, não fatia.
 export function fatiaUnica(fatias: FatiaOrigem[]): boolean {
   return fatias.length === 1
+}
+
+// Quanto a fatia se afasta do centro quando o mouse para em cima (o "explodir"
+// do gráfico). Vetor no meio do arco — a tela só aplica como translate.
+export function deslocamentoFatia(a0: number, a1: number, distancia: number): [number, number] {
+  const meio = (a0 + a1) / 2
+  const rad = ((meio - 90) * Math.PI) / 180
+  return [n2(Math.cos(rad) * distancia), n2(Math.sin(rad) * distancia)]
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizaOrigem, pizzaOrigens, fatiaPath, fatiaUnica, ORIGENS_CLINICA, SEM_ORIGEM } from '@/lib/origensLead'
+import { normalizaOrigem, pizzaOrigens, fatiaPath, fatiaUnica, deslocamentoFatia, ORIGENS_CLINICA, SEM_ORIGEM } from '@/lib/origensLead'
 
 // O gráfico de origem vira decisão de investimento em mídia. Se a soma mentir
 // (grafia diferente virando duas fatias, ausência de dado escondida dentro de
@@ -102,5 +102,55 @@ describe('desenho', () => {
   it('canal único vira anel (o arco de 360 não desenha)', () => {
     expect(fatiaUnica(pizzaOrigens([{ origem: 'Google' }, { origem: 'google' }]).fatias)).toBe(true)
     expect(fatiaUnica(pizzaOrigens([{ origem: 'Google' }, { origem: 'Indicação' }]).fatias)).toBe(false)
+  })
+})
+
+describe('o que cada canal virou (o detalhe do hover)', () => {
+  const itens = [
+    { origem: 'Indicação', status: 'ganho', valor: 3000 },
+    { origem: 'indicacao', status: 'ganho', valor: 1000 },
+    { origem: 'Indicação', status: 'perdido', valor: 900 },
+    { origem: 'Indicação', status: 'aberto', valor: 500 },
+    { origem: 'Google', status: 'perdido', valor: 200 },
+    { origem: 'Meta Ads' }, // sem status: o CRM cria assim
+  ]
+
+  it('separa aberto/ganho/perdido e soma só o valor GANHO', () => {
+    const ind = pizzaOrigens(itens).fatias.find(f => f.nome === 'Indicação')!
+    expect(ind.qtd).toBe(4)
+    expect(ind.ganhos).toBe(2)
+    expect(ind.perdidos).toBe(1)
+    expect(ind.abertos).toBe(1)
+    expect(ind.valorGanho).toBe(4000) // não soma o perdido nem o em aberto
+  })
+
+  it('conversão é ganhos ÷ leads do canal', () => {
+    const f = pizzaOrigens(itens).fatias
+    expect(f.find(x => x.nome === 'Indicação')!.conversao).toBe(50)
+    expect(f.find(x => x.nome === 'Google')!.conversao).toBe(0)
+  })
+
+  it('oportunidade sem status conta como em aberto', () => {
+    const meta = pizzaOrigens(itens).fatias.find(f => f.nome === 'Meta Ads')!
+    expect(meta.abertos).toBe(1)
+    expect(meta.ganhos + meta.perdidos).toBe(0)
+  })
+
+  it('as três situações somam a quantidade da fatia', () => {
+    for (const f of pizzaOrigens(itens).fatias) expect(f.abertos + f.ganhos + f.perdidos).toBe(f.qtd)
+  })
+})
+
+describe('deslocamentoFatia (fatia que salta no hover)', () => {
+  it('empurra a fatia para o lado em que ela está', () => {
+    expect(deslocamentoFatia(0, 90, 10)).toEqual([7.07, -7.07])    // nordeste
+    expect(deslocamentoFatia(90, 180, 10)).toEqual([7.07, 7.07])   // sudeste
+    expect(deslocamentoFatia(180, 270, 10)).toEqual([-7.07, 7.07]) // sudoeste
+  })
+
+  it('fatia no topo sai para cima, sem tremer no eixo x', () => {
+    const [dx, dy] = deslocamentoFatia(-45, 45, 8)
+    expect(dx).toBe(0)
+    expect(dy).toBe(-8)
   })
 })

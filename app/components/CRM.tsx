@@ -5,7 +5,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp, consumirFichaContato } from '@/lib/conversaInterna'
-import { ORIGENS_CLINICA, pizzaOrigens, fatiaPath, fatiaUnica } from '@/lib/origensLead'
+import { ORIGENS_CLINICA, pizzaOrigens, fatiaPath, fatiaUnica, deslocamentoFatia } from '@/lib/origensLead'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDoc, soDigitosDoc } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
@@ -549,7 +549,18 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
     acc[k] = acc[k] || { nome: k, qtd: 0 }; acc[k].qtd++; return acc
   }, {})) as { nome: string; qtd: number }[]).sort((a, b) => b.qtd - a.qtd).slice(0, 8)
   // Clínica: mesma pergunta, resposta em pizza e pela lista FECHADA do dropdown.
-  const pizza = pizzaOrigens(negocios)
+  // useMemo porque o hover re-renderiza a cada movimento do mouse: recontar as
+  // fatias a cada pixel seria trabalho jogado fora.
+  const pizza = useMemo(() => pizzaOrigens(negocios), [negocios])
+  // Fatia sob o mouse + onde ele está DENTRO do quadro do gráfico (o tooltip é
+  // posicionado em relação a esse quadro, não à página — a tela rola).
+  const [hoverFatia, setHoverFatia] = useState<{ nome: string; x: number; y: number } | null>(null)
+  const pizzaBoxRef = useRef<HTMLDivElement>(null)
+  function moverNaPizza(e: { clientX: number; clientY: number }, nome: string) {
+    const r = pizzaBoxRef.current?.getBoundingClientRect()
+    if (!r) return
+    setHoverFatia({ nome, x: e.clientX - r.left, y: e.clientY - r.top })
+  }
 
   const Card = ({ titulo, valor, sub, cor }: { titulo: string; valor: string; sub?: string; cor?: string }) => (
     <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -596,32 +607,88 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
            preencheu aparece como "Sem origem", em vez de sumir. */
         <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
           {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma oportunidade neste funil ainda.</p> : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
+            <div ref={pizzaBoxRef} onMouseLeave={() => setHoverFatia(null)}
+              style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
               <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
                 <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Origem dos leads">
                   {fatiaUnica(pizza.fatias)
-                    ? <circle cx="90" cy="90" r="66" fill="none" stroke={pizza.fatias[0].cor} strokeWidth="42"><title>{`${pizza.fatias[0].nome}: ${pizza.fatias[0].qtd} (100%)`}</title></circle>
-                    : pizza.fatias.map(f => (
-                      <path key={f.nome} d={fatiaPath(90, 90, 87, 45, f.anguloInicio, f.anguloFim)} fill={f.cor} stroke="#fff" strokeWidth="1.5">
-                        <title>{`${f.nome}: ${f.qtd} lead(s) · ${Math.round(f.pct)}%`}</title>
-                      </path>
-                    ))}
+                    ? <circle cx="90" cy="90" r="66" fill="none" stroke={pizza.fatias[0].cor} strokeWidth="42"
+                        style={{ cursor: 'pointer' }} onMouseMove={e => moverNaPizza(e, pizza.fatias[0].nome)} onClick={e => moverNaPizza(e, pizza.fatias[0].nome)} />
+                    : pizza.fatias.map(f => {
+                      const ativa = hoverFatia?.nome === f.nome
+                      // A fatia sob o mouse SALTA para fora e as outras esmaecem —
+                      // é o que diz "é desta que estou falando" sem escrever nada.
+                      const [dx, dy] = ativa ? deslocamentoFatia(f.anguloInicio, f.anguloFim, 7) : [0, 0]
+                      return (
+                        <path key={f.nome} d={fatiaPath(90, 90, 87, 45, f.anguloInicio, f.anguloFim)} fill={f.cor} stroke="#fff" strokeWidth="1.5"
+                          onMouseMove={e => moverNaPizza(e, f.nome)} onClick={e => moverNaPizza(e, f.nome)}
+                          style={{ cursor: 'pointer', transform: `translate(${dx}px, ${dy}px)`, opacity: hoverFatia && !ativa ? 0.32 : 1, transition: 'transform .15s ease, opacity .15s ease' }} />
+                      )
+                    })}
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                  <span style={{ fontSize: 26, fontWeight: 800, color: '#111', lineHeight: 1 }}>{pizza.total}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>{pizza.total === 1 ? 'lead' : 'leads'}</span>
+                {/* O miolo troca de assunto no hover: total do funil -> a fatia. */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', textAlign: 'center', padding: '0 46px' }}>
+                  {(() => {
+                    const f = hoverFatia ? pizza.fatias.find(x => x.nome === hoverFatia.nome) : null
+                    if (!f) return (<>
+                      <span style={{ fontSize: 26, fontWeight: 800, color: '#111', lineHeight: 1 }}>{pizza.total}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>{pizza.total === 1 ? 'lead' : 'leads'}</span>
+                    </>)
+                    return (<>
+                      <span style={{ fontSize: 24, fontWeight: 800, color: f.cor, lineHeight: 1 }}>{Math.round(f.pct)}%</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: '#666', lineHeight: 1.25, marginTop: 3 }}>{f.nome}</span>
+                    </>)
+                  })()}
                 </div>
               </div>
               <div style={{ flex: 1, minWidth: 210 }}>
-                {pizza.fatias.map(f => (
-                  <div key={f.nome} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.qtd}</span>
-                    <span style={{ fontSize: 11.5, color: '#999', width: 42, textAlign: 'right' }}>{Math.round(f.pct)}%</span>
-                  </div>
-                ))}
+                {pizza.fatias.map(f => {
+                  const ativa = hoverFatia?.nome === f.nome
+                  return (
+                    <div key={f.nome} onMouseMove={e => moverNaPizza(e, f.nome)} onClick={e => moverNaPizza(e, f.nome)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', margin: '0 -8px', borderBottom: '1px solid #f5f5f5', borderRadius: 8, cursor: 'pointer', background: ativa ? '#f7f7f7' : 'transparent', opacity: hoverFatia && !ativa ? 0.5 : 1, transition: 'background .15s, opacity .15s' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12.5, fontWeight: ativa ? 800 : 600, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.qtd}</span>
+                      <span style={{ fontSize: 11.5, color: '#999', width: 42, textAlign: 'right' }}>{Math.round(f.pct)}%</span>
+                    </div>
+                  )
+                })}
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb' }}>Passe o mouse por uma fatia para ver o que aquele canal virou.</p>
               </div>
+
+              {/* Detalhe do canal — a pergunta seguinte à do gráfico: não só de onde
+                  vêm os leads, mas quantos FECHARAM e quanto entrou. Segue o mouse e
+                  vira para o outro lado quando não cabe à direita. */}
+              {(() => {
+                const f = hoverFatia ? pizza.fatias.find(x => x.nome === hoverFatia.nome) : null
+                if (!f || !hoverFatia) return null
+                const largura = pizzaBoxRef.current?.clientWidth || 0
+                const paraEsquerda = largura > 0 && hoverFatia.x + 220 > largura
+                const linha = (rot: string, val: string, cor?: string) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11.5, padding: '2px 0' }}>
+                    <span style={{ color: '#9ca3af' }}>{rot}</span><span style={{ fontWeight: 700, color: cor || '#111' }}>{val}</span>
+                  </div>
+                )
+                return (
+                  <div style={{ position: 'absolute', left: hoverFatia.x, top: hoverFatia.y, transform: `translate(${paraEsquerda ? 'calc(-100% - 14px)' : '14px'}, -50%)`, pointerEvents: 'none', zIndex: 5, width: 196, background: '#fff', border: '1px solid #ececec', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.nome}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+                      <b style={{ color: '#111' }}>{f.qtd}</b> {f.qtd === 1 ? 'lead' : 'leads'} · {Math.round(f.pct)}% do funil
+                    </div>
+                    {linha('Em aberto', String(f.abertos))}
+                    {linha('Ganhos', String(f.ganhos), '#16a34a')}
+                    {linha('Perdidos', String(f.perdidos), f.perdidos ? '#b91c1c' : undefined)}
+                    <div style={{ borderTop: '1px solid #f2f2f2', marginTop: 6, paddingTop: 6 }}>
+                      {linha('Conversão', `${Math.round(f.conversao)}%`)}
+                      {linha('Valor ganho', fmtR$(f.valorGanho), f.valorGanho ? '#16a34a' : undefined)}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>

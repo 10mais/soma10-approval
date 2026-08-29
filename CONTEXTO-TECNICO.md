@@ -1421,3 +1421,18 @@ não são tocados.
   único vira anel (arco de 360° não desenha). Respeita o **funil selecionado** — Agendamentos
   e Tratamentos têm cada um a sua pizza. `tests/origensLead.test.ts` (13 casos: ângulos
   fechando 360, soma = total, Outros/Sem origem no fim). Testes 795.
+
+### 42.3 A pizza ficou interativa (hover com o que o canal virou)
+- Passar o mouse (ou tocar) numa fatia: ela **salta para fora** (`deslocamentoFatia`), as
+  outras esmaecem, o **miolo troca o total pelo % daquele canal** e abre um **cartão que
+  segue o cursor** — vira para a esquerda quando não cabe à direita. A legenda é o mesmo
+  controle: hover nela acende a fatia.
+- O cartão responde a pergunta SEGUINTE à do gráfico ("de onde vêm os que fecham?"):
+  em aberto · ganhos · perdidos · **conversão** (ganhos ÷ leads do canal) · **valor ganho**.
+  Por isso `pizzaOrigens` passou a receber `status`/`valor` do negócio; oportunidade sem
+  status conta como em aberto (é como o CRM cria).
+- Saiu o `<title>` nativo do SVG (tooltip do navegador demorava e duplicava o cartão).
+  `pizza` em `useMemo`: o hover re-renderiza a cada movimento do mouse.
+- Conferido em imagem antes do deploy: HTML gerado a partir da lib REAL (fatias, ângulos,
+  fatia saltada, cartão) — o login local é impossível (sem Redis no `.env.local`), então a
+  geometria foi validada assim e o resto em produção. Testes 801.
