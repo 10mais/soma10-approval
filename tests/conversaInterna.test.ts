@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { pedirConversaWhatsApp, consumirConversaWhatsApp, CRM_ABRIR_TEL } from '@/lib/conversaInterna'
+import { pedirConversaWhatsApp, consumirConversaWhatsApp, CRM_ABRIR_TEL, pedirFichaContato, consumirFichaContato, CRM_ABRIR_CONTATO } from '@/lib/conversaInterna'
 
 // O pedido atravessa DUAS telas (home → CRM) por sessionStorage. Testa-se o
 // contrato entre elas: nome da chave, número limpo e o pedido valendo uma vez.
@@ -42,5 +42,38 @@ describe('conversaInterna', () => {
     delete (globalThis as any).sessionStorage
     expect(pedirConversaWhatsApp('5599999999')).toBe(false)
     expect(consumirConversaWhatsApp()).toBe('')
+  })
+})
+
+describe('ficha do contato pedida de outra tela', () => {
+  it('leva o id da home ao CRM', () => {
+    expect(pedirFichaContato('  ct_123  ')).toBe(true)
+    expect(sessionStorage.getItem(CRM_ABRIR_CONTATO)).toBe('ct_123')
+    expect(consumirFichaContato()).toBe('ct_123')
+  })
+
+  it('o pedido vale UMA vez — recarregar nao reabre a ficha', () => {
+    pedirFichaContato('ct_123')
+    expect(consumirFichaContato()).toBe('ct_123')
+    expect(consumirFichaContato()).toBe('')
+  })
+
+  it('sem id nao pede nada', () => {
+    for (const v of [undefined, '', '   ']) expect(pedirFichaContato(v)).toBe(false)
+    expect(consumirFichaContato()).toBe('')
+  })
+
+  it('ficha e conversa sao pedidos INDEPENDENTES (chaves diferentes)', () => {
+    pedirConversaWhatsApp('5555999944104')
+    pedirFichaContato('ct_9')
+    expect(consumirFichaContato()).toBe('ct_9')
+    // consumir a ficha nao pode engolir o pedido de conversa
+    expect(consumirConversaWhatsApp()).toBe('5555999944104')
+  })
+
+  it('sem sessionStorage (servidor) nao explode', () => {
+    delete (globalThis as any).sessionStorage
+    expect(pedirFichaContato('ct_1')).toBe(false)
+    expect(consumirFichaContato()).toBe('')
   })
 })

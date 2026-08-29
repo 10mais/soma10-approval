@@ -4,7 +4,7 @@ import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
-import { consumirConversaWhatsApp } from '@/lib/conversaInterna'
+import { consumirConversaWhatsApp, consumirFichaContato } from '@/lib/conversaInterna'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDoc, soDigitosDoc } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
@@ -109,6 +109,22 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     if (tel) abrirWhatsAppInterno(tel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Mesma ponte, outro pedido: abrir a FICHA do contato (a home dos
+  // aniversariantes manda o id). A ficha vive na lista `contatos`, que chega por
+  // fetch — por isso guarda o id e abre quando a lista existir; abrir antes
+  // seria abrir uma ficha vazia. Se o contato sumiu (excluido), avisa em vez de
+  // deixar o clique morrer no silencio.
+  const [fichaPedida, setFichaPedida] = useState('')
+  useEffect(() => { setFichaPedida(consumirFichaContato()) }, [])
+  useEffect(() => {
+    if (!fichaPedida || carregando) return
+    const c = contatos.find(x => x.id === fichaPedida)
+    setFichaPedida('')
+    if (!c) { toast('Contato nao encontrado — pode ter sido excluido.', 'erro'); return }
+    setVista('contatos')
+    setContatoModal(c)
+  }, [fichaPedida, carregando, contatos])
 
   // Auto-scroll do funil ao arrastar um card para perto da borda (facilita chegar
   // em Ganho/Perdido). Regra compartilhada com a esteira de Processos — ver

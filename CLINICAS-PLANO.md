@@ -1,9 +1,12 @@
 # Soma10 Clínicas — plano de produto (referência: sistema atual da Norah)
 
 > Fonte: 15 prints do sistema que a Norah usa hoje ("Clínica Experts"), analisados em 2026-07-13.
-> Objetivo: substituí-lo para clínicas (Norah, Phenoma, futuras) DENTRO do código único do
+> Objetivo: substituí-lo para clínicas (Norah e futuras) DENTRO do código único do
 > Soma10 — comportamento ativado pelo perfil `clinica`, sem fork. Marca do produto: Soma10 (decisão do dono).
 > Prints em `C:\Users\Wiliam\Desktop\REFERENCIA CLINICAS\` (máquina do dono; contêm dados reais — não versionar).
+
+> **Foco (2026-08-29):** a única clínica é a **Norah**. A Clínica Phenoma saiu do
+> mapa — o dono não vai mais atender. Ajustes pedidos por ela vão direto para produção.
 
 ## O que o sistema de referência tem (inventário por tela)
 

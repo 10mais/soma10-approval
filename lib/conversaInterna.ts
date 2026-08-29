@@ -35,3 +35,32 @@ export function consumirConversaWhatsApp(): string {
     return tel
   } catch { return '' }
 }
+
+// ---- Ficha do contato ----
+// Mesmo padrão, outro pedido: "abra a FICHA desta pessoa". Quem chama (a home
+// dos aniversariantes) não sabe desenhar a ficha — quem sabe é o CRM, que tem o
+// contato carregado, o historico de atendimentos e a nutricao. Chave separada da
+// conversa: pedir a ficha nao pode abrir o inbox, e vice-versa.
+export const CRM_ABRIR_CONTATO = 'crm_abrir_contato'
+
+// Devolve false quando nao ha id — assim quem chama nao navega para uma tela
+// que nao vai abrir nada.
+export function pedirFichaContato(contatoId?: string): boolean {
+  const id = (contatoId || '').trim()
+  if (!id) return false
+  const s = store()
+  if (!s) return false
+  try { s.setItem(CRM_ABRIR_CONTATO, id) } catch { return false }
+  return true
+}
+
+// Le E APAGA: o pedido vale uma vez (ver consumirConversaWhatsApp).
+export function consumirFichaContato(): string {
+  const s = store()
+  if (!s) return ''
+  try {
+    const id = s.getItem(CRM_ABRIR_CONTATO) || ''
+    s.removeItem(CRM_ABRIR_CONTATO)
+    return id
+  } catch { return '' }
+}

@@ -1380,3 +1380,25 @@ não são tocados.
   de memória: Passageiros/Hotéis, Equipe/carteira).
 - WhatsApp: feedback no botão Desconectar + "Forçar reset" da instância (oferecido, não feito).
 - Arquivar clientes: botão "Limpar órfãos" (purga o que o filtro só esconde) — opcional.
+
+## 42. Evolução 2026-08-29 — Norah: aniversariantes do mês clicáveis
+
+> **Phenoma está FORA** (decisão do dono, 29/08: não vamos mais atender). A única
+> clínica é a **Norah** — os pedidos dela vão direto para produção. As seções
+> §36.7/§37/§38 citam "provisionar Phenoma": ignorar, é histórico.
+
+### 42.1 Do número ao paciente (home clínica)
+- O cartão **"Aniversariantes do mês"** era só um número: 35 aniversariantes e nenhuma
+  porta. Agora **abre a lista inteira do mês** (o cartão ao lado corta em 12) com busca
+  por nome/telefone; cada linha leva aos dois lugares onde se faz algo com o aniversário:
+  a **ficha do paciente** (dados + histórico de atendimentos) e a **conversa de WhatsApp**
+  no CRM. O nome na lista curta da home também virou botão para a ficha.
+- **Ponte tela→CRM:** `lib/conversaInterna.ts` ganhou `pedirFichaContato`/`consumirFichaContato`
+  (chave `crm_abrir_contato`, irmã de `crm_abrir_tel`) — quem desenha a ficha é o CRM, que
+  já tem contato, histórico e nutrição; a home só pede. O pedido **vale uma vez** (recarregar
+  o CRM não reabre a ficha sozinho) e as duas chaves são independentes.
+- No `CRM.tsx` o pedido só abre **depois** que a lista de contatos chega (abrir antes seria
+  abrir ficha vazia); contato inexistente avisa por toast em vez de o clique morrer calado.
+- Arquivos: `lib/conversaInterna.ts` · `tests/conversaInterna.test.ts` (9 casos) ·
+  `app/components/DashboardHome.tsx` (KPI clicável + modal) · `app/components/CRM.tsx`.
+  Testes 782.

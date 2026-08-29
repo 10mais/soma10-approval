@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCliente from './AvatarCliente'
+import { fecharFora } from '@/lib/fecharModal'
 import { atrasada, emRisco, diasDeAtraso } from '@/lib/entregas'
 import { valorDaReserva as calcularValorReserva } from '@/lib/pacoteViagem'
 import { saldoDevedor } from '@/lib/financeiroReserva'
 import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
-import { pedirConversaWhatsApp } from '@/lib/conversaInterna'
+import { pedirConversaWhatsApp, pedirFichaContato } from '@/lib/conversaInterna'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; corSecundaria?: string; tipo?: string; entregaveis?: string[]; postsMensais?: number }
 type Post = { id: string; clienteId: string; clienteNome: string; status: string; dataAgendada?: string; criadoEm: string; atualizadoEm?: string; etapa?: string; erroPublicacao?: string; imagens: string[] }
@@ -165,6 +166,18 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   // Parabenizar abre a conversa no inbox do CRM (aba Mensagens), não o wa.me:
   // o toque fica registrado e o time vê. Ver lib/conversaInterna.
   const abrirConversa = (tel?: string) => { if (pedirConversaWhatsApp(tel)) onIr?.('crm') }
+  // Abrir a FICHA do paciente (dados + historico de atendimentos) no CRM. Mesma
+  // ponte da conversa — quem desenha a ficha e o CRM. Ver lib/conversaInterna.
+  const abrirFicha = (id: string) => { if (pedirFichaContato(id)) onIr?.('crm') }
+  // Lista completa dos aniversariantes (o cartao da home mostra so os primeiros).
+  const [anivAberto, setAnivAberto] = useState(false)
+  const [buscaAniv, setBuscaAniv] = useState('')
+  const anivFiltrados = useMemo(() => {
+    const q = buscaAniv.trim().toLowerCase()
+    if (!q) return aniversariantes
+    const dig = q.replace(/\D/g, '')
+    return aniversariantes.filter(c => c.nome.toLowerCase().includes(q) || (!!dig && (c.telefone || '').replace(/\D/g, '').includes(dig)))
+  }, [aniversariantes, buscaAniv])
 
   // Risco de atraso: meta do mês (postsMensais) ainda não coberta por publicado+agendado
   const clientesEmRisco = useMemo(() => agora.getDate() < 5 ? [] : clientesSM.filter(c => {
@@ -391,15 +404,21 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
         {/* KPIs da clínica */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
-          {[
+          {([
             { label: 'Atendimentos hoje', valor: agsHoje.length, cor: '#111' },
             { label: 'Aguardando confirmação', valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? '#a16207' : '#16a34a' },
             { label: 'Pacientes ativos', valor: pacientesAtivos.length, cor: '#1d4ed8' },
-            { label: 'Aniversariantes do mês', valor: aniversariantes.length, cor: '#7c3aed' },
-          ].map(kpi => (
-            <div key={kpi.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            // Número que pede ação: abre a lista inteira do mês (o cartão ao lado
+            // mostra só os primeiros), com ficha e WhatsApp de cada paciente.
+            { label: 'Aniversariantes do mês', valor: aniversariantes.length, cor: '#7c3aed', acao: aniversariantes.length > 0 ? (() => setAnivAberto(true)) : undefined, dica: 'Ver todos os aniversariantes do mês' },
+          ] as { label: string; valor: number; cor: string; acao?: () => void; dica?: string }[]).map(kpi => (
+            <div key={kpi.label} onClick={kpi.acao} title={kpi.dica}
+              role={kpi.acao ? 'button' : undefined} tabIndex={kpi.acao ? 0 : undefined}
+              onKeyDown={kpi.acao ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kpi.acao!() } }) : undefined}
+              style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: kpi.acao ? 'pointer' : 'default' }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#888' }}>{kpi.label}</p>
               <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: kpi.cor }}>{kpi.valor}</p>
+              {kpi.acao && <p style={{ margin: '2px 0 0', fontSize: 11.5, fontWeight: 700, color: '#1d4ed8' }}>Ver lista</p>}
             </div>
           ))}
         </div>
@@ -423,12 +442,16 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
           {/* Aniversariantes do mês */}
           <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+              {aniversariantes.length > 0 && <button onClick={() => setAnivAberto(true)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Ver todos ({aniversariantes.length})</button>}
+            </div>
             {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum aniversariante este mês (preencha o nascimento no cadastro do paciente).</p>}
             {aniversariantes.slice(0, 12).map(c => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
-                <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
+                  style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: '#333', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</button>
                 {c.telefone && (
                   <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
                     style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><IconWhats /></button>
@@ -450,6 +473,43 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             </div>
           ) })}
         </div>
+
+        {/* Aniversariantes do mês — a lista INTEIRA (o cartão da home corta em 12).
+            Cada linha leva aos dois lugares onde o time faz alguma coisa com o
+            aniversário: a ficha do paciente (dados + histórico de atendimentos) e
+            a conversa de WhatsApp no CRM. */}
+        {anivAberto && (
+          <div onClick={fecharFora(() => setAnivAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed' }}>{aniversariantes.length}</span>
+                <span style={{ flex: 1 }} />
+                <button onClick={() => setAnivAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+              </div>
+              <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: '#999' }}>Clique no nome para abrir a ficha do paciente (dados e histórico de atendimentos). O ícone verde abre a conversa no WhatsApp.</p>
+              <input value={buscaAniv} onChange={e => setBuscaAniv(e.target.value)} placeholder="Buscar por nome ou telefone"
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid #e5e5e5', borderRadius: 10, fontSize: 13, outline: 'none' }} />
+              <div style={{ overflowY: 'auto', marginTop: 6 }}>
+                {anivFiltrados.length === 0 && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: '#aaa' }}>Nenhum aniversariante com esse nome ou telefone.</p>}
+                {anivFiltrados.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid #f4f4f4' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0, minWidth: 38 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
+                    <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
+                      style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: '#888' }}>{c.telefone || 'sem telefone'}{c.tipo && c.tipo !== 'paciente' ? ` · ${c.tipo}` : ''}{c.ativo === false ? ' · inativo' : ''}</span>
+                    </button>
+                    {c.telefone && (
+                      <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+                        style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}><IconWhats /></button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
