@@ -465,7 +465,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
 
               <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
                 <label style={labelStyle}>Observações</label>
-                <textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                <textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             </div>
 

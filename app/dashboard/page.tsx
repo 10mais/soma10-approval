@@ -351,7 +351,7 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
             <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeição. O criativo voltará para a equipe com esta justificativa.</p>
-            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
+            <textarea lang="pt-BR" spellCheck value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
@@ -3060,26 +3060,26 @@ function Dashboard() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Descrição da empresa</label>
-                <textarea value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder="O que a empresa faz, diferenciais, serviços..."
+                <textarea lang="pt-BR" spellCheck value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder="O que a empresa faz, diferenciais, serviços..."
                   style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Público-alvo</label>
-                  <textarea value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder="Quem é o cliente ideal..."
+                  <textarea lang="pt-BR" spellCheck value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder="Quem é o cliente ideal..."
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Tom de voz</label>
-                  <textarea value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder="Formal, acolhedor, descontraído..."
+                  <textarea lang="pt-BR" spellCheck value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder="Formal, acolhedor, descontraído..."
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Preferências / O que evitar</label>
-                <textarea value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder="Hashtags padrão, temas a evitar, regras da marca..."
+                <textarea lang="pt-BR" spellCheck value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder="Hashtags padrão, temas a evitar, regras da marca..."
                   style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
@@ -4261,7 +4261,7 @@ function Dashboard() {
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
                           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Passagem de bastão (vendas → onboarding)</label>
                           <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Contexto da venda transmitido pelo closer. Edite/complemente conforme o onboarding avança.</p>
-                          <textarea value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder="Sem passagem de bastão registrada (clientes criados pela conversão do CRM trazem este resumo automaticamente)."
+                          <textarea lang="pt-BR" spellCheck value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder="Sem passagem de bastão registrada (clientes criados pela conversão do CRM trazem este resumo automaticamente)."
                             style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', whiteSpace: 'pre-wrap' }} />
                         </div>
                       )}
@@ -4983,7 +4983,7 @@ function Dashboard() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição da empresa (aparece em destaque no formulário)</label>
-                <textarea value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                <textarea lang="pt-BR" spellCheck value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>
 
               <div style={{ height: 1, background: '#f0f0f0' }} />
@@ -5010,7 +5010,7 @@ function Dashboard() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto da confirmação</label>
-                  <textarea value={configAgencia.recrutamentoMensagemFinal || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinal: e.target.value }))} placeholder="Mensagem que o candidato vê após enviar." style={{ width: '100%', minHeight: 70, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                  <textarea lang="pt-BR" spellCheck value={configAgencia.recrutamentoMensagemFinal || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinal: e.target.value }))} placeholder="Mensagem que o candidato vê após enviar." style={{ width: '100%', minHeight: 70, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                 </div>
               </div>
 
@@ -5416,8 +5416,8 @@ function Dashboard() {
                             <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da predefinição" style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                             <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ flexShrink: 0, padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Remover</button>
                           </div>
-                          <textarea value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                          <textarea value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea lang="pt-BR" spellCheck value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea lang="pt-BR" spellCheck value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                         </div>
                       ))}
                     </div>
@@ -5427,7 +5427,7 @@ function Dashboard() {
                     </div>
                   </div>
                 )}
-                <textarea value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
+                <textarea lang="pt-BR" spellCheck value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                   <a href={`https://wa.me/?text=${encodeURIComponent(resumoTexto)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#25D366', color: '#fff', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2z" /></svg> Abrir no WhatsApp

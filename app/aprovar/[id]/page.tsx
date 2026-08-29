@@ -159,7 +159,7 @@ export default function ApprovalPage() {
               onClick={e => e.stopPropagation()}>
               <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', minWidth: 260, border: '1px solid #e0e0e0' }}>
                 <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: '#111' }}>Descreva o ajuste necessário</p>
-                <textarea
+                <textarea lang="pt-BR" spellCheck
                   autoFocus
                   value={pinText}
                   onChange={e => setPinText(e.target.value)}
@@ -268,7 +268,7 @@ export default function ApprovalPage() {
             <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888', lineHeight: 1.5 }}>
               Descreva os ajustes desejados{annotations.length > 0 ? ` (suas ${annotations.length} marcação(ões) na imagem serão enviadas junto)` : ''}. Em imagens, você também pode clicar sobre elas para marcar pontos antes de enviar.
             </p>
-            <textarea autoFocus value={ajusteTexto} onChange={e => setAjusteTexto(e.target.value)} placeholder="Ex: trocar a cor do título, ajustar a legenda no 2º slide..."
+            <textarea lang="pt-BR" spellCheck autoFocus value={ajusteTexto} onChange={e => setAjusteTexto(e.target.value)} placeholder="Ex: trocar a cor do título, ajustar a legenda no 2º slide..."
               style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', minHeight: 100, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.6 }} />
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
               <button onClick={() => setStep('view')} style={{ flex: 1, padding: '13px 0', background: '#f5f5f5', color: '#555', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Voltar</button>
@@ -285,7 +285,7 @@ export default function ApprovalPage() {
           <div style={{ marginTop: 20, background: '#fff', borderRadius: 10, padding: 22, border: '1px solid #fca5a5' }}>
             <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#111', fontSize: 15 }}>Motivo da reprovação</p>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: '#888', lineHeight: 1.5 }}>Descreva o que não atendeu às expectativas para que possamos elaborar uma nova proposta.</p>
-            <textarea
+            <textarea lang="pt-BR" spellCheck
               autoFocus
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}

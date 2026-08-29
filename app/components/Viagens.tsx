@@ -476,7 +476,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                   </div>
                 )}
               </div>
-              <textarea value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {form.id && podeExcluir && <button onClick={() => { const e = lista.find(x => x.id === form.id); if (e) excluir(e) }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}

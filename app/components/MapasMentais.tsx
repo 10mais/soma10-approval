@@ -110,7 +110,7 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
             ) : (
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Sobre o que é o mapa?</label>
-                <textarea value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder="Ex.: Estrutura organizacional da Clínica Norah · Plano de marketing 2026 · Onboarding de novo cliente…"
+                <textarea lang="pt-BR" spellCheck value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder="Ex.: Estrutura organizacional da Clínica Norah · Plano de marketing 2026 · Onboarding de novo cliente…"
                   style={{ width: '100%', minHeight: 90, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>A IA cria os ramos e subtópicos. Você ajusta tudo depois.</p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
@@ -508,7 +508,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                 style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
-                  ? <textarea value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder="Ideia…"
+                  ? <textarea lang="pt-BR" spellCheck value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder="Ideia…"
                       onKeyDown={e => {
                         // 1º Enter só CONFIRMA o texto; o 2º Enter (nó já selecionado) cria o irmão via atalho global.
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizarNo(no) }

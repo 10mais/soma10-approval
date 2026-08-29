@@ -127,7 +127,7 @@ function AgenteModal({ agente, onClose, onSalvo }: { agente: Agente | null; onCl
           <div><label style={label}>Descrição curta</label><input value={f.descricao} onChange={e => setF({ ...f, descricao: e.target.value })} placeholder="Uma linha exibida no card e na saudação" style={input} /></div>
           <div>
             <label style={label}>Instruções / treino (persona)</label>
-            <textarea value={f.instrucoes} onChange={e => setF({ ...f, instrucoes: e.target.value })} placeholder={'Descreva como o agente pensa e age. Ex.:\n"Você é um copywriter sênior especialista em social media para clínicas. Escreve legendas curtas, com gancho forte na 1a linha e CTA claro. Tom leve e profissional. Sempre pergunta o objetivo do post se não estiver claro."'}
+            <textarea lang="pt-BR" spellCheck value={f.instrucoes} onChange={e => setF({ ...f, instrucoes: e.target.value })} placeholder={'Descreva como o agente pensa e age. Ex.:\n"Você é um copywriter sênior especialista em social media para clínicas. Escreve legendas curtas, com gancho forte na 1a linha e CTA claro. Tom leve e profissional. Sempre pergunta o objetivo do post se não estiver claro."'}
               style={{ ...input, minHeight: 130, resize: 'vertical', lineHeight: 1.5 }} />
             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Este texto é o que "treina" o agente — quanto mais específico, melhor ele responde.</p>
           </div>

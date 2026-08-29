@@ -122,6 +122,11 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
         data-ph={placeholder}
         contentEditable
         suppressContentEditableWarning
+        // Ortografia em portugues: o corretor do navegador escolhe o dicionario
+        // pelo `lang` do campo que esta sendo editado. Sem isto ele herda o
+        // idioma do navegador e sublinha o texto inteiro em vermelho.
+        lang="pt-BR"
+        spellCheck
         onInput={emit}
         onPaste={onPaste}
         onClick={onClick}

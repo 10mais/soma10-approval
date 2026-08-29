@@ -47,7 +47,7 @@ function ItemMsg({ item, editando, aoMudar, aoExcluir, faixa }: {
         <button onClick={aoExcluir} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 17 }}>×</button>
       </div>
       <input value={item.contexto} onChange={e => aoMudar({ ...item, contexto: e.target.value })} placeholder="Quando usar (uma linha)" style={campo} />
-      <textarea value={item.texto} onChange={e => aoMudar({ ...item, texto: e.target.value })} placeholder="Mensagem pronta..." style={{ ...campo, minHeight: 64, resize: 'vertical' }} />
+      <textarea lang="pt-BR" spellCheck value={item.texto} onChange={e => aoMudar({ ...item, texto: e.target.value })} placeholder="Mensagem pronta..." style={{ ...campo, minHeight: 64, resize: 'vertical' }} />
     </div>
   )
   return (

@@ -247,7 +247,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                     })}
                   </div>
                 </div>
-                <textarea value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                <textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             )}
 

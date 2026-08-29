@@ -57,7 +57,7 @@ export default function NpsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#aaa', marginBottom: 18 }}>
               <span>Nada provável</span><span>Muito provável</span>
             </div>
-            <textarea value={comentario} onChange={e => setComentario(e.target.value)} placeholder="Quer deixar um comentário? (opcional)" rows={3}
+            <textarea lang="pt-BR" spellCheck value={comentario} onChange={e => setComentario(e.target.value)} placeholder="Quer deixar um comentário? (opcional)" rows={3}
               style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }} />
             {erro && <p style={{ color: '#b91c1c', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
             <button onClick={enviar} disabled={score === null || enviando}

@@ -216,9 +216,9 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
             <div><label style={label}>Verba</label><input value={form.verba} onChange={e => setForm(f => ({ ...f, verba: e.target.value }))} placeholder="R$ 3.000" style={inputStyle} /></div>
             <div><label style={label}>Período</label><input value={form.periodo} onChange={e => setForm(f => ({ ...f, periodo: e.target.value }))} placeholder="2 semanas" style={inputStyle} /></div>
           </div>
-          <div><label style={label}>Público desta campanha</label><textarea value={form.publico} onChange={e => setForm(f => ({ ...f, publico: e.target.value }))} placeholder="Quem queremos atingir nesta campanha..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={label}>Público desta campanha</label><textarea lang="pt-BR" spellCheck value={form.publico} onChange={e => setForm(f => ({ ...f, publico: e.target.value }))} placeholder="Quem queremos atingir nesta campanha..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
           <div><label style={label}>Oferta / promoção</label><input value={form.oferta} onChange={e => setForm(f => ({ ...f, oferta: e.target.value }))} placeholder="Ex: 30% off, brinde, frete grátis" style={inputStyle} /></div>
-          <div><label style={label}>Observações</label><textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer direcionamento extra..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={label}>Observações</label><textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer direcionamento extra..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
 
           <button onClick={() => gerar(false)} disabled={gerando || !clienteId} className="soma10-no-invert" style={{ padding: '11px 0', background: (gerando || !clienteId) ? '#f0f0f0' : '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (gerando || !clienteId) ? 'not-allowed' : 'pointer' }}>
             {gerando ? 'Gerando com IA...' : form.conteudo ? 'Gerar novamente' : 'Gerar com IA'}
@@ -229,7 +229,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
         {/* Coluna do conteudo */}
         <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 400 }}>
           <label style={label}>Briefing {gerando && <span style={{ color: '#7c3aed' }}>· gerando...</span>}</label>
-          <textarea value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder="O briefing gerado pela IA aparece aqui. Você também pode escrever/editar manualmente."
+          <textarea lang="pt-BR" spellCheck value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder="O briefing gerado pela IA aparece aqui. Você também pode escrever/editar manualmente."
             style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
 
           {form.conteudo && (

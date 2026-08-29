@@ -459,7 +459,7 @@ export default function PacotesViagem({ podeEditar = true, podeExcluir = false }
                 )}
               </div>
 
-              <textarea value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#333', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.ativo} onChange={e => setForm(f => f && ({ ...f, ativo: e.target.checked }))} style={{ width: 16, height: 16 }} /> Ativo (aparece ao criar viagem)
               </label>

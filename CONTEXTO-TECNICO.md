@@ -1504,3 +1504,17 @@ não são tocados.
   próxima abordagem) para o `fecharFora`. Abrir para consultar e fechar não é edição — e
   pergunta boba ensina a clicar sem ler (é o mesmo raciocínio do aviso em `lib/fecharModal`).
   Testes 861.
+
+### 42.7 Ortografia pt-BR nas caixas de texto
+- O corretor do navegador escolhe o dicionário pelo `lang` **do campo que está sendo
+  editado**. O `<html lang="pt-BR">` já existia, mas a herança não basta em todo navegador:
+  agora **todo `<textarea>` do sistema (96) e o editor rico (`RichText`, usado na descrição
+  da tarefa, documentos e notas) declaram `lang="pt-BR" spellCheck`** — inclui o compositor
+  do WhatsApp.
+- ⚠️ **Sublinhado vermelho que sobrar é do navegador, não do app:** o Chrome só corrige nos
+  idiomas que o usuário habilitou. Se Português (Brasil) não estiver em
+  `chrome://settings/languages` com a verificação ortográfica ligada, ele corrige tudo pelo
+  dicionário de inglês e sublinha o texto inteiro — nenhuma mudança de código resolve isso.
+- Gotcha do sweep: o `<textarea>` do compositor tem `e => {…}` nos atributos, e a seta `=>`
+  cortou o lookahead do regex — ele ganhou `lang` duas vezes e o build acusou atributo
+  duplicado. Conferido com `tsc` antes do push.

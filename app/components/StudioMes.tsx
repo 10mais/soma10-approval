@@ -102,7 +102,7 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel }: {
   }
   return (
     <div style={{ position: 'relative', width: '100%' }} onClick={e => e.stopPropagation()}>
-      <textarea ref={ref} value={v} placeholder={placeholder} className="st-input"
+      <textarea lang="pt-BR" spellCheck ref={ref} value={v} placeholder={placeholder} className="st-input"
         onFocus={() => { focado.current = true }}
         onChange={e => setV(e.target.value)} onBlur={blur}
         style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', border: '1px solid #e6e6e6', borderRadius: 10, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 36, background: '#fff', color: '#222', lineHeight: 1.5 }} />
@@ -1561,8 +1561,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       ) })}
                     </div>
                   </div>
-                  <div><CampoLabel>Headline</CampoLabel><textarea value={s.headline || ''} onChange={e => set({ headline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
-                  <div><CampoLabel>Subtexto</CampoLabel><textarea value={s.subheadline || ''} onChange={e => set({ subheadline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
+                  <div><CampoLabel>Headline</CampoLabel><textarea lang="pt-BR" spellCheck value={s.headline || ''} onChange={e => set({ headline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
+                  <div><CampoLabel>Subtexto</CampoLabel><textarea lang="pt-BR" spellCheck value={s.subheadline || ''} onChange={e => set({ subheadline: e.target.value })} rows={2} className="st-input" style={inp} /></div>
                   {s.template === 'dica' && (
                     <div>
                       <CampoLabel>Bullets</CampoLabel>
@@ -1583,7 +1583,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   <button className="st-btn st-cta" onClick={() => aplicarEditor(false)} disabled={editorAplicando} style={{ padding: '11px 0', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13, cursor: editorAplicando ? 'wait' : 'pointer', opacity: editorAplicando ? 0.6 : 1 }}>Aplicar mudanças</button>
                   <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
                     <CampoLabel>Refinar com IA</CampoLabel>
-                    <textarea value={editorPrompt} onChange={e => setEditorPrompt(e.target.value)} placeholder="Ex.: deixa mais minimalista, encurta a headline, tom mais sério…" rows={2} className="st-input" style={inp} />
+                    <textarea lang="pt-BR" spellCheck value={editorPrompt} onChange={e => setEditorPrompt(e.target.value)} placeholder="Ex.: deixa mais minimalista, encurta a headline, tom mais sério…" rows={2} className="st-input" style={inp} />
                     <button className="st-btn" onClick={() => aplicarEditor(true)} disabled={editorAplicando || !editorPrompt.trim()} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: editorPrompt.trim() && !editorAplicando ? 'pointer' : 'not-allowed', opacity: editorPrompt.trim() && !editorAplicando ? 1 : 0.5 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                       Refinar
@@ -1659,7 +1659,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <CampoLabel>Selecionado</CampoLabel>
                           {sel.tipo === 'texto' && <>
-                            <textarea value={sel.texto} onChange={e => updCamada(sel.id, { texto: e.target.value })} rows={2} className="st-input" style={inp} />
+                            <textarea lang="pt-BR" spellCheck value={sel.texto} onChange={e => updCamada(sel.id, { texto: e.target.value })} rows={2} className="st-input" style={inp} />
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                               <label style={{ fontSize: 11, color: '#888' }}>Tam. <input type="number" value={sel.fontSize} onChange={e => updCamada(sel.id, { fontSize: Number(e.target.value) || 12 })} style={num} /></label>
                               <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 40 })} style={num} /></label>
@@ -1750,7 +1750,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Texto principal (headline)</label>
-                <textarea value={refHeadline} onChange={e => setRefHeadline(e.target.value)} placeholder="Frase forte que aparece na arte..." rows={2}
+                <textarea lang="pt-BR" spellCheck value={refHeadline} onChange={e => setRefHeadline(e.target.value)} placeholder="Frase forte que aparece na arte..." rows={2}
                   style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }} />
                 <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>A IA usa <strong>exatamente</strong> essa frase como título da arte (seguida à risca).</p>
               </div>

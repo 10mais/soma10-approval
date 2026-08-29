@@ -183,7 +183,7 @@ function Editor({ regra, setRegra, clientes, salvar, salvando, categorias, onClo
                             {par.opcoes!.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
                           </select>
                         ) : par.tipo === 'textarea' ? (
-                          <textarea value={p.params[par.chave] || ''} onChange={e => { const ps = [...regra.passos]; ps[i] = { ...p, params: { ...p.params, [par.chave]: e.target.value } }; set({ passos: ps }) }} style={{ ...inp, width: '100%', minHeight: 52, resize: 'vertical' }} />
+                          <textarea lang="pt-BR" spellCheck value={p.params[par.chave] || ''} onChange={e => { const ps = [...regra.passos]; ps[i] = { ...p, params: { ...p.params, [par.chave]: e.target.value } }; set({ passos: ps }) }} style={{ ...inp, width: '100%', minHeight: 52, resize: 'vertical' }} />
                         ) : (
                           <input value={p.params[par.chave] || ''} onChange={e => { const ps = [...regra.passos]; ps[i] = { ...p, params: { ...p.params, [par.chave]: e.target.value } }; set({ passos: ps }) }} style={{ ...inp, width: '100%' }} />
                         )}

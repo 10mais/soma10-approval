@@ -597,7 +597,7 @@ export default function PostComposer({
 
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Legenda{ehStory && <span style={{ fontWeight: 400, color: '#aaa', marginLeft: 6 }}>(opcional no Story)</span>}</label>
-          <textarea value={legenda} onChange={e => setLegenda(e.target.value)}
+          <textarea lang="pt-BR" spellCheck value={legenda} onChange={e => setLegenda(e.target.value)}
             placeholder="Escreva a legenda do post..."
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 130, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>

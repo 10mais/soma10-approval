@@ -98,7 +98,7 @@ export default function Procedimentos({ podeEditar = false }: { podeEditar?: boo
                 <div style={{ flex: 1 }}><label style={labelStyle}>Valor padrão (R$)</label><input type="number" min={0} step="0.01" value={form.valorPadrao} onChange={e => setForm(f => f && ({ ...f, valorPadrao: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
                 <div style={{ flex: 1 }}><label style={labelStyle}>Duração (min)</label><input type="number" min={0} value={form.duracaoMin} onChange={e => setForm(f => f && ({ ...f, duracaoMin: e.target.value }))} placeholder="Ex.: 60" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
               </div>
-              <textarea value={form.descricao} onChange={e => setForm(f => f && ({ ...f, descricao: e.target.value }))} placeholder="Descrição / observações (opcional)" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea lang="pt-BR" spellCheck value={form.descricao} onChange={e => setForm(f => f && ({ ...f, descricao: e.target.value }))} placeholder="Descrição / observações (opcional)" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {form.id && <button onClick={() => { const p = lista.find(x => x.id === form.id); if (p) excluir(p) }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}

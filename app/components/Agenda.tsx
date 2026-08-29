@@ -625,12 +625,12 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                 <input value={modal.queixaPrincipal || ''} onChange={e => setModal(m => ({ ...m, queixaPrincipal: e.target.value }))} placeholder="Queixa principal (motivo da consulta)"
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
               )}
-              <textarea value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder="Observações" rows={2}
+              <textarea lang="pt-BR" spellCheck value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder="Observações" rows={2}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
               {perfilClinica && modal.id && (modal.status === 'atendido' || !!modal.registroAtendimento) && (
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Registro do atendimento (evolução)</label>
-                  <textarea value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder="O que foi feito, orientações, próximos passos..." rows={4}
+                  <textarea lang="pt-BR" spellCheck value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder="O que foi feito, orientações, próximos passos..." rows={4}
                     style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
                   {/* Pós-atendimento estruturado: procedimentos realizados (do catálogo) + investimento */}
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', margin: '10px 0 5px' }}>Procedimentos realizados</label>

@@ -127,7 +127,7 @@ function NovaReuniaoModal({ onCriar, onClose, salvando }: { onCriar: (f: any) =>
             <div><label style={label}>Data e hora *</label><input type="datetime-local" value={f.data} onChange={e => setF({ ...f, data: e.target.value })} style={input} /></div>
             <div><label style={label}>Participantes</label><input value={f.participantes} onChange={e => setF({ ...f, participantes: e.target.value })} placeholder="Ex: Dra. Ana, recepção" style={input} /></div>
           </div>
-          <div><label style={label}>Pauta (o que será discutido)</label><textarea value={f.pauta} onChange={e => setF({ ...f, pauta: e.target.value })} rows={5} placeholder={'1. Agenda da semana\n2. Pendências de orçamentos\n3. ...'} style={{ ...input, resize: 'vertical' }} /></div>
+          <div><label style={label}>Pauta (o que será discutido)</label><textarea lang="pt-BR" spellCheck value={f.pauta} onChange={e => setF({ ...f, pauta: e.target.value })} rows={5} placeholder={'1. Agenda da semana\n2. Pendências de orçamentos\n3. ...'} style={{ ...input, resize: 'vertical' }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
@@ -186,11 +186,11 @@ function ReuniaoModal({ reuniao, usuarios, salvando, podeEditar, onSalvar, onExc
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={label}>Pauta (antes da reunião)</label>
-            <textarea value={r.pauta || ''} onChange={e => setR({ ...r, pauta: e.target.value })} rows={4} disabled={!podeEditar} style={{ ...input, resize: 'vertical' }} />
+            <textarea lang="pt-BR" spellCheck value={r.pauta || ''} onChange={e => setR({ ...r, pauta: e.target.value })} rows={4} disabled={!podeEditar} style={{ ...input, resize: 'vertical' }} />
           </div>
           <div>
             <label style={label}>Ata (o que foi discutido e decidido)</label>
-            <textarea value={r.ata || ''} onChange={e => setR({ ...r, ata: e.target.value })} rows={5} disabled={!podeEditar} placeholder="Registro da reunião — fica guardado como histórico." style={{ ...input, resize: 'vertical' }} />
+            <textarea lang="pt-BR" spellCheck value={r.ata || ''} onChange={e => setR({ ...r, ata: e.target.value })} rows={5} disabled={!podeEditar} placeholder="Registro da reunião — fica guardado como histórico." style={{ ...input, resize: 'vertical' }} />
           </div>
 
           <div>

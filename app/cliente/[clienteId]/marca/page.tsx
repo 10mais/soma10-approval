@@ -122,7 +122,7 @@ export default function MarcaPage() {
             <div key={c.key}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>{c.label}</label>
               {c.area
-                ? <textarea value={form[c.key] || ''} onChange={e => setForm((f: any) => ({ ...f, [c.key]: e.target.value }))} placeholder={c.placeholder} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
+                ? <textarea lang="pt-BR" spellCheck value={form[c.key] || ''} onChange={e => setForm((f: any) => ({ ...f, [c.key]: e.target.value }))} placeholder={c.placeholder} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
                 : <input value={form[c.key] || ''} onChange={e => setForm((f: any) => ({ ...f, [c.key]: e.target.value }))} placeholder={c.placeholder} style={inputStyle} />}
             </div>
           ))}

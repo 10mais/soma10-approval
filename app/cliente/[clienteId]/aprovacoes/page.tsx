@@ -288,15 +288,15 @@ export default function AprovacoesPagina() {
                             <p style={{ margin: '0 0 2px', fontSize: 13.5, fontWeight: 800, color: '#111' }}>Solicitar ajustes</p>
                             <p style={{ margin: '0 0 4px', fontSize: 11.5, color: '#999', lineHeight: 1.5 }}>Peça tudo de uma vez. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
                             <label style={rot}>Legenda</label>
-                            <textarea value={ajuste.legenda} onChange={e => setAjuste(a => a && { ...a, legenda: e.target.value })} rows={4} style={campo} />
+                            <textarea lang="pt-BR" spellCheck value={ajuste.legenda} onChange={e => setAjuste(a => a && { ...a, legenda: e.target.value })} rows={4} style={campo} />
                             {!ehCopy ? (<>
                               <label style={rot}>O que ajustar no layout</label>
-                              <textarea value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="Ex.: trocar a cor do título, aumentar a logo, mudar a foto..." style={campo} />
+                              <textarea lang="pt-BR" spellCheck value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="Ex.: trocar a cor do título, aumentar a logo, mudar a foto..." style={campo} />
                               <label style={rot}>Data e horário da publicação</label>
                               <input type="datetime-local" value={ajuste.data} onChange={e => setAjuste(a => a && { ...a, data: e.target.value })} style={campo} />
                             </>) : (<>
                               <label style={rot}>Observação (opcional)</label>
-                              <textarea value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="O que ajustar no texto..." style={campo} />
+                              <textarea lang="pt-BR" spellCheck value={ajuste.obs} onChange={e => setAjuste(a => a && { ...a, obs: e.target.value })} rows={3} placeholder="O que ajustar no texto..." style={campo} />
                             </>)}
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10, flexWrap: 'wrap' }}>
                               <button onClick={() => setAjuste(null)} style={{ padding: '8px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Voltar</button>
@@ -326,7 +326,7 @@ export default function AprovacoesPagina() {
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
             <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo. O material voltará para a equipe.</p>
-            <textarea value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
+            <textarea lang="pt-BR" spellCheck value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>

@@ -769,7 +769,7 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
             </select>
           </div>
         )}
-        <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\nJoão Silva ; 5511999990000 ; joao@x.com ; Loja Y'}
+        <textarea lang="pt-BR" spellCheck value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\nJoão Silva ; 5511999990000 ; joao@x.com ; Loja Y'}
           style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
         <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> contato(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} sem nome ignorada(s)</span>}</> : <span style={{ color: '#aaa' }}>Cole ou envie o arquivo para ver a prévia.</span>}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -878,7 +878,7 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
             <div><label style={labelStyle}>Site</label><input value={f.site} onChange={e => setF({ ...f, site: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Instagram</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
         </div>
         {/* Contatos da empresa: clicáveis (abrem a ficha) e vinculáveis daqui */}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
@@ -1431,7 +1431,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
               ))}
             </div>
           )}
-          <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={5} autoFocus
+          <textarea lang="pt-BR" spellCheck value={texto} onChange={e => setTexto(e.target.value)} rows={5} autoFocus
             placeholder={`Primeira mensagem para ${primeiro || 'o contato'}...`}
             style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
         </>)}
@@ -1714,10 +1714,10 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           {perfilTurismo && (
             <div>
               <label style={labelStyle}>Preferências e desejos de viagem</label>
-              <textarea value={f.preferenciasViagem} onChange={e => setF({ ...f, preferenciasViagem: e.target.value })} placeholder="Destinos dos sonhos, tipo de viagem (praia/serra), leito, época preferida... vira oportunidade futura" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} />
+              <textarea lang="pt-BR" spellCheck value={f.preferenciasViagem} onChange={e => setF({ ...f, preferenciasViagem: e.target.value })} placeholder="Destinos dos sonhos, tipo de viagem (praia/serra), leito, época preferida... vira oportunidade futura" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} />
             </div>
           )}
-          <div><label style={labelStyle}>Observações</label><textarea value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
 
           {perfilClinica && contato?.id && (
             <div>
@@ -2090,7 +2090,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
 
           {perfilClinica ? (<>
             <div><label style={labelStyle}>Queixa principal</label><input value={f.queixaPrincipal} onChange={e => setF({ ...f, queixaPrincipal: e.target.value })} placeholder="O que a paciente relata (ex.: melasma, flacidez, acne...)" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
             {/* Turismo: a qualificação é DA VIAGEM — destino, pessoas, época e desejos */}
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
@@ -2113,7 +2113,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
               <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={f.qtdPassageiros} onChange={e => setF({ ...f, qtdPassageiros: e.target.value })} placeholder="Ex.: 4" style={inputStyle} /></div>
               <div><label style={labelStyle}>Época desejada</label><input value={f.epocaDesejada} onChange={e => setF({ ...f, epocaDesejada: e.target.value })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Preferências e desejos</label><textarea value={f.preferencias} onChange={e => setF({ ...f, preferencias: e.target.value })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Preferências e desejos</label><textarea lang="pt-BR" spellCheck value={f.preferencias} onChange={e => setF({ ...f, preferencias: e.target.value })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilCidadania ? (<>
             {/* Cidadania: a qualificação é DA ELEGIBILIDADE — de qual país, por qual
                 ascendente e a que distância. Venda é sempre para CPF. */}
@@ -2124,11 +2124,11 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
               <div><label style={labelStyle}>Grau de parentesco</label><input value={f.grauParentesco} onChange={e => setF({ ...f, grauParentesco: e.target.value })} placeholder="Ex.: bisneto, trineto" style={inputStyle} /></div>
             </div>
             <div><label style={labelStyle}>Ascendente / origem da família</label><input value={f.ascendenteOrigem} onChange={e => setF({ ...f, ascendenteOrigem: e.target.value })} placeholder="Nome do antepassado estrangeiro, se souber" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTelefonia ? (<>
             {/* Varejo: venda para PESSOA — nada de empresa/segmento/faturamento. */}
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
-            <div><label style={labelStyle}>Observações</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Produto de interesse, negociação, observações da venda..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Produto de interesse, negociação, observações da venda..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
@@ -2144,8 +2144,8 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
               <div><label style={labelStyle}>Faturamento estimado</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
               <div><label style={labelStyle}>Instagram / site</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder="@empresa ou site" style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Principais dores / desafios</label><textarea value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
-            <div><label style={labelStyle}>Possíveis soluções</label><textarea value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Principais dores / desafios</label><textarea lang="pt-BR" spellCheck value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Possíveis soluções</label><textarea lang="pt-BR" spellCheck value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>)}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
@@ -2379,7 +2379,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               </select>
             </div>
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Sobre a viagem</span>
             <div style={{ marginBottom: 10 }}>
@@ -2398,7 +2398,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={neg.qtdPassageiros || ''} onChange={e => setNeg({ ...neg, qtdPassageiros: Number(e.target.value) || undefined })} onBlur={() => patch({ qtdPassageiros: neg.qtdPassageiros || 0 })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Época desejada</label><input value={neg.epocaDesejada || ''} onChange={e => setNeg({ ...neg, epocaDesejada: e.target.value })} onBlur={() => patch({ epocaDesejada: neg.epocaDesejada })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Preferências e desejos</label><textarea value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Preferências e desejos</label><textarea lang="pt-BR" spellCheck value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilCidadania ? (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Elegibilidade</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -2406,7 +2406,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <div><label style={labelStyle}>Grau de parentesco</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder="Ex.: bisneto" style={inputStyle} /></div>
             </div>
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Ascendente / origem da família</label><input value={neg.ascendenteOrigem || ''} onChange={e => setNeg({ ...neg, ascendenteOrigem: e.target.value })} onBlur={() => patch({ ascendenteOrigem: neg.ascendenteOrigem })} placeholder="Nome do antepassado estrangeiro" style={inputStyle} /></div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
 
             {/* ANÁLISE DE NACIONALIDADE — é ela que diz se existe viabilidade.
                 Por isso mora aqui, na qualificação, e não só no processo. */}
@@ -2426,7 +2426,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               )}
             </div>
           </>) : perfilTelefonia ? (<>
-            <div><label style={labelStyle}>Observações</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a venda (produto de interesse, negociação...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a venda (produto de interesse, negociação...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -2435,8 +2435,8 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               <div><label style={labelStyle}>Faturamento estimado</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Instagram / site</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
             </div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
-            <div><label style={labelStyle}>Possíveis soluções</label><textarea value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea lang="pt-BR" spellCheck value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>Possíveis soluções</label><textarea lang="pt-BR" spellCheck value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
           </>)}
         </div>
 
@@ -2586,10 +2586,10 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
 
         <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Handoff (Closer → Gestor)</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 16px' }}>
-          <div><label style={labelStyle}>Escopo vendido / entregáveis</label><textarea value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Expectativas e objetivos do cliente</label><textarea value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Detalhes importantes (decisor, prazos prometidos, sensibilidades)</label><textarea value={h.detalhes} onChange={e => setH({ ...h, detalhes: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Observações</label><textarea value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Escopo vendido / entregáveis</label><textarea lang="pt-BR" spellCheck value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Expectativas e objetivos do cliente</label><textarea lang="pt-BR" spellCheck value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Detalhes importantes (decisor, prazos prometidos, sensibilidades)</label><textarea lang="pt-BR" spellCheck value={h.detalhes} onChange={e => setH({ ...h, detalhes: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" spellCheck value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
         </div>
 
         <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Entregas (onboarding)</span>
@@ -3341,7 +3341,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   {templForm && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 9, padding: 9, marginBottom: 8 }}>
                       <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Confirmar consulta)" style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-                      <textarea value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
+                      <textarea lang="pt-BR" spellCheck value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: '#f0f0f0', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
                         <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
@@ -3439,7 +3439,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>
                   </button>
                 </>)}
-                <textarea value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
+                <textarea lang="pt-BR" spellCheck value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
                   placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
                 <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
               </>)}

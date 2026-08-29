@@ -81,7 +81,7 @@ export default function SolicitarPage() {
         </div>
         <div>
           <label style={label}>Observações</label>
-          <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer detalhe importante..." style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
+          <textarea lang="pt-BR" spellCheck value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer detalhe importante..." style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} />
         </div>
         <div>
           <label style={label}>Anexos (imagens, PDF, documentos)</label>
