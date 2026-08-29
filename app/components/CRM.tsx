@@ -6,6 +6,7 @@ import { frequenciaPaciente } from '@/lib/agenda'
 import { fecharFora } from '@/lib/fecharModal'
 import { consumirConversaWhatsApp, consumirFichaContato } from '@/lib/conversaInterna'
 import { ORIGENS_CLINICA, pizzaOrigens, fatiaPath, fatiaUnica, deslocamentoFatia } from '@/lib/origensLead'
+import PainelLead from './PainelLead'
 import { telefoneWhatsApp, mesmoTelefone } from '@/lib/telefoneBR'
 import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDoc, soDigitosDoc } from '@/lib/cnpj'
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
@@ -368,7 +369,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
-        <MensagensInbox contatos={contatos} perfilClinica={perfilClinica} podeExcluir={podeExcluir} onContatosMudou={carregar} abrirTel={abrirConversaTel} abrirContatoId={abrirConversaContatoId} onAbriuTel={() => { setAbrirConversaTel(''); setAbrirConversaContatoId('') }}
+        <MensagensInbox contatos={contatos} negocios={negocios} perfilClinica={perfilClinica} podeExcluir={podeExcluir} podeEditar={podeEditar} onContatosMudou={carregar} abrirTel={abrirConversaTel} abrirContatoId={abrirConversaContatoId} onAbriuTel={() => { setAbrirConversaTel(''); setAbrirConversaContatoId('') }}
+          onAbrirFicha={c => setContatoModal(c)}
+          onAgendar={perfilClinica ? agendarNoCrm : undefined}
           onAbrirOportunidade={podeEditar ? (contatoId => { setNovoNegocioContatoId(contatoId); setNovoModal(true) }) : undefined} />
       ) : vista === 'playbook' ? (
         <BibliotecaVendasTela podeEditar={podeEditar} />
@@ -2691,7 +2694,7 @@ const CANAL_CFG: Record<CanalMsg, {
   },
 }
 
-function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, onContatosMudou, abrirTel = '', abrirContatoId = '', onAbriuTel, onAbrirOportunidade }: { contatos: Contato[]; perfilClinica?: boolean; podeExcluir?: boolean; onContatosMudou?: () => void; abrirTel?: string; abrirContatoId?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeExcluir = false, podeEditar = false, onContatosMudou, abrirTel = '', abrirContatoId = '', onAbriuTel, onAbrirOportunidade, onAbrirFicha, onAgendar }: { contatos: Contato[]; negocios?: Negocio[]; perfilClinica?: boolean; podeExcluir?: boolean; podeEditar?: boolean; onContatosMudou?: () => void; abrirTel?: string; abrirContatoId?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void; onAbrirFicha?: (c: Contato) => void; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -2714,6 +2717,22 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     return () => mq.removeEventListener('change', ap)
   }, [])
   const [mensagens, setMensagens] = useState<MsgItem[]>([])
+  // Painel do lead (raio-X) — a escolha de deixar aberto/fechado acompanha o
+  // atendente entre as conversas; no celular nasce fechado (não cabe junto).
+  const [painelAberto, setPainelAberto] = useState(() => {
+    try { return sessionStorage.getItem('crm_painel_lead') !== '0' } catch { return true }
+  })
+  // Abaixo de ~1100px as TRÊS colunas não cabem: a conversa ficaria com uns
+  // 250px e o painel comeria justamente a tela que ele serve. Nessa faixa o
+  // raio-X entra no lugar da conversa (o × devolve).
+  const [telaEstreita, setTelaEstreita] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1100px)')
+    const ap = () => setTelaEstreita(mq.matches)
+    ap(); mq.addEventListener('change', ap)
+    return () => mq.removeEventListener('change', ap)
+  }, [])
+  useEffect(() => { try { sessionStorage.setItem('crm_painel_lead', painelAberto ? '1' : '0') } catch {} }, [painelAberto])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [carregando, setCarregando] = useState(true)
@@ -2742,6 +2761,8 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [lightbox])
+
+  const painelSobrepoe = inboxMovel || telaEstreita
 
   const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id)
 
@@ -3156,7 +3177,7 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
             })}
         </div>
         {/* Conversa — no celular só aparece com uma conversa aberta (voltar = lista) */}
-        <div style={{ flex: 1, display: inboxMovel && !sel ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div style={{ flex: 1, display: (inboxMovel && !sel) || (painelSobrepoe && painelAberto && sel) ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
           {!sel ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13 }}>Selecione uma conversa</div>
           ) : (<>
@@ -3220,6 +3241,15 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
                   </div>
                 </>)}
               </div>
+              {/* Raio-X: o painel do lead. Só no WhatsApp — é de lá que saem as
+                  mensagens que alimentam situação, temperatura e a Assistente. */}
+              {canal === 'whatsapp' && (
+                <button onClick={() => setPainelAberto(v => !v)} title={painelAberto ? 'Fechar o painel do lead' : 'Abrir o raio-X do lead'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid ' + (painelAberto ? '#111' : '#e0e0e0'), background: painelAberto ? '#111' : '#fff', color: painelAberto ? '#fff' : '#555', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
+                  Raio-X
+                </button>
+              )}
               {cfg.excluir && (
                 <button onClick={excluirConversa} title="Excluir conversa (remove todo o histórico)"
                   style={{ background: 'transparent', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
@@ -3410,6 +3440,32 @@ function MensagensInbox({ contatos, perfilClinica = false, podeExcluir = false, 
             </div>
           </>)}
         </div>
+
+        {/* PAINEL DO LEAD (raio-X) — terceira coluna. No celular ele ocupa a
+            tela inteira no lugar da conversa; o × devolve a conversa. */}
+        {canal === 'whatsapp' && sel && painelAberto && (
+          <PainelLead
+            telefone={sel}
+            nome={conversaSel ? nomeDe(conversaSel) : sel}
+            contato={(contatos.find(ct => ct.id === conversaSel?.contatoId) as any) || null}
+            mensagens={mensagens as any}
+            negocios={negocios as any}
+            podeEditar={podeEditar}
+            movel={painelSobrepoe}
+            onInserir={t => setTexto(atual => (atual.trim() ? `${atual.trim()}\n${t}` : t))}
+            onContatoMudou={onContatosMudou}
+            onFechar={() => setPainelAberto(false)}
+            onAbrirFicha={onAbrirFicha && conversaSel?.contatoId ? () => {
+              const c = contatos.find(ct => ct.id === conversaSel.contatoId)
+              if (c) onAbrirFicha(c)
+            } : undefined}
+            onAgendar={onAgendar && conversaSel?.contatoId ? () => {
+              const c = contatos.find(ct => ct.id === conversaSel.contatoId)
+              if (c) onAgendar({ pacienteNome: c.nome, pacienteTelefone: c.telefone, contatoId: c.id })
+            } : undefined}
+            onAbrirOportunidade={onAbrirOportunidade && conversaSel?.contatoId ? () => onAbrirOportunidade(conversaSel.contatoId!) : undefined}
+          />
+        )}
       </div>
 
       {/* Contato criado a partir da conversa — ficha normal, sem prompt do navegador */}

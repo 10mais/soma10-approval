@@ -1464,3 +1464,29 @@ não são tocados.
   "no ritmo" nunca aconteceria e o painel viveria vermelho.
 - `tests/metas.test.ts` (22 casos) + conferência do layout em imagem antes do deploy.
   Testes 823.
+
+### 42.5 WhatsApp — PAINEL DO LEAD (raio-X) dentro da conversa
+- **Terceira coluna** do inbox (`app/components/PainelLead.tsx`), botão **Raio-X** no
+  cabeçalho da conversa, escolha lembrada na sessão. Abaixo de **1100px** as três colunas
+  não cabem: o painel entra no LUGAR da conversa (o × devolve). Só no canal WhatsApp — é de
+  lá que vêm as mensagens que alimentam tudo.
+- **Aba Geral (raio-X)** — `lib/raioXLead.ts` (puro, 19 testes): **situação** (de quem é a
+  bola: "esperando você responder" vira vermelho passando de 1h; "aguardando resposta"
+  quando nós falamos por último) · **temperatura** (quente ≤48h desde a resposta DELA,
+  morno ≤7d, frio depois; nós falando sozinhos NÃO esquenta lead) · **quando entrou em
+  contato**, **data/hora da última mensagem** e quem falou por último · contagem dos dois
+  lados · **interesses** = procedimentos do catálogo citados PELA PESSOA (o que nós
+  oferecemos não conta), ordenados pelo que ela repetiu.
+- **Assistente** (`/api/crm/assistente-lead` + `lib/orientacaoLead.ts`): lê a conversa e
+  devolve **leitura · próxima ação · alertas do que não fazer · mensagem pronta**, com o
+  raio-X já calculado no prompt (a IA não reconta tempo e não erra). O "treinamento" é a
+  **Biblioteca de Vendas** — mudar o método é editar a tela, sem deploy. Campo de foco
+  opcional ("objeção de preço"). **Nada é enviado sozinho**: a mensagem cai no compositor.
+- **Aba Follow-up:** próximos passos do contato (agendar vira **tarefa + lembrete do
+  comercial**, rota `novoPasso` que já existia) + os textos da Biblioteca (cadências por
+  fase, reaquecimento, objeções) com `{nome}`/`{primeiro}` resolvidos, um clique = compositor.
+- **Aba Paciente:** dados da ficha + **histórico de atendimentos** (`/api/agenda?contatoId=`)
+  + atalhos Abrir ficha / Agendar. **Aba Financeiro:** oportunidades da pessoa — já fechou,
+  em aberto, perdidas — e Nova oportunidade. (É o dinheiro do CRM, não o módulo Financeiro,
+  que é admin-only.)
+- Testes 848.
