@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { fecharFora } from '@/lib/fecharModal'
+import { formatarEntradaMoeda, parseMoeda, moedaParaCampo } from '@/lib/moeda'
 import { toast } from '@/lib/toast'
 import {
   MetaAno, metaVazia, distribuirAnual, totalAno, metaIntervalo,
@@ -53,6 +54,20 @@ function BarraRitmo({ p, cor }: { p: Progresso; cor: string }) {
       {pctHoje > 0 && pctHoje < 100 && (
         <div title="Onde a meta deveria estar hoje" style={{ position: 'absolute', left: `${pctHoje}%`, top: -3, width: 2, height: 18, background: '#111', opacity: 0.55, borderRadius: 2 }} />
       )}
+    </div>
+  )
+}
+
+// "R$" fixo dentro do campo: o valor é dinheiro o tempo todo, não um número que
+// vira dinheiro depois de salvar. Fica no MÓDULO de propósito — declarado dentro
+// do componente pai, o React remontaria o input a cada tecla e o cursor sairia
+// do campo no meio da digitação.
+const campoMoeda: React.CSSProperties = { width: '100%', padding: '8px 10px 8px 30px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', textAlign: 'right' }
+function CampoMoeda({ valor, onMuda, placeholder }: { valor: string; onMuda: (v: string) => void; placeholder?: string }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#bbb', pointerEvents: 'none' }}>R$</span>
+      <input value={valor} onChange={e => onMuda(formatarEntradaMoeda(e.target.value))} inputMode="decimal" placeholder={placeholder || '0'} style={campoMoeda} />
     </div>
   )
 }
@@ -301,16 +316,17 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
 // mês a mês. O total aparece o tempo todo, porque é o número que o dono tem na
 // cabeça e ele precisa ver a conta fechando enquanto ajusta.
 function EditarMetaModal({ meta, ano, onClose, onSalvo }: { meta: MetaAno; ano: number; onClose: () => void; onSalvo: (m: MetaAno) => void }) {
-  const [meses, setMeses] = useState<string[]>(meta.meses.map(v => (v ? String(v) : '')))
+  // Os campos guardam TEXTO já mascarado (R$ 1.200.000,50) — ver lib/moeda.
+  const [meses, setMeses] = useState<string[]>(meta.meses.map(moedaParaCampo))
   const [anual, setAnual] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const total = meses.reduce((s, v) => s + (Number(String(v).replace(',', '.')) || 0), 0)
+  const total = meses.reduce((s, v) => s + parseMoeda(v), 0)
 
   async function salvar() {
     setSalvando(true)
     const r = await fetch('/api/metas', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ano, meses: meses.map(v => Number(String(v).replace(',', '.')) || 0) }),
+      body: JSON.stringify({ ano, meses: meses.map(parseMoeda) }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (!r?.ok) { toast(r?.error || 'Não foi possível salvar a meta.', 'erro'); return }
@@ -318,7 +334,6 @@ function EditarMetaModal({ meta, ano, onClose, onSalvo }: { meta: MetaAno; ano: 
     onSalvo(r.meta)
   }
 
-  const campo: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
@@ -333,9 +348,9 @@ function EditarMetaModal({ meta, ano, onClose, onSalvo }: { meta: MetaAno; ano: 
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Meta do ano inteiro</label>
-            <input value={anual} onChange={e => setAnual(e.target.value)} inputMode="decimal" placeholder="Ex.: 600000" style={campo} />
+            <CampoMoeda valor={anual} onMuda={setAnual} placeholder="600.000" />
           </div>
-          <button onClick={() => { const m = distribuirAnual(Number(anual.replace(',', '.')) || 0); setMeses(m.map(v => (v ? String(v) : ''))) }}
+          <button onClick={() => { const m = distribuirAnual(parseMoeda(anual)); setMeses(m.map(moedaParaCampo)) }}
             style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Dividir em 12
           </button>
@@ -346,7 +361,7 @@ function EditarMetaModal({ meta, ano, onClose, onSalvo }: { meta: MetaAno; ano: 
           {MESES_CURTO.map((nome, i) => (
             <div key={nome}>
               <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 3 }}>{nome}</span>
-              <input value={meses[i]} onChange={e => { const c = [...meses]; c[i] = e.target.value; setMeses(c) }} inputMode="decimal" placeholder="0" style={campo} />
+              <CampoMoeda valor={meses[i]} onMuda={v => { const c = [...meses]; c[i] = v; setMeses(c) }} />
             </div>
           ))}
         </div>

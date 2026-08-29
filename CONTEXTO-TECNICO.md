@@ -1490,3 +1490,17 @@ não são tocados.
   em aberto, perdidas — e Nova oportunidade. (É o dinheiro do CRM, não o módulo Financeiro,
   que é admin-only.)
 - Testes 848.
+
+### 42.6 Dois acertos de uso (pedido do dono, 29/08)
+- **Campo de meta virou DINHEIRO** (`lib/moeda.ts`, 13 testes): máscara ao digitar com ponto
+  de milhar, "R$" fixo dentro do campo, valor à direita. **Não é máscara de centavos-da-
+  direita**: quem lança meta digita valor redondo, então `1200000` vira **1.200.000** (e não
+  12.000,00); centavo só quando a pessoa escreve a vírgula. `parseMoeda` lê de volta, aceita
+  colar "R$ 1.200.000,50", e campo vazio vale 0 — nunca NaN. Vale no anual e nos 12 meses.
+  ⚠️ `CampoMoeda` mora no MÓDULO, não dentro do componente: declarado no corpo do pai, o
+  React remonta o input a cada tecla e o cursor sai do campo.
+- **Ficha do contato fecha sem perguntar quando nada mudou:** `ContatoModal` agora passa
+  `temAlteracoes` (retrato do formulário no primeiro render × estado atual, mais o campo de
+  próxima abordagem) para o `fecharFora`. Abrir para consultar e fechar não é edição — e
+  pergunta boba ensina a clicar sem ler (é o mesmo raciocínio do aviso em `lib/fecharModal`).
+  Testes 861.

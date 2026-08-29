@@ -1512,6 +1512,12 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   const hojeYmd = ymd(new Date())
   const [novoPasso, setNovoPasso] = useState({ titulo: '', quando: '' })
   const [addPassoBusy, setAddPassoBusy] = useState(false)
+  // "Sair sem salvar?" só faz sentido diante de trabalho a perder. Abrir a ficha
+  // para consultar e fechar não é edição — e a pergunta boba ensina a clicar sem
+  // ler (ver o aviso em lib/fecharModal). Nenhum efeito escreve em `f`, então o
+  // que difere do retrato inicial foi o usuário quem digitou.
+  const retratoInicial = useRef(JSON.stringify(f))
+  const fichaAlterada = () => JSON.stringify(f) !== retratoInicial.current || !!novoPasso.titulo.trim()
   const diasAte = (d: string) => Math.round((new Date(d + 'T00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
   // Atalhos: o caso comum é "retorno em X" — evita abrir o calendário à toa.
   const emDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d) }
@@ -1579,7 +1585,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
     onSalvo()
   }
   return (
-    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
