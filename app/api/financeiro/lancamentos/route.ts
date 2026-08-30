@@ -44,6 +44,32 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, lancamento: l })
 }
 
+// Edição pontual do lançamento: o que foi vendido (procedimento/método), a
+// descrição e o "já recebido". Valor e vínculo NÃO entram — mexer no valor de
+// uma parcela gerada faria o caixa deixar de bater com a venda que a originou.
+export async function PUT(req: NextRequest) {
+  if (!(await admin())) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const b = await req.json().catch(() => ({}))
+  const id = String(b?.id || '')
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
+  const l = await redis.get<LancamentoFuturo>(`lancamento:${id}`)
+  if (!l) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+
+  const atualizado: LancamentoFuturo = { ...l }
+  if (b.procedimentos !== undefined) {
+    atualizado.procedimentos = (Array.isArray(b.procedimentos) ? b.procedimentos : [])
+      .map((x: unknown) => String(x || '').trim()).filter(Boolean).slice(0, 12)
+  }
+  if (b.descricao !== undefined) {
+    const d = String(b.descricao).trim().slice(0, 200)
+    if (!d) return NextResponse.json({ error: 'a descrição não pode ficar vazia' }, { status: 400 })
+    atualizado.descricao = d
+  }
+  if (b.recebido !== undefined) atualizado.recebido = !!b.recebido
+  await redis.set(`lancamento:${id}`, atualizado)
+  return NextResponse.json({ ok: true, lancamento: atualizado })
+}
+
 export async function DELETE(req: NextRequest) {
   if (!(await admin())) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const id = req.nextUrl.searchParams.get('id')

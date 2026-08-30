@@ -83,6 +83,12 @@ export type LancamentoFuturo = {
   // venda duas vezes.
   negocioId?: string
   formaPagamento?: FormaPagamentoVenda
+  // Parcelamento no credito: cada parcela e UM lancamento, na sua data.
+  // FATURAMENTO (meta) x RECEITA (caixa) — ver lib/pagamentoGanho.
+  parcela?: number
+  totalParcelas?: number
+  // O que foi vendido (vem do negocio; editavel no financeiro).
+  procedimentos?: string[]
   criadoPor?: string
   criadoEm: string
 }
@@ -1134,6 +1140,10 @@ export type CrmNegocio = {
   previsaoFechamento?: string // ISO date
   proximoFollowUp?: string // ISO date — lembrete do próximo contato (cron avisa o dono)
   queixaPrincipal?: string // clínica: queixa principal relatada pela paciente (espelha o campo da Agenda)
+  // Clínica: o que foi VENDIDO nesta oportunidade (catálogo de Procedimentos).
+  // Vai junto para o financeiro quando o ganho vira entrada — sem isso, o
+  // extrato sabe quanto entrou mas não do quê.
+  procedimentos?: string[]
   // Turismo: a qualificação é DA VIAGEM, não de marketing — destino, quantas
   // pessoas, quando e o que o cliente deseja. Campos de agência ficam vazios lá.
   viagemId?: string          // VIAGEM CADASTRADA de interesse (vínculo, não texto) —

@@ -1551,3 +1551,28 @@ não são tocados.
 - Regra pura e testada em `lib/ganhosFinanceiro.ts` (12 casos: já lançado/dispensado/sem
   valor fora da fila, ordem por data do ganho, descrição com o nome sem repetir).
   Rota `app/api/financeiro/ganhos` (admin). Testes 879.
+
+### 42.9 Pagamento composto, parcelas e o que foi vendido
+- **FATURAMENTO × RECEITA (a regra que separa as duas telas):** a venda inteira conta na
+  **META do mês em que foi fechada** (`lib/metas` lê o negócio); o **CAIXA recebe parcela a
+  parcela**, cada uma no seu mês (lançamentos gerados). Vender 6.000 em 6x no dia 10 = 6.000
+  na meta de agosto e 1.000/mês até janeiro. Somar parcelas na meta contaria a venda seis
+  vezes; jogar tudo no caixa em agosto seria dinheiro que não está lá. Está escrito no topo
+  de `lib/pagamentoGanho.ts` e na própria tela.
+- **Composição do pagamento** (`lib/pagamentoGanho.ts`, 16 testes): N formas por venda
+  (entrada no pix + resto no crédito 6x), validação que **exige a soma fechar** com o valor
+  (tolerância de 1 centavo) e mensagem em português dizendo quanto falta/sobra. Parcelamento
+  só no crédito, 1..36. `gerarParcelas` devolve uma entrada por parcela, mensal, com
+  `somarMeses` que respeita fim de mês (31/01 + 1 = 28/02). **Os centavos da divisão vão na
+  PRIMEIRA parcela** (é o que a maquininha faz) e a soma bate exata com a venda.
+- **Modal de lançamento** (`app/components/LancarGanhoModal.tsx`): formas + valores (campo
+  de dinheiro do `lib/moeda`), parcelas do crédito, e **prévia das entradas que vão nascer**
+  (data, forma, n/N, valor) antes de confirmar. A 2ª forma já nasce com o que falta.
+- **Procedimento/método:** `CrmNegocio.procedimentos[]` — escolhido na oportunidade (ficha
+  do CRM, perfil clínica, catálogo de Procedimentos) e levado ao lançamento; o financeiro
+  confirma ou corrige no modal, e a correção **volta para a oportunidade** (senão os dois
+  lados divergem). Cada lançamento guarda `procedimentos`, `parcela`/`totalParcelas`, e a
+  lista mostra os selos + **editar** (novo `PUT /api/financeiro/lancamentos`: descrição,
+  procedimentos e "já caiu" — valor e vínculo ficam de fora, mexer no valor de uma parcela
+  faria o caixa deixar de bater com a venda).
+- Parcela futura **não nasce recebida**; só a que cai na data do lançamento. Testes 895.

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, LancamentoFuturo, CrmNegocio, CrmContato } from '@/lib/redis'
-import { ganhosPendentes, dataSugerida, descricaoDoGanho, formaValida } from '@/lib/ganhosFinanceiro'
+import { ganhosPendentes, dataSugerida, descricaoDoGanho, formaValida, FORMAS_PAGAMENTO } from '@/lib/ganhosFinanceiro'
+import { PartePagamento, validarPartes, gerarParcelas } from '@/lib/pagamentoGanho'
 import { v4 as uuid } from 'uuid'
 
 export const runtime = 'nodejs'
@@ -50,6 +51,8 @@ export async function GET() {
       valor: Number(n.valor) || 0,
       dataSugerida: dataSugerida(n, hoje),
       descricao: descricaoDoGanho(n, nomePor.get((n as any).contatoId)),
+      // O que foi vendido já vem do CRM — o financeiro só confirma/edita.
+      procedimentos: Array.isArray((n as any).procedimentos) ? (n as any).procedimentos : [],
     })),
     dispensados: dispensados.length,
   })
@@ -75,8 +78,20 @@ export async function POST(req: NextRequest) {
   const valor = Number(b?.valor) > 0 ? Number(b.valor) : Number(negocio.valor) || 0
   if (!(valor > 0)) return NextResponse.json({ error: 'a oportunidade não tem valor para lançar' }, { status: 400 })
 
-  const forma = String(b?.formaPagamento || '')
-  if (!formaValida(forma)) return NextResponse.json({ error: 'escolha a forma de pagamento' }, { status: 400 })
+  // Composição do pagamento: uma ou várias formas (entrada no pix + crédito
+  // parcelado, por exemplo). O corpo antigo com `formaPagamento` continua
+  // valendo como "uma parte à vista" — a rota não quebra para quem já a chama.
+  const partes: PartePagamento[] = Array.isArray(b?.partes) && b.partes.length
+    ? b.partes.map((x: any) => ({
+        forma: String(x?.forma || ''),
+        valor: Number(x?.valor) || 0,
+        ...(x?.parcelas !== undefined && x?.parcelas !== null && x?.parcelas !== '' ? { parcelas: Number(x.parcelas) } : {}),
+      }))
+    : [{ forma: String(b?.formaPagamento || ''), valor }]
+
+  const erro = validarPartes(partes, valor, FORMAS_PAGAMENTO.map(f => f.chave))
+  if (erro) return NextResponse.json({ error: erro }, { status: 400 })
+  if (!partes.every(x => formaValida(x.forma))) return NextResponse.json({ error: 'escolha a forma de pagamento' }, { status: 400 })
 
   // IDEMPOTÊNCIA — a trava contra caixa inflado. Dois cliques no botão, duas
   // abas abertas, ou o mesmo ganho lançado por dois caminhos: só o primeiro vale.
@@ -87,23 +102,44 @@ export async function POST(req: NextRequest) {
   const data = /^\d{4}-\d{2}-\d{2}$/.test(String(b?.data || '')) ? String(b.data) : dataSugerida(negocio as any, new Date())
   const contato = negocio.contatoId ? await redis.get<CrmContato>(`contato:${negocio.contatoId}`).catch(() => null) : null
 
-  const l: LancamentoFuturo = {
+  // O que foi vendido: o financeiro pode corrigir na hora do lançamento; o que
+  // vier daqui também volta para a oportunidade, senão os dois lados divergem.
+  const procedimentos = (Array.isArray(b?.procedimentos) ? b.procedimentos : (negocio as any).procedimentos || [])
+    .map((x: unknown) => String(x || '').trim()).filter(Boolean).slice(0, 12)
+
+  const descricaoBase = descricaoDoGanho(negocio as any, contato?.nome)
+  const agora = new Date().toISOString()
+  const parcelas = gerarParcelas(partes, data)
+
+  // Uma entrada POR PARCELA, cada uma na sua data: é assim que o caixa vê o
+  // dinheiro chegar. O faturamento inteiro segue contando na meta do mês do
+  // ganho (lib/metas lê o negócio, não estes lançamentos) — ver lib/pagamentoGanho.
+  const criados: LancamentoFuturo[] = parcelas.map(pc => ({
     id: uuid(),
-    tipo: 'entrada',
-    descricao: descricaoDoGanho(negocio as any, contato?.nome),
-    valor,
-    data,
-    recebido: b?.recebido !== false, // venda fechada na clínica costuma ser paga na hora
+    tipo: 'entrada' as const,
+    descricao: pc.totalParcelas && pc.totalParcelas > 1 ? `${descricaoBase} (${pc.parcela}/${pc.totalParcelas})` : descricaoBase,
+    valor: pc.valor,
+    data: pc.data,
+    // Parcela futura NÃO nasce recebida: ela ainda vai cair.
+    recebido: b?.recebido !== false && pc.data <= data,
     negocioId,
-    formaPagamento: forma as any,
+    formaPagamento: pc.forma as any,
+    ...(pc.parcela ? { parcela: pc.parcela, totalParcelas: pc.totalParcelas } : {}),
+    ...(procedimentos.length ? { procedimentos } : {}),
     criadoPor: session.user?.name || '',
-    criadoEm: new Date().toISOString(),
-  }
-  await redis.set(`lancamento:${l.id}`, l)
-  await redis.sadd('lancamentos', l.id)
+    criadoEm: agora,
+  }))
+
+  await Promise.all(criados.map(l => redis.set(`lancamento:${l.id}`, l)))
+  // sadd tipado com rest: manda um id por vez (a lista tem 1..36 parcelas).
+  await Promise.all(criados.map(l => redis.sadd('lancamentos', l.id)))
   // Se estava dispensado e foi lançado agora, a dispensa perdeu o sentido.
   await redis.srem(DISPENSADOS, negocioId).catch(() => {})
-  return NextResponse.json({ ok: true, lancamento: l })
+  // Devolve o que foi vendido para a oportunidade quando o financeiro corrigiu.
+  if (procedimentos.length && JSON.stringify(procedimentos) !== JSON.stringify((negocio as any).procedimentos || [])) {
+    await redis.set(`negocio:${negocioId}`, { ...negocio, procedimentos }).catch(() => {})
+  }
+  return NextResponse.json({ ok: true, lancamentos: criados, lancamento: criados[0] })
 }
 
 // Dispensar: "este ganho não vira entrada" (permuta, cortesia, cancelado).

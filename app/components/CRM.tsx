@@ -33,6 +33,7 @@ type Atividade = { id: string; tipo: string; texto: string; autor: string; criad
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
   dono?: string; donoNome?: string; contatoId?: string; origem?: string; previsaoFechamento?: string; proximoFollowUp?: string
+  procedimentos?: string[] // clínica: o que foi vendido (vai para o financeiro)
   descricao?: string; atividades?: Atividade[]; criadoEm: string; atualizadoEm: string
   empresa?: string; segmento?: string; faturamentoEstimado?: string; instagram?: string; dores?: string; solucoes?: string
   paisInteresse?: string; ascendenteOrigem?: string; grauParentesco?: string; processoId?: string; linhagem?: PessoaLinhagem[]
@@ -2179,6 +2180,15 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
   // unmount; por isso o flush não passa pelo patch, que mexeria em estado morto).
   const [linhagemLocal, setLinhagemLocal] = useState<PessoaLinhagem[]>(negocio.linhagem || [])
   const [linhagemSalvando, setLinhagemSalvando] = useState(false)
+  // O QUE FOI VENDIDO nesta oportunidade — vai junto para o financeiro quando o
+  // ganho virar entrada (sem isso, o extrato sabe quanto entrou mas não do quê).
+  const [catalogoProc, setCatalogoProc] = useState<string[]>([])
+  useEffect(() => {
+    if (!perfilClinica) return
+    fetch('/api/procedimentos').then(r => r.json())
+      .then(d => setCatalogoProc(Array.isArray(d?.procedimentos) ? d.procedimentos.map((x: any) => x.nome).filter(Boolean) : []))
+      .catch(() => {})
+  }, [perfilClinica])
   const timerLinhagem = useRef<any>(null)
   const linhagemPendente = useRef<PessoaLinhagem[] | null>(null)
   function mudarLinhagem(v: PessoaLinhagem[]) {
@@ -2376,6 +2386,25 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
                 {/* grafia antiga (ex.: "Ex-paciente") continua selecionável até
                     alguém trocar — o gráfico já a soma no balde certo */}
                 {neg.origem && !(ORIGENS_CLINICA as readonly string[]).includes(neg.origem) && <option value={neg.origem}>{neg.origem}</option>}
+              </select>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={labelStyle}>Procedimento / método vendido</label>
+              {!!(neg.procedimentos || []).length && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+                  {(neg.procedimentos || []).map(pr => (
+                    <span key={pr} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: '#eef2ff', padding: '4px 8px', borderRadius: 999 }}>
+                      {pr}
+                      <button onClick={() => { const lista = (neg.procedimentos || []).filter(x => x !== pr); setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
+                        title="Remover" style={{ background: 'none', border: 'none', color: '#8b8bd0', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <select value="" onChange={e => { const v = e.target.value; if (!v) return; const lista = [...(neg.procedimentos || []), v]; setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
+                style={{ ...inputStyle, background: '#fff' }}>
+                <option value="">{catalogoProc.length ? 'Adicionar do catálogo…' : 'Cadastre procedimentos em Procedimentos e Métodos'}</option>
+                {catalogoProc.filter(c => !(neg.procedimentos || []).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
