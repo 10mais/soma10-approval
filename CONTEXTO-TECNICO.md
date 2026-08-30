@@ -1576,3 +1576,27 @@ não são tocados.
   procedimentos e "já caiu" — valor e vínculo ficam de fora, mexer no valor de uma parcela
   faria o caixa deixar de bater com a venda).
 - Parcela futura **não nasce recebida**; só a que cai na data do lançamento. Testes 895.
+
+### 42.10 Reuniões internas viraram CALENDÁRIO + ritual da semana
+- **Por que calendário e não lista:** a reunião passou a ser diária. A pergunta do time é
+  "o que tem hoje/nesta semana" — a lista respondia "o que existe cadastrado". Vistas
+  **Semana** (7 colunas, 190px de altura) e **Mês** (grade de semanas), navegação ‹ Hoje ›,
+  escolha lembrada na sessão. Clicar no **+** do dia cria já com o dia certo.
+- **Ritual da semana** (`lib/ritualSemana.ts`, 15 testes · `config:reunioesRitual` ·
+  `/api/reunioes/ritual`): cada dia útil tem uma **área** (segunda Comercial, terça
+  Posicionamento…). A faixa aparece no topo, o selo da área aparece em cada dia do
+  calendário, e a nova reunião nasce com **título e hora prontos** ("Segunda Comercial",
+  09:00) — criar a reunião da semana não pode exigir redigitar isso. Semente editável;
+  dia sem área = dia sem reunião fixa. Escreve admin/gerente, lê a equipe.
+- **Várias PAUTAS dentro do dia** (`ReuniaoPauta[]`): a segunda Comercial tem N assuntos,
+  cada um com caixinha de "tratada". O `pauta` (texto livre) das reuniões antigas continua
+  aparecendo quando existe. Ata e decisões→tarefas seguem por reunião, como já eram.
+- **Recorrência semanal:** gera as ocorrências **de verdade** (uma por semana, `serieId`
+  compartilhado), porque ocorrência virtual não teria onde guardar a ata daquele dia. Teto
+  de 53 (`ocorrenciasSemanais`) para um "até 2099" não virar mil registros; as pautas
+  nascem iguais mas com **ids próprios** — marcar "tratada" numa semana não pode riscar a
+  linha nas outras. Excluir pergunta o alcance: só esta ou **esta e as próximas** (nunca as
+  passadas, que têm ata).
+- Gotchas: `diaDaSemana` devolve 1=segunda (o `getDay()` do JS começa no domingo);
+  `m.forEach` no índice por dia porque o target do tsconfig não itera `MapIterator`.
+  Calendário conferido em imagem antes do deploy. Testes 910.

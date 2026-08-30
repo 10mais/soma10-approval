@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Reuniao, ReuniaoDecisao, Tarefa } from '@/lib/redis'
+import { redis, Reuniao, ReuniaoDecisao, ReuniaoPauta, Tarefa } from '@/lib/redis'
+import { ocorrenciasSemanais } from '@/lib/ritualSemana'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { v4 as uuid } from 'uuid'
 
@@ -35,19 +36,55 @@ export async function POST(req: NextRequest) {
   const titulo = (b.titulo || '').toString().trim()
   const data = (b.data || '').toString()
   if (!titulo || isNaN(new Date(data).getTime())) return NextResponse.json({ error: 'título e data são obrigatórios' }, { status: 400 })
-  const r: Reuniao = {
-    id: uuid(),
+  // Pautas do dia (a segunda Comercial tem várias) — texto livre continua
+  // aceito para quem só quer escrever um parágrafo.
+  const pautas: ReuniaoPauta[] = (Array.isArray(b.pautas) ? b.pautas : [])
+    .map((x: any) => String(x?.texto ?? x ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 30)
+    .map((texto: string) => ({ id: uuid(), texto: texto.slice(0, 300), feita: false }))
+
+  const base = {
     titulo: titulo.slice(0, 140),
-    data,
+    area: (b.area || '').toString().trim().slice(0, 60) || undefined,
     participantes: (b.participantes || '').toString().slice(0, 400) || undefined,
     pauta: (b.pauta || '').toString().slice(0, 8000) || undefined,
-    status: 'agendada',
+    ...(pautas.length ? { pautas } : {}),
+    status: 'agendada' as const,
     criadoPor: s.user?.name || s.user?.email || undefined,
     criadoEm: new Date().toISOString(),
   }
+
+  // RECORRENTE: gera as ocorrências de verdade, uma por semana, cada uma com sua
+  // ata e suas pautas. Ocorrência virtual (calculada na hora) não teria onde
+  // guardar o que foi decidido naquele dia — e é justamente isso que a reunião
+  // produz. `ocorrenciasSemanais` limita a 53: um "até 2099" digitado sem querer
+  // não vira mil registros.
+  const ate = String(b?.recorrencia?.ate || '')
+  if (b?.recorrencia?.tipo === 'semanal' && /^\d{4}-\d{2}-\d{2}$/.test(ate)) {
+    const inicio = new Date(data)
+    const [ay, am, ad] = ate.split('-').map(Number)
+    const datas = ocorrenciasSemanais(inicio, new Date(ay, am - 1, ad))
+    if (!datas.length) return NextResponse.json({ error: 'a data final é anterior à primeira reunião' }, { status: 400 })
+    const serieId = uuid()
+    const criadas: Reuniao[] = datas.map(d => ({
+      ...base,
+      id: uuid(),
+      data: d.toISOString(),
+      serieId,
+      // As pautas nascem iguais em todas as ocorrências, mas com ids próprios:
+      // marcar "feita" numa semana não pode riscar a mesma linha nas outras.
+      ...(pautas.length ? { pautas: pautas.map(pt => ({ ...pt, id: uuid() })) } : {}),
+    }))
+    await Promise.all(criadas.map(r => redis.set(`reuniao:${r.id}`, r)))
+    await Promise.all(criadas.map(r => redis.sadd('reunioes', r.id)))
+    return NextResponse.json({ ok: true, reuniao: criadas[0], criadas: criadas.length, serieId })
+  }
+
+  const r: Reuniao = { ...base, id: uuid(), data }
   await redis.set(`reuniao:${r.id}`, r)
   await redis.sadd('reunioes', r.id)
-  return NextResponse.json({ ok: true, reuniao: r })
+  return NextResponse.json({ ok: true, reuniao: r, criadas: 1 })
 }
 
 export async function PUT(req: NextRequest) {
@@ -58,7 +95,7 @@ export async function PUT(req: NextRequest) {
   if (!r) return NextResponse.json({ error: 'não encontrada' }, { status: 404 })
 
   const atualizada: Reuniao = { ...r, atualizadoEm: new Date().toISOString() }
-  for (const c of ['titulo', 'data', 'participantes', 'pauta', 'ata', 'status', 'decisoes'] as const) {
+  for (const c of ['titulo', 'data', 'participantes', 'pauta', 'ata', 'status', 'decisoes', 'area', 'pautas'] as const) {
     if (c in b) (atualizada as any)[c] = b[c]
   }
 
@@ -96,8 +133,22 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const s = await sessao(true)
   if (!s || (s.user as any).role !== 'admin') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
-  const { id } = await req.json()
+  const { id, serie } = await req.json()
+  const alvo = await redis.get<Reuniao>(`reuniao:${id}`)
+
+  // "Excluir a série" apaga esta e as SEGUINTES, nunca as passadas: reunião que
+  // já aconteceu tem ata e decisões — apagá-la seria apagar o registro do que a
+  // empresa combinou.
+  if (serie && alvo?.serieId) {
+    const ids = await redis.smembers('reunioes')
+    const todas = ids.length ? ((await redis.mget<(Reuniao | null)[]>(...ids.map(i => `reuniao:${i}`))).filter(Boolean) as Reuniao[]) : []
+    const daSerie = todas.filter(r => r.serieId === alvo.serieId && new Date(r.data).getTime() >= new Date(alvo.data).getTime())
+    await Promise.all(daSerie.map(r => redis.del(`reuniao:${r.id}`)))
+    await Promise.all(daSerie.map(r => redis.srem('reunioes', r.id)))
+    return NextResponse.json({ ok: true, excluidas: daSerie.length })
+  }
+
   await redis.del(`reuniao:${id}`)
   await redis.srem('reunioes', id)
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, excluidas: 1 })
 }

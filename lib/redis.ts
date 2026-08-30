@@ -276,10 +276,26 @@ export type ReuniaoDecisao = {
   prazo?: string // ISO date
   tarefaId?: string // preenchido quando a decisão vira tarefa
 }
+// Uma pauta DENTRO da reunião do dia: a segunda Comercial pode ter dez assuntos,
+// e cada um se resolve (ou não) por si. Ver lib/ritualSemana.
+export type ReuniaoPauta = {
+  id: string
+  texto: string
+  responsavelNome?: string
+  feita?: boolean
+}
 export type Reuniao = {
   id: string
   titulo: string
   data: string // ISO — quando a reunião acontece(u)
+  // Área/setor do dia (ritual da semana: segunda Comercial, terça Posicionamento…)
+  area?: string
+  // Assuntos da reunião. O campo `pauta` (texto livre) continua valendo para as
+  // reuniões antigas — a tela mostra os dois.
+  pautas?: ReuniaoPauta[]
+  // Reunião gerada por recorrência: todas as ocorrências da mesma série
+  // compartilham este id (permite excluir a série inteira de uma vez).
+  serieId?: string
   participantes?: string
   pauta?: string // o que será discutido (antes da reunião)
   ata?: string // registro do que foi discutido/decidido
