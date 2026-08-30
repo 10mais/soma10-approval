@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { totalMensalModulos, type ClienteModulos } from '@/lib/modulos'
+import { FORMAS_PAGAMENTO, rotuloFormaPagamento } from '@/lib/ganhosFinanceiro'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; inadimplente?: boolean; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
@@ -17,7 +18,40 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [salvandoContas, setSalvandoContas] = useState(false)
   const [periodoFluxo, setPeriodoFluxo] = useState(6) // meses no gráfico de fluxo de caixa
   const [saudeDias, setSaudeDias] = useState(60) // meta da Saúde do Caixa (configurável)
-  const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string; recebido?: boolean; reservaId?: string }[]>([])
+  const [lancamentos, setLancamentos] = useState<{ id: string; tipo: 'entrada' | 'saida'; descricao: string; valor: number; data: string; clienteId?: string; recebido?: boolean; reservaId?: string; negocioId?: string; formaPagamento?: string }[]>([])
+  // GANHOS DO CRM ainda não lançados (ver lib/ganhosFinanceiro). Um a um: falta
+  // a forma de pagamento, que só quem recebeu sabe.
+  type GanhoPendente = { negocioId: string; titulo: string; contatoNome: string; valor: number; dataSugerida: string; descricao: string }
+  const [ganhos, setGanhos] = useState<GanhoPendente[]>([])
+  const [ganhoForma, setGanhoForma] = useState<Record<string, string>>({})
+  const [ganhoData, setGanhoData] = useState<Record<string, string>>({})
+  const [ganhoBusy, setGanhoBusy] = useState('')
+  async function carregarGanhos() {
+    const d = await fetch('/api/financeiro/ganhos').then(r => r.json()).catch(() => null)
+    if (Array.isArray(d?.pendentes)) setGanhos(d.pendentes)
+  }
+  useEffect(() => { carregarGanhos() }, [])
+  async function lancarGanho(g: GanhoPendente) {
+    const forma = ganhoForma[g.negocioId]
+    if (!forma) return
+    setGanhoBusy(g.negocioId)
+    const r = await fetch('/api/financeiro/ganhos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ negocioId: g.negocioId, formaPagamento: forma, data: ganhoData[g.negocioId] || g.dataSugerida }),
+    }).then(x => x.json()).catch(() => null)
+    setGanhoBusy('')
+    if (!r?.ok) { alert(r?.error || 'Não foi possível lançar a entrada.'); return }
+    // Recarrega os dois lados: o lançamento novo entra na lista e o ganho sai
+    // da fila. Atualizar só um deixaria a tela mentindo até o próximo F5.
+    setGanhos(gs => gs.filter(x => x.negocioId !== g.negocioId))
+    fetch('/api/financeiro/lancamentos').then(x => x.json()).then(d => { if (Array.isArray(d)) setLancamentos(d) }).catch(() => {})
+  }
+  async function dispensarGanho(g: GanhoPendente) {
+    setGanhoBusy(g.negocioId)
+    await fetch(`/api/financeiro/ganhos?negocioId=${encodeURIComponent(g.negocioId)}`, { method: 'DELETE' }).catch(() => {})
+    setGanhoBusy('')
+    setGanhos(gs => gs.filter(x => x.negocioId !== g.negocioId))
+  }
   const [lTipo, setLTipo] = useState<'entrada' | 'saida'>('saida')
   const [lDesc, setLDesc] = useState('')
   const [lValor, setLValor] = useState('')
@@ -364,6 +398,42 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
             )}
           </div>
 
+          {/* GANHOS DO CRM A LANÇAR — a ponte entre o funil e o caixa. Fica
+              ACIMA dos lançamentos porque é uma pendência, não um registro:
+              enquanto tiver item aqui, o caixa está incompleto. */}
+          {ganhos.length > 0 && (
+            <div style={{ ...card, marginBottom: 18, border: '1px solid #fde68a', background: '#fffdf5' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#92400e' }}>Lançar ganhos como entradas? · {ganhos.length}</p>
+              <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: '#a16207' }}>
+                Vendas marcadas como ganhas no CRM que ainda não entraram no caixa. Escolha a forma de pagamento e lance uma a uma.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {ganhos.map(g => (
+                  <div key={g.negocioId} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 10px', background: '#fff', borderRadius: 10, border: '1px solid #f1e7c9' }}>
+                    <span style={{ flex: 1, minWidth: 160, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {g.descricao}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a', flexShrink: 0 }}>{brl(g.valor)}</span>
+                    <select value={ganhoForma[g.negocioId] || ''} onChange={e => setGanhoForma(f => ({ ...f, [g.negocioId]: e.target.value }))}
+                      style={{ padding: '7px 8px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff', flexShrink: 0 }}>
+                      <option value="">Forma de pagamento…</option>
+                      {FORMAS_PAGAMENTO.map(f => <option key={f.chave} value={f.chave}>{f.label}</option>)}
+                    </select>
+                    <input type="date" value={ganhoData[g.negocioId] || g.dataSugerida} onChange={e => setGanhoData(d => ({ ...d, [g.negocioId]: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', flexShrink: 0 }} />
+                    <button onClick={() => lancarGanho(g)} disabled={!ganhoForma[g.negocioId] || ganhoBusy === g.negocioId}
+                      title={ganhoForma[g.negocioId] ? 'Lançar como entrada no caixa' : 'Escolha a forma de pagamento primeiro'}
+                      style={{ padding: '7px 13px', background: ganhoForma[g.negocioId] ? '#16a34a' : '#f0f0f0', color: ganhoForma[g.negocioId] ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: ganhoForma[g.negocioId] ? 'pointer' : 'not-allowed', flexShrink: 0 }}>
+                      {ganhoBusy === g.negocioId ? '...' : 'Lançar'}
+                    </button>
+                    <button onClick={() => dispensarGanho(g)} title="Não vira entrada (permuta, cortesia, cancelado)"
+                      style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>Ignorar</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Lançamentos futuros */}
           <div style={{ ...card, marginBottom: 18 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#555' }}>Lançamentos futuros</p>
@@ -386,6 +456,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                     <span style={{ width: 52, flexShrink: 0, color: '#888', fontWeight: 700 }}>{new Date(l.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                     <span style={{ flex: 1, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.descricao}</span>
                     {l.reservaId && <span title="Gerado da reserva — atualiza junto com ela" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>reserva</span>}
+                    {l.negocioId && <span title="Entrada gerada de uma venda ganha no CRM" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#7c3aed', background: '#f5f3ff', borderRadius: 999, padding: '2px 8px' }}>CRM</span>}
+                    {l.formaPagamento && <span style={{ flexShrink: 0, fontSize: 10.5, color: '#999' }}>{rotuloFormaPagamento(l.formaPagamento)}</span>}
                     {l.recebido && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '2px 8px' }}>recebido</span>}
                     <span style={{ flexShrink: 0, fontWeight: 700, color: l.tipo === 'entrada' ? '#16a34a' : '#dc2626' }}>{l.tipo === 'entrada' ? '+' : '−'}{brl(Number(l.valor) || 0)}</span>
                     {/* Lançamento de reserva não sai daqui: apagar só a cópia mentiria o caixa — cancele/edite a reserva. */}

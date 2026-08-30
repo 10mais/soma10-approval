@@ -24,6 +24,7 @@ export const NOTIF_TIPOS: { tipo: string; label: string; categoria: string; obri
   { tipo: 'crm_lead', label: 'Novo lead', categoria: 'Vendas' },
   { tipo: 'crm_reuniao', label: 'Reunião de venda', categoria: 'Vendas' },
   { tipo: 'crm_briefing', label: 'Briefing para o closer', categoria: 'Vendas' },
+  { tipo: 'financeiro_ganho', label: 'Venda ganha para lançar como entrada', categoria: 'Financeiro' },
   { tipo: 'geral', label: 'Avisos gerais', categoria: 'Geral' },
 ]
 

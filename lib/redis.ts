@@ -78,6 +78,11 @@ export type LancamentoFuturo = {
   // unidade. A rota /api/vendas cria junto; id determinístico (venda-{id}).
   vendaId?: string
   lojaId?: string
+  // Entrada gerada de uma oportunidade GANHA no CRM (lancada uma a uma pelo
+  // admin, ver lib/ganhosFinanceiro). O vinculo e o que impede lancar a mesma
+  // venda duas vezes.
+  negocioId?: string
+  formaPagamento?: FormaPagamentoVenda
   criadoPor?: string
   criadoEm: string
 }
@@ -732,6 +737,8 @@ export type TipoNotificacao =
   | 'crm_followup'
   | 'crm_lead'
   | 'crm_reuniao'
+  // Financeiro: venda ganha no CRM esperando virar entrada no caixa
+  | 'financeiro_ganho'
   | 'crm_briefing'
   | 'geral'
 

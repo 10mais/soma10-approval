@@ -1529,3 +1529,25 @@ não são tocados.
   NAVEGADOR (localStorage `soma10_ortografia`), padrão ligado. Religar **apaga** o atributo
   em vez de escrever "true". Por isso os 96 campos ficaram só com `lang="pt-BR"`: campo que
   fixa `spellCheck` ganha da herança e transformaria a caixa em decoração. 6 testes.
+
+### 42.8 Ganhos do CRM viram ENTRADAS no financeiro (um a um, com forma de pagamento)
+- **Por que não automático:** ganho no funil é decisão comercial, entrada no caixa é fato
+  financeiro — e falta o dado que só quem recebeu tem, a **forma de pagamento**. Então o
+  sistema PERGUNTA em vez de lançar sozinho.
+- **Onde:** bloco **"Lançar ganhos como entradas?"** no topo do Financeiro (acima dos
+  Lançamentos: é pendência, não registro). Cada linha traz descrição (título + nome de quem
+  pagou), valor, **seletor de forma de pagamento** (mesmas chaves do PDF do varejo —
+  `pix/dinheiro/debito/credito/boleto/outro`, um catálogo só), data sugerida = **dia do
+  ganho** (`dataDoGanho`, a mesma regra da Meta) e os botões **Lançar** / **Ignorar**
+  (permuta, cortesia, cancelado — vai para `financeiro:ganhosDispensados`, e um POST com
+  `restaurar` desfaz).
+- **Aviso:** ao marcar a oportunidade como ganha, `/api/crm/negocios` notifica os **admins**
+  (tipo novo `financeiro_ganho`, no catálogo de notificações). É o que impede a venda de
+  ficar só no funil, esquecida do caixa.
+- **Idempotência:** o lançamento carrega `negocioId` (padrão de `reservaId`/`vendaId`) e a
+  rota recusa lançar de novo o mesmo negócio — dois cliques, duas abas ou dois caminhos não
+  inflam o caixa. `LancamentoFuturo` ganhou `negocioId` + `formaPagamento`; a lista mostra
+  o selo **CRM** e a forma.
+- Regra pura e testada em `lib/ganhosFinanceiro.ts` (12 casos: já lançado/dispensado/sem
+  valor fora da fila, ordem por data do ganho, descrição com o nome sem repetir).
+  Rota `app/api/financeiro/ganhos` (admin). Testes 879.

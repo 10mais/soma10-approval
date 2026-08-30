@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, CrmNegocio, CrmEstagio, CrmAtividade, CrmAgendamento, Usuario } from '@/lib/redis'
-import { notificar } from '@/lib/notificacoes'
+import { notificar, notificarAdmins } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { garantirSetupCrm } from '@/lib/crmPipelines'
@@ -217,10 +217,22 @@ export async function PUT(req: NextRequest) {
   // DATA DO FECHAMENTO — é ela que ancora a venda no mês certo da meta. Sem
   // isso, `atualizadoEm` faria uma venda de agosto migrar para outubro na
   // primeira edição, e a meta do mês passaria a mentir para sempre.
-  if (atualizado.status === 'ganho' && negocio.status !== 'ganho') atualizado.fechadoEm = new Date().toISOString()
+  const virouGanho = atualizado.status === 'ganho' && negocio.status !== 'ganho'
+  if (virouGanho) atualizado.fechadoEm = new Date().toISOString()
   if (atualizado.status !== 'ganho' && negocio.status === 'ganho') delete atualizado.fechadoEm
 
   await redis.set(`negocio:${id}`, atualizado)
+
+  // Venda ganha AVISA o financeiro. O lancamento nao e automatico (falta a forma
+  // de pagamento, e nem todo ganho vira dinheiro no dia) — o aviso e o que
+  // impede a venda de ficar so no funil, esquecida do caixa.
+  // Ver lib/ganhosFinanceiro e /api/financeiro/ganhos.
+  if (virouGanho && (Number(atualizado.valor) || 0) > 0) {
+    const brl = (Number(atualizado.valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    await notificarAdmins('financeiro_ganho', 'Lançar ganho como entrada?',
+      `${atualizado.titulo || 'Oportunidade'} foi ganha (${brl}). Abra Financeiro → Ganhos do CRM para lançar a entrada e informar a forma de pagamento.`)
+      .catch(() => { /* aviso e best-effort: nao derruba o registro da venda */ })
+  }
 
   // #6 — dispara o briefing aos closers (best-effort, nao bloqueia a resposta)
   if (entrouEmReuniao) {
