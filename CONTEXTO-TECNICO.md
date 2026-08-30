@@ -1600,3 +1600,19 @@ não são tocados.
 - Gotchas: `diaDaSemana` devolve 1=segunda (o `getDay()` do JS começa no domingo);
   `m.forEach` no índice por dia porque o target do tsconfig não itera `MapIterator`.
   Calendário conferido em imagem antes do deploy. Testes 910.
+
+### 42.11 Reuniões — cor por dia e ritual em cartões (pedido do dono: "visual confuso")
+- **Cada dia é um bloco na cor da sua área** (`DiaRitual.cor`, `corDoDia`, `tomClaro`):
+  faixa de 4px no topo, fundo no tom clarinho da cor (alpha `0f`), número do dia e selo da
+  área na cor, selo **HOJE** preenchido. Cinco colunas brancas exigiam LER para saber onde
+  se estava.
+- **Paleta FECHADA** (`CORES_RITUAL`, 10 cores) escolhida por swatch no modal do ritual —
+  cor livre viraria calendário com cinco tons de azul. `normalizaRitual` só aceita
+  `#rrggbb`: um "azul" ou um `javascript:` vindo do banco iria direto para o `style`.
+- **A faixa do ritual virou CARTÕES** — um por dia, com a barra colorida, a ÁREA em
+  destaque, horário e **quantas reuniões tem naquele dia nesta semana**. Clicar leva o
+  calendário para aquele dia (e sai do mês para a semana).
+- **Cor do dia × status:** a moldura do card da reunião passou a ser a cor do DIA (é ela que
+  identifica a área num relance) e o status virou selo — check verde + opacidade para
+  realizada. Antes, segunda e sexta realizadas ficavam idênticas.
+- Conferido em imagem antes do deploy. Testes 915.

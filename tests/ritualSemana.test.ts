@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   normalizaRitual, RITUAL_PADRAO, diaDaSemana, ritualDoDia, tituloDoDia,
   semanaDe, gradeMes, ocorrenciasSemanais, dataComHora, ymd,
+  corDoDia, tomClaro, CORES_RITUAL,
 } from '@/lib/ritualSemana'
 
 // O calendário da reunião diária. Um erro de dia da semana aqui não dá erro de
@@ -101,5 +102,43 @@ describe('data + hora', () => {
   it('sem hora, 09:00 — e nunca meia-noite', () => {
     expect(dataComHora('2026-08-31').getHours()).toBe(9)
     expect(dataComHora('2026-08-31', 'qualquer coisa').getHours()).toBe(9)
+  })
+})
+
+describe('cor do dia', () => {
+  const ritual = [{ dia: 1, area: 'Comercial', cor: '#4f46e5' }, { dia: 2, area: 'Posicionamento' }]
+
+  it('cada dia tem a sua cor', () => {
+    expect(corDoDia(ritual, new Date(2026, 7, 31))).toBe('#4f46e5')
+  })
+
+  it('dia sem cor (ou sem ritual) fica cinza — nunca uma cor com significado', () => {
+    expect(corDoDia(ritual, new Date(2026, 8, 1))).toBe('#64748b')
+    expect(corDoDia(ritual, new Date(2026, 8, 2))).toBe('#64748b')
+    expect(corDoDia([], new Date(2026, 8, 2))).toBe('#64748b')
+  })
+
+  it('cor inválida do banco NÃO chega ao style da tela', () => {
+    const r = normalizaRitual({ dias: [
+      { dia: 1, area: 'A', cor: 'azul' },
+      { dia: 2, area: 'B', cor: 'javascript:alert(1)' },
+      { dia: 3, area: 'C', cor: '#ABC' },
+      { dia: 4, area: 'D', cor: '#0891b2' },
+    ] })
+    expect(r.find(x => x.dia === 1)!.cor).toBeUndefined()
+    expect(r.find(x => x.dia === 2)!.cor).toBeUndefined()
+    expect(r.find(x => x.dia === 3)!.cor).toBeUndefined()
+    expect(r.find(x => x.dia === 4)!.cor).toBe('#0891b2')
+  })
+
+  it('o fundo é a mesma cor bem clara (hex de 8 dígitos)', () => {
+    expect(tomClaro('#4f46e5')).toBe('#4f46e514')
+    expect(tomClaro('#4f46e5', '2e')).toBe('#4f46e52e')
+    expect(tomClaro('cor torta')).toBe('#64748b14') // cai no cinza, não quebra o style
+  })
+
+  it('a paleta é fechada e só tem hex válido', () => {
+    expect(CORES_RITUAL.length).toBeGreaterThanOrEqual(6)
+    for (const c of CORES_RITUAL) expect(c.cor).toMatch(/^#[0-9a-f]{6}$/i)
   })
 })

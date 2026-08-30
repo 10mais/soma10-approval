@@ -8,17 +8,35 @@
 // O ritual é CONFIGURÁVEL (config:reunioesRitual). O que está aqui é semente:
 // nenhuma empresa herda a divisão de área de outra.
 
-export type DiaRitual = { dia: number; area: string; hora?: string } // dia: 1 = segunda … 7 = domingo
+export type DiaRitual = { dia: number; area: string; hora?: string; cor?: string } // dia: 1 = segunda … 7 = domingo
+
+// A cor é do DIA, não enfeite: com uma reunião por dia útil, é a cor que faz
+// alguém bater o olho no calendário e saber que hoje é comercial sem ler nada.
+// Paleta fechada — cor livre viraria um calendário de cinco tons de azul, ou
+// texto branco em fundo amarelo.
+export const CORES_RITUAL: { cor: string; nome: string }[] = [
+  { cor: '#4f46e5', nome: 'Índigo' },
+  { cor: '#0891b2', nome: 'Ciano' },
+  { cor: '#ea580c', nome: 'Laranja' },
+  { cor: '#7c3aed', nome: 'Violeta' },
+  { cor: '#16a34a', nome: 'Verde' },
+  { cor: '#db2777', nome: 'Rosa' },
+  { cor: '#ca8a04', nome: 'Âmbar' },
+  { cor: '#0f766e', nome: 'Petróleo' },
+  { cor: '#b91c1c', nome: 'Vermelho' },
+  { cor: '#475569', nome: 'Grafite' },
+]
+const COR_PADRAO = '#64748b' // dia sem ritual: cinza, e não uma cor com significado
 
 export const NOMES_DIA = ['', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 export const NOMES_DIA_CURTO = ['', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 export const RITUAL_PADRAO: DiaRitual[] = [
-  { dia: 1, area: 'Comercial', hora: '09:00' },
-  { dia: 2, area: 'Posicionamento', hora: '09:00' },
-  { dia: 3, area: 'Operação', hora: '09:00' },
-  { dia: 4, area: 'Marketing', hora: '09:00' },
-  { dia: 5, area: 'Resultados', hora: '09:00' },
+  { dia: 1, area: 'Comercial', hora: '09:00', cor: '#4f46e5' },
+  { dia: 2, area: 'Posicionamento', hora: '09:00', cor: '#0891b2' },
+  { dia: 3, area: 'Operação', hora: '09:00', cor: '#ea580c' },
+  { dia: 4, area: 'Marketing', hora: '09:00', cor: '#7c3aed' },
+  { dia: 5, area: 'Resultados', hora: '09:00', cor: '#16a34a' },
 ]
 
 // Aceita o que veio do banco sem confiar: ritual torto não pode derrubar a tela
@@ -34,7 +52,14 @@ export function normalizaRitual(bruto: any): DiaRitual[] {
     const area = String(d?.area || '').trim().slice(0, 60)
     if (!area) continue // dia sem área é dia sem ritual — some da faixa
     vistos.add(dia)
-    saida.push({ dia, area, ...(/^\d{2}:\d{2}$/.test(String(d?.hora || '')) ? { hora: String(d.hora) } : {}) })
+    // Cor só entra se for hexadecimal de 6 dígitos: um "azul" ou um `javascript:`
+    // vindo do banco iria direto para o `style` da tela.
+    const cor = String(d?.cor || '').trim()
+    saida.push({
+      dia, area,
+      ...(/^\d{2}:\d{2}$/.test(String(d?.hora || '')) ? { hora: String(d.hora) } : {}),
+      ...(/^#[0-9a-f]{6}$/i.test(cor) ? { cor } : {}),
+    })
   }
   return saida.sort((a, b) => a.dia - b.dia)
 }
@@ -47,6 +72,18 @@ export function diaDaSemana(d: Date): number {
 
 export function ritualDoDia(ritual: DiaRitual[], d: Date): DiaRitual | undefined {
   return ritual.find(r => r.dia === diaDaSemana(d))
+}
+
+// Cor do dia — sempre devolve uma cor válida (dia sem ritual fica cinza).
+export function corDoDia(ritual: DiaRitual[], d: Date): string {
+  return ritualDoDia(ritual, d)?.cor || COR_PADRAO
+}
+
+// Mesma cor em transparência, para fundo. Hex de 8 dígitos (#rrggbbaa) — o fundo
+// precisa ser MUITO claro: cor forte atrás do texto do calendário cansa em cinco
+// minutos de uso.
+export function tomClaro(cor: string, alpha = '14'): string {
+  return /^#[0-9a-f]{6}$/i.test(cor) ? `${cor}${alpha}` : `${COR_PADRAO}${alpha}`
 }
 
 // Título sugerido da reunião do dia: "Segunda Comercial". Sem ritual naquele

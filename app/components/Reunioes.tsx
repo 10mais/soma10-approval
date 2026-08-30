@@ -4,7 +4,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import {
   DiaRitual, RITUAL_PADRAO, NOMES_DIA, NOMES_DIA_CURTO,
-  ritualDoDia, tituloDoDia, diaDaSemana,
+  ritualDoDia, tituloDoDia, diaDaSemana, corDoDia, tomClaro, CORES_RITUAL,
   semanaDe, gradeMes, ymd, dataComHora,
 } from '@/lib/ritualSemana'
 
@@ -127,15 +127,22 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
     setAberta(null); carregar()
   }
 
-  // Cartão de uma reunião dentro do calendário.
-  function Chip({ r, compacto = false }: { r: Reuniao; compacto?: boolean }) {
+  // Cartão de uma reunião dentro do calendário. A moldura usa a COR DO DIA (é
+  // ela que identifica a área num relance); o status vira selo, não cor — senão
+  // segunda realizada e sexta realizada ficariam iguais.
+  function Chip({ r, compacto = false, cor }: { r: Reuniao; compacto?: boolean; cor: string }) {
     const feito = r.status === 'realizada'
     const pendentes = (r.pautas || []).filter(p => !p.feita).length
     return (
       <button onClick={() => setAberta(r)} title={`${r.titulo}${r.participantes ? ` · ${r.participantes}` : ''}`}
-        style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: compacto ? '3px 6px' : '6px 8px', cursor: 'pointer', font: 'inherit', background: feito ? '#f0fdf4' : '#fffbeb', borderLeft: `3px solid ${feito ? '#16a34a' : '#f59e0b'}`, marginBottom: 3 }}>
-        <span style={{ display: 'block', fontSize: compacto ? 10.5 : 12, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {hhmm(r.data)} {r.titulo}
+        style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: compacto ? '3px 6px' : '6px 8px', cursor: 'pointer', font: 'inherit', background: '#fff', borderLeft: `3px solid ${cor}`, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', marginBottom: 3, opacity: feito ? 0.75 : 1 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {feito && (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6 9 17l-5-5" /></svg>
+          )}
+          <span style={{ flex: 1, minWidth: 0, fontSize: compacto ? 10.5 : 12, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {hhmm(r.data)} {r.titulo}
+          </span>
         </span>
         {!compacto && (
           <span style={{ display: 'block', fontSize: 10.5, color: '#999', marginTop: 1 }}>
@@ -147,28 +154,37 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
     )
   }
 
+  // Cada DIA é um bloco na cor da sua área: faixa colorida no topo, fundo no tom
+  // clarinho da cor e o número do dia na cor. Sem isso, cinco colunas brancas
+  // exigem LER para saber onde se está.
   function Celula({ d, altura, compacto }: { d: Date; altura: number; compacto: boolean }) {
     const lista = porDia.get(ymd(d)) || []
     const rit = ritualDoDia(ritual, d)
+    const cor = corDoDia(ritual, d)
     const doMes = vista === 'semana' || d.getMonth() === ref.getMonth()
     const hoje = ehHoje(d)
     return (
-      <div style={{ flex: 1, minWidth: 0, background: '#fff', border: `1px solid ${hoje ? '#111' : '#f0f0f0'}`, borderRadius: 10, padding: 7, minHeight: altura, display: 'flex', flexDirection: 'column', opacity: doMes ? 1 : 0.45 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: hoje ? '#111' : '#999' }}>{d.getDate()}</span>
-          {compacto && <span style={{ fontSize: 9.5, color: '#bbb' }}>{NOMES_DIA_CURTO[diaDaSemana(d)]}</span>}
-          <span style={{ flex: 1 }} />
-          {podeEditar && (
-            <button onClick={() => setNovaEm(d)} title="Nova reunião neste dia"
-              style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>+</button>
+      <div style={{ flex: 1, minWidth: 0, background: rit ? tomClaro(cor, '0f') : '#fff', border: `1px solid ${hoje ? cor : '#f0f0f0'}`, boxShadow: hoje ? `0 0 0 1.5px ${tomClaro(cor, '55')}` : 'none', borderRadius: 10, overflow: 'hidden', minHeight: altura, display: 'flex', flexDirection: 'column', opacity: doMes ? 1 : 0.45 }}>
+        {/* faixa da cor do dia */}
+        <div style={{ height: 4, background: rit ? cor : '#f0f0f0', flexShrink: 0 }} />
+        <div style={{ padding: 7, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: rit ? cor : '#999' }}>{d.getDate()}</span>
+            {compacto && <span style={{ fontSize: 9.5, color: '#bbb' }}>{NOMES_DIA_CURTO[diaDaSemana(d)]}</span>}
+            {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: '#fff', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
+            <span style={{ flex: 1 }} />
+            {podeEditar && (
+              <button onClick={() => setNovaEm(d)} title="Nova reunião neste dia"
+                style={{ background: 'none', border: 'none', color: rit ? cor : '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, opacity: 0.7 }}>+</button>
+            )}
+          </div>
+          {rit && !compacto && (
+            <span style={{ display: 'block', fontSize: 9.5, fontWeight: 800, color: cor, background: tomClaro(cor, '22'), borderRadius: 6, padding: '2px 6px', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rit.area}</span>
           )}
-        </div>
-        {rit && !compacto && (
-          <span style={{ display: 'block', fontSize: 9.5, fontWeight: 800, color: '#4f46e5', background: '#eef2ff', borderRadius: 6, padding: '2px 6px', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rit.area}</span>
-        )}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {lista.slice(0, compacto ? 3 : 20).map(r => <Chip key={r.id} r={r} compacto={compacto} />)}
-          {compacto && lista.length > 3 && <span style={{ fontSize: 9.5, color: '#bbb', fontWeight: 700 }}>+{lista.length - 3}</span>}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {lista.slice(0, compacto ? 3 : 20).map(r => <Chip key={r.id} r={r} compacto={compacto} cor={cor} />)}
+            {compacto && lista.length > 3 && <span style={{ fontSize: 9.5, color: '#bbb', fontWeight: 700 }}>+{lista.length - 3}</span>}
+          </div>
         </div>
       </div>
     )
@@ -189,17 +205,38 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
         {podeEditar && <button onClick={() => setNovaEm(new Date())} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova reunião</button>}
       </div>
 
-      {/* RITUAL DA SEMANA — a régua que dá foco à reunião do dia */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+      {/* RITUAL DA SEMANA — cartões, um por dia, na cor da área. É o mapa da
+          semana: bate o olho e sabe que hoje é comercial. Clicar leva o
+          calendário para aquele dia. */}
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {ritual.length === 0 && <span style={{ fontSize: 12, color: '#bbb' }}>Nenhuma área definida para os dias da semana.</span>}
-        {ritual.map(r => (
-          <span key={r.dia} style={{ fontSize: 11, fontWeight: 800, color: '#4f46e5', background: '#eef2ff', borderRadius: 999, padding: '5px 11px' }}>
-            {NOMES_DIA[r.dia]} · {r.area.toUpperCase()}{r.hora ? ` · ${r.hora}` : ''}
-          </span>
-        ))}
+        {ritual.map(r => {
+          const cor = r.cor || '#64748b'
+          const dia = semanaDe(ref).find(d => diaDaSemana(d) === r.dia)!
+          const qtd = (porDia.get(ymd(dia)) || []).length
+          const hoje = ehHoje(dia)
+          return (
+            <button key={r.dia} onClick={() => { setRef(dia); if (vista === 'mes') setVista('semana') }}
+              title={`Ver ${NOMES_DIA[r.dia]} (${dia.toLocaleDateString('pt-BR')})`}
+              style={{ flex: '1 1 150px', minWidth: 132, textAlign: 'left', font: 'inherit', cursor: 'pointer', border: `1px solid ${hoje ? cor : '#efefef'}`, borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: hoje ? `0 2px 10px ${tomClaro(cor, '40')}` : '0 1px 3px rgba(0,0,0,0.05)', padding: 0 }}>
+              <div style={{ height: 5, background: cor }} />
+              <div style={{ padding: '9px 11px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{NOMES_DIA[r.dia]}</span>
+                  {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: '#fff', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
+                </div>
+                <p style={{ margin: '3px 0 0', fontSize: 13.5, fontWeight: 800, color: cor, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.area}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#aaa' }}>
+                  {r.hora ? `${r.hora} · ` : ''}{qtd ? `${qtd} nesta semana` : 'sem reunião'}
+                </p>
+              </div>
+            </button>
+          )
+        })}
         {podeEditar && (
-          <button onClick={() => setRitualAberto(true)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            Editar ritual da semana
+          <button onClick={() => setRitualAberto(true)} title="Definir a área e a cor de cada dia"
+            style={{ flex: '0 0 auto', minWidth: 104, border: '1px dashed #dcdcdc', borderRadius: 12, background: '#fff', cursor: 'pointer', font: 'inherit', color: '#999', fontSize: 11.5, fontWeight: 700, padding: '10px 12px' }}>
+            Editar ritual
           </button>
         )}
       </div>
@@ -232,7 +269,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
               return (
                 <div key={d} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
                   <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#999' }}>{NOMES_DIA_CURTO[d]}</span>
-                  {rit && <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#4f46e5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rit.area}</span>}
+                  {rit && <span style={{ display: 'block', fontSize: 9, fontWeight: 800, color: rit.cor || '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{rit.area}</span>}
                 </div>
               )
             })}
@@ -244,7 +281,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
               {semana.map(d => (
                 <div key={ymd(d)} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   {vista === 'semana' && (
-                    <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: ehHoje(d) ? '#111' : '#aaa', marginBottom: 3, textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: ritualDoDia(ritual, d) ? corDoDia(ritual, d) : '#bbb', marginBottom: 3, textAlign: 'center' }}>
                       {NOMES_DIA_CURTO[diaDaSemana(d)]}
                     </span>
                   )}
@@ -275,7 +312,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
       {ritualAberto && <RitualModal ritual={ritual} onClose={() => setRitualAberto(false)} onSalvo={r => { setRitual(r); setRitualAberto(false) }} />}
       {aberta && (
         <ReuniaoModal
-          reuniao={aberta} usuarios={usuarios} salvando={salvando} podeEditar={podeEditar}
+          reuniao={aberta} ritual={ritual} usuarios={usuarios} salvando={salvando} podeEditar={podeEditar}
           onSalvar={salvar} onExcluir={() => excluir(aberta)} onClose={() => { setAberta(null); carregar() }}
         />
       )}
@@ -287,10 +324,12 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
 function RitualModal({ ritual, onClose, onSalvo }: { ritual: DiaRitual[]; onClose: () => void; onSalvo: (r: DiaRitual[]) => void }) {
   // Sete linhas sempre: um dia sem área é um dia sem reunião fixa, e some da
   // faixa ao salvar (o servidor descarta área vazia).
-  const [dias, setDias] = useState<{ dia: number; area: string; hora: string }[]>(
+  const [dias, setDias] = useState<{ dia: number; area: string; hora: string; cor: string }[]>(
     [1, 2, 3, 4, 5, 6, 7].map(d => {
       const r = ritual.find(x => x.dia === d)
-      return { dia: d, area: r?.area || '', hora: r?.hora || '' }
+      // Dia novo já nasce com uma cor da paleta (nunca duas iguais em sequência):
+      // pedir para escolher cor antes de digitar a área é atrito à toa.
+      return { dia: d, area: r?.area || '', hora: r?.hora || '', cor: r?.cor || CORES_RITUAL[(d - 1) % CORES_RITUAL.length].cor }
     }),
   )
   const [salvando, setSalvando] = useState(false)
@@ -312,14 +351,23 @@ function RitualModal({ ritual, onClose, onSalvo }: { ritual: DiaRitual[]; onClos
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Ritual da semana</h3>
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>A área que é tema de cada dia. Deixe em branco o dia que não tem reunião fixa.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {dias.map((d, i) => (
-            <div key={d.dia} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 66, fontSize: 12.5, fontWeight: 700, color: '#666', flexShrink: 0 }}>{NOMES_DIA[d.dia]}</span>
-              <input value={d.area} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, area: e.target.value } : x))}
-                placeholder="Ex.: Comercial" style={{ ...input, flex: 1 }} />
-              <input type="time" value={d.hora} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, hora: e.target.value } : x))}
-                style={{ ...input, width: 104 }} />
+            <div key={d.dia} style={{ border: '1px solid #f2f2f2', borderRadius: 12, padding: 10, borderLeft: `4px solid ${d.area.trim() ? d.cor : '#eee'}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 62, fontSize: 12.5, fontWeight: 800, color: '#666', flexShrink: 0 }}>{NOMES_DIA[d.dia]}</span>
+                <input value={d.area} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, area: e.target.value } : x))}
+                  placeholder="Ex.: Comercial" style={{ ...input, flex: 1 }} />
+                <input type="time" value={d.hora} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, hora: e.target.value } : x))}
+                  style={{ ...input, width: 96 }} />
+              </div>
+              {/* Cor do dia: paleta fechada — é ela que vai pintar o calendário. */}
+              <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap', opacity: d.area.trim() ? 1 : 0.4 }}>
+                {CORES_RITUAL.map(c => (
+                  <button key={c.cor} onClick={() => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, cor: c.cor } : x))} title={c.nome}
+                    style={{ width: 20, height: 20, borderRadius: 6, background: c.cor, cursor: 'pointer', border: d.cor === c.cor ? '2px solid #111' : '2px solid transparent', padding: 0 }} />
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -419,14 +467,15 @@ function NovaReuniaoModal({ dia, ritual, onCriar, onClose, salvando }: { dia: Da
   )
 }
 
-function ReuniaoModal({ reuniao, usuarios, salvando, podeEditar, onSalvar, onExcluir, onClose }: {
-  reuniao: Reuniao; usuarios: Usuario[]; salvando: boolean; podeEditar: boolean
+function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalvar, onExcluir, onClose }: {
+  reuniao: Reuniao; ritual: DiaRitual[]; usuarios: Usuario[]; salvando: boolean; podeEditar: boolean
   onSalvar: (r: Reuniao, extra?: any) => Promise<Reuniao | null>; onExcluir: () => void; onClose: () => void
 }) {
   const [r, setR] = useState<Reuniao>(reuniao)
   const [novaDecisao, setNovaDecisao] = useState('')
   const [novaPauta, setNovaPauta] = useState('')
   useEffect(() => { setR(reuniao) }, [reuniao.id])
+  const corArea = corDoDia(ritual, new Date(r.data))
 
   function addDecisao() {
     const texto = novaDecisao.trim()
@@ -464,7 +513,7 @@ function ReuniaoModal({ reuniao, usuarios, salvando, podeEditar, onSalvar, onExc
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
-          {r.area && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#4f46e5', background: '#eef2ff', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{r.area}</span>}
+          {r.area && <span style={{ fontSize: 10.5, fontWeight: 800, color: corArea, background: tomClaro(corArea, '22'), borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{r.area}</span>}
           {r.serieId && <span title="Faz parte de uma recorrência semanal" style={{ fontSize: 10.5, fontWeight: 700, color: '#a16207', background: '#fffbeb', borderRadius: 999, padding: '3px 9px' }}>série semanal</span>}
         </div>
 
