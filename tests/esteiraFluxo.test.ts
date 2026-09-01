@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae } from '@/lib/esteiraFluxo'
+import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato } from '@/lib/esteiraFluxo'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 
 // Linha de montagem Studio > Tarefa > Planner: as transicoes do fluxo.
@@ -135,5 +135,71 @@ describe('prazoTarefaMae', () => {
   it('sem nenhuma data -> ultimo dia do mes do plano (fevereiro incluso)', () => {
     expect(prazoTarefaMae([], { mes: 2, ano: 2026 })).toBe('2026-02-28T23:59:00.000Z')
     expect(prazoTarefaMae([], { mes: 12, ano: 2026 })).toBe('2026-12-31T23:59:00.000Z')
+  })
+})
+
+// Tarefa nascida da pauta do Studio: o que o designer precisa ver ANTES de abrir
+// a pauta — formato, quantas lâminas, e se a copy passou ou não pelo cliente.
+describe('tipoTarefaDoFormato', () => {
+  it('carrossel vira tipo carrossel (chip roxo + checklist das lâminas)', () => {
+    expect(tipoTarefaDoFormato('carrossel')).toBe('carrossel')
+  })
+  it('reel e story mantêm a própria identidade', () => {
+    expect(tipoTarefaDoFormato('reel')).toBe('reel')
+    expect(tipoTarefaDoFormato('story')).toBe('story')
+  })
+  it('feed vira post', () => {
+    expect(tipoTarefaDoFormato('feed')).toBe('post')
+  })
+  it('material gráfico e formato ausente caem no genérico', () => {
+    expect(tipoTarefaDoFormato('grafico')).toBe('criativo')
+    expect(tipoTarefaDoFormato(undefined)).toBe('criativo')
+    expect(tipoTarefaDoFormato('coisa-nova')).toBe('criativo')
+  })
+})
+
+describe('descricaoTarefaDesigner — formato e origem', () => {
+  it('carrossel anuncia o formato E a contagem de lâminas', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'Agro', formato: 'carrossel', laminas: [{ texto: 'a' }, { texto: '' }, { texto: 'c' }] })
+    expect(d).toContain('Formato:</strong> Carrossel · 3 lâminas')
+  })
+
+  it('lâmina sem texto continua fora da lista, mas ENTRA na contagem', () => {
+    const d = descricaoTarefaDesigner({ formato: 'carrossel', laminas: [{ texto: 'unica' }, { texto: '' }] })
+    expect(d).toContain('2 lâminas')
+    expect(d).not.toContain('Lâmina 2:')
+  })
+
+  it('uma lâmina só fica no singular', () => {
+    const d = descricaoTarefaDesigner({ formato: 'carrossel', laminas: [{ texto: 'a' }] })
+    expect(d).toContain('· 1 lâmina')
+    expect(d).not.toContain('1 lâminas')
+  })
+
+  it('carrossel sem lâminas cadastradas não inventa contagem', () => {
+    const d = descricaoTarefaDesigner({ formato: 'carrossel' })
+    expect(d).toContain('Formato:</strong> Carrossel')
+    expect(d).not.toContain('lâmina')
+  })
+
+  it('formato ausente não vira linha vazia', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'sem formato' })
+    expect(d).not.toContain('Formato:')
+  })
+
+  it('criada do briefing NÃO diz que a copy foi aprovada', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'Ideia crua' }, { manual: true, etapa: 'briefing' })
+    expect(d).not.toContain('Copy aprovada')
+    expect(d).toContain('A copy ainda não foi escrita')
+  })
+
+  it('criada na etapa de copy avisa que o cliente ainda não aprovou', () => {
+    const d = descricaoTarefaDesigner({ briefing: 'x' }, { manual: true, etapa: 'aprovacao_copy' })
+    expect(d).toContain('ainda NÃO foi aprovada')
+  })
+
+  it('caminho automático segue dizendo copy aprovada', () => {
+    expect(descricaoTarefaDesigner({ briefing: 'x' })).toContain('Copy aprovada pelo cliente')
+    expect(descricaoTarefaDesigner({ briefing: 'x' }, { manual: false })).toContain('Copy aprovada pelo cliente')
   })
 })

@@ -31,15 +31,52 @@ export function deveCriarTarefaDesigner(post: { etapa?: string; tarefaId?: strin
 
 // Descricao da tarefa do designer: a copy aprovada INTEIRA, pronta para
 // producao. HTML simples porque Tarefa.descricao e texto rico na UI.
+// FORMATO da pauta -> TIPO da tarefa. O tipo não é enfeite: ele pinta o chip no
+// kanban e escolhe o checklist de Definition of Done (carrossel ganha
+// "Design das lâminas", reel ganha "Gravação"). Nascer tudo como 'criativo'
+// escondia que a peça era um carrossel de N lâminas.
+export function tipoTarefaDoFormato(formato?: string): 'carrossel' | 'reel' | 'story' | 'post' | 'criativo' {
+  switch (formato) {
+    case 'carrossel': return 'carrossel'
+    case 'reel': return 'reel'
+    case 'story': return 'story'
+    case 'feed': return 'post'
+    // 'grafico' (banner, fachada, revista) e formato ausente ficam no genérico.
+    default: return 'criativo'
+  }
+}
+
+// Abertura da descrição: diz POR QUE a tarefa existe. Criada à mão a partir de um
+// briefing, "copy aprovada pelo cliente" seria mentira — e o designer trabalharia
+// achando que o texto já passou pelo cliente.
+function aberturaTarefa(origem?: { manual?: boolean; etapa?: string }): string {
+  if (!origem?.manual) return '<p><strong>Copy aprovada pelo cliente — produzir o criativo.</strong></p>'
+  if (origem.etapa === 'briefing') return '<p><strong>Tarefa criada a partir do briefing da pauta.</strong> A copy ainda não foi escrita.</p>'
+  if (origem.etapa === 'copy' || origem.etapa === 'aprovacao_copy') return '<p><strong>Tarefa criada a partir da pauta.</strong> A copy ainda NÃO foi aprovada pelo cliente.</p>'
+  return '<p><strong>Tarefa criada a partir da pauta do Studio.</strong></p>'
+}
+
 export function descricaoTarefaDesigner(post: {
   briefing?: string; headline?: string; subheadline?: string
   textoImagem?: string; cta?: string; legenda?: string; sugestaoImagem?: string
   laminas?: { texto: string }[]
   medidas?: string; localAplicacao?: string
-}): string {
+  formato?: string
+}, origem?: { manual?: boolean; etapa?: string }): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const nLaminas = (post.laminas || []).length
+  // Carrossel precisa anunciar QUANTAS lâminas: o designer dimensiona o trabalho
+  // por isso, e lâmina sem texto (só com anexo) não aparece na lista abaixo.
+  const formatoTxt = post.formato === 'carrossel'
+    ? `Carrossel${nLaminas ? ` · ${nLaminas} lâmina${nLaminas > 1 ? 's' : ''}` : ''}`
+    : post.formato === 'reel' ? 'Reel'
+    : post.formato === 'story' ? 'Story'
+    : post.formato === 'feed' ? 'Feed (imagem única)'
+    : post.formato === 'grafico' ? 'Material gráfico'
+    : ''
   const linhas = [
-    '<p><strong>Copy aprovada pelo cliente — produzir o criativo.</strong></p>',
+    aberturaTarefa(origem),
+    formatoTxt ? `<p><strong>Formato:</strong> ${formatoTxt}</p>` : '',
     post.briefing ? `<p><strong>Briefing:</strong> ${esc(post.briefing)}</p>` : '',
     // Material gráfico: as specs vêm ANTES do texto — o designer produz na medida certa.
     post.localAplicacao ? `<p><strong>Local de aplicação:</strong> ${esc(post.localAplicacao)}</p>` : '',

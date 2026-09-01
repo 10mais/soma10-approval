@@ -8,7 +8,7 @@
 
 import { redis, Post, Tarefa, Plano, Cliente } from './redis'
 import { v4 as uuid } from 'uuid'
-import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae } from './esteiraFluxo'
+import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato } from './esteiraFluxo'
 import { notificar } from './notificacoes'
 import { dispararEvento } from './automacoesEngine'
 
@@ -123,14 +123,20 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
       const atualizada: Tarefa = {
         ...t,
         status: t.status === 'concluido' ? 'a_fazer' : t.status,
-        descricao: descricaoTarefaDesigner(post),
+        descricao: descricaoTarefaDesigner(post, { manual: opts.manual, etapa: post.etapa }),
+        // O formato pode ter mudado depois da tarefa criada (virou carrossel):
+        // o chip e o checklist do kanban têm de acompanhar.
+        tipo: tipoTarefaDoFormato(post.formato),
         ...(anexosT.length ? { anexos: anexosT } : {}),
         atualizadoEm: agora,
-        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Copy reaprovada pelo cliente — tarefa atualizada com a copy nova', autor, criadoEm: agora }],
+        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: opts.manual ? 'Tarefa atualizada com o conteúdo atual da pauta (Studio)' : 'Copy reaprovada pelo cliente — tarefa atualizada com a copy nova', autor, criadoEm: agora }],
       }
       await redis.set(`tarefa:${t.id}`, atualizada)
       if (t.responsavelEmail) {
-        await notificar(t.responsavelEmail, 'geral', `Copy reaprovada — ${post.clienteNome || 'Cliente'}`, `A copy da pauta "${tituloSubtarefa(post)}" foi reaprovada. A tarefa foi atualizada.`, undefined, t.id).catch(() => {})
+        await notificar(t.responsavelEmail, 'geral',
+          opts.manual ? `Pauta atualizada — ${post.clienteNome || 'Cliente'}` : `Copy reaprovada — ${post.clienteNome || 'Cliente'}`,
+          opts.manual ? `A tarefa "${t.titulo}" foi atualizada com o conteúdo atual da pauta.` : `A copy da pauta "${tituloSubtarefa(post)}" foi reaprovada. A tarefa foi atualizada.`,
+          undefined, t.id).catch(() => {})
       }
       return { tarefaId: t.id, reaberta: true }
     }
@@ -153,8 +159,11 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   const sub: Tarefa = {
     id: uuid(),
     titulo: tituloSubtarefa(post),
-    descricao: descricaoTarefaDesigner(post),
-    tipo: 'criativo',
+    descricao: descricaoTarefaDesigner(post, { manual: opts.manual, etapa: post.etapa }),
+    // Tipo pelo FORMATO da pauta: é o que pinta o chip no kanban e escolhe o
+    // checklist (carrossel -> "Design das lâminas"). Tudo como 'criativo'
+    // escondia que a peça era um carrossel.
+    tipo: tipoTarefaDoFormato(post.formato),
     status: 'a_fazer',
     prioridade: 'media',
     responsavelEmail: designerEmail,
@@ -168,7 +177,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
     criadoPor: autor,
     criadoEm: agora,
     atualizadoEm: agora,
-    atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Criada automaticamente: copy aprovada pelo cliente — produzir o criativo', autor, criadoEm: agora }],
+    atividades: [{ id: uuid(), tipo: 'criacao', descricao: opts.manual ? 'Criada a partir da pauta no Studio' : 'Criada automaticamente: copy aprovada pelo cliente — produzir o criativo', autor, criadoEm: agora }],
     comentarios: [],
   }
   await redis.set(`tarefa:${sub.id}`, sub)
