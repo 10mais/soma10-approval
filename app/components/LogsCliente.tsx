@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { apareceNoPlanner } from '@/lib/plannerFiltro'
 
 type Cliente = { id: string; nome: string }
 type Log = {
@@ -130,7 +131,12 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           const resolvido = l.tipo === 'aprovacao' || l.tipo === 'corrigir_legenda' || l.tipo === 'ajuste_aplicado' || jaTratado
           const acaoPost = resolvido ? onVerNoPlanner : onAbrirPost
           const abrivel = !!(l.postId && acaoPost) // solicitação de conteúdo não tem post
+          // Pauta sem arte (briefing/copy/criativo) vive no STUDIO, não no Planner —
+          // o rótulo tem que dizer para onde o clique leva de verdade.
+          const noStudio = !!l.postId && l.postExiste !== false && !apareceNoPlanner({ status: l.postStatus, etapa: l.postEtapa })
+          const rotuloAcao = noStudio ? 'Abrir no Studio' : resolvido ? 'Ver no planner' : 'Abrir e corrigir'
           const titulo = !abrivel ? undefined
+            : noStudio ? 'Abrir a pauta no Studio — a copy é editada lá, antes da arte'
             : l.tipo === 'corrigir_legenda' ? 'Ver no Planner — a legenda corrigida já está aplicada'
             : resolvido ? 'Ver o post no Planner'
             : 'Abrir o post no editor para corrigir e reenviar'
@@ -241,7 +247,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                       <div>
                         <button onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: resolvido ? '#f0fdf4' : '#eff6ff', color: resolvido ? e.cor : '#1d4ed8', border: `1px solid ${resolvido ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {resolvido ? 'Ver no planner' : 'Abrir e corrigir'}
+                          {rotuloAcao}
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                         </button>
                       </div>
@@ -255,7 +261,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                 {abrivel && (
                   <span onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
                     style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : '#1d4ed8', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                    {resolvido ? 'Ver no planner' : 'Abrir e corrigir'}
+                    {rotuloAcao}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </span>
                 )}

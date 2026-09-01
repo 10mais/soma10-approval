@@ -1306,6 +1306,14 @@ function Dashboard() {
     return (posts.find(x => x.id === postId) as Post) || null
   }
 
+  // Leva o Studio até a pauta (cliente + plano + linha aberta). `em` muda sempre,
+  // para reabrir a MESMA pauta num segundo clique.
+  function abrirPautaNoStudio(p: any) {
+    setFocoStudio({ pautaId: p.id, clienteId: p.clienteId, planoId: p.planoId, em: Date.now() })
+    setPostPreview(null)
+    setAba('studio')
+  }
+
   // Link público de status (sem login) do cliente
   async function statusPublico(clienteId: string) {
     const r = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
@@ -1462,6 +1470,8 @@ function Dashboard() {
 
   const [republicandoId, setRepublicandoId] = useState<string | null>(null)
   // "Programar novamente": remarcar data/hora direto na prévia, sem abrir o editor inteiro
+  // Pauta que o Studio deve abrir ao receber a navegação (Solicitações de COPY)
+  const [focoStudio, setFocoStudio] = useState<{ pautaId: string; clienteId?: string; planoId?: string; em: number } | null>(null)
   const [reprogramandoId, setReprogramandoId] = useState<string | null>(null)
   const [novaDataReprog, setNovaDataReprog] = useState('')
   const [salvandoReprog, setSalvandoReprog] = useState(false)
@@ -3531,6 +3541,7 @@ function Dashboard() {
         {aba === 'studio' && (
           <StudioMes clientes={clientes} clienteFixo={verComoClienteId || undefined} podeEditar={podeNivelDash('producao', 'editar')} podeExcluir={podeNivelDash('producao', 'excluir')} podeGerarIA={podeAcaoDash('gerar_ia')} podeEnviarCliente={podeAcaoDash('enviar_cliente')}
             postsGlobais={posts as any} usuariosEquipe={usuarios.map((u: any) => ({ nome: u.nome, email: u.email }))} meuEmail={(session?.user as any)?.email || ''}
+            foco={focoStudio || undefined}
             onAbrirComposer={(pauta: any) => {
             setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
             setEditandoPostId(pauta.id)
@@ -4903,21 +4914,20 @@ function Dashboard() {
           <LogsCliente clientes={clientes} onAbrirPost={async (postId: string) => {
             // Abre o post da solicitação no editor (corrigir → "Enviar para aprovação" reenvia ao cliente).
             const p = await buscarPostFresco(postId)
-            if (p) iniciarEdicaoPost(p as any)
-            else toast('Post não encontrado — pode ter sido excluído.', 'erro')
+            if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
+            // Pedido de COPY: a peça ainda não tem arte e vive no Studio. O composer
+            // edita legenda/imagens, não headline/subtítulo/CTA — mandar para lá era
+            // o destino errado.
+            if (!apareceNoPlanner(p as any)) { abrirPautaNoStudio(p as any); return }
+            iniciarEdicaoPost(p as any)
           }} onVerNoPlanner={async (postId: string) => {
-            // Já aprovado: não há o que corrigir. Leva para o Planner (Lista, filtrado no cliente)
-            // e abre a pré-visualização da peça.
+            // Já resolvido: não há o que corrigir, só reencontrar a peça.
             const p = await buscarPostFresco(postId)
             if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
-            if (apareceNoPlanner(p as any)) {
-              setBibCliente(p.clienteNome || '')
-              setPlannerView('lista')
-              setAba('planner')
-            } else {
-              // Copy aprovada segue para o criativo: a peça vive no Studio até a arte ficar pronta.
-              toast('Esta peça ainda não está no Planner — a arte está sendo produzida no Studio. Abaixo, o post como o cliente deixou.', 'info')
-            }
+            if (!apareceNoPlanner(p as any)) { abrirPautaNoStudio(p as any); return }
+            setBibCliente(p.clienteNome || '')
+            setPlannerView('lista')
+            setAba('planner')
             setPostPreview(p as any)
           }} />
         )}

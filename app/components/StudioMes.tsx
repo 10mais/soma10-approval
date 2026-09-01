@@ -168,10 +168,14 @@ function PipelinePauta({ p }: { p: Pauta }) {
   )
 }
 
-export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true, podeGerarIA = true, podeEnviarCliente = true, postsGlobais, usuariosEquipe, meuEmail }: {
+export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, podeEditar = true, podeExcluir = true, podeGerarIA = true, podeEnviarCliente = true, postsGlobais, usuariosEquipe, meuEmail, foco }: {
   clientes: Cliente[]
   clienteFixo?: string
   onAbrirComposer?: (pauta: Pauta) => void
+  // Chegada de FORA apontando uma pauta (ex.: Solicitações do cliente, quando o
+  // pedido é de COPY — que vive aqui, não no Planner). Seleciona cliente+plano,
+  // abre a linha e rola até ela. `em` muda a cada clique para reabrir a mesma pauta.
+  foco?: { pautaId: string; clienteId?: string; planoId?: string; em: number }
   podeEditar?: boolean
   podeExcluir?: boolean
   podeGerarIA?: boolean
@@ -333,6 +337,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // Persiste a seleção (cliente + plano) para sobreviver ao refresh.
   useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem(`${chaveSel}:cli`, clienteSel) }, [clienteSel, chaveSel])
   useEffect(() => { if (typeof window !== 'undefined') sessionStorage.setItem(`${chaveSel}:plano`, planoSel) }, [planoSel, chaveSel])
+
+  // FOCO: leva a tela até a pauta pedida (cliente + plano + linha aberta).
+  useEffect(() => {
+    if (!foco?.pautaId) return
+    if (foco.clienteId && !clienteFixo) setClienteSel(foco.clienteId)
+    if (foco.planoId) setPlanoSel(foco.planoId)
+    setAbertos(prev => { const n = new Set(prev); n.add(foco.pautaId); return n })
+  }, [foco?.em]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rolar só DEPOIS que a pauta existe na lista (as pautas chegam por fetch).
+  useEffect(() => {
+    if (!foco?.pautaId || !pautas.some(x => x.id === foco.pautaId)) return
+    const el = typeof document !== 'undefined' ? document.getElementById(`pauta-${foco.pautaId}`) : null
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [foco?.em, pautas]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function carregarPautas(planoId: string) {
     if (!planoId) { setPautas([]); return }
@@ -1203,7 +1222,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               const fmt = FORMATOS.find(f => f.key === (p.formato || 'feed')) || FORMATOS[0]
               const dataFmt = p.dataAgendada ? `${new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'sem data'
               return (
-                <div key={p.id} className="st-row" style={{ borderBottom: '1px solid #f4f4f5', background: aberto ? '#fbfbfd' : undefined, animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
+                <div key={p.id} id={`pauta-${p.id}`} className="st-row" style={{ borderBottom: '1px solid #f4f4f5', background: aberto ? '#fbfbfd' : undefined, ...(foco?.pautaId === p.id ? { boxShadow: 'inset 3px 0 0 #ffc00f' } : {}), animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
                   {/* Item recolhido — lista limpa, sem controles nativos */}
                   <div onClick={() => toggleLinha(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', cursor: 'pointer' }}>
                     {podeExcluir && (
