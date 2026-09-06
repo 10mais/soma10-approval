@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 //
 // Convivência com o tema antigo: a raiz do dashboard aplica filter:invert no
 // escuro. Este container leva .soma10-no-invert (cancela o invert) e pinta o
-// escuro com tokens de verdade (globals.css, escopo .soma10-v2).
+// escuro com tokens de verdade (globals.css, escopo .v2-home).
 
 type Parte = { texto: string; destaque?: boolean; quente?: boolean; alvo?: 'tarefas' | 'clientes' | 'hoje' | 'reunioes' }
 type Evento = { id: string; hora: string; minuto: number; tipo: 'post' | 'reuniao' | 'agenda'; titulo: string; detalhe?: string; feito?: boolean }
@@ -95,12 +95,12 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
   const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
-    <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'}>
+    <div className="soma10-v2 soma10-no-invert v2-home" data-theme={tema === 'escuro' ? 'dark' : 'light'}>
       <style>{`
-        .soma10-v2 { background: var(--v2-ground); color: var(--v2-ink); font-family: var(--v2-font); margin: -20px; padding: 26px 36px 90px; min-height: calc(100vh - 60px); border-radius: 0; }
-        .soma10-v2 *, .soma10-v2 *::before, .soma10-v2 *::after { box-sizing: border-box; }
-        .soma10-v2 button { font-family: inherit; }
-        .soma10-v2 :focus-visible { outline: 2px solid var(--v2-amber); outline-offset: 3px; border-radius: 6px; }
+        .v2-home { background: var(--v2-ground); color: var(--v2-ink); font-family: var(--v2-font); margin: -20px; padding: 26px 36px 90px; min-height: calc(100vh - 60px); border-radius: 0; }
+        .v2-home *, .v2-home *::before, .v2-home *::after { box-sizing: border-box; }
+        .v2-home button { font-family: inherit; }
+        .v2-home :focus-visible { outline: 2px solid var(--v2-amber); outline-offset: 3px; border-radius: 6px; }
         .v2-wrap { max-width: 1180px; }
         .v2-top { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
         .v2-busca { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 240px; max-width: 460px; background: var(--v2-surface); border: 1px solid var(--v2-rule); border-radius: 12px; padding: 10px 14px; color: var(--v2-ink3); cursor: text; font-size: 14px; text-align: left; }
@@ -168,7 +168,7 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
         .v2-cli .dias small { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
         .v2-cli.parado .dias { color: var(--v2-hot); }
         .v2-duas { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; }
-        @media (max-width: 900px) { .v2-duas { grid-template-columns: 1fr; } .soma10-v2 { padding: 18px 16px 80px; } }
+        @media (max-width: 900px) { .v2-duas { grid-template-columns: 1fr; } .v2-home { padding: 18px 16px 80px; } }
         .v2-t { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--v2-rule); }
         .v2-t:first-of-type { border-top: 0; }
         .v2-t .tx { flex: 1; min-width: 0; }
