@@ -4,6 +4,7 @@ import EntregasMarco, { Entregas } from './EntregasMarco'
 import AvatarCliente from './AvatarCliente'
 import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
+import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -42,6 +43,9 @@ function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('p
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
   const [marcos, setMarcos] = useState<Marco[]>([])
+  // Ball-in-court: de quem é a bola AGORA. Derivado no servidor a partir dos
+  // posts e tarefas que já existem — nada digitado, nada gravado.
+  const [bola, setBola] = useState<BolaDaVez | null>(null)
   const [periodo, setPeriodo] = useState('mensal')
   const [filtroCliente, setFiltroCliente] = useState('')
   const [editModal, setEditModal] = useState<Marco | null>(null)
@@ -69,8 +73,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   })()
 
   function carregar() {
-    if (!clienteAtivo) { setMarcos([]); return }
+    if (!clienteAtivo) { setMarcos([]); setBola(null); return }
     fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+    // Falha aqui não pode derrubar o Playbook: sem a bola, a tela segue como era.
+    fetch(`/api/playbook/bola?clienteId=${clienteAtivo}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setBola(d && d.lado ? d : null))
+      .catch(() => setBola(null))
   }
   useEffect(() => { carregar() }, [clienteAtivo])
 
@@ -141,6 +150,43 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       )}
 
       {clienteAtivo && <>
+      {/* DE QUEM É A BOLA (Ball-in-court) — a resposta vem antes do instrumento.
+          O Gantt diz QUANDO; isto diz o que falta agora e com quem está. Tudo
+          derivado: nenhum status digitado, nenhuma escrita. */}
+      {bola && bola.lado !== 'ninguem' && (() => {
+        const doCliente = bola.lado === 'cliente'
+        // No portal (somenteLeitura) quem lê é o cliente: "sua vez".
+        const cor = doCliente ? '#0e7566' : '#3f4c9b'
+        const fundo = doCliente ? '#dff0ec' : '#e6e8f5'
+        const atrasado = doCliente && (bola.diasParado || 0) >= 3
+        return (
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '16px 18px', marginBottom: 14, borderLeft: `4px solid ${atrasado ? '#dc2626' : cor}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cor, background: fundo, padding: '4px 11px', borderRadius: 999 }}>
+                {doCliente ? (somenteLeitura ? 'Sua vez' : 'Com o cliente') : (somenteLeitura ? 'Com a agência' : 'Com a equipe')}
+              </span>
+              <span style={{ fontSize: 14.5, color: '#111', fontWeight: 600 }}>{fraseDaBola(bola, somenteLeitura)}</span>
+              {atrasado && <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fef2f2', padding: '3px 9px', borderRadius: 999 }}>parado</span>}
+            </div>
+            {bola.itens.length > 0 && (
+              <ul style={{ margin: '10px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {bola.itens.map((i, n) => (
+                  <li key={n} style={{ fontSize: 13, color: '#555' }}>
+                    {i.titulo}
+                    {typeof i.desde === 'string' && <span style={{ color: '#aaa' }}> · desde {fmtData(i.desde)}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!doCliente && !somenteLeitura && bola.totalCliente > 0 && (
+              <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#888' }}>
+                E há {bola.totalCliente} {bola.totalCliente > 1 ? 'materiais' : 'material'} esperando o cliente.
+              </p>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Legenda de categorias */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
