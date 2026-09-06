@@ -1616,3 +1616,124 @@ não são tocados.
   identifica a área num relance) e o status virou selo — check verde + opacidade para
   realizada. Antes, segunda e sexta realizadas ficavam idênticas.
 - Conferido em imagem antes do deploy. Testes 915.
+
+## 43. Evolução 2026-08-20→09-06 — Meta reenviado · Solicitações automáticas · Bola da vez · FRONT NOVO em todo o sistema · Hub do cliente · Relatório da semana
+
+Sessão longa (várias semanas). Cada bloco abaixo é um commit ou grupo de commits na `main`,
+todos com `tsc` + `npm run test` verdes e READY confirmado na Vercel. Testes: 1005 → **1027**.
+
+### 43.1 Conector MCP do Soma10 e App Review da Meta (reenvio 04/09)
+- Conector MCP CONECTADO no Claude; a logo do cartão só vem pelo campo `icons` do
+  `serverInfo` (`app/api/mcp/[segredo]/route.ts`, icon-192/512).
+- A Meta rejeitou (20/08) por dois motivos de verdade: faltava `instagram_business_manage_insights`
+  no `scopeArr` do login do Instagram e o vídeo mostrava dois fluxos de login. Corrigido
+  o escopo (`app/api/instagram/oauth/route.ts`) — **escopo só monta a URL de autorização;
+  tokens já emitidos dos clientes NÃO mudam, ninguém precisou reconectar**. Vídeo A1/A2
+  regravado (IG + FB no mesmo take, legendas PT/EN na ordem: conectar IG → conectar FB →
+  postar nos dois → conferir IG → conferir FB → analytics). Reenviado 04/09; 2FA global
+  segue OFF até o resultado. Detalhes em `APP_REVIEW.md` (§1, §3.1 v2, §3.3, §3.4).
+- Lição registrada na memória: **pesquisar no repo/memória antes de dizer "não sei"** — a
+  senha do revisor estava neste arquivo e custou tempo do dono.
+
+### 43.2 Solicitações do cliente: antes → depois e ajuste sem retrabalho
+- `lib/logCliente.ts` guarda `mudancas: MudancaLog[]` (`diffCampos`) — a tela mostra a
+  legenda/data **antiga e a nova** lado a lado (`LogsCliente.tsx`).
+- `app/api/decision/route.ts`: quando o cliente pede só ajuste de **legenda/data/hora**,
+  o sistema aplica sozinho e trata como aprovado (`lib/ajusteCliente.ts`, 15 testes), já
+  reprogramando na data sugerida; resposta `{ aplicadoAutomaticamente, agendadoPara }`;
+  tipo de log `ajuste_aplicado`.
+- "Programar novamente" no Planner (`reprogramarPost`), "Ver no planner" busca o post
+  fresco (`buscarPostFresco`), e **pedido de COPY abre no Studio, não no Planner**
+  (`apareceNoPlanner` decide; `StudioMes` ganhou `foco` + `id="pauta-{id}"`).
+
+### 43.3 Studio → Tarefa carregando tudo · ações em massa · multi-perfil conferido
+- `lib/esteiraFluxo.ts`: `tipoTarefaDoFormato()` e `descricaoTarefaDesigner(post, origem)`
+  levam copy, legenda, anexos e, no carrossel, "Formato: Carrossel · N lâminas" para a
+  tarefa; `lib/tarefasDaPauta.ts` usa os dois.
+- `GestaoTarefas`: barra de **ações em massa** nas tarefas selecionadas (`aplicarEmMassa`:
+  status, responsável, prioridade, prazo) — pedido "igual ao ClickUp".
+- Publicação com 3 IG + 3 FB no mesmo cliente: `processarPublicacao` → `contasAlvo(cliente,
+  post.contaIds)` publica **só nos perfis marcados**; caso travado em
+  `tests/contasSociais.test.ts`.
+
+### 43.4 WhatsApp caiu (Railway) — modo de falha 2
+- Trial do Railway acabou: edge devolve 404 `{"message":"Application not found"}` = host
+  fora, não é socket morto. Assinatura feita pelo dono; a segunda cobrança era uso
+  proporcional. Runbook `runbook-whatsapp-evolution-socket-morto` (memória) ganhou o
+  modo 2. Pendente: `explicaFalhaConexao` reconhecer o 404 do Railway.
+
+### 43.5 Playbook — Bola da vez
+- `lib/bolaDaVez.ts` (26 testes) + `/api/playbook/bola` + bloco no `Playbook.tsx`: com quem
+  está a bola (cliente / agência / ninguém), há quantos dias, itens mais antigos primeiro.
+  Só leitura, derivado de posts/tarefas — não bagunça a operação; reversível.
+
+### 43.6 FRONT NOVO "Soma10 Noturno" — 8 fases, todas no ar
+Referência dondigital.com.br com as cores do 10+; fonte **Outfit** (`next/font`, `--font-outfit`).
+- **Tokens** `--v2-*` em `app/globals.css` (ground/surface/surface1/surface2/rule/rule2/
+  ink/ink2/ink3/amber/amber-on/amber-bg/ok/ok-bg/hot/hot-bg/info/info-bg/font). Vivem em
+  `:root` e `:root[data-theme="dark"]` (+ `.soma10-v2[data-theme]` para containers
+  explícitos). `.soma10-v2` é SÓ tokens — layout mora em classes próprias (`.v2-home`,
+  `.v2-rail`, `.v2-nav`, `.hub-*`). Gotcha vivido: um `margin:-20px; min-height:100vh` no
+  escopo `.soma10-v2` vazou para sidebar/controles e virou "a elipse gigante".
+- **Home V2** (`DashboardHomeV2.tsx` + `/api/home`): manchete personalizada por pessoa
+  (`lib/manchete.ts`, 18 testes; só amarelo/branco/cinza — sem laranja), régua do dia
+  08–20h (`lib/contextoPessoa.ts`), Google Agenda só leitura por conta de serviço
+  (`lib/googleCalendar.ts`; envs `GOOGLE_CALENDAR_SA_EMAIL/KEY/IDS` **ainda não criadas
+  pelo dono**), trilho de clientes infinito com setas e esmaecimento, Ctrl+K, "Ver como"
+  só para ADMIN (`?como=email`), cache Redis 60s por e-mail. Só perfil agência; clínica/
+  turismo/telefonia/cidadania seguem na `DashboardHome` antiga.
+- **Regras inegociáveis do mês** (`lib/regrasDoMes.ts`, `/api/config/regras`,
+  `RegrasDoMes.tsx` em Configurações → "Regras do mês"; chave `config:regrasDoMes`; jan–out
+  = 10 regras, nov/dez = outras frases; frase do dia gira pelo dia do mês). **Splash de
+  abertura** (`SplashRegra.tsx`): 5s com regra, 1,2s sem, uma vez por sessão.
+- **Sidebar virou rail** (`.v2-rail`), Config e link de aprovação do cliente
+  (`/aprovacoes/[token]`) no layout novo com toggle claro/escuro; "Acessar sub-account"
+  removido (o estado `verComoClienteId` continua existindo; só a entrada sumiu).
+- **Migração em massa (commit `bceda18`): 6.506 cores em 77 arquivos** viraram tokens por
+  script (`migra_tokens.py`, scratchpad da sessão — dicionário hex→token escolhido pelo
+  PAPEL da propriedade: texto/fundo/borda; texto escuro sobre âmbar fica literal `#17150E`;
+  preservados `<input type=color>`, canvas, HTML de impressão, Croqui/EditorLayoutVeiculo).
+  **O `filter: invert(1) hue-rotate(180deg)` da raiz SAIU** — ele criava containing block
+  para ~80 elementos `position:fixed` e era a causa dos bugs de layout do modo escuro. O
+  tema agora é de verdade: a raiz do painel sincroniza `data-theme` no `<html>` por efeito,
+  então portais (modais no body) acompanham. `.soma10-no-invert` ficou espalhado mas é
+  inócuo. Sobras de hex são semânticas (roxo, ciano, laranja, FB, WhatsApp).
+- **Gotcha grave corrigido:** o dono via "Revisor (você)" no Ver como. `/api/home` respondia
+  `Cache-Control: private, max-age=30, stale-while-revalidate=120`; o cache HTTP do
+  navegador é **por URL, não por usuário** — ao sair da conta do revisor da Meta e entrar
+  como Willian no mesmo navegador, a resposta alheia valia por até 150s. Agora `no-store`
+  nos dois lados, `memoria` do componente chaveada por `meuEmail|como`, resposta com
+  `eu.email` diferente é ignorada. **Regra: nunca cachear no navegador resposta que depende
+  da sessão.**
+
+### 43.7 HUB DO CLIENTE (commit `bf82818`) — "clico no cliente e vejo tudo dele"
+- Decisão do dono: o cliente **não terá login por enquanto** (fica para o multi-tenant);
+  `/cliente/[id]` virou a casa do cliente DENTRO da operação da equipe.
+- `layout.tsx` novo: trilho com identidade, grupos **Visão** (Início, Relatório da semana),
+  **Produção** (Playbook, Tarefas, Studio·pautas, Planner·conteúdos, Aprovações com selo,
+  Entregas), **Marca e dados** (Marca, Documentos, Social Listening, Analytics). Topo:
+  voltar ao Painel, **troca de cliente por select** mantendo a mesma subpágina, tema.
+  "Visualizar como cliente" saiu (layout e select do painel). Papel `cliente`, se logar,
+  vê só o núcleo antigo com as mesmas permissões.
+- Início (`page.tsx` + `lib/hubCliente.ts`, 8 testes): bola da vez, números (aguardando o
+  cliente / em produção / prontas / publicadas no mês / tarefas abertas+atrasadas) e
+  painéis com atalho. Páginas novas: `/tarefas` (`GestaoTarefas` ganhou `clienteFixo`:
+  filtro preso, seletor escondido, tarefa nova já atribuída, `?abrir=id`) e `/studio`
+  (`StudioMes clienteFixo`). Reuniões ficam fora (não têm `clienteId`).
+- **Relatório da semana** (`/relatorio`, `lib/relatorioSemana.ts`, 14 testes): seg 00:00 →
+  dom 23:59, navegável; **Entregue** (publicados, aprovados sem duplicar publicados,
+  tarefas concluídas, etapas do Playbook), **Em andamento** (aguardando o cliente via
+  `esperandoCliente`, em produção, tarefas abertas), **Próximos passos** (programados e
+  prazos dos 7 dias seguintes, atrasadas incluídas). Copiar texto (`textoRelatorio`),
+  WhatsApp (`wa.me`), Imprimir/PDF, **"Escrever com IA"** (`/api/clientes/relatorio-ia`:
+  Claude escreve texto corrido SOBRE os fatos, `REGRA_PTBR`, máx. 220 palavras, gasto
+  registrado). Ainda sob demanda — sem cron de sexta e sem "valor gerado" (métricas).
+
+### 43.8 Pendências para a próxima sessão
+- Dono: prints claro/escuro das telas (Tarefas, Planner, Studio, CRM) para caçar contraste
+  ruim pós-migração; envs do Google Agenda; texto das 10 regras em Configurações;
+  decidir escuro-por-padrão; resultado do App Review (aí ligar 2FA + fila §7 do
+  APP_REVIEW.md); trocar a senha do revisor exposta neste arquivo (repo público).
+- Código: relatório automático de sexta (cron + canal); `explicaFalhaConexao` para o 404
+  do Railway; limpar JSX morto do sub-account em `page.tsx`; páginas antigas do portal
+  (planner/aprovacoes/marca) ainda com lógica `viewAs` inerte; CONTEXTO §41.7.
