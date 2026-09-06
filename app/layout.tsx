@@ -35,6 +35,12 @@ export const viewport = { themeColor: '#111111', viewportFit: 'cover' as const, 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
+      <head>
+        {/* Fonte do layout novo (Soma10 Noturno). Carregada aqui para servir o painel E as páginas públicas. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" />
+      </head>
       <body style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
         <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /></Providers>
       </body>

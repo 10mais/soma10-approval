@@ -13,7 +13,7 @@ type PostA = {
   laminas?: { texto: string }[]; medidas?: string; localAplicacao?: string; ajusteCopy?: string
 }
 
-const btn = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '12px 8px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' })
+const btn = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '12px 8px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 12, fontWeight: 600, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' })
 
 // ISO -> valor de <input type="datetime-local"> (hora local).
 function toLocalInput(iso?: string): string {
@@ -25,7 +25,7 @@ function toLocalInput(iso?: string): string {
 }
 
 const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', marginBottom: 6 }
-const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
+const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
 
 type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string; imagens?: string[]; capasVideo?: Record<string, string> }
 
@@ -33,6 +33,19 @@ export default function AprovacoesPublicas() {
   const { token } = useParams()
   const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
+  // Tema do link público: o cliente escolhe (persistido no navegador dele);
+  // sem escolha, segue o sistema operacional. Cor oposta sempre disponível.
+  const [tema, setTema] = useState<'claro' | 'escuro'>('claro')
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem('soma10-tema-cliente')
+      if (salvo === 'escuro' || salvo === 'claro') { setTema(salvo); return }
+      if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) setTema('escuro')
+    } catch { /* sem storage: fica claro */ }
+  }, [])
+  function alternarTema() {
+    setTema(t => { const n = t === 'claro' ? 'escuro' : 'claro'; try { localStorage.setItem('soma10-tema-cliente', n) } catch {} ; return n })
+  }
   // Largura da tela SEM media query (o layout usa só estilo inline — ver nota
   // no wrap): desktop = 2 colunas + espelho · medio = 2 colunas · mobile = pilha.
   const [tela, setTela] = useState<'desktop' | 'medio' | 'mobile'>('desktop')
@@ -56,16 +69,16 @@ export default function AprovacoesPublicas() {
   const removerPost = (id: string) => { setDados(d => d ? { ...d, posts: d.posts.filter(p => p.id !== id) } : d); carregar() }
 
   if (!dados) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#fff' }}>
-      <div style={{ width: 36, height: 36, border: '3px solid #ffc00f', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <div className="soma10-v2" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--v2-ground)' }}>
+      <div style={{ width: 36, height: 36, border: '3px solid var(--v2-amber-on)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 
   const temProg = (dados.programacao || []).length > 0
   return (
-    <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <Header clienteName={dados.clienteNome || ''} />
+    <div className="soma10-v2" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ minHeight: '100vh', background: 'var(--v2-ground)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)' }}>
+      <Header clienteName={dados.clienteNome || ''} tema={tema} onTema={alternarTema} />
       {/* Duas colunas no desktop: Programação à ESQUERDA (largura TRAVADA em
           300px), materiais CENTRALIZADOS; no celular a programação desce para
           DEPOIS dos cards. Layout todo em estilo INLINE de propósito: a versão
@@ -82,15 +95,15 @@ export default function AprovacoesPublicas() {
         {erro && <p style={{ color: '#b91c1c', fontSize: 14 }}>{erro}</p>}
         {!erro && dados.posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <p style={{ fontSize: 17, fontWeight: 700, color: '#111', margin: '0 0 6px' }}>Tudo aprovado! 🎉</p>
-            <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.{temProg ? ' Veja ao lado o que está programado.' : ''}</p>
+            <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--v2-ink)', margin: '0 0 6px' }}>Tudo aprovado.</p>
+            <p style={{ fontSize: 14, color: 'var(--v2-ink3)', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.{temProg ? ' Veja ao lado o que está programado.' : ''}</p>
           </div>
         )}
         {dados.posts.length > 0 && (() => {
           const aguardando = dados.posts.filter(p => p.status !== 'corrigir').length
           const ajuste = dados.posts.length - aguardando
           return (
-            <p style={{ margin: '0 0 18px', fontSize: 14, color: '#555' }}>
+            <p style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--v2-ink2)' }}>
               {aguardando > 0 ? <><strong>{aguardando}</strong> {aguardando === 1 ? 'material aguardando' : 'materiais aguardando'} sua aprovação.</> : 'Nada aguardando sua aprovação.'}
               {ajuste > 0 ? <> <strong>{ajuste}</strong> em ajuste.</> : ''} Analise cada um abaixo.
             </p>
@@ -142,16 +155,16 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
     const [rot, cor, bg] = STATUS_ROTULO[it.status] || STATUS_ROTULO.agendado
     return (
       <div onClick={() => { setSlide(0); setPreview(it) }} title="Ver prévia do criativo"
-        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid #f2f2f2', cursor: 'pointer' }}>
+        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
         {it.capa
-          ? <img src={it.capa} alt="" style={{ width: 34, height: 42, objectFit: 'cover', borderRadius: 7, flexShrink: 0, background: '#f0f0f0' }} />
-          : <div style={{ width: 34, height: 42, borderRadius: 7, flexShrink: 0, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ? <img src={it.capa} alt="" style={{ width: 34, height: 42, objectFit: 'cover', borderRadius: 7, flexShrink: 0, background: 'var(--v2-surface2)' }} />
+          : <div style={{ width: 34, height: 42, borderRadius: 7, flexShrink: 0, background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
             </div>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: '#111' }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>
             {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
-            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: '#94a3b8' }}>· {FORMATO[it.formato] || it.formato}</span>
+            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {FORMATO[it.formato] || it.formato}</span>
           </p>
           {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
           <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
@@ -161,13 +174,13 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden' }}>
       <div style={{ padding: '12px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#111' }}>Programação</p>
-          <p style={{ margin: '1px 0 0', fontSize: 11, color: '#94a3b8' }}>{itens.length} postagem(ns) a caminho</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Programação</p>
+          <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{itens.length} postagem(ns) a caminho</p>
         </div>
-        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 8, padding: 2 }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 8, padding: 2 }}>
           {(['lista', 'calendario'] as const).map(v => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
           ))}
@@ -189,9 +202,9 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
         return (
           <div style={{ padding: '4px 12px 12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <button onClick={() => { setMesBase(new Date(ano, mes - 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#888', padding: '2px 8px' }}>‹</button>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#111', textTransform: 'capitalize' }}>{mesBase.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
-              <button onClick={() => { setMesBase(new Date(ano, mes + 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#888', padding: '2px 8px' }}>›</button>
+              <button onClick={() => { setMesBase(new Date(ano, mes - 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--v2-ink3)', padding: '2px 8px' }}>‹</button>
+              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', textTransform: 'capitalize' }}>{mesBase.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+              <button onClick={() => { setMesBase(new Date(ano, mes + 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--v2-ink3)', padding: '2px 8px' }}>›</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
               {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={i} style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 800, color: '#c0c6cf', padding: '2px 0' }}>{d}</span>)}
@@ -209,7 +222,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
                 )
               })}
             </div>
-            {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid #f2f2f2' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
+            {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid var(--v2-rule)' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
             {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#b6bcc6', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
           </div>
         )
@@ -226,26 +239,26 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
         const [rot, cor, bg] = STATUS_ROTULO[preview.status] || STATUS_ROTULO.agendado
         return (
           <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.72)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 430, width: '100%', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 430, width: '100%', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
               <div style={{ position: 'relative', background: '#000', lineHeight: 0 }}>
                 {atual ? (video
                   ? <video key={atual} src={atual} controls playsInline poster={(preview.capasVideo || {})[atual]} style={{ width: '100%', maxHeight: '62vh', display: 'block' }} />
                   : <img key={atual} src={atual} alt="" style={{ width: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block' }} />)
-                  : <div style={{ padding: '48px 20px', textAlign: 'center', color: '#888', fontSize: 12.5, lineHeight: 1.5 }}>Sem mídia para exibir.</div>}
+                  : <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 12.5, lineHeight: 1.5 }}>Sem mídia para exibir.</div>}
                 {imgs.length > 1 && (<>
-                  {slide > 0 && <button onClick={() => setSlide(s => s - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer' }}>‹</button>}
-                  {slide < imgs.length - 1 && <button onClick={() => setSlide(s => s + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer' }}>›</button>}
+                  {slide > 0 && <button onClick={() => setSlide(s => s - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer' }}>‹</button>}
+                  {slide < imgs.length - 1 && <button onClick={() => setSlide(s => s + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer' }}>›</button>}
                   <span style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{slide + 1}/{imgs.length}</span>
                 </>)}
               </div>
               <div style={{ padding: '12px 16px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>{FORMATO[preview.formato] || preview.formato}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{FORMATO[preview.formato] || preview.formato}</span>
                   <span style={{ fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
                   <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
-                {preview.legenda && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#333', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.legenda}</p>}
+                {preview.legenda && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.legenda}</p>}
               </div>
             </div>
           </div>
@@ -346,22 +359,22 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
   }
 
   return (
-    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid var(--v2-rule)', borderRadius: 18, overflow: 'hidden', background: 'var(--v2-surface)' }}>
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
-        <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0,
+        <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: 'var(--v2-ink)', flexShrink: 0,
           // Amarelo SÓ atrás da inicial (fallback). Com logo, o fundo fica NEUTRO:
           // logo com cantos transparentes (como a da Sua Dupla) mostrava o amarelo
           // vazando pelas beiradas.
-          background: logoErro ? '#ffc00f' : '#f0f0f0' }}>
+          background: logoErro ? 'var(--v2-amber-on)' : 'var(--v2-surface2)' }}>
           {!logoErro
             ? <img src={`/api/foto-cliente?token=${encodeURIComponent(token)}`} alt="" onError={() => setLogoErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : inicial}
         </span>
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{handle}</span>
+        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{handle}</span>
         {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>}
         {post.formato && post.formato !== 'feed' && (
-          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: '#888', background: '#f5f5f5', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
+          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
         )}
       </div>
 
@@ -371,8 +384,8 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
           ? <video src={midia} controls playsInline poster={post.capasVideo?.[midia]} style={{ width: '100%', height: 'auto', maxHeight: '82vh', display: 'block' }} />
           : <img src={midia} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />}
         {post.imagens.length > 1 && (<>
-          {cur > 0 && <button onClick={e => { e.stopPropagation(); setCur(cur - 1) }} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
-          {cur < post.imagens.length - 1 && <button onClick={e => { e.stopPropagation(); setCur(cur + 1) }} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: '#222', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
+          {cur > 0 && <button onClick={e => { e.stopPropagation(); setCur(cur - 1) }} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>‹</button>}
+          {cur < post.imagens.length - 1 && <button onClick={e => { e.stopPropagation(); setCur(cur + 1) }} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>›</button>}
           <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{cur + 1}/{post.imagens.length}</div>
           <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
             {post.imagens.map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === cur ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)' }} />)}
@@ -382,7 +395,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {!ehVideo && pinsMostrar.filter(a => a.img === cur).map((ann) => {
           const n = pinsMostrar.indexOf(ann) + 1
           return (
-            <div key={ann.id} onClick={e => e.stopPropagation()} title={ann.text} style={{ position: 'absolute', left: `${ann.x}%`, top: `${ann.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff', cursor: 'default' }}>{n}</div>
+            <div key={ann.id} onClick={e => e.stopPropagation()} title={ann.text} style={{ position: 'absolute', left: `${ann.x}%`, top: `${ann.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff', cursor: 'default' }}>{n}</div>
           )
         })}
       </div>
@@ -399,13 +412,13 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         const mini: React.CSSProperties = { flex: 1, padding: '7px 0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', border: 'none' }
         return (
           <div onClick={() => { setPendingPin(null); setPinText('') }} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
-            <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', left, top, width: W, background: '#fff', borderRadius: 12, padding: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.24)', border: '1px solid #e0e0e0', lineHeight: 1.35 }}>
-              <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: '#111' }}>O que ajustar aqui?</p>
+            <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', left, top, width: W, background: 'var(--v2-surface)', borderRadius: 12, padding: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.24)', border: '1px solid var(--v2-rule)', lineHeight: 1.35 }}>
+              <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>O que ajustar aqui?</p>
               <textarea lang="pt-BR" autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: '#f5f5f5', color: '#666' }}>Cancelar</button>
-                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: '#111', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>Marcar</button>
+                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: 'var(--v2-surface2)', color: '#666' }}>Cancelar</button>
+                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: 'var(--v2-ink)', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>Marcar</button>
               </div>
             </div>
           </div>
@@ -413,7 +426,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
       })()}
 
       {/* Ícones do feed (decorativos) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px 2px', color: '#222' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px 2px', color: 'var(--v2-ink)' }}>
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l7.8-8.5a5.5 5.5 0 0 0 1-7.9z" /></svg>
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-11.9 7.8L3 21l1.7-6A8.5 8.5 0 1 1 21 11.5z" /></svg>
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
@@ -422,15 +435,15 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
 
       {/* Legenda estilo feed (reflete a legenda pedida no ajuste) */}
       {st.legenda && (
-        <p style={{ margin: 0, padding: '2px 14px 12px', fontSize: 13.5, color: '#222', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <p style={{ margin: 0, padding: '2px 14px 12px', fontSize: 13.5, color: 'var(--v2-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           <strong>{handle}</strong> {st.legenda}
         </p>
       )}
 
       {/* Info + decisão */}
-      <div style={{ padding: '12px 14px 16px', borderTop: '1px solid #f2f2f2' }}>
+      <div style={{ padding: '12px 14px 16px', borderTop: '1px solid var(--v2-rule)' }}>
         {st.dataAgendada && (
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#888' }}><strong style={{ color: '#555' }}>Publicação prevista:</strong> {new Date(st.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}><strong style={{ color: 'var(--v2-ink2)' }}>Publicação prevista:</strong> {new Date(st.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         )}
 
         {/* EM AJUSTE — o criativo fica visível e o cliente pode editar o pedido */}
@@ -444,16 +457,16 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
                 {st.anotacoes.map((a, i) => (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 8px' }}>
-                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                    <span style={{ flex: 1, fontSize: 12.5, color: '#333' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: '#aaa' }}> · slide {a.img + 1}</em> : null}</span>
+                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: 'var(--v2-ink3)' }}> · slide {a.img + 1}</em> : null}</span>
                   </div>
                 ))}
               </div>
             )}
-            {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#555' }}><strong>Observação:</strong> {st.motivoReprovacao}</p>}
+            {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)' }}><strong>Observação:</strong> {st.motivoReprovacao}</p>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('#ffc00f', '#111') }}>Editar ajuste</button>
-              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('#fff', '#166534', '#bbf7d0') }}>Aprovar assim mesmo</button>
+              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('var(--v2-amber-on)', '#17150E') }}>Editar ajuste</button>
+              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)') }}>Aprovar assim mesmo</button>
             </div>
           </div>
         )}
@@ -462,7 +475,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {!emAjuste && modo === 'view' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#ffc00f', '#111') }}>Solicitar ajustes</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('var(--v2-amber-on)', '#17150E') }}>Solicitar ajustes</button>
             <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
           </div>
         )}
@@ -470,20 +483,20 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {/* Solicitar ajustes — TUDO num lugar só: legenda + layout + data/hora */}
         {modo === 'ajuste' && (
           <div>
-            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: '#111' }}>Solicitar ajustes</p>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888', lineHeight: 1.5 }}>Peça tudo de uma vez — legenda, layout e/ou data. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
+            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: 'var(--v2-ink)' }}>Solicitar ajustes</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Peça tudo de uma vez — legenda, layout e/ou data. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
 
             <label style={rotuloAj}>Legenda</label>
             <textarea lang="pt-BR" value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Deixe como está ou reescreva do seu jeito..." style={{ ...campoAj, minHeight: 84 }} />
 
             <label style={{ ...rotuloAj, marginTop: 14 }}>Layout do criativo</label>
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>Clique sobre o criativo acima</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>Clique sobre o criativo acima</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
             {annotations.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
                 {annotations.map((a, i) => (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 8px' }}>
-                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
-                    <span style={{ flex: 1, fontSize: 12.5, color: '#333' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: '#aaa' }}> · slide {a.img + 1}</em> : null}</span>
+                    <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: '#ffc00f', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)' }}>{a.text}{post.imagens.length > 1 ? <em style={{ color: 'var(--v2-ink3)' }}> · slide {a.img + 1}</em> : null}</span>
                     <button onClick={() => setAnnotations(prev => prev.filter(x => x.id !== a.id))} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0 }}>×</button>
                   </div>
                 ))}
@@ -495,7 +508,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
             <input type="datetime-local" value={dataTxt} onChange={e => setDataTxt(e.target.value)} style={campoAj} />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('#f5f5f5', '#555'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
+              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('var(--v2-surface2)', 'var(--v2-ink2)'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
               {(legendaMudou || dataMudou) && annotations.length === 0 && !texto.trim() && (
                 <button onClick={() => dataMudou
                   ? decidir('corrected', { novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataTxt })
@@ -504,7 +517,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
                   {legendaMudou && dataMudou ? 'Aprovar com estes ajustes' : dataMudou ? 'Aprovar nesta data' : 'Aprovar com esta legenda'}
                 </button>
               )}
-              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('#ffc00f', '#111') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
+              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('var(--v2-amber-on)', '#17150E') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
             </div>
           </div>
         )}
@@ -512,10 +525,10 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {/* Rejeitar */}
         {modo === 'reject' && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: '#111' }}>Motivo da reprovação</p>
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>Motivo da reprovação</p>
             <textarea lang="pt-BR" autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('#f5f5f5', '#555') }}>Voltar</button>
+              <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('var(--v2-surface2)', 'var(--v2-ink2)') }}>Voltar</button>
               <button onClick={() => { if (!texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return } decidir('rejected', { motivo: texto }) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar reprovação'}</button>
             </div>
           </div>
@@ -533,24 +546,24 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
 // continuam no PostCard. No celular a grade empilha (rótulo por célula).
 function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: string; onDecidido: (id: string) => void }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e8e8e8', borderRadius: 14, overflow: 'hidden', marginBottom: 26 }}>
+    <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden', marginBottom: 26 }}>
       <style>{`
-        .copy-tab-row{display:grid;grid-template-columns:130px 1.15fr 1fr 168px;gap:14px;padding:14px 16px;border-top:1px solid #f0f0f0}
-        .copy-tab-head{display:grid;grid-template-columns:130px 1.15fr 1fr 168px;gap:14px;padding:10px 16px;background:#fafafa;border-top:1px solid #f0f0f0}
+        .copy-tab-row{display:grid;grid-template-columns:130px 1.15fr 1fr 168px;gap:14px;padding:14px 16px;border-top:1px solid var(--v2-rule)}
+        .copy-tab-head{display:grid;grid-template-columns:130px 1.15fr 1fr 168px;gap:14px;padding:10px 16px;background:var(--v2-surface2);border-top:1px solid var(--v2-rule)}
         .copy-cell-label{display:none}
         @media (max-width:820px){
           .copy-tab-row{grid-template-columns:1fr;gap:10px}
           .copy-tab-head{display:none}
-          .copy-cell-label{display:block;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px}
+          .copy-cell-label{display:block;font-size:10px;font-weight:600;color:var(--v2-ink3);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px}
         }
       `}</style>
       <div style={{ padding: '12px 16px 10px' }}>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#111' }}>Briefings para aprovação</p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>Leia cada linha e decida: aprovar, pedir ajustes ou rejeitar. A arte é produzida depois que o texto for aprovado.</p>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Briefings para aprovação</p>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Leia cada linha e decida: aprovar, pedir ajustes ou rejeitar. A arte é produzida depois que o texto for aprovado.</p>
       </div>
       <div className="copy-tab-head">
         {['Imagem', 'Copy (texto na imagem)', 'Legenda', 'Aprovação'].map(h => (
-          <span key={h} style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
+          <span key={h} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
         ))}
       </div>
       {posts.map((p, i) => <LinhaCopy key={p.id} post={p} idx={i} token={token} onDecidido={() => onDecidido(p.id)} />)}
@@ -601,23 +614,23 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
     onDecidido()
   }
 
-  const bloco = (t: string, estilo?: React.CSSProperties) => <p style={{ margin: 0, fontSize: 12.5, color: '#333', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...estilo }}>{t}</p>
-  const mini = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '9px 10px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', width: '100%' })
+  const bloco = (t: string, estilo?: React.CSSProperties) => <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...estilo }}>{t}</p>
+  const mini = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '9px 10px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', width: '100%', fontFamily: 'inherit' })
 
   return (
-    <div className="copy-tab-row" style={{ background: emAjuste ? '#fffdf5' : '#fff' }}>
+    <div className="copy-tab-row" style={{ background: emAjuste ? 'var(--v2-amber-bg)' : 'var(--v2-surface)' }}>
       {/* Col 1 — IMAGEM */}
       <div>
         <span className="copy-cell-label">Imagem</span>
-        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: '#111' }}>Postagem {idx + 1}: {FORMATO[post.formato || 'feed'] || post.formato}</p>
+        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {FORMATO[post.formato || 'feed'] || post.formato}</p>
         {capa
-          ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid #eee', background: '#f4f4f5' }} />
-          : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed #e0e0e0', background: '#fafafa', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>
+          ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid #eee', background: 'var(--v2-surface2)' }} />
+          : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
               <span style={{ fontSize: 9.5, fontWeight: 700, color: '#b6bcc6', textAlign: 'center', lineHeight: 1.35 }}>Arte produzida após a aprovação do texto</span>
             </div>}
-        {(post.localAplicacao || post.medidas) && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#94a3b8' }}>{[post.localAplicacao, post.medidas].filter(Boolean).join(' · ')}</p>}
-        {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#94a3b8' }}>Programado: {new Date(post.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>}
+        {(post.localAplicacao || post.medidas) && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{[post.localAplicacao, post.medidas].filter(Boolean).join(' · ')}</p>}
+        {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Programado: {new Date(post.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>}
       </div>
 
       {/* Col 2 — COPY (texto na imagem) */}
@@ -632,12 +645,12 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {st.headline && bloco(st.headline, { fontWeight: 800, color: '#111', fontSize: 13.5 })}
-            {st.subheadline && bloco(st.subheadline, { color: '#555' })}
+            {st.headline && bloco(st.headline, { fontWeight: 800, color: 'var(--v2-ink)', fontSize: 13.5 })}
+            {st.subheadline && bloco(st.subheadline, { color: 'var(--v2-ink2)' })}
             {st.textoImagem && bloco(st.textoImagem)}
-            {laminas.map((l, li) => <p key={li} style={{ margin: 0, fontSize: 12.5, color: '#333', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}><strong style={{ color: '#94a3b8' }}>{li + 1}.</strong> {l.texto}</p>)}
+            {laminas.map((l, li) => <p key={li} style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}><strong style={{ color: 'var(--v2-ink3)' }}>{li + 1}.</strong> {l.texto}</p>)}
             {st.cta && bloco(st.cta, { fontWeight: 800, color: '#b45309' })}
-            {!st.headline && !st.subheadline && !st.textoImagem && laminas.length === 0 && !st.cta && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem texto de arte — veja a legenda ao lado.</p>}
+            {!st.headline && !st.subheadline && !st.textoImagem && laminas.length === 0 && !st.cta && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem texto de arte — veja a legenda ao lado.</p>}
           </div>
         )}
       </div>
@@ -647,7 +660,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         <span className="copy-cell-label">Legenda</span>
         {modo === 'ajuste'
           ? <textarea lang="pt-BR" value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} placeholder="Legenda" style={{ ...campoAj, minHeight: 120, fontSize: 12.5 }} />
-          : (st.legenda ? bloco(st.legenda) : <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem legenda.</p>)}
+          : (st.legenda ? bloco(st.legenda) : <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem legenda.</p>)}
       </div>
 
       {/* Col 4 — APROVAÇÃO */}
@@ -656,7 +669,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         {modo === 'view' && !emAjuste && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('#16a34a', '#fff')}>Aprovar</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={mini('#ffc00f', '#111')}>Pedir ajustes</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>Pedir ajustes</button>
             <button onClick={() => { setObs(''); setModo('reject') }} disabled={enviando} style={mini('#fff', '#dc2626', '#dc2626')}>Rejeitar</button>
           </div>
         )}
@@ -664,23 +677,23 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>
             {st.obs && <p style={{ margin: 0, fontSize: 11.5, color: '#9a6b2e', lineHeight: 1.45 }}>{st.obs}</p>}
-            <button onClick={abrirAjuste} disabled={enviando} style={mini('#ffc00f', '#111')}>Editar ajuste</button>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('#fff', '#166534', '#bbf7d0')}>Aprovar assim mesmo</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>Editar ajuste</button>
+            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)')}>Aprovar assim mesmo</button>
           </div>
         )}
         {modo === 'ajuste' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <textarea lang="pt-BR" value={obs} onChange={e => setObs(e.target.value)} placeholder="Observação (opcional se você já editou os textos)" style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
             {mudouAlgo && !obs.trim() && <button onClick={() => decidir('caption', true)} disabled={enviando} style={mini('#16a34a', '#fff')}>Aprovar com meus ajustes</button>}
-            <button onClick={() => { if (!mudouAlgo && !obs.trim()) { toast('Edite algum texto ou escreva uma observação.', 'erro'); return } decidir('corrected', true) }} disabled={enviando} style={mini('#ffc00f', '#111')}>{enviando ? '...' : 'Enviar ajustes'}</button>
-            <button onClick={() => setModo('view')} disabled={enviando} style={mini('#f5f5f5', '#555')}>Cancelar</button>
+            <button onClick={() => { if (!mudouAlgo && !obs.trim()) { toast('Edite algum texto ou escreva uma observação.', 'erro'); return } decidir('corrected', true) }} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{enviando ? '...' : 'Enviar ajustes'}</button>
+            <button onClick={() => setModo('view')} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>Cancelar</button>
           </div>
         )}
         {modo === 'reject' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <textarea lang="pt-BR" autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder="Motivo da rejeição..." style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
             <button onClick={() => { if (!obs.trim()) { toast('Descreva o motivo da rejeição.', 'erro'); return } decidir('rejected', false) }} disabled={enviando} style={mini('#dc2626', '#fff')}>{enviando ? '...' : 'Confirmar rejeição'}</button>
-            <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('#f5f5f5', '#555')}>Voltar</button>
+            <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>Voltar</button>
           </div>
         )}
       </div>
@@ -688,7 +701,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
   )
 }
 
-function Header({ clienteName }: { clienteName: string }) {
+function Header({ clienteName, tema, onTema }: { clienteName: string; tema: 'claro' | 'escuro'; onTema: () => void }) {
   // A logo da agência vem de /api/marca (público). Sem logo configurada (ou se
   // ela falhar ao carregar), o fallback é a LOGOMARCA oficial do Soma10 —
   // /soma10-logo.png, a MESMA da sidebar do painel (o /logo.svg é só o ícone
@@ -700,22 +713,30 @@ function Header({ clienteName }: { clienteName: string }) {
   }, [])
   const src = (logo && !logoErro) ? logo : '/soma10-logo.png'
   return (
-    <div style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+    <div style={{ background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img src={src} alt="Soma10" onError={() => setLogoErro(true)}
           style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
         {/* Sem o nome escrito ao lado — a logomarca já diz quem é (pedido do dono, 12/08). */}
-        <div style={{ fontSize: 11, color: '#aaa' }}>Aprovação de Criativos</div>
+        <div style={{ fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Aprovação de Criativos</div>
       </div>
-      {clienteName && <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>{clienteName}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {clienteName && <div style={{ background: 'var(--v2-surface2)', borderRadius: 999, padding: '5px 13px', fontSize: 12.5, fontWeight: 500, color: 'var(--v2-ink2)' }}>{clienteName}</div>}
+        <button onClick={onTema} type="button" title={tema === 'escuro' ? 'Tema claro' : 'Tema escuro'} aria-label={tema === 'escuro' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+          style={{ width: 36, height: 36, borderRadius: 999, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+          {tema === 'escuro'
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>}
+        </button>
+      </div>
     </div>
   )
 }
 
 function Footer() {
   return (
-    <div style={{ borderTop: '1px solid #e8e8e8', padding: '16px 24px', textAlign: 'center', background: '#fff' }}>
-      <p style={{ margin: 0, fontSize: 11, color: '#ccc', letterSpacing: '0.03em' }}>SOMA10APPROVAL · GRUPO 10+</p>
+    <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '16px 24px', textAlign: 'center', background: 'var(--v2-surface)' }}>
+      <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.12em' }}>SOMA10 APPROVAL · GRUPO 10+</p>
     </div>
   )
 }
