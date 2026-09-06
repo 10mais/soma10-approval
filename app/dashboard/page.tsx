@@ -1883,14 +1883,14 @@ function Dashboard() {
     // Ao clicar com a sidebar recolhida, expande automaticamente
     const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
     return (
-      <button title={recolhida ? label : undefined} onClick={aoClicar} 
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? '#17150E' : 'var(--v2-ink2)', background: ativo ? 'var(--v2-amber-on)' : 'transparent', fontSize, transition: 'all 0.15s' }}>
+      <button title={recolhida ? label : undefined} onClick={aoClicar} className={ativo ? 'v2-nav on' : 'v2-nav'}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 11, width: '100%', padding: recolhida ? '10px 0' : '9px 10px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 500 : 400, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', background: ativo ? 'var(--v2-amber-bg)' : 'transparent', fontSize, fontFamily: 'var(--v2-font)', transition: 'background 120ms, color 120ms' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? '#17150E' : 'var(--v2-ink3)' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
+          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink3)', opacity: ativo ? 1 : 0.85 }}><Icon size={17}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
           {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
         </span>
-        {!recolhida && !!badge && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{badge > 99 ? '99+' : badge}</span>}
-        {recolhida && !!badge && <span style={{ position: 'absolute', top: 7, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />}
+        {!recolhida && !!badge && <span style={{ fontSize: 11.5, fontWeight: 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink3)', fontVariantNumeric: 'tabular-nums' }}>{badge > 99 ? '99+' : badge}</span>}
+        {recolhida && !!badge && <span style={{ position: 'absolute', top: 7, right: 12, width: 7, height: 7, borderRadius: '50%', background: 'var(--v2-amber-on)' }} />}
       </button>
     )
   }
@@ -1926,6 +1926,11 @@ function Dashboard() {
           color: #fff !important;
         }
         .soma10-tema-escuro .btn-amarelo svg { stroke: #fff !important; }
+        /* Rail do layout novo (escopo PRÓPRIO — nunca em .soma10-v2, que é só tokens) */
+        .v2-rail::-webkit-scrollbar { display: none; }
+        .v2-rail .v2-nav:hover { background: var(--v2-surface2) !important; color: var(--v2-ink) !important; }
+        .v2-rail .v2-nav.on:hover { background: var(--v2-amber-bg) !important; color: var(--v2-amber) !important; }
+        .v2-rail select { font-family: var(--v2-font); }
         @keyframes shimmer {
           0% { opacity: 1; }
           50% { opacity: 0.4; }
@@ -2043,20 +2048,20 @@ function Dashboard() {
 
       <div style={{ display: 'flex', alignItems: 'flex-start', ...(mobile ? {} : { height: '100vh', overflow: 'hidden' }) }}>
         {/* Sidebar */}
-        <aside className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={mobile ? {
+        <aside className="soma10-v2 soma10-no-invert v2-rail" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={mobile ? {
           width: 264, background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', borderRight: '1px solid var(--v2-rule)', boxSizing: 'border-box',
-          padding: 'calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))',
+          padding: 'calc(22px + env(safe-area-inset-top)) 16px calc(22px + env(safe-area-inset-bottom))',
           position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto', zIndex: 200,
           transform: menuMobile ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease',
           boxShadow: menuMobile ? '2px 0 16px rgba(0,0,0,0.18)' : 'none',
         } : {
           width: recolhida ? 66 : 232, flexShrink: 0, background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', borderRight: '1px solid var(--v2-rule)',
-          height: '100vh', overflowY: 'auto', padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
+          height: '100vh', overflowY: 'auto', padding: recolhida ? '22px 10px' : '24px 16px', boxSizing: 'border-box', transition: 'width 0.18s', scrollbarWidth: 'none',
         }}>
           {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
           <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
             {recolhida
-              ? <div style={{ background: '#111', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} /></div>
+              ? <div style={{ background: 'var(--v2-ink)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} /></div>
               : <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />}
           </div>
           {/* PAINEL DO CLIENTE — nav simplificada */}
@@ -2075,8 +2080,8 @@ function Dashboard() {
                 {(['aprovacoes', 'playbook'] as const).map(a => (
                   <button key={a} onClick={() => setAba(a as any)} style={{
                     padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    fontWeight: aba === a ? 700 : 500, color: aba === a ? '#111' : '#888',
-                    background: aba === a ? '#ffc00f' : 'transparent', fontSize: 14,
+                    fontWeight: aba === a ? 500 : 400, color: aba === a ? 'var(--v2-amber)' : 'var(--v2-ink2)',
+                    background: aba === a ? 'var(--v2-amber-bg)' : 'transparent', fontSize: 14, fontFamily: 'var(--v2-font)',
                   }}>
                     {a === 'aprovacoes' ? 'Aprovações' : 'Playbook'}
                   </button>
@@ -2094,7 +2099,7 @@ function Dashboard() {
               Reaproveita o lugar do sub-account; operador travado não tem seletor. */}
           {podeTrocarLoja && !recolhida && (
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>Ver loja</label>
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>Ver loja</label>
               <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? '#ffc00f' : '#e0e0e0'}`, background: verComoLojaId ? '#fffbeb' : '#fff', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                 <option value="">Todas (rede)</option>
                 {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -2102,22 +2107,22 @@ function Dashboard() {
             </div>
           )}
           {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
-              {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
+            <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>
+              {verComoClienteId ? 'Vendo como cliente' : 'Cliente'}
             </label>
             {verComoClienteId ? (
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
-              <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-on)', borderRadius: 12, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', flexShrink: 0, border: '1px solid #fde68a' }}>
                     <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                   </span>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--v2-ink)' }}>
                     {clienteEmVisualizacao?.nome || 'Cliente'}
                   </p>
                 </div>
                 <button onClick={() => { setVerComoClienteId('') }} style={{
-                  background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 11,
+                  background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 500, fontSize: 11.5, fontFamily: 'inherit',
                   cursor: 'pointer', textDecoration: 'underline', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
                 }}>
                   <IconBack size={13} /> Voltar ao Painel
@@ -2221,8 +2226,8 @@ function Dashboard() {
                 { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']]) as [string, string][] },
                 { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
-                <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
@@ -2262,7 +2267,7 @@ function Dashboard() {
                 { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ...(perfilClinica ? [['metas', 'Metas']] : []), ['conversao', 'Conversão & Retenção']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
@@ -2342,8 +2347,8 @@ function Dashboard() {
 
         {/* Botão recolher/expandir — flutuante (desktop; no mobile o menu é o hamburguer) */}
         {!ehCliente && !mobile && (
-          <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-no-invert"
-            style={{ position: 'fixed', left: recolhida ? 15 : 194, bottom: 16, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: '#fff', border: 'none', borderRadius: 999, padding: '9px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
+          <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'}
+            style={{ position: 'fixed', left: recolhida ? 17 : 196, bottom: 18, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '8px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
           </button>
         )}
