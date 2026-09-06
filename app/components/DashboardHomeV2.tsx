@@ -42,10 +42,16 @@ function prazoCurto(iso?: string) {
   return { t: d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''), hoje: false, atrasada: false }
 }
 
+// Último payload por 'como', fora do componente: a Home REMONTA a cada volta ao
+// Painel (import dinâmico + aba condicional). Com isto ela abre na hora com o
+// que já tinha e atualiza em segundo plano, em vez de mostrar esqueleto e
+// refazer a chamada inteira a cada clique.
+const memoria: Record<string, Dados> = {}
+
 export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'claro' | 'escuro'; onIr: (aba: string) => void; onVerCliente: (id: string) => void }) {
-  const [dados, setDados] = useState<Dados | null>(null)
-  const [erro, setErro] = useState('')
   const [como, setComo] = useState('')
+  const [dados, setDados] = useState<Dados | null>(() => memoria[''] || null)
+  const [erro, setErro] = useState('')
   const [paleta, setPaleta] = useState(false)
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
@@ -53,9 +59,10 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
 
   function carregar(c = como) {
     setErro('')
+    if (memoria[c]) setDados(memoria[c]) // mostra o que já tinha; a rede atualiza em seguida
     fetch(`/api/home${c ? `?como=${encodeURIComponent(c)}` : ''}`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then((d: Dados) => setDados(d))
+      .then((d: Dados) => { memoria[c] = d; setDados(d) })
       .catch(e => setErro(e?.message || 'Não foi possível carregar a Home.'))
   }
   useEffect(() => { carregar() }, [como]) // eslint-disable-line react-hooks/exhaustive-deps

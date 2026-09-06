@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
 
   const agora = Date.now()
   const ehAdmin = su.role === 'admin'
+  const fresh = req.nextUrl.searchParams.get('fresh') === '1'
 
   // Quem é a pessoa da Home: o logado, ou (admin) quem ele escolheu ver.
   let pessoa = { nome: String(su.name || ''), email: String(su.email || '') }
@@ -32,6 +33,18 @@ export async function GET(req: NextRequest) {
   if (como && ehAdmin && como !== pessoa.email.toLowerCase()) {
     const u = await redis.get<Usuario>(`usuario:${como}`).catch(() => null)
     if (u && u.role !== 'cliente') { pessoa = { nome: u.nome || como, email: como }; vendoComo = pessoa }
+  }
+
+  // CACHE por pessoa (60s). A Home remonta a cada volta ao Painel e refazia a
+  // varredura inteira de posts/tarefas/reuniões — 8 chamadas em 55s nos logs
+  // de 06/09. Um minuto de cache elimina isso; quem aprovar/mover algo vê o
+  // reflexo no próximo minuto, ou na hora com ?fresh=1.
+  const chaveCache = `home:cache:${pessoa.email.toLowerCase()}:${vendoComo ? vendoComo.email : ''}`
+  if (!fresh) {
+    const emCache = await redis.get<any>(chaveCache).catch(() => null)
+    if (emCache && emCache.geradoEm && agora - emCache.geradoEm < 60000) {
+      return NextResponse.json(emCache, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', 'X-Home-Cache': 'hit' } })
+    }
   }
 
   // Coleções — carregadas uma vez e fatiadas em memória (mesma estratégia das
@@ -106,11 +119,14 @@ export async function GET(req: NextRequest) {
     equipe = us.filter(u => u.role !== 'cliente' && u.email).map(u => ({ nome: u.nome || u.email, email: u.email })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
   }
 
-  return NextResponse.json({
+  const payload = {
     pessoa, vendoComo, ehAdmin, equipe,
     manchete, regra,
     regua, agenda: { configurada: agendaConfigurada(), erro: agenda.erro },
     clientes: cartoes, fila, chegou: logs,
     geradoEm: agora,
-  })
+  }
+  // Grava o cache sem bloquear a resposta; TTL 90s (a checagem de 60s acima é a autoridade).
+  redis.set(chaveCache, payload, { ex: 90 }).catch(() => {})
+  return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', 'X-Home-Cache': 'miss' } })
 }

@@ -1905,7 +1905,7 @@ function Dashboard() {
   if (status === 'loading') return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
 
   return (
-    <div className={tema === 'escuro' ? 'soma10-tema-escuro' : ''} style={{ minHeight: '100vh', background: '#f8f8f8', fontFamily: 'Inter, sans-serif', ...(tema === 'escuro' ? { filter: 'invert(1) hue-rotate(180deg)' } : {}) }}>
+    <div className={tema === 'escuro' ? 'soma10-tema-escuro' : ''} style={{ minHeight: '100vh', background: '#F5F4EF', fontFamily: 'Inter, sans-serif', ...(tema === 'escuro' ? { filter: 'invert(1) hue-rotate(180deg)' } : {}) }}>
       {/* Inverte de volta imagens, vídeos e miniaturas para que continuem com cores naturais no modo escuro (técnica de inversão = "cores opostas") */}
       <style jsx global>{`
         .soma10-tema-escuro img, .soma10-tema-escuro video, .soma10-tema-escuro iframe {

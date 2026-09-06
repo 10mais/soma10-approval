@@ -144,7 +144,7 @@ aside,
   --v2-ok-bg:    rgba(20,102,79,0.10);
   --v2-hot:      #A32C22;
   --v2-hot-bg:   rgba(163,44,34,0.10);
-  --v2-font:     "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --v2-font:     var(--font-outfit, "Outfit"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 .soma10-v2[data-theme="dark"] {

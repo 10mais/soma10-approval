@@ -1,4 +1,10 @@
 import './globals.css'
+import { Outfit } from 'next/font/google'
+
+// Fonte do layout novo, AUTO-HOSPEDADA pelo Next: sem requisição externa a
+// fonts.googleapis.com bloqueando a renderização de toda página. Exposta como
+// variável CSS (--font-outfit) e consumida por --v2-font no globals.css.
+const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500', '600'], display: 'swap', variable: '--font-outfit' })
 import { Providers } from './providers'
 import PushSetup from './components/PushSetup'
 import Ortografia from './components/Ortografia'
@@ -34,14 +40,8 @@ export const viewport = { themeColor: '#111111', viewportFit: 'cover' as const, 
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <head>
-        {/* Fonte do layout novo (Soma10 Noturno). Carregada aqui para servir o painel E as páginas públicas. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" />
-      </head>
-      <body style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
+    <html lang="pt-BR" className={outfit.variable}>
+      <body className={outfit.variable} style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
         <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /></Providers>
       </body>
     </html>
