@@ -401,6 +401,34 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
 
   const [selecionadas, setSelecionadas] = useState<string[]>([])
   function alternarSelecao(id: string) { setSelecionadas(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]) }
+  // EDIÇÃO EM MASSA: aplica o MESMO campo em todas as selecionadas. Antes só
+  // dava para excluir em lote — mudar 6 tarefas de coluna exigia arrastar 6
+  // vezes, uma a uma.
+  //
+  // Vai pelo PUT normal, tarefa a tarefa, de propósito: é ele que grava a
+  // atividade no histórico ("Status alterado para...", "Responsável alterado
+  // para..."). Um endpoint em lote seria mais rápido e apagaria o rastro de
+  // quem mudou o que — em tarefa de equipe isso é o que resolve discussão.
+  const [aplicandoMassa, setAplicandoMassa] = useState(false)
+  async function aplicarEmMassa(campos: Record<string, any>, rotulo: string) {
+    if (!selecionadas.length || aplicandoMassa) return
+    setAplicandoMassa(true)
+    const ids = [...selecionadas]
+    // Otimista: a tela responde na hora; a lista e ressincronizada no fim.
+    setTarefas(ts => ts.map(t => ids.includes(t.id) ? { ...t, ...campos } as any : t))
+    const res = await Promise.all(ids.map(id =>
+      fetch('/api/tarefas', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...campos }),
+      }).then(r => r.ok).catch(() => false)
+    ))
+    const falhas = res.filter(ok => !ok).length
+    setAplicandoMassa(false)
+    carregar()
+    if (falhas) toast(`${ids.length - falhas} de ${ids.length} atualizadas — ${falhas} falharam. Tente de novo nas que sobraram.`, 'erro')
+    else { toast(`${ids.length} ${ids.length > 1 ? 'tarefas' : 'tarefa'} · ${rotulo}`, 'sucesso'); setSelecionadas([]) }
+  }
+
   function excluirSelecionadas() {
     setConfirmPopup({
       mensagem: `Excluir ${selecionadas.length} tarefa(s)?`,
@@ -515,13 +543,41 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
         </div>
       </div>
 
-      {selecionadas.length > 0 && !mostrarLixeira && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+      {selecionadas.length > 0 && !mostrarLixeira && (() => {
+        const selEstilo: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: '#111', cursor: aplicandoMassa ? 'wait' : 'pointer', maxWidth: 190 }
+        return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{selecionadas.length} selecionada(s)</span>
           <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
-          <button onClick={excluirSelecionadas} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>
+
+          {podeEditar && <>
+            <span style={{ width: 1, height: 22, background: '#eee' }} />
+            {/* Cada select volta para o placeholder depois de aplicar (value fixo):
+                ele é um COMANDO, não o estado atual das tarefas — que podem ter
+                seis status diferentes entre si. */}
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ status: v }, `movidas para ${COLUNAS.find(c => c.key === v)?.label || v}`) }} style={selEstilo} title="Mover as selecionadas de coluna">
+              <option value="">Mover para...</option>
+              {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; const u = (usuarios || []).find(x => x.email === v); aplicarEmMassa({ responsavelEmail: v, responsavelNome: u?.nome || '' }, `atribuídas a ${u?.nome || v}`) }} style={selEstilo} title="Definir o responsável das selecionadas">
+              <option value="">Responsável...</option>
+              {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+            </select>
+
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prioridade: v }, `prioridade ${PRIORIDADES.find(p => p.key === v)?.label || v}`) }} style={selEstilo} title="Definir a prioridade das selecionadas">
+              <option value="">Prioridade...</option>
+              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+            </select>
+
+            <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, `prazo ${new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}`) }} title="Definir o prazo das selecionadas" style={{ ...selEstilo, maxWidth: 150 }} />
+          </>}
+
+          {aplicandoMassa && <span style={{ fontSize: 12, color: '#888' }}>aplicando...</span>}
+          {podeExcluir && <button onClick={excluirSelecionadas} disabled={aplicandoMassa} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>}
         </div>
-      )}
+        )
+      })()}
 
       {/* KANBAN */}
       {view === 'kanban' && (
