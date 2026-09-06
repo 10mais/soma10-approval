@@ -1987,8 +1987,6 @@ function Dashboard() {
               if (v === '_reset') { setVerComoClienteId(''); setVerComoPapel(''); return }
               // Prever a visão de um PAPEL (colaborador) — só muda a navegação, não as capacidades
               if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
-              // Visualizar como CLIENTE (somente leitura): abre o portal
-              if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); return }
             }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoPapel ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
               {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
@@ -1996,11 +1994,6 @@ function Dashboard() {
                 <option value="papel:gerente">Como Gerente</option>
                 <option value="papel:usuario">Como Usuário</option>
               </optgroup>
-              {!perfilClinica && clientes.length > 0 && (
-                <optgroup label="Clientes (visualizar)">
-                  {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
-                </optgroup>
-              )}
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">

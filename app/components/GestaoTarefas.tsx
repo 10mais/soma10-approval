@@ -312,7 +312,7 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
+export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
   // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
   PERFIL_CLINICA_TAREFAS = perfilClinica
   PERFIL_TURISMO_TAREFAS = perfilTurismo
@@ -324,7 +324,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
   const [mostrarLixeira, setMostrarLixeira] = useState(false)
   const [lixeiraDias, setLixeiraDias] = useState(30)
   useEffect(() => { fetch('/api/operacional').then(r => r.json()).then(d => { if (d?.lixeiraDias) setLixeiraDias(Number(d.lixeiraDias)) }).catch(() => {}) }, [])
-  const [filtroCliente, setFiltroCliente] = useState('')
+  // clienteFixo: hub do cliente — filtro preso, seletor escondido, tarefa nova já atribuída.
+  const [filtroCliente, setFiltroCliente] = useState(clienteFixo || '')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroPrioridade, setFiltroPrioridade] = useState('')
@@ -482,7 +483,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               <span style={{ position: 'absolute', left: 10, color: 'var(--v2-ink3)', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
               <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
             </div>
-            {!perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && (
+            {!clienteFixo && !perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && (
               <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
                 <option value="">Todos os clientes</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -778,7 +779,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     titulo: tarefa?.titulo || '', descricao: tarefa?.descricao || '',
     tipo: tarefa?.tipo || 'tarefa',
     status: tarefa?.status || 'a_fazer', prioridade: tarefa?.prioridade || 'media',
-    responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || '',
+    responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
     marcoId: (tarefa as any)?.marcoId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
     recorrencia: (tarefa as any)?.recorrencia || '',
