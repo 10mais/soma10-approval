@@ -56,6 +56,17 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Trilho de clientes: setas rolam um cartão por vez; somem quando não há mais para onde ir.
+  const trilhoRef = useRef<HTMLDivElement>(null)
+  const [podeEsq, setPodeEsq] = useState(false)
+  const [podeDir, setPodeDir] = useState(false)
+  function medirTrilho() {
+    const el = trilhoRef.current; if (!el) return
+    setPodeEsq(el.scrollLeft > 4)
+    setPodeDir(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }
+  function rolarTrilho(dir: 1 | -1) { const el = trilhoRef.current; if (el) el.scrollBy({ left: dir * 244, behavior: 'smooth' }) }
+  useEffect(() => { medirTrilho(); window.addEventListener('resize', medirTrilho); return () => window.removeEventListener('resize', medirTrilho) }, [dados])
 
   function carregar(c = como) {
     setErro('')
@@ -108,7 +119,7 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
         .v2-home *, .v2-home *::before, .v2-home *::after { box-sizing: border-box; }
         .v2-home button { font-family: inherit; }
         .v2-home :focus-visible { outline: 2px solid var(--v2-amber); outline-offset: 3px; border-radius: 6px; }
-        .v2-wrap { max-width: 1180px; }
+        .v2-wrap { max-width: none; }
         .v2-top { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
         .v2-busca { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 240px; max-width: 460px; background: var(--v2-surface); border: 1px solid var(--v2-rule); border-radius: 12px; padding: 10px 14px; color: var(--v2-ink3); cursor: text; font-size: 14px; text-align: left; }
         .v2-busca:hover { border-color: var(--v2-rule2); }
@@ -157,8 +168,15 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
         .v2-ev .tip small { display: block; color: var(--v2-ink3); font-size: 11px; }
         .v2-leg { display: flex; gap: 18px; margin-top: 6px; font-size: 12px; color: var(--v2-ink3); flex-wrap: wrap; }
         .v2-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-        .v2-trilho { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(212px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+        .v2-trilho-wrap { position: relative; margin-right: -36px; }
+        @media (max-width: 900px) { .v2-trilho-wrap { margin-right: -16px; } }
+        .v2-trilho { display: grid; grid-auto-flow: column; grid-auto-columns: 232px; gap: 12px; overflow-x: auto; padding: 4px 36px 8px 0; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-behavior: smooth; }
         .v2-trilho::-webkit-scrollbar { display: none; }
+        .v2-trilho-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 8px; width: 72px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--v2-ground)); }
+        .v2-seta { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--v2-rule); background: var(--v2-surface); color: var(--v2-ink2); cursor: pointer; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.10); transition: opacity 140ms, transform 140ms; }
+        .v2-seta:hover { color: var(--v2-ink); transform: translateY(-50%) scale(1.06); }
+        .v2-seta.e { left: -14px; } .v2-seta.d { right: 22px; }
+        .v2-seta[disabled] { opacity: 0; pointer-events: none; }
         .v2-cli { background: var(--v2-surface); border: 1px solid var(--v2-rule); border-radius: 18px; padding: 16px 16px 14px; scroll-snap-align: start; cursor: pointer; position: relative; transition: transform 160ms, border-color 160ms; text-align: left; }
         .v2-cli:hover { transform: translateY(-3px); border-color: var(--v2-rule2); }
         .v2-cli .logo { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-weight: 600; font-size: 13px; margin-bottom: 14px; color: #17150E; background: var(--v2-amber-on); overflow: hidden; }
@@ -280,7 +298,10 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
             <section id="v2-clientes" className="v2-sec v2-a d4">
               <div className="v2-sec-h"><h2>Clientes</h2><span className="dica">quem espera há mais tempo vem primeiro</span><button className="mais" onClick={() => onIr('clientes')}>Todos</button></div>
               {dados.clientes.length === 0 && <p className="v2-vazio">Nenhum cliente ativo.</p>}
-              <div className="v2-trilho">
+              <div className="v2-trilho-wrap">
+                <button className="v2-seta e" type="button" aria-label="Clientes anteriores" onClick={() => rolarTrilho(-1)} disabled={!podeEsq}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg></button>
+                <button className="v2-seta d" type="button" aria-label="Mais clientes" onClick={() => rolarTrilho(1)} disabled={!podeDir}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg></button>
+              <div className="v2-trilho" ref={trilhoRef} onScroll={medirTrilho}>
                 {dados.clientes.map(c => {
                   const parado = c.lado === 'cliente' && (c.diasParado || 0) >= 3
                   return (
@@ -293,6 +314,7 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
                     </button>
                   )
                 })}
+              </div>
               </div>
             </section>
 

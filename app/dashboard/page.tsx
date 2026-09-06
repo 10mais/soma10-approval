@@ -2106,7 +2106,10 @@ function Dashboard() {
               </select>
             </div>
           )}
-          {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
+          {/* Seletor "Acessar sub-account" REMOVIDO da sidebar (decisão do dono, 06/09:
+              não era produtivo). O modo "ver como cliente" continua existindo por
+              outros caminhos; aqui só fica o cartão de SAÍDA quando ele está ativo. */}
+          {!!verComoClienteId && !ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>
               {verComoClienteId ? 'Vendo como cliente' : 'Cliente'}
             </label>
