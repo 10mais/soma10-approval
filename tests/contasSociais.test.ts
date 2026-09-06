@@ -218,3 +218,61 @@ describe('jaPublicou — a trava contra publicar duas vezes', () => {
     expect(jaPublicou(pub, 'c3', 'facebook')).toBe(true)
   })
 })
+
+// Cenário REAL relatado pelo dono (04/09): cliente com 3 perfis de Instagram e
+// 3 Páginas de Facebook. A pergunta era "selecionando um, publica só nele ou em
+// todos?". Publicar no perfil errado é irreversível — já saiu para o público —
+// então o caso fica travado por teste, com os números do caso real.
+describe('cliente com 3 perfis — publica SÓ no selecionado', () => {
+  const conta = (id: string, nome: string) => ({
+    id, nome,
+    instagramToken: `tok-${id}`, instagramUserId: `ig-${id}`, instagramUsername: nome,
+    facebookPageId: `fb-${id}`, facebookPageToken: `ptok-${id}`, metaConectado: true,
+  })
+  // A "principal" (campos antigos do cliente) + 2 cadastradas = 3 perfis, cada
+  // um com Instagram e Página própria.
+  const cliente3 = {
+    nome: 'Rede com 3 lojas',
+    instagramToken: 'tok-principal', instagramUserId: 'ig-principal', instagramUsername: 'lojacentro',
+    facebookPageId: 'fb-principal', facebookPageToken: 'ptok-principal', metaConectado: true,
+    contas: [conta('loja2', 'lojabairro'), conta('loja3', 'lojashopping')],
+  }
+
+  it('o cliente tem mesmo os 3 perfis', () => {
+    expect(contasDoCliente(cliente3).map(c => c.id)).toEqual([ID_CONTA_PRINCIPAL, 'loja2', 'loja3'])
+  })
+
+  it('selecionar UM perfil devolve UM alvo — nunca os três', () => {
+    const alvo = contasAlvo(cliente3, ['loja2'])
+    expect(alvo.map(c => c.id)).toEqual(['loja2'])
+    expect(alvo.length).toBe(1)
+  })
+
+  it('o alvo carrega o token DAQUELE perfil, não o da principal', () => {
+    // É isto que garante que a API publica na conta certa: publishToInstagram
+    // recebe a conta e lê conta.instagramToken/instagramUserId.
+    const [a] = contasAlvo(cliente3, ['loja3'])
+    expect(a.instagramToken).toBe('tok-loja3')
+    expect(a.instagramUserId).toBe('ig-loja3')
+    expect(a.facebookPageId).toBe('fb-loja3')
+    expect(a.facebookPageToken).toBe('ptok-loja3')
+  })
+
+  it('selecionar dois devolve dois, e o terceiro fica de fora', () => {
+    const ids = contasAlvo(cliente3, [ID_CONTA_PRINCIPAL, 'loja3']).map(c => c.id)
+    expect(ids).toEqual([ID_CONTA_PRINCIPAL, 'loja3'])
+    expect(ids).not.toContain('loja2')
+  })
+
+  it('id repetido no pedido não publica duas vezes no mesmo perfil', () => {
+    expect(contasAlvo(cliente3, ['loja2', 'loja2', 'loja2']).map(c => c.id)).toEqual(['loja2'])
+  })
+
+  it('a chave do anti-duplicação separa perfil de perfil', () => {
+    // Sem o contaId na chave, publicar no Instagram da loja2 marcaria "instagram"
+    // como feito e o post NUNCA sairia na loja3.
+    expect(chavePublicacao('loja2', 'instagram')).not.toBe(chavePublicacao('loja3', 'instagram'))
+    expect(jaPublicou([chavePublicacao('loja2', 'instagram')], 'loja3', 'instagram')).toBe(false)
+    expect(jaPublicou([chavePublicacao('loja2', 'instagram')], 'loja2', 'instagram')).toBe(true)
+  })
+})
