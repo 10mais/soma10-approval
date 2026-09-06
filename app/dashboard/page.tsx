@@ -25,6 +25,7 @@ import { fecharFora } from '@/lib/fecharModal'
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -3525,7 +3526,12 @@ function Dashboard() {
 
         {/* PAINEL HOME */}
         {aba === 'home' && (
-          <DashboardHome clientes={clientes as any} posts={posts as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilTelefonia={perfilTelefonia} lojaAtiva={verComoLojaId} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
+          // Home NOVA (Soma10 Noturno) só no perfil agência. Clínica, turismo,
+          // telefonia e cidadania seguem na Home atual até terem a sua — e a
+          // antiga fica a uma linha de distância para voltar.
+          (!perfilClinica && !perfilTurismo && !perfilTelefonia && !perfilCidadania)
+            ? <DashboardHomeV2 tema={tema} onIr={(a: string) => setAba(a as any)} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} />
+            : <DashboardHome clientes={clientes as any} posts={posts as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilTelefonia={perfilTelefonia} lojaAtiva={verComoLojaId} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
         )}
 
         {/* CLIENTES */}

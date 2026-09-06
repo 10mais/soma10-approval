@@ -118,3 +118,50 @@ aside,
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   TOKENS DO LAYOUT NOVO (Soma10 Noturno) — escopo .soma10-v2.
+   Fase 1 da migração do front (04/09/2026). As telas antigas NÃO
+   leem estes tokens; só quem estiver dentro de .soma10-v2. Assim o
+   tema escuro novo (cores de verdade) convive com o tema escuro
+   antigo (filter:invert na raiz) até a última tela migrar.
+   Convivência: o container .soma10-v2 leva também .soma10-no-invert,
+   que cancela o invert da raiz — dentro dele valem estes tokens.
+   ============================================================ */
+.soma10-v2 {
+  --v2-ground:   #F5F4EF;
+  --v2-surface:  #FFFFFF;
+  --v2-surface2: #ECEAE2;
+  --v2-rule:     #DDDAD0;
+  --v2-rule2:    #C9C5B8;
+  --v2-ink:      #17150E;
+  --v2-ink2:     #5C5849;
+  --v2-ink3:     #8A8677;
+  --v2-amber:    #C98E07;
+  --v2-amber-on: #F8B311;
+  --v2-amber-bg: rgba(248,179,17,0.14);
+  --v2-ok:       #14664F;
+  --v2-ok-bg:    rgba(20,102,79,0.10);
+  --v2-hot:      #A32C22;
+  --v2-hot-bg:   rgba(163,44,34,0.10);
+  --v2-font:     "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+.soma10-v2[data-theme="dark"] {
+  --v2-ground:   #0F0E0A;
+  --v2-surface:  #16150F;
+  --v2-surface2: #1E1C15;
+  --v2-rule:     #2A2820;
+  --v2-rule2:    #383527;
+  --v2-ink:      #F4F1E8;
+  --v2-ink2:     #A9A493;
+  --v2-ink3:     #6F6B5F;
+  --v2-amber:    #F8B311;
+  --v2-amber-on: #F8B311;
+  --v2-amber-bg: rgba(248,179,17,0.10);
+  --v2-ok:       #4FC79B;
+  --v2-ok-bg:    rgba(79,199,155,0.12);
+  --v2-hot:      #F26D5B;
+  --v2-hot-bg:   rgba(242,109,91,0.12);
+  color-scheme: dark;
+}
