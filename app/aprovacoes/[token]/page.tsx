@@ -24,7 +24,7 @@ function toLocalInput(iso?: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: '#374151', marginBottom: 6 }
+const rotuloAj: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink2)', marginBottom: 6 }
 const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5, outline: 'none' }
 
 type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string; imagens?: string[]; capasVideo?: Record<string, string> }
@@ -166,7 +166,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
             {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
             {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {FORMATO[it.formato] || it.formato}</span>
           </p>
-          {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
+          {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
           <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
         </div>
       </div>
@@ -207,7 +207,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
               <button onClick={() => { setMesBase(new Date(ano, mes + 1, 1)); setDiaSel('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--v2-ink3)', padding: '2px 8px' }}>›</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={i} style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 800, color: '#c0c6cf', padding: '2px 0' }}>{d}</span>)}
+              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={i} style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 800, color: 'var(--v2-ink3)', padding: '2px 0' }}>{d}</span>)}
               {celulas.map((dia, i) => {
                 if (!dia) return <span key={`v${i}`} />
                 const k = ymd(new Date(ano, mes, dia))
@@ -223,7 +223,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
               })}
             </div>
             {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid var(--v2-rule)' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
-            {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#b6bcc6', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
+            {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
           </div>
         )
       })()}
@@ -256,7 +256,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{FORMATO[preview.formato] || preview.formato}</span>
                   <span style={{ fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
-                  <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1, padding: 0 }}>×</button>
+                  <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
                 {preview.legenda && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.legenda}</p>}
               </div>
@@ -417,7 +417,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
               <textarea lang="pt-BR" autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: 'var(--v2-surface2)', color: '#666' }}>Cancelar</button>
+                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: 'var(--v2-surface2)', color: 'var(--v2-ink2)' }}>Cancelar</button>
                 <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: 'var(--v2-ink)', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>Marcar</button>
               </div>
             </div>
@@ -624,10 +624,10 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
         <span className="copy-cell-label">Imagem</span>
         <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {FORMATO[post.formato || 'feed'] || post.formato}</p>
         {capa
-          ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid #eee', background: 'var(--v2-surface2)' }} />
+          ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface2)' }} />
           : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#b6bcc6', textAlign: 'center', lineHeight: 1.35 }}>Arte produzida após a aprovação do texto</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--v2-ink3)', textAlign: 'center', lineHeight: 1.35 }}>Arte produzida após a aprovação do texto</span>
             </div>}
         {(post.localAplicacao || post.medidas) && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{[post.localAplicacao, post.medidas].filter(Boolean).join(' · ')}</p>}
         {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Programado: {new Date(post.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>}
