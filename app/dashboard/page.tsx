@@ -1883,10 +1883,10 @@ function Dashboard() {
     // Ao clicar com a sidebar recolhida, expande automaticamente
     const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
     return (
-      <button title={recolhida ? label : undefined} onClick={aoClicar} className={ativo ? 'soma10-no-invert' : undefined}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? (tema === 'escuro' ? '#fff' : '#111') : '#888', background: ativo ? '#ffc00f' : 'transparent', fontSize, transition: 'all 0.15s' }}>
+      <button title={recolhida ? label : undefined} onClick={aoClicar} 
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 10, width: '100%', padding: recolhida ? '11px 0' : '11px 12px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 700 : 500, color: ativo ? '#17150E' : 'var(--v2-ink2)', background: ativo ? 'var(--v2-amber-on)' : 'transparent', fontSize, transition: 'all 0.15s' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? (tema === 'escuro' ? '#fff' : '#111') : '#999' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
+          <span style={{ display: 'flex', flexShrink: 0, color: ativo ? '#17150E' : 'var(--v2-ink3)' }}><Icon size={18}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
           {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
         </span>
         {!recolhida && !!badge && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{badge > 99 ? '99+' : badge}</span>}
@@ -1933,11 +1933,11 @@ function Dashboard() {
         }
       `}</style>
       {/* Controles flutuantes (topo-direito) — substitui a antiga barra preta */}
-      <div className="soma10-no-invert" style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid #eee' }}>
+      <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Alternar modo claro/escuro */}
           <button onClick={alternarTema} title={tema === 'escuro' ? 'Mudar para modo claro' : 'Mudar para modo escuro'} style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: '#444',
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink2)',
             width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {tema === 'escuro' ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -1946,7 +1946,7 @@ function Dashboard() {
           {/* Sininho de notificações — popup dropdown */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
-              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#444',
+              position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--v2-ink2)',
               width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <IconBell size={18} />
@@ -1965,7 +1965,7 @@ function Dashboard() {
                 <div onClick={fecharFora(() => setInboxAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: '#fff', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff' }}>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111' }}>Notificações</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)' }}>Notificações</span>
                     <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Ver todas</button>
                   </div>
                   {notificacoes.length === 0 ? (
@@ -1981,7 +1981,7 @@ function Dashboard() {
                       }} style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</p>
                           <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
                           <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
@@ -2002,7 +2002,7 @@ function Dashboard() {
               if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
               // Visualizar como CLIENTE (somente leitura): abre o portal
               if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); return }
-            }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? '#ffc00f' : '#e0e0e0'}`, background: verComoPapel ? '#fffbeb' : '#fff', color: '#444', fontSize: 11, cursor: 'pointer' }}>
+            }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? '#ffc00f' : '#e0e0e0'}`, background: verComoPapel ? '#fffbeb' : '#fff', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
               {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
               <optgroup label="Colaboradores (papel)">
@@ -2020,12 +2020,12 @@ function Dashboard() {
             <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: minhaFoto ? '#eee' : '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {minhaFoto
                 ? <img src={minhaFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ color: '#111', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
+                : <span style={{ color: 'var(--v2-ink)', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
             </div>
-            {!mobile && <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>{session?.user?.name}</span>}
+            {!mobile && <span style={{ fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600 }}>{session?.user?.name}</span>}
           </button>
-          {!mobile && <span style={{ background: '#ffc00f', color: '#111', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
-          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #ddd', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#444' }}>Sair</button>
+          {!mobile && <span style={{ background: '#ffc00f', color: 'var(--v2-ink)', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
+          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #ddd', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Sair</button>
         </div>
       </div>
 
@@ -2043,14 +2043,14 @@ function Dashboard() {
 
       <div style={{ display: 'flex', alignItems: 'flex-start', ...(mobile ? {} : { height: '100vh', overflow: 'hidden' }) }}>
         {/* Sidebar */}
-        <aside style={mobile ? {
-          width: 264, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box',
+        <aside className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={mobile ? {
+          width: 264, background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', borderRight: '1px solid var(--v2-rule)', boxSizing: 'border-box',
           padding: 'calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))',
           position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto', zIndex: 200,
           transform: menuMobile ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease',
           boxShadow: menuMobile ? '2px 0 16px rgba(0,0,0,0.18)' : 'none',
         } : {
-          width: recolhida ? 66 : 232, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0',
+          width: recolhida ? 66 : 232, flexShrink: 0, background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', borderRight: '1px solid var(--v2-rule)',
           height: '100vh', overflowY: 'auto', padding: recolhida ? '16px 8px' : '16px 14px', boxSizing: 'border-box', transition: 'width 0.18s',
         }}>
           {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
@@ -2063,12 +2063,12 @@ function Dashboard() {
           {ehCliente && clienteEmVisualizacao && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', marginBottom: 10 }}>
-                <span style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: '#111', flexShrink: 0 }}>
+                <span style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: 'var(--v2-ink)', flexShrink: 0 }}>
                   <AvatarCliente logo={clienteEmVisualizacao.logo} nome={clienteEmVisualizacao.nome} />
                 </span>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#111' }}>{clienteEmVisualizacao.nome}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#888' }}>Painel do cliente</p>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao.nome}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Painel do cliente</p>
                 </div>
               </div>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2094,22 +2094,22 @@ function Dashboard() {
               Reaproveita o lugar do sub-account; operador travado não tem seletor. */}
           {podeTrocarLoja && !recolhida && (
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>Ver loja</label>
-              <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? '#ffc00f' : '#e0e0e0'}`, background: verComoLojaId ? '#fffbeb' : '#fff', color: '#111', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>Ver loja</label>
+              <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? '#ffc00f' : '#e0e0e0'}`, background: verComoLojaId ? '#fffbeb' : '#fff', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                 <option value="">Todas (rede)</option>
                 {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
               </select>
             </div>
           )}
           {!ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>
               {verComoClienteId ? 'Acessando sub-account' : 'Acessar sub-account'}
             </label>
             {verComoClienteId ? (
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
               <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 10, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0, border: '1px solid #fde68a' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', flexShrink: 0, border: '1px solid #fde68a' }}>
                     <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                   </span>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>
@@ -2130,7 +2130,7 @@ function Dashboard() {
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
                   border: '1.5px solid #e0e0e0', background: '#f8f8f8', cursor: 'pointer', fontFamily: 'inherit',
                 }}>
-                  <span style={{ color: '#bbb', display: 'flex' }}><IconSearch size={14} /></span>
+                  <span style={{ color: 'var(--v2-ink3)', display: 'flex' }}><IconSearch size={14} /></span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? '#111' : '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Acessar cliente (sub-account)'}
                   </span>
@@ -2140,7 +2140,7 @@ function Dashboard() {
                 {clientesAberto && (
                   <>
                     <div style={{ position: 'relative', marginTop: 6 }}>
-                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#bbb', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
+                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--v2-ink3)', pointerEvents: 'none', display: 'flex' }}><IconSearch size={14} /></span>
                       <input
                         value={buscaCliente}
                         onChange={e => setBuscaCliente(e.target.value)}
@@ -2148,14 +2148,14 @@ function Dashboard() {
                         autoFocus
                         style={{
                           width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid #e0e0e0',
-                          fontSize: 13, fontWeight: 600, background: '#fff', color: '#111', fontFamily: 'inherit', boxSizing: 'border-box',
+                          fontSize: 13, fontWeight: 600, background: '#fff', color: 'var(--v2-ink)', fontFamily: 'inherit', boxSizing: 'border-box',
                         }}
                       />
                     </div>
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 260, overflowY: 'auto' }}>
                       <button onClick={() => { setVerComoClienteId(''); setBuscaCliente(''); setClientesAberto(false) }} style={{
                         textAlign: 'left', padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: 'transparent', color: '#888', fontSize: 12, fontWeight: 700,
+                        background: 'transparent', color: 'var(--v2-ink3)', fontSize: 12, fontWeight: 700,
                       }}>
                         Visão da agência (todos)
                       </button>
@@ -2169,7 +2169,7 @@ function Dashboard() {
                             setViewAsClient(false); setBuscaCliente(''); setClientesAberto(false); router.push(`/cliente/${c.id}`)
                           }} style={{
                             textAlign: 'left', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                            background: 'transparent', color: '#111', fontSize: 13, fontWeight: 600,
+                            background: 'transparent', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600,
                             display: 'flex', alignItems: 'center', gap: 8,
                           }}>
                             <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: c.corSecundaria || '#111' }}>
@@ -2179,7 +2179,7 @@ function Dashboard() {
                           </button>
                         ))}
                       {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
-                        <p style={{ margin: '4px 10px', fontSize: 12, color: '#bbb' }}>Nenhum cliente encontrado.</p>
+                        <p style={{ margin: '4px 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum cliente encontrado.</p>
                       )}
                     </div>
                   </>
@@ -2188,12 +2188,12 @@ function Dashboard() {
             )}
           </div>}
 
-          {!ehCliente && !ehVendas && <div style={{ height: 1, background: '#f0f0f0', margin: '0 0 16px' }} />}
+          {!ehCliente && !ehVendas && <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '0 0 16px' }} />}
 
           {/* NIVEL VENDAS — papel isolado: so CRM, Meu dia, Personal list, Mensagens */}
           {ehVendas && (
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
+              {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
               <NavBtn chave="crm" label="CRM" />
               {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
@@ -2222,14 +2222,14 @@ function Dashboard() {
                 { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: gi === 0 ? 0 : 12 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
               {/* Operação (turismo) — viagens, ônibus, reservas (adicionadas por brick) */}
               {perfilTurismo && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
                   <NavBtn chave="viagens" label="Viagens" />
                   <NavBtn chave="calendario-viagens" label="Calendário" />
                   <NavBtn chave="reservas" label="Reservas" />
@@ -2239,20 +2239,20 @@ function Dashboard() {
               {/* Clínica — catálogo de procedimentos e métodos (brick do perfil clínica) */}
               {perfilClinica && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Clínica</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Clínica</span>}
                   <NavBtn chave="procedimentos" label="Procedimentos e Métodos" />
                 </nav>
               )}
               {/* Assessoria (cidadania) — esteira de processos (brick do perfil cidadania) */}
               {perfilCidadania && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Assessoria</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Assessoria</span>}
                   <NavBtn chave="processos" label="Processos" />
                 </nav>
               )}
               {/* Comunicação — acima de Estratégia */}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
+                {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
                 <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
                 <NavBtn chave="solicitacoes" label="Solicitações do cliente" onClick={() => setAba('solicitacoes' as any)} />
@@ -2262,13 +2262,13 @@ function Dashboard() {
                 { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ...(perfilClinica ? [['metas', 'Metas']] : []), ['conversao', 'Conversão & Retenção']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{grupo.titulo}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
                 </nav>
               ))}
               {(roleView === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
                 <>
-                  <div style={{ height: 1, background: '#f0f0f0', margin: '10px 0' }} />
+                  <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '10px 0' }} />
                   {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
                   {roleView === 'admin' && (<>
                     <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
@@ -2283,16 +2283,16 @@ function Dashboard() {
               ) : (
                 <>
                   {podeGrupo('financeiro') && (<>
-                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
+                    <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
                       <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                     </nav>
                   </>)}
                   {roleView === 'admin' && (<>
                     {/* Pessoas e Cultura (inclui Carga da equipe) */}
-                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
+                    <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
                       <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
@@ -2303,12 +2303,12 @@ function Dashboard() {
                   </>)}
                   {(roleView === 'admin' || podeGrupo('clientes')) && (<>
                     {/* Configurações — por último */}
-                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
                     <button onClick={() => setConfigAberto(v => !v)} style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
                       background: 'none', border: 'none', cursor: 'pointer',
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
                     </button>
                     {configAberto && (
@@ -2327,7 +2327,7 @@ function Dashboard() {
           {verComoClienteId && !ehCliente && (
             <div>
               {!recolhida && <>
-                <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente</p>
+                <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente</p>
                 <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
               </>}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2388,7 +2388,7 @@ function Dashboard() {
             display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: 12, padding: '10px 16px', marginBottom: 20,
           }}>
-            <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#111', flexShrink: 0, border: '1px solid #fde68a' }}>
+            <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', flexShrink: 0, border: '1px solid #fde68a' }}>
               <AvatarCliente logo={clienteEmVisualizacao.logo} nome={clienteEmVisualizacao.nome} />
             </span>
             <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
@@ -2404,7 +2404,7 @@ function Dashboard() {
         {aba === 'posts' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
               <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 4 }}>
                 {(['lista', 'calendario', 'fluxo'] as const).map(v => (
                   <button key={v} onClick={() => setVisualizacaoPosts(v)} style={{
@@ -2461,7 +2461,7 @@ function Dashboard() {
                           }}>
                             <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={38} radius={8} />
                             <div style={{ minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
+                              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
                               <p style={{ margin: 0, fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
                             </div>
                           </div>
@@ -2478,13 +2478,13 @@ function Dashboard() {
                     <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={60} radius={10} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: 'var(--v2-ink)', flexShrink: 0 }}>
                           {(() => {
                             const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
                             return <AvatarCliente logo={cli?.logo} nome={post.clienteNome} />
                           })()}
                         </span>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{post.clienteNome}</span>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{post.clienteNome}</span>
                         <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || '#555', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
                         </span>
@@ -2494,7 +2494,7 @@ function Dashboard() {
                           </span>
                         )}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
                       {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
                       {post.status === 'falha_publicacao' && post.erroPublicacao && (
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#b91c1c' }}>Erro: {post.erroPublicacao}</p>
@@ -2503,13 +2503,13 @@ function Dashboard() {
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       {post.status === 'falha_publicacao' && (
                         <button onClick={() => republicarPost(post)} disabled={republicandoId === post.id} style={{
-                          padding: '8px 14px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: '#111', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
+                          padding: '8px 14px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
                         }}>
                           {republicandoId === post.id ? 'Publicando...' : 'Tentar novamente'}
                         </button>
                       )}
                       <button onClick={() => iniciarEdicaoPost(post)} style={{
-                        padding: '8px 14px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#111', cursor: 'pointer',
+                        padding: '8px 14px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
                       }}>
                         Editar
                       </button>
@@ -2524,7 +2524,7 @@ function Dashboard() {
                           if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast('Link de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(url, 'info'))
                           else toast(url, 'info')
                         }} title="Copiar o link público de aprovação (sem login) para enviar ao cliente" style={{
-                          padding: '8px 14px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#111', cursor: 'pointer',
+                          padding: '8px 14px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
                         }}>
                           Copiar link
                         </button>
@@ -2548,7 +2548,7 @@ function Dashboard() {
         {/* PLANNER — cabeçalho (Novo Post + alternância Lista/Calendário) */}
         {aba === 'planner' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-            <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Planner{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Planner{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
                 {(['lista', 'calendario'] as const).map(v => (
@@ -2559,7 +2559,7 @@ function Dashboard() {
                   }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
                 ))}
               </div>
-              <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+              <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
                 <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Novo Post
               </button>
             </div>
@@ -2585,7 +2585,7 @@ function Dashboard() {
         {/* CALENDÁRIO (avulso ou dentro do Planner) */}
         {(aba === 'calendario' || (aba === 'planner' && plannerView === 'calendario')) && (
           <div>
-            {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Calendário de Conteúdo</h2>}
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>Calendário de Conteúdo</h2>}
             {/* Filtro de cliente — mesma seleção da Lista (persiste ao atualizar) */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
               <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
@@ -2601,7 +2601,7 @@ function Dashboard() {
         {/* BIBLIOTECA / LISTA do Planner */}
         {(aba === 'biblioteca' || (aba === 'planner' && plannerView === 'lista')) && (
           <div>
-            {aba !== 'planner' && <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Biblioteca de Conteúdo</h2>}
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>Biblioteca de Conteúdo</h2>}
 
             {/* Filtros */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -2646,9 +2646,9 @@ function Dashboard() {
                 <>
                 {bibSelecionados.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{bibSelecionados.length} selecionado(s)</span>
-                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Selecionar todos</button>
-                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{bibSelecionados.length} selecionado(s)</span>
+                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Selecionar todos</button>
+                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
                     <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} /> Apagar selecionados</button>
                   </div>
                 )}
@@ -2706,7 +2706,7 @@ function Dashboard() {
                                 <AvatarCliente logo={cli?.logo} nome={post.clienteNome} />
                               </span>
                             )})()}
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
                           </span>
                           <span style={{ background: STATUS_COLOR[post.status] || '#eee', color: STATUS_TEXT[post.status] || '#555', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {STATUS_LABEL[post.status] || post.status}
@@ -2746,7 +2746,7 @@ function Dashboard() {
                     <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: clientePreview?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: clientePreview?.corSecundaria || '#111', flexShrink: 0 }}>
                       <AvatarCliente logo={clientePreview?.logo} nome={postPreview.clienteNome} />
                     </div>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{postPreview.clienteNome}</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)' }}>{postPreview.clienteNome}</span>
                     <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || '#333', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
                       onClick={() => { if (postPreview.erroPublicacao) toast(postPreview.erroPublicacao, 'erro', 'Motivo da falha') }}
                       title={postPreview.erroPublicacao || ''}>
@@ -2802,7 +2802,7 @@ function Dashboard() {
                         {/* Marcações do cliente sobre a imagem (pinos numerados = itens da lista abaixo) */}
                         {!ehVideo && Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.map((a: any, i: number) => (
                           (typeof a?.x === 'number' && typeof a?.y === 'number' && ((a.img ?? 0) === sidx))
-                            ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid #fff' }}>{i + 1}</div>
+                            ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid #fff' }}>{i + 1}</div>
                             : null
                         ))}
                         </div>
@@ -2852,7 +2852,7 @@ function Dashboard() {
                               {salvandoReprog ? 'Salvando...' : 'Salvar programação'}
                             </button>
                             <button onClick={() => setReprogramandoId(null)} disabled={salvandoReprog}
-                              style={{ padding: '9px 16px', background: '#fff', color: '#666', border: '1px solid #e5e7eb', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                              style={{ padding: '9px 16px', background: '#fff', color: 'var(--v2-ink2)', border: '1px solid #e5e7eb', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                               Cancelar
                             </button>
                           </div>
@@ -2899,7 +2899,7 @@ function Dashboard() {
                             return (
                               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
                                 <span onClick={() => marcarAnotacaoResolvida(postPreview, i, !done)}><Check on={done} /></span>
-                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: '#111', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
+                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
                                 <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.55 : 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
                               </div>
                             )
@@ -2915,7 +2915,7 @@ function Dashboard() {
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
                     )}
                     {postPreview.status === 'falha_publicacao' && (
-                      <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                      <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
                         {republicandoId === postPreview.id ? 'Publicando...' : 'Tentar publicar novamente'}
                       </button>
                     )}
@@ -2944,10 +2944,10 @@ function Dashboard() {
                       </button>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Editar
                       </button>
-                      <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Fechar
                       </button>
                       {role !== 'cliente' && (
@@ -2967,7 +2967,7 @@ function Dashboard() {
         {/* MARCA — Brands Board */}
         {aba === 'marca' && (
           <div style={{ maxWidth: 820 }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 18, color: '#111' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--v2-ink)' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
 
             {/* BLOCO FECHADO */}
@@ -2977,14 +2977,14 @@ function Dashboard() {
                   <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
+                  <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
                     {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado' : ''}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: '#f5f5f5', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
                   <button onClick={excluirBrand} title="Excluir Brand Board" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
                 </div>
               </div>
@@ -3008,9 +3008,9 @@ function Dashboard() {
             {brandModo === 'ver' && (
               <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1 }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
+                  <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1 }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: '#ffc00f', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
                 </div>
                 {([
                   ['Segmento / Nicho', brandForm.segmento],
@@ -3035,7 +3035,7 @@ function Dashboard() {
                 )}
                 <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111', flex: 1, minWidth: 200 }}>Documento de marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)', flex: 1, minWidth: 200 }}>Documento de marca (IA)</h3>
                     <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
                       {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
                     </button>
@@ -3108,7 +3108,7 @@ function Dashboard() {
                     ))}
                   </div>
                 )}
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: '#444' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)' }}>
                   {enviandoDoc ? 'Enviando...' : '+ Adicionar documento'}
                   <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,audio/*" style={{ display: 'none' }} disabled={enviandoDoc}
                     onChange={e => { if (e.target.files?.[0]) enviarDocBrand(e.target.files[0]); e.target.value = '' }} />
@@ -3121,7 +3121,7 @@ function Dashboard() {
                   {salvandoBrand ? 'Salvando...' : 'Salvar identidade'}
                 </button>
                 <button onClick={() => setBrandModo('card')}
-                  style={{ padding: '12px 22px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  style={{ padding: '12px 22px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   Voltar
                 </button>
                 {brandMsg && <span style={{ fontSize: 13, color: brandMsg.toLowerCase().includes('erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
@@ -3131,7 +3131,7 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Playbook da marca</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Playbook da marca</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
                       Regras de operação (o que funciona, do&apos;s &amp; don&apos;ts, restrições) que os agentes de IA seguem ao produzir para este cliente.
                     </p>
@@ -3145,7 +3145,7 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Documento de marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Documento de marca (IA)</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
                       A IA estuda todas as informações e pesquisa o nicho na internet para gerar uma referência editorial completa.
                     </p>
@@ -3176,7 +3176,7 @@ function Dashboard() {
         {aba === 'listening' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
               <button onClick={carregarListening} disabled={listeningLoading}
                 style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {listeningLoading ? 'Buscando...' : (<><IconRefresh size={14} /> Atualizar</>)}
@@ -3194,11 +3194,11 @@ function Dashboard() {
 
             {!listeningLoading && listeningData && !listeningData.semNicho && (
               <>
-                <p style={{ margin: '0 0 16px', fontSize: 12, color: '#aaa' }}>Termos do nicho: <strong style={{ color: '#666' }}>{(listeningData.termos || []).join(', ')}</strong></p>
+                <p style={{ margin: '0 0 16px', fontSize: 12, color: '#aaa' }}>Termos do nicho: <strong style={{ color: 'var(--v2-ink2)' }}>{(listeningData.termos || []).join(', ')}</strong></p>
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
                   {/* YouTube */}
                   <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                       YouTube Shorts — mais vistos do nicho (5k+ views)
                     </h3>
@@ -3213,7 +3213,7 @@ function Dashboard() {
                         <a key={v.id} href={v.url} target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 12, textDecoration: 'none', color: 'inherit' }}>
                           <img src={v.thumb} alt="" style={{ width: 120, height: 68, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                           <div style={{ minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.titulo}</p>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.titulo}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#888' }}>{v.canal}</p>
                             <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{v.views.toLocaleString('pt-BR')} views · {v.curtidas.toLocaleString('pt-BR')} curtidas</p>
                           </div>
@@ -3224,7 +3224,7 @@ function Dashboard() {
 
                   {/* Google Trends */}
                   <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 800, color: '#4285f4' }}>G</span> Google Trends — em alta (BR, 7 dias)
                     </h3>
                     {(listeningData.trends || []).length === 0 ? (
@@ -3233,7 +3233,7 @@ function Dashboard() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {(listeningData.trends || []).map((t: any, i: number) => (
                           <a key={i} href={t.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: '#fafafa', borderRadius: 8, textDecoration: 'none' }}>
-                            <span style={{ fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.termo}</span>
+                            <span style={{ fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.termo}</span>
                             <span style={{ display: 'flex', alignItems: 'center', color: '#16a34a', flexShrink: 0 }}>{typeof t.valor === 'number' ? <IconTrend size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{t.valor}</span>}</span>
                           </a>
                         ))}
@@ -3244,7 +3244,7 @@ function Dashboard() {
 
                 {/* TikTok — Creative Center */}
                 <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 18 }}>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#111"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
                     TikTok — hashtags em alta (Brasil)
                     <span style={{ fontSize: 11, color: '#aaa', fontWeight: 500 }}>· Creative Center</span>
@@ -3275,7 +3275,7 @@ function Dashboard() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <IconChart size={20} />
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Desempenho {clienteEmVisualizacao ? `de ${clienteEmVisualizacao.nome}` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Desempenho {clienteEmVisualizacao ? `de ${clienteEmVisualizacao.nome}` : ''}</h2>
             </div>
 
             {/* Filtros */}
@@ -3308,7 +3308,7 @@ function Dashboard() {
               </button>
               {analyticsData && (
                 <button onClick={exportarAnalyticsPdf} disabled={exportandoPdf} style={{
-                  padding: '11px 18px', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                  padding: '11px 18px', background: '#fff', color: 'var(--v2-ink)', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13,
                   cursor: exportandoPdf ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
                   <IconDownload size={14} /> {exportandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
@@ -3316,7 +3316,7 @@ function Dashboard() {
               )}
               {analyticsData && (
                 <button onClick={gerarRelatorioMensalPdf} disabled={gerandoRelatorio} className="soma10-no-invert" style={{
-                  padding: '11px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
+                  padding: '11px 18px', background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
                   cursor: gerandoRelatorio ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
                   <IconDownload size={14} /> {gerandoRelatorio ? 'Gerando...' : 'Relatório mensal'}
@@ -3359,7 +3359,7 @@ function Dashboard() {
                         <div key={card.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                           <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                            <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{v.toLocaleString('pt-BR')}</p>
+                            <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{v.toLocaleString('pt-BR')}</p>
                             {a > 0 && (
                               <span style={{ fontSize: 12, fontWeight: 700, color: diff > 0 ? '#16a34a' : diff < 0 ? '#b91c1c' : '#888' }}>
                                 {diff > 0 ? '+' : ''}{diff}%
@@ -3374,7 +3374,7 @@ function Dashboard() {
                   {analyticsData.perfil?.followers_count != null && (
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                       <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
-                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111' }}>{Number(analyticsData.perfil.followers_count).toLocaleString('pt-BR')}</p>
+                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{Number(analyticsData.perfil.followers_count).toLocaleString('pt-BR')}</p>
                     </div>
                   )}
                 </div>
@@ -3382,7 +3382,7 @@ function Dashboard() {
                 {/* Série de alcance/visitas ao perfil por dia */}
                 {Array.isArray(analyticsData.insightsConta) && analyticsData.insightsConta.length > 0 && (
                   <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
-                    <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: '#111' }}>Evolução diária</p>
+                    <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Evolução diária</p>
                     {analyticsData.insightsConta.map((serie: any) => {
                       const valores = (serie.values || []).map((v: any) => Number(v.value) || 0)
                       const max = Math.max(1, ...valores)
@@ -3413,13 +3413,13 @@ function Dashboard() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
                     {analyticsData.demografia.genero && (
                       <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#111' }}>Gênero dos seguidores</p>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Gênero dos seguidores</p>
                         {analyticsData.demografia.genero.map((g: any) => {
                           const total = analyticsData.demografia.genero.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
                           const pct = Math.round((Number(g.value) / total) * 100)
                           return (
                             <div key={g.dimension_values?.[0]} style={{ marginBottom: 8 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 4 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--v2-ink2)', marginBottom: 4 }}>
                                 <span style={{ textTransform: 'capitalize' }}>{g.dimension_values?.[0]}</span>
                                 <span style={{ fontWeight: 700 }}>{pct}%</span>
                               </div>
@@ -3433,13 +3433,13 @@ function Dashboard() {
                     )}
                     {analyticsData.demografia.idade && (
                       <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#111' }}>Faixa etária dos seguidores</p>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Faixa etária dos seguidores</p>
                         {analyticsData.demografia.idade.map((g: any) => {
                           const total = analyticsData.demografia.idade.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
                           const pct = Math.round((Number(g.value) / total) * 100)
                           return (
                             <div key={g.dimension_values?.[0]} style={{ marginBottom: 8 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 4 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--v2-ink2)', marginBottom: 4 }}>
                                 <span>{g.dimension_values?.[0]}</span>
                                 <span style={{ fontWeight: 700 }}>{pct}%</span>
                               </div>
@@ -3456,7 +3456,7 @@ function Dashboard() {
 
                 {/* Tabela de posts no período */}
                 <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: '#111', borderBottom: '1px solid #f0f0f0' }}>
+                  <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', borderBottom: '1px solid #f0f0f0' }}>
                     Posts por relevancia — melhor desempenho no topo ({analyticsData.posts?.length || 0})
                   </p>
                   {(!analyticsData.posts || analyticsData.posts.length === 0) ? (
@@ -3472,7 +3472,7 @@ function Dashboard() {
                             <p style={{ margin: 0, fontSize: 13, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda || '(sem legenda)'}</p>
                             <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : ''}</p>
                           </div>
-                          <div style={{ display: 'flex', gap: 16, flexShrink: 0, fontSize: 12, color: '#666' }}>
+                          <div style={{ display: 'flex', gap: 16, flexShrink: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>
                             <span><strong>{p.curtidas}</strong> curtidas</span>
                             <span><strong>{p.comentarios}</strong> coment.</span>
                             <span><strong>{p.alcance}</strong> alcance</span>
@@ -3495,7 +3495,7 @@ function Dashboard() {
               <IconBack size={14} /> Voltar
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
               {editandoPostId && (
                 <button onClick={cancelarEdicaoPost} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
                   Cancelar edição
@@ -5040,57 +5040,57 @@ function Dashboard() {
 
         {/* CONFIGURAÇÕES (admin only) */}
         {aba === 'config' && role === 'admin' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760 }}>
-            <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Configurações</h2>
+          <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760, color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)' }}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--v2-ink)' }}>Configurações</h2>
 
             {/* Hub de configurações — abas */}
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--v2-rule)' }}>
               {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid #111' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
+                <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
               ))}
-              <span style={{ width: 1, height: 20, background: '#e5e5e5', margin: '0 6px' }} />
+              <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
               {([['clientes', 'Clientes'], ['usuarios', 'Colaboradores'], ['automacoes', 'Automações']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setAba(k as any)} title={`Abrir ${l}`} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#888', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
+                <button key={k} onClick={() => setAba(k as any)} title={`Abrir ${l}`} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--v2-ink3)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
                   {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
                 </button>
               ))}
             </div>
 
             {abaConfig === 'operacional' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Operacional</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Prazos e padrões do dia a dia (antes fixos no sistema).</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Operacional</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Prazos e padrões do dia a dia (antes fixos no sistema).</p>
               <OperacionalConfig />
             </div>
             )}
 
             {abaConfig === 'notificacoes' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações do sistema</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Notificações do sistema</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
               <NotificacoesConfig modo="admin" />
             </div>
             )}
 
             {abaConfig === 'permissoes' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Permissões detalhadas</h3>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Permissões detalhadas</h3>
               <PermissoesGranular />
             </div>
             )}
 
             {abaConfig === 'sistema' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Saúde do sistema</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>O que está no ar: banco, integrações, backup e erros recentes.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Saúde do sistema</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>O que está no ar: banco, integrações, backup e erros recentes.</p>
               <SaudeSistema />
             </div>
             )}
 
             {abaConfig === 'geral' && (<>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Perfil da instância</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Adapta o sistema ao tipo de negócio: painel inicial, cadastro de pacientes e vínculo da Agenda. Instâncias criadas com perfil no setup já vêm definidas.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Perfil da instância</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Adapta o sistema ao tipo de negócio: painel inicial, cadastro de pacientes e vínculo da Agenda. Instâncias criadas com perfil no setup já vêm definidas.</p>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <select value={perfilInstancia || ''} onChange={async e => {
                   const novo = e.target.value || ''
@@ -5115,7 +5115,7 @@ function Dashboard() {
                   const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
                   if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null); toast(`Perfil da instância alterado para ${para}.`, 'sucesso') }
                   else toast(r?.error || 'Não foi possível trocar o perfil — nada foi alterado.', 'erro')
-                }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+                }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
                   {/* Opções vindas do CATÁLOGO, nunca escritas à mão. Quando eram
                       fixas aqui, o perfil `cidadania` ficou de fora: o <select>
                       tinha value="cidadania" sem opção correspondente, o navegador
@@ -5125,18 +5125,18 @@ function Dashboard() {
                   <option value="">Agência (padrão)</option>
                   {PERFIS_INSTANCIA.map(p => <option key={p.chave} value={p.chave}>{p.label}</option>)}
                 </select>
-                <span style={{ fontSize: 11.5, color: '#aaa' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
               </div>
             </div>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Aparência</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Escolha como o painel é exibido para você neste navegador.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Aparência</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Escolha como o painel é exibido para você neste navegador.</p>
               <div style={{ display: 'flex', gap: 10 }}>
                 {(['claro', 'escuro'] as const).map(opcao => (
                   <button key={opcao} onClick={() => { if (tema !== opcao) alternarTema() }} style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     padding: '14px 0', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                    border: tema === opcao ? '2px solid #111' : '1.5px solid #e0e0e0',
+                    border: tema === opcao ? '2px solid #111' : '1.5px solid var(--v2-rule2)',
                     background: tema === opcao ? '#111' : '#fff',
                     color: tema === opcao ? '#ffc00f' : '#888',
                   }}>
@@ -5145,40 +5145,40 @@ function Dashboard() {
                   </button>
                 ))}
               </div>
-              <p style={{ margin: '12px 0 0', fontSize: 11, color: '#bbb' }}>
+              <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
                 No modo escuro, as cores da interface são invertidas — fundo escuro e textos claros — enquanto fotos e vídeos continuam exibidos com as cores naturais.
               </p>
             </div>
 
             {/* Dados gerais da agência */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Dados da agência</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Informações e identidade visual exibidas no sistema.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Dados da agência</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Informações e identidade visual exibidas no sistema.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <input value={configAgencia.nomeAgencia || ''} onChange={e => setConfigAgencia(p => ({ ...p, nomeAgencia: e.target.value }))} placeholder="Nome da agência"
-                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={configAgencia.emailContato || ''} onChange={e => setConfigAgencia(p => ({ ...p, emailContato: e.target.value }))} placeholder="E-mail de contato" type="email"
-                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {configAgencia.logo ? <img src={configAgencia.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                    <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: 'var(--v2-surface2)', border: '1.5px solid var(--v2-rule2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {configAgencia.logo ? <img src={configAgencia.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
                     </div>
-                    <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoAgencia ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoAgencia ? 'Enviando...' : 'Enviar logomarca'}</span>
                     <input type="file" accept="image/*" style={{ display: 'none' }}
                       onChange={e => { if (e.target.files?.[0]) uploadLogoAgencia(e.target.files[0]); e.target.value = '' }} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Cor primária
                     <input type="color" value={configAgencia.corPrimaria || '#ffc00f'} onChange={e => setConfigAgencia(p => ({ ...p, corPrimaria: e.target.value }))}
-                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                      style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Cor secundária
                     <input type="color" value={configAgencia.corSecundaria || '#111111'} onChange={e => setConfigAgencia(p => ({ ...p, corSecundaria: e.target.value }))}
-                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                      style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
                   <button onClick={salvarConfigAgencia} disabled={salvandoConfig}
                     style={{ marginLeft: 'auto', padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoConfig ? 0.6 : 1 }}>
@@ -5192,9 +5192,9 @@ function Dashboard() {
             </div>
 
             {/* Créditos da IA (Anthropic) */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Créditos da IA (Anthropic)</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Créditos da IA (Anthropic)</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
                 Saldo estimado da API usada na geração de documentos. A Anthropic não informa o saldo real — cadastre aqui o valor atual (veja em console.anthropic.com) e o sistema desconta automaticamente a cada documento gerado, avisando só os ADMINs quando estiver acabando.
               </p>
               {saldoIA.saldo <= saldoIA.limite && (
@@ -5204,16 +5204,16 @@ function Dashboard() {
               )}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Saldo atual (US$)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Saldo atual (US$)</label>
                   <input type="number" step="0.01" min="0" value={saldoIA.saldo}
                     onChange={e => setSaldoIA(s => ({ ...s, saldo: parseFloat(e.target.value) }))}
-                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule2)', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Avisar abaixo de (US$)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Avisar abaixo de (US$)</label>
                   <input type="number" step="0.01" min="0" value={saldoIA.limite}
                     onChange={e => setSaldoIA(s => ({ ...s, limite: parseFloat(e.target.value) }))}
-                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule2)', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
                 </div>
                 <button onClick={salvarSaldoIA} disabled={salvandoSaldoIA}
                   style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoSaldoIA ? 0.6 : 1 }}>
@@ -5224,11 +5224,11 @@ function Dashboard() {
             </div>
 
             {/* Backup e segurança (admin) */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Backup dos dados</h3>
-                  <p style={{ margin: 0, fontSize: 12, color: '#999', lineHeight: 1.5 }}>Um backup completo é gerado <strong>todo dia</strong> automaticamente (guardado de forma privada). Aqui você pode baixar uma cópia agora, quando quiser.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Backup dos dados</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Um backup completo é gerado <strong>todo dia</strong> automaticamente (guardado de forma privada). Aqui você pode baixar uma cópia agora, quando quiser.</p>
                 </div>
                 <a href="/api/backup" title="Baixa um JSON com todos os dados (clientes, posts, tarefas, CRM, config...)"
                   style={{ flexShrink: 0, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -5239,29 +5239,29 @@ function Dashboard() {
             </div>
 
             {/* Imagem de perfil dos clientes */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Imagem de perfil dos clientes</h3>
-                  <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Imagem de perfil dos clientes</h3>
+                  <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
                 </div>
                 <button onClick={ressincronizarFotos} disabled={resyncFotos} title="Rebusca as fotos do Instagram e salva de forma permanente (corrige fotos quebradas)"
-                  style={{ flexShrink: 0, padding: '8px 14px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
+                  style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-surface)', color: '#444', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
                   {resyncFotos ? 'Re-sincronizando...' : 'Re-sincronizar fotos do Instagram'}
                 </button>
               </div>
               {clientes.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum cliente cadastrado ainda.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum cliente cadastrado ainda.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {clientes.map(c => (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: '#fafafa', borderRadius: 10 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#eee', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: '#bbb', fontSize: 16 }}>
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'var(--v2-surface2)', borderRadius: 10 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', border: '1.5px solid var(--v2-rule2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: 'var(--v2-ink3)', fontSize: 16 }}>
                         <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{c.instagram?.replace(/^@/, '')}</p>
                       </div>
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#111', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0, opacity: fotoClienteId === c.id ? 0.6 : 1 }}>
                         {fotoClienteId === c.id ? 'Enviando...' : (c.logo ? 'Trocar imagem' : 'Enviar imagem')}
@@ -5277,22 +5277,22 @@ function Dashboard() {
             </>)}
 
             {abaConfig === 'integracoes' && (<>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>WhatsApp (conexão){perfilTelefonia ? ' — por loja' : ''}</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>{perfilTelefonia ? 'Cada loja pareia o seu próprio número (mesmo host, instâncias separadas). Defina a instância de cada loja em Produtos → Gerenciar lojas.' : 'Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.'}</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>WhatsApp (conexão){perfilTelefonia ? ' — por loja' : ''}</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{perfilTelefonia ? 'Cada loja pareia o seu próprio número (mesmo host, instâncias separadas). Defina a instância de cada loja em Produtos → Gerenciar lojas.' : 'Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.'}</p>
               {perfilTelefonia ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {lojasTel.length === 0 && <p style={{ fontSize: 12.5, color: '#a16207' }}>Cadastre as lojas em Produtos → Gerenciar lojas primeiro.</p>}
                   {lojasTel.map(l => {
                     const aberta = waLojaAberta === l.id
                     return (
-                      <div key={l.id} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
+                      <div key={l.id} style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden' }}>
                         <button onClick={() => setWaLojaAberta(aberta ? '' : l.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: aberta ? '#f5f5f5' : '#fafafa', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                          <span style={{ fontSize: 13.5, fontWeight: 800, color: '#111' }}>{l.nome}</span>
+                          <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.nome}</span>
                           <span style={{ fontSize: 12, fontWeight: 700, color: l.evolutionInstance ? '#1d4ed8' : '#a16207' }}>{l.evolutionInstance ? (aberta ? 'Fechar' : 'Abrir conexão') : 'defina a instância'}</span>
                         </button>
                         {aberta && (
-                          <div style={{ padding: 14, borderTop: '1px solid #f0f0f0' }}>
+                          <div style={{ padding: 14, borderTop: '1px solid var(--v2-rule)' }}>
                             {l.evolutionInstance
                               ? <WhatsAppConexao instancia={l.evolutionInstance} />
                               : <p style={{ margin: 0, fontSize: 12, color: '#a16207' }}>Defina a “Instância WhatsApp” desta loja em Produtos → Gerenciar lojas para poder conectar.</p>}
@@ -5304,14 +5304,14 @@ function Dashboard() {
                 </div>
               ) : <WhatsAppConexao />}
             </div>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Integrações</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>Status das conexões usadas pelo sistema.</p>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Integrações</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Status das conexões usadas pelo sistema.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--v2-surface2)', borderRadius: 10 }}>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Meta (Facebook / Instagram)</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Meta (Facebook / Instagram)</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                       {clientes.filter(c => c.metaConectado).length} de {clientes.length} cliente(s) com Instagram conectado
                     </p>
                   </div>
@@ -5320,10 +5320,10 @@ function Dashboard() {
                     Gerenciar conexões
                   </button>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--v2-surface2)', borderRadius: 10 }}>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Armazenamento de mídia (Vercel Blob)</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Usado para upload direto de imagens e vídeos nos posts</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Armazenamento de mídia (Vercel Blob)</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Usado para upload direto de imagens e vídeos nos posts</p>
                   </div>
                   <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Ativo</span>
                 </div>
@@ -5331,11 +5331,11 @@ function Dashboard() {
             </div>
 
             {/* Contas sociais conectadas */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Contas sociais conectadas</h3>
-                  <p style={{ margin: 0, fontSize: 12, color: '#999' }}>Perfis de Facebook e Instagram vinculados aos clientes.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Contas sociais conectadas</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Perfis de Facebook e Instagram vinculados aos clientes.</p>
                 </div>
                 <button onClick={() => setConectarRedesCliente('')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
@@ -5344,19 +5344,19 @@ function Dashboard() {
               </div>
 
               {clientes.filter(c => c.metaConectado).length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma conta conectada ainda. Use "Conectar redes" para vincular um perfil.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma conta conectada ainda. Use "Conectar redes" para vincular um perfil.</p>
               ) : (
-                <div style={{ border: '1px solid #eee', borderRadius: 12, overflowX: 'auto' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, padding: '10px 14px', background: '#fafafa', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                <div style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflowX: 'auto' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, padding: '10px 14px', background: 'var(--v2-surface2)', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     <span>Conta social</span><span>Status</span><span>Tipo</span><span></span>
                   </div>
                   {clientes.filter(c => c.metaConectado).flatMap(c => ([
                     ...(c.facebookPageId ? [{ c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' }] : []),
                     ...((c.instagramConectado || c.instagramUserId || c.instagramUsername) ? [{ c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' }] : []),
                   ])).map((row, i) => (
-                    <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #f0f0f0' }}>
+                    <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid var(--v2-rule)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#bbb', fontSize: 13 }}>
+                        <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--v2-ink3)', fontSize: 13 }}>
                           <AvatarCliente logo={row.c.logo} nome={row.c.nome} />
                           <span style={{ position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%', background: row.rede === 'facebook' ? '#1877f2' : '#dc2743', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
                             <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff">{row.rede === 'facebook'
@@ -5365,12 +5365,12 @@ function Dashboard() {
                           </span>
                         </span>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</p>
-                          <p style={{ margin: 0, fontSize: 11, color: '#aaa' }}>{row.sub} · {row.c.nome}</p>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{row.sub} · {row.c.nome}</p>
                         </div>
                       </div>
                       <span><span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
-                      <span style={{ fontSize: 13, color: '#666' }}>{row.tipo}</span>
+                      <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{row.tipo}</span>
                       {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
                         <button onClick={async () => { if (await confirmar(`Desconectar as contas de ${row.c.nome}?`, { titulo: 'Desconectar contas', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(row.c.id) }} title="Desconectar"
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
@@ -5384,15 +5384,15 @@ function Dashboard() {
             </>)}
 
             {abaConfig === 'notificacoes' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Notificações por e-mail</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Notificações por e-mail</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
                 Envio automático de e-mails (ex: ao gerar link de aprovação) usa um servidor SMTP configurado nas variáveis de ambiente da Vercel.
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fafafa', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--v2-surface2)', borderRadius: 10 }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>Servidor SMTP</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>Para alterar host, usuário ou senha, edite as variáveis SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS na Vercel</p>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Servidor SMTP</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Para alterar host, usuário ou senha, edite as variáveis SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS na Vercel</p>
                 </div>
                 <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
               </div>
