@@ -28,7 +28,7 @@ export default function PlaybookBotao({ clienteId, clienteNome }: { clienteId: s
   return (
     <>
       <button onClick={() => setAberto(true)}
-        style={{ padding: '10px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+        style={{ padding: '10px 20px', background: '#7c3aed', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
         Playbook da marca
       </button>
       {aberto && <PlaybookModal clienteId={clienteId} clienteNome={clienteNome} onClose={() => setAberto(false)} />}
@@ -72,18 +72,18 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
     onClose()
   }
 
-  const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 5 }
-  const ta: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', minHeight: 64, resize: 'vertical', lineHeight: 1.5 }
+  const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 5 }
+  const ta: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', minHeight: 64, resize: 'vertical', lineHeight: 1.5 }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Playbook da marca{clienteNome ? ` · ${clienteNome}` : ''}</h3>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>Regras de operação que os agentes de IA seguem ao produzir para este cliente.</p>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Playbook da marca{clienteNome ? ` · ${clienteNome}` : ''}</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Regras de operação que os agentes de IA seguem ao produzir para este cliente.</p>
           </div>
-          {pb.aprovado && !ehRascunhoIA && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '3px 10px', flexShrink: 0 }}>Aprovado</span>}
+          {pb.aprovado && !ehRascunhoIA && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px', flexShrink: 0 }}>Aprovado</span>}
         </div>
 
         {ehRascunhoIA && (
@@ -92,7 +92,7 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
           </div>
         )}
 
-        {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p> : (
+        {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
             {CAMPOS.map(f => (
               <div key={f.key}>
@@ -101,7 +101,7 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
               </div>
             ))}
             {pb.atualizadoEm && (
-              <p style={{ margin: 0, fontSize: 11, color: '#bbb' }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>
                 Última edição: {new Date(pb.atualizadoEm).toLocaleString('pt-BR')}{pb.atualizadoPor ? ` por ${pb.atualizadoPor}` : ''}{pb.origemUltimaEdicao === 'ia' ? ' (rascunho de IA)' : ''}
               </p>
             )}
@@ -110,19 +110,19 @@ function PlaybookModal({ clienteId, clienteNome, onClose }: { clienteId: string;
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
           <button onClick={destilar} disabled={destilando || carregando}
-            style={{ padding: '11px 16px', background: '#fff', color: '#7c3aed', border: '1.5px solid #d8b4fe', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: destilando ? 'wait' : 'pointer' }}>
+            style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: '#7c3aed', border: '1.5px solid #d8b4fe', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: destilando ? 'wait' : 'pointer' }}>
             {destilando ? 'Destilando...' : 'Destilar com IA'}
           </button>
           <div style={{ flex: 1 }} />
           <button onClick={() => salvar(false)} disabled={salvando || carregando}
-            style={{ padding: '11px 16px', background: '#f0f0f0', color: '#555', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             Salvar rascunho
           </button>
           <button onClick={() => salvar(true)} disabled={salvando || carregando}
-            style={{ padding: '11px 18px', background: 'var(--marca, #ffc00f)', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            style={{ padding: '11px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
             {salvando ? 'Salvando...' : 'Aprovar e salvar'}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#fff', color: '#666', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
         </div>
       </div>
     </div>

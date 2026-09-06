@@ -24,7 +24,7 @@ const vazio: Template = { id: '', nome: '', descricao: '', marcos: [], tarefas: 
 function Mover({ onSubir, onDescer, primeiro, ultimo }: { onSubir: () => void; onDescer: () => void; primeiro: boolean; ultimo: boolean }) {
   const bt = (ativo: boolean): React.CSSProperties => ({
     background: 'none', border: 'none', padding: '1px 2px', lineHeight: 0,
-    color: ativo ? '#999' : '#e8e8e8', cursor: ativo ? 'pointer' : 'default',
+    color: ativo ? 'var(--v2-ink3)' : 'var(--v2-surface2)', cursor: ativo ? 'pointer' : 'default',
   })
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -71,38 +71,38 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
     carregar()
   }
 
-  const inp: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
-  const card: React.CSSProperties = { background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
+  const inp: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+  const card: React.CSSProperties = { background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
 
   return (
     <div style={{ maxWidth: 880 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Modelos de projeto</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Crie um modelo de etapas + tarefas e aplique a vários clientes de uma vez, com prévia antes de gravar.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Modelos de projeto</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Crie um modelo de etapas + tarefas e aplique a vários clientes de uma vez, com prévia antes de gravar.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {podeEditar && sugestoes.length > 0 && templates.length > 0 && (
-            <button onClick={() => setMostrarSugestoes(v => !v)} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+            <button onClick={() => setMostrarSugestoes(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
               {mostrarSugestoes ? 'Ocultar modelos prontos' : 'Modelos prontos'}
             </button>
           )}
-          {podeEditar && <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>}
+          {podeEditar && <button onClick={() => setEditor({ ...vazio })} style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo modelo</button>}
         </div>
       </div>
 
-      {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', fontSize: 13 }}>{msg}</div>}
+      {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', color: 'var(--v2-ok)', fontSize: 13 }}>{msg}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
         {templates.map(t => (
           <div key={t.id} style={card}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111' }}>{t.nome}</p>
-            {t.descricao && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>{t.descricao}</p>}
-            <p style={{ margin: '10px 0 12px', fontSize: 12, color: '#aaa' }}>{(t.marcos || []).length} etapa(s) · {(t.tarefas || []).length} tarefa(s)</p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--v2-ink)' }}>{t.nome}</p>
+            {t.descricao && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{t.descricao}</p>}
+            <p style={{ margin: '10px 0 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>{(t.marcos || []).length} etapa(s) · {(t.tarefas || []).length} tarefa(s)</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              {podeEditar && <button onClick={() => setAplicar(t)} style={{ flex: 1, padding: '8px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aplicar a clientes</button>}
-              {podeEditar && <button onClick={() => setEditor(JSON.parse(JSON.stringify(t)))} style={{ padding: '8px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
-              {podeExcluir && <button onClick={() => excluir(t.id)} style={{ padding: '8px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
+              {podeEditar && <button onClick={() => setAplicar(t)} style={{ flex: 1, padding: '8px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Aplicar a clientes</button>}
+              {podeEditar && <button onClick={() => setEditor(JSON.parse(JSON.stringify(t)))} style={{ padding: '8px 12px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
+              {podeExcluir && <button onClick={() => excluir(t.id)} style={{ padding: '8px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
             </div>
           </div>
         ))}
@@ -114,33 +114,33 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
       {(templates.length === 0 || mostrarSugestoes) && (
         podeEditar && sugestoes.length > 0 ? (
           <div>
-            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>Comece de um modelo pronto</p>
-            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Abre no editor já preenchido. Ajuste o que quiser — nada é salvo até você clicar em "Salvar modelo".</p>
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>Comece de um modelo pronto</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Abre no editor já preenchido. Ajuste o que quiser — nada é salvo até você clicar em "Salvar modelo".</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
               {sugestoes.map(s => (
-                <button key={s.chave} onClick={() => usarSugestao(s)} style={{ ...card, textAlign: 'left', border: '1.5px dashed #e0e0e0', boxShadow: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111' }}>{s.nome}</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>{s.descricao}</p>
-                  <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>{s.marcos.length} etapa(s) · {s.tarefas.length} tarefa(s)</p>
+                <button key={s.chave} onClick={() => usarSugestao(s)} style={{ ...card, textAlign: 'left', border: '1.5px dashed var(--v2-rule)', boxShadow: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--v2-ink)' }}>{s.nome}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{s.descricao}</p>
+                  <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{s.marcos.length} etapa(s) · {s.tarefas.length} tarefa(s)</p>
                 </button>
               ))}
             </div>
           </div>
-        ) : templates.length === 0 ? <p style={{ color: '#bbb', fontSize: 13 }}>Nenhum modelo ainda.{podeEditar ? ' Crie o primeiro.' : ''}</p> : null
+        ) : templates.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum modelo ainda.{podeEditar ? ' Crie o primeiro.' : ''}</p> : null
       )}
 
       {/* Editor */}
       {editor && (
         <div onClick={fecharFora(() => setEditor(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 860, padding: 22, margin: '20px 0' }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{editor.id ? 'Editar modelo' : 'Novo modelo'}</h3>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 860, padding: 22, margin: '20px 0' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--v2-ink)' }}>{editor.id ? 'Editar modelo' : 'Novo modelo'}</h3>
             <input value={editor.nome} onChange={e => setEditor({ ...editor, nome: e.target.value })} placeholder="Nome do modelo (ex.: Onboarding Social Media)" style={{ ...inp, width: '100%', marginBottom: 8 }} />
             <input value={editor.descricao || ''} onChange={e => setEditor({ ...editor, descricao: e.target.value })} placeholder="Descrição (opcional)" style={{ ...inp, width: '100%', marginBottom: 16 }} />
 
             {/* Etapas */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Etapas do Playbook</span>
-              <button onClick={() => setEditor({ ...editor, marcos: [...editor.marcos, { titulo: '', categoria: 'social_media', duracao: 1, unidade: 'semanas' }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Etapa</button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Etapas do Playbook</span>
+              <button onClick={() => setEditor({ ...editor, marcos: [...editor.marcos, { titulo: '', categoria: 'social_media', duracao: 1, unidade: 'semanas' }] })} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Etapa</button>
             </div>
             {editor.marcos.map((m, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -151,7 +151,7 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
                   onSubir={() => setEditor({ ...editor, ...moverEtapaDoModelo(editor, i, i - 1) })}
                   onDescer={() => setEditor({ ...editor, ...moverEtapaDoModelo(editor, i, i + 1) })} />
                 <input value={m.titulo} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, titulo: e.target.value }; setEditor({ ...editor, marcos: ms }) }} placeholder={`Etapa ${i + 1}`} style={{ ...inp, flex: 1 }} />
-                <select value={m.categoria} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, categoria: e.target.value }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff' }}>
+                <select value={m.categoria} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, categoria: e.target.value }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: 'var(--v2-surface)' }}>
                   {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
                 {/* Duração = número + UNIDADE. O campo era só um número, e "7"
@@ -160,28 +160,28 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
                     grava-se `duracao`+`unidade`; `diasDuracao` fica só na
                     leitura dos modelos antigos (duracaoDaEtapa). */}
                 <input type="number" min="0" value={duracaoDaEtapa(m).quantidade || ''} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: Math.max(0, Number(e.target.value) || 0), unidade: duracaoDaEtapa(m).unidade }; setEditor({ ...editor, marcos: ms }) }} placeholder="0" style={{ ...inp, width: 56 }} />
-                <select value={duracaoDaEtapa(m).unidade} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: duracaoDaEtapa(m).quantidade, unidade: e.target.value as UnidadeDuracao }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: '#fff', width: 96 }}>
+                <select value={duracaoDaEtapa(m).unidade} onChange={e => { const ms = [...editor.marcos]; ms[i] = { ...m, duracao: duracaoDaEtapa(m).quantidade, unidade: e.target.value as UnidadeDuracao }; setEditor({ ...editor, marcos: ms }) }} style={{ ...inp, background: 'var(--v2-surface)', width: 96 }}>
                   {UNIDADES.map(u => <option key={u.chave} value={u.chave}>{u.label}</option>)}
                 </select>
                 {/* Responsável da ETAPA: escolher aqui carimba todas as tarefas
                     dela de uma vez (atribuirResponsavelNaEtapa). Quem precisar
                     de exceção troca na própria tarefa depois. */}
                 <select value={m.responsavelEmail || ''} onChange={e => setEditor({ ...editor, ...atribuirResponsavelNaEtapa(editor, i, e.target.value) })}
-                  title="Responsável da etapa — aplica a todas as tarefas dela" style={{ ...inp, background: '#fff', width: 150 }}>
+                  title="Responsável da etapa — aplica a todas as tarefas dela" style={{ ...inp, background: 'var(--v2-surface)', width: 150 }}>
                   <option value="">Sem responsável</option>
                   {equipe.map(u => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
                 </select>
                 {/* Remoção com REINDEXAÇÃO (lib/aplicarModelo): desvincular só as
                     tarefas desta etapa deixava as de baixo apontando para a etapa
                     vizinha, calado. Vínculo tarefa->etapa é posicional. */}
-                <button onClick={() => setEditor({ ...editor, ...removerEtapaDoModelo(editor, i) })} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16 }}>×</button>
+                <button onClick={() => setEditor({ ...editor, ...removerEtapaDoModelo(editor, i) })} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16 }}>×</button>
               </div>
             ))}
 
             {/* Tarefas */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Tarefas</span>
-              <button onClick={() => setEditor({ ...editor, tarefas: [...editor.tarefas, { titulo: '', tipo: 'tarefa', prioridade: 'media' }] })} style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Tarefa</button>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Tarefas</span>
+              <button onClick={() => setEditor({ ...editor, tarefas: [...editor.tarefas, { titulo: '', tipo: 'tarefa', prioridade: 'media' }] })} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Tarefa</button>
             </div>
             {editor.tarefas.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -191,13 +191,13 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
                   onSubir={() => setEditor({ ...editor, tarefas: moverNaLista(editor.tarefas, i, i - 1) })}
                   onDescer={() => setEditor({ ...editor, tarefas: moverNaLista(editor.tarefas, i, i + 1) })} />
                 <input value={t.titulo} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, titulo: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} placeholder={`Tarefa ${i + 1}`} style={{ ...inp, flex: 1 }} />
-                <select value={t.tipo} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, tipo: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: '#fff' }}>
+                <select value={t.tipo} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, tipo: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: 'var(--v2-surface)' }}>
                   {TIPOS.map(tp => <option key={tp} value={tp}>{tp}</option>)}
                 </select>
-                <select value={t.prioridade} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, prioridade: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: '#fff' }}>
+                <select value={t.prioridade} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, prioridade: e.target.value }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: 'var(--v2-surface)' }}>
                   {PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
-                <select value={t.marcoIndice ?? ''} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, marcoIndice: e.target.value === '' ? undefined : Number(e.target.value) }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: '#fff', maxWidth: 130 }}>
+                <select value={t.marcoIndice ?? ''} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, marcoIndice: e.target.value === '' ? undefined : Number(e.target.value) }; setEditor({ ...editor, tarefas: ts }) }} style={{ ...inp, background: 'var(--v2-surface)', maxWidth: 130 }}>
                   <option value="">Sem etapa</option>
                   {editor.marcos.map((m, j) => <option key={j} value={j}>{m.titulo || `Etapa ${j + 1}`}</option>)}
                 </select>
@@ -209,19 +209,19 @@ export default function Modelos({ clientes, usuarios = [], podeEditar = true, po
                   return (
                     <select value={t.responsavelEmail || ''} onChange={e => { const ts = [...editor.tarefas]; ts[i] = { ...t, responsavelEmail: e.target.value }; setEditor({ ...editor, tarefas: ts }) }}
                       title={nomeHerdado ? `Sem escolha própria, fica com ${nomeHerdado} (responsável da etapa)` : 'Responsável da tarefa'}
-                      style={{ ...inp, background: '#fff', width: 150, color: t.responsavelEmail ? '#111' : '#999' }}>
+                      style={{ ...inp, background: 'var(--v2-surface)', width: 150, color: t.responsavelEmail ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
                       <option value="">{nomeHerdado ? `Herda: ${nomeHerdado}` : 'Sem responsável'}</option>
                       {equipe.map(u => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
                     </select>
                   )
                 })()}
-                <button onClick={() => setEditor({ ...editor, tarefas: editor.tarefas.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16 }}>×</button>
+                <button onClick={() => setEditor({ ...editor, tarefas: editor.tarefas.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16 }}>×</button>
               </div>
             ))}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-              <button onClick={salvar} disabled={!editor.nome.trim()} style={{ flex: 1, padding: '11px 0', background: editor.nome.trim() ? '#ffc00f' : '#f0f0f0', color: editor.nome.trim() ? '#111' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Salvar modelo</button>
-              <button onClick={() => setEditor(null)} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={!editor.nome.trim()} style={{ flex: 1, padding: '11px 0', background: editor.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: editor.nome.trim() ? 'var(--v2-ink)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Salvar modelo</button>
+              <button onClick={() => setEditor(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -284,66 +284,66 @@ function AplicarModal({ template, clientes, equipe, onClose, onOk }: { template:
     if (preview) setPrevia(r); else onOk(r)
   }
 
-  const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }
-  const linkBt: React.CSSProperties = { background: 'none', border: 'none', color: '#2563eb', fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0 }
+  const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--v2-surface)' }
+  const linkBt: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0 }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 20, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, padding: 22, margin: '20px 0' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, padding: 22, margin: '20px 0' }}>
 
         {!previa ? (<>
-          <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Aplicar modelo</h3>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: '#888' }}>"{template.nome}" — {(template.marcos || []).length} etapa(s) e {(template.tarefas || []).length} tarefa(s) por cliente.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Aplicar modelo</h3>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>"{template.nome}" — {(template.marcos || []).length} etapa(s) e {(template.tarefas || []).length} tarefa(s) por cliente.</p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Clientes {sel.size > 0 && <span style={{ color: '#111' }}>· {sel.size} selecionado(s)</span>}</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Clientes {sel.size > 0 && <span style={{ color: 'var(--v2-ink)' }}>· {sel.size} selecionado(s)</span>}</label>
             <div style={{ display: 'flex', gap: 12 }}>
               {semEtapas.length > 0 && <button onClick={selecionarSemEtapas} style={linkBt}>Todos sem etapas ({semEtapas.length})</button>}
-              {sel.size > 0 && <button onClick={() => setSel(new Set())} style={{ ...linkBt, color: '#999' }}>Limpar</button>}
+              {sel.size > 0 && <button onClick={() => setSel(new Set())} style={{ ...linkBt, color: 'var(--v2-ink3)' }}>Limpar</button>}
             </div>
           </div>
 
-          <div style={{ maxHeight: 260, overflowY: 'auto', border: '1.5px solid #eee', borderRadius: 10, marginBottom: 12 }}>
+          <div style={{ maxHeight: 260, overflowY: 'auto', border: '1.5px solid var(--v2-rule)', borderRadius: 10, marginBottom: 12 }}>
             {elegiveis.map(c => {
               const n = etapasPorCliente[c.id] || 0
               return (
-                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', fontSize: 13 }}>
+                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', fontSize: 13 }}>
                   <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} style={{ cursor: 'pointer' }} />
-                  <span style={{ flex: 1, color: '#111' }}>{c.nome}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap', color: n ? '#166534' : '#b45309', background: n ? '#f0fdf4' : '#fffbeb' }}>
+                  <span style={{ flex: 1, color: 'var(--v2-ink)' }}>{c.nome}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap', color: n ? 'var(--v2-ok)' : 'var(--v2-amber)', background: n ? 'var(--v2-ok-bg)' : 'var(--v2-amber-bg)' }}>
                     {n ? `${n} etapa${n > 1 ? 's' : ''}` : 'Sem etapas'}
                   </span>
                 </label>
               )
             })}
-            {elegiveis.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 13, color: '#bbb' }}>Nenhum cliente.</p>}
+            {elegiveis.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum cliente.</p>}
           </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Data de início</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Data de início</label>
           <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} style={{ ...inp, marginBottom: 18 }} />
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => pedir(true)} disabled={!sel.size || ocupado} style={{ flex: 1, padding: '11px 0', background: sel.size ? '#111' : '#f0f0f0', color: sel.size ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: sel.size ? 'pointer' : 'default' }}>{ocupado ? 'Gerando prévia...' : 'Ver prévia'}</button>
-            <button onClick={onClose} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={() => pedir(true)} disabled={!sel.size || ocupado} style={{ flex: 1, padding: '11px 0', background: sel.size ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: sel.size ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: sel.size ? 'pointer' : 'default' }}>{ocupado ? 'Gerando prévia...' : 'Ver prévia'}</button>
+            <button onClick={onClose} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
           </div>
         </>) : (<>
-          <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Confira antes de aplicar</h3>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888' }}>Nada foi criado ainda. Isto é o que vai ser gravado em cada um dos {previa.alvos.length} cliente(s).</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Confira antes de aplicar</h3>
+          <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>Nada foi criado ainda. Isto é o que vai ser gravado em cada um dos {previa.alvos.length} cliente(s).</p>
 
           {comEtapasSelecionados > 0 && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12.5 }}>
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', color: 'var(--v2-amber)', fontSize: 12.5 }}>
               <strong>{comEtapasSelecionados} cliente(s) já têm etapas no Playbook.</strong> Aplicar de novo SOMA as etapas do modelo às que já existem — não substitui. Desmarque quem não deve receber.
             </div>
           )}
 
-          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#888' }}>Etapas que serão criadas</p>
-          <div style={{ border: '1.5px solid #eee', borderRadius: 10, marginBottom: 14 }}>
+          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Etapas que serão criadas</p>
+          <div style={{ border: '1.5px solid var(--v2-rule)', borderRadius: 10, marginBottom: 14 }}>
             {previa.etapas.map((e, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: i < previa.etapas.length - 1 ? '1px solid #f5f5f5' : 'none', fontSize: 13 }}>
-                <span style={{ color: '#ccc', fontSize: 11, fontWeight: 800, width: 16 }}>{i + 1}</span>
-                <span style={{ flex: 1, color: '#111' }}>{e.titulo || <em style={{ color: '#c00' }}>sem título</em>}</span>
-                {e.responsavelEmail && <span style={{ fontSize: 11, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{nomeDe(e.responsavelEmail)}</span>}
-                <span style={{ fontSize: 11.5, color: '#888', whiteSpace: 'nowrap' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: i < previa.etapas.length - 1 ? '1px solid var(--v2-surface1)' : 'none', fontSize: 13 }}>
+                <span style={{ color: 'var(--v2-ink3)', fontSize: 11, fontWeight: 800, width: 16 }}>{i + 1}</span>
+                <span style={{ flex: 1, color: 'var(--v2-ink)' }}>{e.titulo || <em style={{ color: '#c00' }}>sem título</em>}</span>
+                {e.responsavelEmail && <span style={{ fontSize: 11, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{nomeDe(e.responsavelEmail)}</span>}
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>
                   {dataBR(e.dataInicio)}{e.dataFim ? ` — ${dataBR(e.dataFim)}` : ' · marco pontual'}
                 </span>
               </div>
@@ -351,30 +351,30 @@ function AplicarModal({ template, clientes, equipe, onClose, onOk }: { template:
             {previa.etapas.length === 0 && <p style={{ margin: 0, padding: 14, fontSize: 12.5, color: '#c00' }}>Este modelo não tem nenhuma etapa. Termine o rascunho antes de aplicar.</p>}
           </div>
 
-          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#888' }}>Vai para</p>
+          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Vai para</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
             {previa.alvos.map(a => (
-              <span key={a.id} style={{ fontSize: 12, borderRadius: 999, padding: '4px 11px', background: a.etapasAtuais ? '#fffbeb' : '#f5f5f5', border: a.etapasAtuais ? '1px solid #fde68a' : '1px solid #eee', color: '#333' }}>
+              <span key={a.id} style={{ fontSize: 12, borderRadius: 999, padding: '4px 11px', background: a.etapasAtuais ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)', border: a.etapasAtuais ? '1px solid var(--v2-amber-bg)' : '1px solid var(--v2-surface2)', color: 'var(--v2-ink)' }}>
                 {a.nome}{a.etapasAtuais ? ` · já tem ${a.etapasAtuais}` : ''}
               </span>
             ))}
           </div>
 
-          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#666' }}>
+          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink2)' }}>
             Total: <strong>{previa.etapas.length * previa.alvos.length} etapa(s)</strong> e <strong>{previa.tarefas.length * previa.alvos.length} tarefa(s)</strong>.
           </p>
 
           {/* Tarefa sem dono não é erro — mas some no quadro de todo mundo, e
               ninguém vai atrás do que não é seu. Melhor avisar aqui. */}
           {previa.tarefas.some(t => !t.responsavelEmail) && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: '#f9fafb', border: '1px solid #eee', color: '#666', fontSize: 12.5 }}>
+            <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', color: 'var(--v2-ink2)', fontSize: 12.5 }}>
               <strong>{previa.tarefas.filter(t => !t.responsavelEmail).length} tarefa(s) vão nascer sem responsável.</strong> Dá para atribuir depois, uma a uma — ou voltar ao modelo e definir o responsável da etapa, que carimba todas de uma vez.
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => pedir(false)} disabled={ocupado || previa.etapas.length === 0} style={{ flex: 1, padding: '11px 0', background: previa.etapas.length ? '#111' : '#f0f0f0', color: previa.etapas.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: previa.etapas.length ? 'pointer' : 'default' }}>{ocupado ? 'Aplicando...' : `Aplicar a ${previa.alvos.length} cliente(s)`}</button>
-            <button onClick={() => setPrevia(null)} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Voltar</button>
+            <button onClick={() => pedir(false)} disabled={ocupado || previa.etapas.length === 0} style={{ flex: 1, padding: '11px 0', background: previa.etapas.length ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: previa.etapas.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: previa.etapas.length ? 'pointer' : 'default' }}>{ocupado ? 'Aplicando...' : `Aplicar a ${previa.alvos.length} cliente(s)`}</button>
+            <button onClick={() => setPrevia(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Voltar</button>
           </div>
         </>)}
       </div>

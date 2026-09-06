@@ -169,7 +169,7 @@ export default function SaudeSistema() {
     navigator.clipboard?.writeText(url).then(() => toast('URL de monitoramento copiada.', 'sucesso')).catch(() => toast(url, 'info'))
   }
 
-  if (carregando && !dados) return <p style={{ fontSize: 13, color: '#aaa' }}>Verificando o sistema...</p>
+  if (carregando && !dados) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Verificando o sistema...</p>
   if (erroFetch) return <p style={{ fontSize: 13, color: '#e11' }}>Não foi possível carregar o diagnóstico.</p>
   if (!dados) return null
 
@@ -189,24 +189,24 @@ export default function SaudeSistema() {
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: essenciaisOff.length ? '#e74c3c' : '#27ae60', display: 'inline-block' }} />
           {essenciaisOff.length ? `${essenciaisOff.length} essencial(is) faltando` : 'Essenciais no ar'}
         </div>
-        <button onClick={carregar} disabled={carregando} style={{ padding: '7px 14px', background: '#f2f2f2', color: '#333', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+        <button onClick={carregar} disabled={carregando} style={{ padding: '7px 14px', background: '#f2f2f2', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
           {carregando ? 'Atualizando...' : 'Atualizar'}
         </button>
-        <span style={{ fontSize: 11, color: '#bbb' }}>Verificado {tempoRelativo(dados.ts)}</span>
+        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Verificado {tempoRelativo(dados.ts)}</span>
       </div>
 
       {/* Integrações */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#333' }}>Integrações</h4>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Integrações</h4>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8 }}>
           {dados.integracoes.map(i => {
             const essencial = ESSENCIAIS.includes(i.chave)
             return (
-              <div key={i.chave} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid #eee', background: '#fff' }}>
+              <div key={i.chave} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: i.ligado ? '#27ae60' : (essencial ? '#e74c3c' : '#c9c9c9') }} />
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.label}</div>
-                  <div style={{ fontSize: 11, color: i.ligado ? '#2a9d5c' : (essencial ? '#c0392b' : '#aaa') }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.label}</div>
+                  <div style={{ fontSize: 11, color: i.ligado ? '#2a9d5c' : (essencial ? '#c0392b' : 'var(--v2-ink3)') }}>
                     {i.ligado ? 'Configurado' : (essencial ? 'FALTANDO' : 'Não configurado')}{i.obs ? ` · ${i.obs}` : ''}
                   </div>
                 </div>
@@ -218,39 +218,39 @@ export default function SaudeSistema() {
 
       {/* Monitoramento de uptime (turnkey) */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#333' }}>Monitoramento de uptime</h4>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#999' }}>Cole esta URL num monitor gratuito (ex.: UptimeRobot, BetterStack) — ele te avisa se o site cair. Responde 200 quando tudo está no ar, 503 se o banco cai.</p>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Monitoramento de uptime</h4>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Cole esta URL num monitor gratuito (ex.: UptimeRobot, BetterStack) — ele te avisa se o site cair. Responde 200 quando tudo está no ar, 503 se o banco cai.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <code style={{ fontSize: 12, background: '#f4f4f5', padding: '7px 10px', borderRadius: 8, color: '#333' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
-          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: '#f2f2f2', color: '#333', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
+          <code style={{ fontSize: 12, background: 'var(--v2-surface1)', padding: '7px 10px', borderRadius: 8, color: 'var(--v2-ink)' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
+          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: '#f2f2f2', color: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
         </div>
       </div>
 
       {/* Motor de criativos (novo) — prova do render Chrome headless (Fase 0) */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#333' }}>Motor de criativos (novo)</h4>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#999' }}>Teste do render de alta qualidade (Chrome headless). Gera uma imagem de exemplo 1080×1350 — se ela aparecer nítida, com margem e sem cortes, o motor novo funciona neste ambiente.</p>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Motor de criativos (novo)</h4>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Teste do render de alta qualidade (Chrome headless). Gera uma imagem de exemplo 1080×1350 — se ela aparecer nítida, com margem e sem cortes, o motor novo funciona neste ambiente.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={testarRender} disabled={renderBusy} style={{ padding: '8px 16px', background: renderBusy ? '#eee' : '#111', color: renderBusy ? '#aaa' : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: renderBusy ? 'default' : 'pointer' }}>
+          <button onClick={testarRender} disabled={renderBusy} style={{ padding: '8px 16px', background: renderBusy ? 'var(--v2-surface2)' : 'var(--v2-ink)', color: renderBusy ? 'var(--v2-ink3)' : 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: renderBusy ? 'default' : 'pointer' }}>
             {renderBusy ? 'Renderizando…' : 'Testar render'}
           </button>
           {renderInfo && <span style={{ fontSize: 11.5, color: '#2a9d5c', fontWeight: 700 }}>{renderInfo}</span>}
           {renderErro && <span style={{ fontSize: 11.5, color: '#e11', fontWeight: 700 }}>{renderErro}</span>}
         </div>
         {renderImg && (
-          <img src={renderImg} alt="Teste de render" style={{ marginTop: 12, width: 260, height: 'auto', borderRadius: 12, border: '1px solid #eee', display: 'block' }} />
+          <img src={renderImg} alt="Teste de render" style={{ marginTop: 12, width: 260, height: 'auto', borderRadius: 12, border: '1px solid var(--v2-rule)', display: 'block' }} />
         )}
       </div>
 
       {/* Segurança de acesso — interruptor GLOBAL do 2FA */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: '#333' }}>Segurança de acesso</h4>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 10, border: `1px solid ${g2fa ? '#fde68a' : '#eee'}`, background: g2fa ? '#fffbeb' : '#fafafa' }}>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Segurança de acesso</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 10, border: `1px solid ${g2fa ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)'}`, background: g2fa ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#222' }}>Exigir verificação em 2 fatores no login (global)</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>Exigir verificação em 2 fatores no login (global)</div>
             <div style={{ fontSize: 11.5, color: '#a15656', marginTop: 2, lineHeight: 1.5 }}>⚠️ Só LIGUE após a aprovação da Meta/Facebook. Enquanto o App Review estiver em análise, o login de teste do revisor não pode pedir código — senão a verificação falha. Com isto desligado, o 2FA fica pronto mas o login não exige código.</div>
           </div>
-          <button onClick={() => alternar2FAGlobal(!g2fa)} disabled={g2fa === null || g2faBusy} style={{ padding: '8px 18px', borderRadius: 999, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: g2fa === null || g2faBusy ? 'default' : 'pointer', background: g2fa ? '#16a34a' : '#e5e7eb', color: g2fa ? '#fff' : '#555' }}>
+          <button onClick={() => alternar2FAGlobal(!g2fa)} disabled={g2fa === null || g2faBusy} style={{ padding: '8px 18px', borderRadius: 999, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: g2fa === null || g2faBusy ? 'default' : 'pointer', background: g2fa ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: g2fa ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>
             {g2fa === null ? '…' : g2fa ? 'Ligado' : 'Desligado'}
           </button>
         </div>
@@ -258,32 +258,32 @@ export default function SaudeSistema() {
 
       {/* Backup */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#333' }}>Último backup</h4>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Último backup</h4>
         {dados.ultimoBackup ? (
-          <div style={{ fontSize: 12.5, color: '#555' }}>
-            <strong style={{ color: '#222' }}>{dados.ultimoBackup.pathname.replace('backups/', '')}</strong>
+          <div style={{ fontSize: 12.5, color: 'var(--v2-ink2)' }}>
+            <strong style={{ color: 'var(--v2-ink)' }}>{dados.ultimoBackup.pathname.replace('backups/', '')}</strong>
             {' · '}{formatarKB(dados.ultimoBackup.tamanho)}
             {dados.ultimoBackup.em ? ` · ${tempoRelativo(dados.ultimoBackup.em)}` : ''}
           </div>
         ) : (
-          <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum backup encontrado ainda (o cron roda diariamente às 6h).</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum backup encontrado ainda (o cron roda diariamente às 6h).</p>
         )}
       </div>
 
       {/* Auditoria — quem fez o quê */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#333' }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>
           Auditoria — quem fez o quê {dados.auditoria.length ? `(${dados.auditoria.length})` : ''}
         </h4>
         {!dados.auditoria.length ? (
-          <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhuma ação sensível registrada ainda.</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma ação sensível registrada ainda.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 320, overflowY: 'auto' }}>
             {dados.auditoria.map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '8px 11px', borderRadius: 9, border: '1px solid #eee', background: '#fafafa' }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#1d4ed8', flexShrink: 0 }}>{ACAO_LABEL[a.acao] || a.acao}</span>
-                {a.alvo && <span style={{ fontSize: 12, color: '#333' }}>· {a.alvo}</span>}
-                <span style={{ fontSize: 11.5, color: '#888', marginLeft: 'auto', flexShrink: 0 }}>{a.ator} · {tempoRelativo(a.criadoEm)}</span>
+              <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '8px 11px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>{ACAO_LABEL[a.acao] || a.acao}</span>
+                {a.alvo && <span style={{ fontSize: 12, color: 'var(--v2-ink)' }}>· {a.alvo}</span>}
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', marginLeft: 'auto', flexShrink: 0 }}>{a.ator} · {tempoRelativo(a.criadoEm)}</span>
               </div>
             ))}
           </div>
@@ -292,7 +292,7 @@ export default function SaudeSistema() {
 
       {/* Erros recentes */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#333' }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>
           Erros recentes {temErros ? `(${dados.erros.length})` : ''}
         </h4>
         {!temErros ? (
@@ -303,9 +303,9 @@ export default function SaudeSistema() {
               <div key={e.id} style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #f2dede', background: '#fdf6f6' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                   <span style={{ fontSize: 11.5, fontWeight: 800, color: '#c0392b' }}>{e.escopo}</span>
-                  <span style={{ fontSize: 10.5, color: '#bbb', flexShrink: 0 }}>{tempoRelativo(e.criadoEm)}</span>
+                  <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', flexShrink: 0 }}>{tempoRelativo(e.criadoEm)}</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#444', marginTop: 3, wordBreak: 'break-word' }}>{e.mensagem}</div>
+                <div style={{ fontSize: 12, color: 'var(--v2-ink2)', marginTop: 3, wordBreak: 'break-word' }}>{e.mensagem}</div>
               </div>
             ))}
           </div>
@@ -313,13 +313,13 @@ export default function SaudeSistema() {
       </div>
 
       {/* Zona de risco — restaurar backup */}
-      <div style={{ border: '1.5px solid #fecaca', borderRadius: 12, padding: 16, background: '#fef7f7' }}>
-        <h4 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#b91c1c' }}>Zona de risco — Restaurar backup</h4>
+      <div style={{ border: '1.5px solid var(--v2-hot-bg)', borderRadius: 12, padding: 16, background: '#fef7f7' }}>
+        <h4 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>Zona de risco — Restaurar backup</h4>
         <p style={{ margin: '0 0 12px', fontSize: 12, color: '#a15656' }}>Recuperação de desastre. Sobrescreve os registros atuais com os do backup (não apaga o que foi criado depois). Use só se precisar recuperar dados perdidos.</p>
 
         {/* Primário: backup gerenciado (lido no servidor, sem limite de tamanho) */}
         <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Backup gerenciado (diário)</label>
-        <select value={selPath} onChange={e => { setSelPath(e.target.value); setBkp(null); setConf(''); setSimRes(null); setEscopoCliente('') }} style={{ width: '100%', maxWidth: 320, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', marginBottom: 10 }}>
+        <select value={selPath} onChange={e => { setSelPath(e.target.value); setBkp(null); setConf(''); setSimRes(null); setEscopoCliente('') }} style={{ width: '100%', maxWidth: 320, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', marginBottom: 10 }}>
           <option value="">Escolher um backup…</option>
           {(dados.backups || []).map(b => <option key={b.pathname} value={b.pathname}>{b.pathname.replace('backups/', '').replace('.json', '')} · {formatarKB(b.tamanho)}</option>)}
         </select>
@@ -327,25 +327,25 @@ export default function SaudeSistema() {
         <div style={{ fontSize: 11.5, color: '#a15656', margin: '0 0 6px' }}>ou envie um arquivo baixado (Config → Geral · até ~4,5MB):</div>
         <input type="file" accept="application/json,.json" onChange={onArquivoBackup} style={{ fontSize: 12.5, marginBottom: 10, display: 'block' }} />
         {bkp && cont && (
-          <div style={{ marginBottom: 10, fontSize: 12, color: '#555' }}>
-            <div style={{ fontWeight: 700, color: '#333', marginBottom: 3 }}>Arquivo carregado{bkp._meta?.geradoEm ? ` (gerado ${new Date(bkp._meta.geradoEm).toLocaleString('pt-BR')})` : ''}:</div>
+          <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--v2-ink2)' }}>
+            <div style={{ fontWeight: 700, color: 'var(--v2-ink)', marginBottom: 3 }}>Arquivo carregado{bkp._meta?.geradoEm ? ` (gerado ${new Date(bkp._meta.geradoEm).toLocaleString('pt-BR')})` : ''}:</div>
             {cont.clientes ?? 0} clientes · {cont.usuarios ?? 0} usuários · {cont.posts ?? 0} posts · {cont.tarefas ?? 0} tarefas · {cont.marcos ?? 0} marcos
           </div>
         )}
         {/* Ensaio de DR — simula (nada é gravado) e permite restringir a 1 cliente */}
         {(bkp || selPath) && (
           <div style={{ marginTop: 6, marginBottom: 10 }}>
-            <button onClick={simularRestore} disabled={simulando} style={{ padding: '8px 14px', background: '#fff', color: '#7a4a4a', border: '1.5px solid #e0c0c0', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: simulando ? 'wait' : 'pointer' }}>
+            <button onClick={simularRestore} disabled={simulando} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: '#7a4a4a', border: '1.5px solid #e0c0c0', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: simulando ? 'wait' : 'pointer' }}>
               {simulando ? 'Simulando…' : 'Simular restauração (não grava nada)'}
             </button>
             {simRes && (
-              <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, border: '1px solid #e0c0c0', background: '#fff', fontSize: 12, color: '#555' }}>
-                <div style={{ fontWeight: 800, color: '#333', marginBottom: 4 }}>O que este backup restauraria:</div>
+              <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, border: '1px solid #e0c0c0', background: 'var(--v2-surface)', fontSize: 12, color: 'var(--v2-ink2)' }}>
+                <div style={{ fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 4 }}>O que este backup restauraria:</div>
                 {Object.entries(simRes.contagens).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k.replace('crm:', 'crm ')}`).join(' · ') || 'nada (backup vazio)'}
                 {!!simRes.clientesNoBackup?.length && (
                   <div style={{ marginTop: 10 }}>
                     <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Escopo da restauração</label>
-                    <select value={escopoCliente} onChange={e => { setEscopoCliente(e.target.value); setConf('') }} style={{ width: '100%', maxWidth: 320, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
+                    <select value={escopoCliente} onChange={e => { setEscopoCliente(e.target.value); setConf('') }} style={{ width: '100%', maxWidth: 320, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                       <option value="">Tudo (restauração completa)</option>
                       {simRes.clientesNoBackup.map(c => <option key={c.id} value={c.id}>Só o cliente: {c.nome}</option>)}
                     </select>
@@ -359,9 +359,9 @@ export default function SaudeSistema() {
 
         {(bkp || selPath) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: '#555' }}>Para confirmar, digite <b>RESTAURAR</b>:</span>
+            <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>Para confirmar, digite <b>RESTAURAR</b>:</span>
             <input value={conf} onChange={e => setConf(e.target.value)} placeholder="RESTAURAR" style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, width: 130, fontFamily: 'inherit' }} />
-            <button onClick={restaurar} disabled={conf !== 'RESTAURAR' || restaurando} style={{ padding: '8px 16px', background: conf === 'RESTAURAR' ? '#b91c1c' : '#eee', color: conf === 'RESTAURAR' ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: conf === 'RESTAURAR' && !restaurando ? 'pointer' : 'not-allowed' }}>{restaurando ? 'Restaurando…' : 'Restaurar backup'}</button>
+            <button onClick={restaurar} disabled={conf !== 'RESTAURAR' || restaurando} style={{ padding: '8px 16px', background: conf === 'RESTAURAR' ? 'var(--v2-hot)' : 'var(--v2-surface2)', color: conf === 'RESTAURAR' ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: conf === 'RESTAURAR' && !restaurando ? 'pointer' : 'not-allowed' }}>{restaurando ? 'Restaurando…' : 'Restaurar backup'}</button>
           </div>
         )}
       </div>

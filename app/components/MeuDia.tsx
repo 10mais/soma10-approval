@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { confirmar } from '@/lib/toast'
 import { TarefaModal } from './GestaoTarefas'
 
-const PRIO_COR: Record<string, string> = { urgente: '#dc2626', alta: '#ea580c', media: '#ca8a04', baixa: '#9ca3af' }
+const PRIO_COR: Record<string, string> = { urgente: 'var(--v2-hot)', alta: '#ea580c', media: 'var(--v2-amber)', baixa: 'var(--v2-ink3)' }
 const PRIO_PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
 
 function fmtMin(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
@@ -63,21 +63,21 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
     const elapsed = ini ? Date.now() - Number(ini) : 0
     const total = (t.apontamentos || []).reduce((s: number, a: any) => s + (Number(a.minutos) || 0), 0)
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: PRIO_COR[t.prioridade] || '#ccc', flexShrink: 0 }} title={t.prioridade} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: PRIO_COR[t.prioridade] || 'var(--v2-rule)', flexShrink: 0 }} title={t.prioridade} />
         <div onClick={() => setTarefaAberta(t)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} title="Abrir tarefa">
-          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</p>
-          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#999' }}>
+          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
             {t.clienteNome || 'Interno'}{t.prazo ? ` · prazo ${new Date(t.prazo).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}` : ''}{total > 0 ? ` · ${fmtMin(total)} apontado` : ''}
           </p>
         </div>
         <button onClick={() => timer(t)} title={rodando ? 'Parar timer' : 'Iniciar timer'}
-          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: rodando ? '#dc2626' : '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: rodando ? 'var(--v2-hot)' : 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
           {rodando
             ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar {fmtRelogio(elapsed)}</>
             : <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg> Timer</>}
         </button>
-        <button onClick={() => concluir(t)} title="Concluir" style={{ flexShrink: 0, padding: '7px 12px', background: '#fff', color: '#16a34a', border: '1.5px solid #bbf7d0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Concluir</button>
+        <button onClick={() => concluir(t)} title="Concluir" style={{ flexShrink: 0, padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1.5px solid var(--v2-ok-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Concluir</button>
       </div>
     )
   }
@@ -96,21 +96,21 @@ export default function MeuDia({ onAbrirTarefas, clientes = [], usuarios = [] }:
     <div style={{ maxWidth: 760 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Meu dia</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Suas tarefas em ordem de prazo e prioridade. Inicie o timer e marque como concluída.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Meu dia</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Suas tarefas em ordem de prazo e prioridade. Inicie o timer e marque como concluída.</p>
         </div>
-        {onAbrirTarefas && <button onClick={onAbrirTarefas} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Ver quadro de Tarefas →</button>}
+        {onAbrirTarefas && <button onClick={onAbrirTarefas} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Ver quadro de Tarefas →</button>}
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : minhas.length === 0 ? (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nada pendente atribuído a você. 🎉</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : minhas.length === 0 ? (
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nada pendente atribuído a você. 🎉</p>
         </div>
       ) : (
         <>
-          <Secao titulo="Atrasadas" itens={grupos.atrasadas} cor="#dc2626" />
-          <Secao titulo="Para hoje" itens={grupos.hoje} cor="#ca8a04" />
-          <Secao titulo="Próximas" itens={grupos.proximas} cor="#888" />
+          <Secao titulo="Atrasadas" itens={grupos.atrasadas} cor="var(--v2-hot)" />
+          <Secao titulo="Para hoje" itens={grupos.hoje} cor="var(--v2-amber)" />
+          <Secao titulo="Próximas" itens={grupos.proximas} cor="var(--v2-ink3)" />
         </>
       )}
 

@@ -130,16 +130,16 @@ export default function DriveButton({ onArquivos }: { onArquivos: (files: File[]
   return (
     <div>
       <button type="button" onClick={abrir} disabled={carregando}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '10px 12px', background: '#fff', border: '1.5px solid #1a73e8', color: '#1a73e8', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: carregando ? 'default' : 'pointer' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center', padding: '10px 12px', background: 'var(--v2-surface)', border: '1.5px solid #1a73e8', color: '#1a73e8', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: carregando ? 'default' : 'pointer' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
         {progresso ? `Baixando ${progresso.atual} de ${progresso.total}...` : carregando ? 'Abrindo o Drive...' : 'Selecionar criativos do Google Drive'}
       </button>
       {progresso && (
-        <div style={{ marginTop: 8, height: 6, borderRadius: 999, background: '#eef2ff', overflow: 'hidden' }}>
+        <div style={{ marginTop: 8, height: 6, borderRadius: 999, background: 'var(--v2-info-bg)', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${Math.round((progresso.atual / Math.max(1, progresso.total)) * 100)}%`, background: '#1a73e8', borderRadius: 999, transition: 'width .2s' }} />
         </div>
       )}
-      {erro && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#dc2626' }}>{erro}</p>}
+      {erro && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-hot)' }}>{erro}</p>}
     </div>
   )
 }

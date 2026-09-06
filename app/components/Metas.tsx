@@ -52,7 +52,7 @@ function BarraRitmo({ p, cor }: { p: Progresso; cor: string }) {
     <div style={{ position: 'relative', height: 12, background: '#f1f1f1', borderRadius: 8, overflow: 'visible' }}>
       <div style={{ width: `${pctReal}%`, height: '100%', background: cor, borderRadius: 8, transition: 'width .5s ease' }} />
       {pctHoje > 0 && pctHoje < 100 && (
-        <div title="Onde a meta deveria estar hoje" style={{ position: 'absolute', left: `${pctHoje}%`, top: -3, width: 2, height: 18, background: '#111', opacity: 0.55, borderRadius: 2 }} />
+        <div title="Onde a meta deveria estar hoje" style={{ position: 'absolute', left: `${pctHoje}%`, top: -3, width: 2, height: 18, background: 'var(--v2-ink)', opacity: 0.55, borderRadius: 2 }} />
       )}
     </div>
   )
@@ -62,11 +62,11 @@ function BarraRitmo({ p, cor }: { p: Progresso; cor: string }) {
 // vira dinheiro depois de salvar. Fica no MÓDULO de propósito — declarado dentro
 // do componente pai, o React remontaria o input a cada tecla e o cursor sairia
 // do campo no meio da digitação.
-const campoMoeda: React.CSSProperties = { width: '100%', padding: '8px 10px 8px 30px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', textAlign: 'right' }
+const campoMoeda: React.CSSProperties = { width: '100%', padding: '8px 10px 8px 30px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', textAlign: 'right' }
 function CampoMoeda({ valor, onMuda, placeholder }: { valor: string; onMuda: (v: string) => void; placeholder?: string }) {
   return (
     <div style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#bbb', pointerEvents: 'none' }}>R$</span>
+      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', pointerEvents: 'none' }}>R$</span>
       <input value={valor} onChange={e => onMuda(formatarEntradaMoeda(e.target.value))} inputMode="decimal" placeholder={placeholder || '0'} style={campoMoeda} />
     </div>
   )
@@ -117,7 +117,7 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
   const ehAnoCorrente = ano === hoje.getFullYear()
   const maiorBarra = Math.max(1, ...meses.map(x => Math.max(x.meta, x.realizado)))
 
-  const cardStyle: React.CSSProperties = { background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
+  const cardStyle: React.CSSProperties = { background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
   const Selo = ({ p }: { p: Progresso }) => {
     const c = CORES_SITUACAO[p.situacao]
     return <span style={{ fontSize: 11, fontWeight: 800, color: c.cor, background: c.fundo, padding: '3px 9px', borderRadius: 999 }}>{c.label}</span>
@@ -126,15 +126,15 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
   return (
     <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Metas</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: '#fff', borderRadius: 999, padding: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <button onClick={() => setAno(a => a - 1)} title="Ano anterior" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 9px', fontSize: 14, color: '#888' }}>‹</button>
-          <span style={{ fontSize: 13, fontWeight: 800, color: '#111', minWidth: 42, textAlign: 'center' }}>{ano}</span>
-          <button onClick={() => setAno(a => a + 1)} title="Próximo ano" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 9px', fontSize: 14, color: '#888' }}>›</button>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Metas</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--v2-surface)', borderRadius: 999, padding: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <button onClick={() => setAno(a => a - 1)} title="Ano anterior" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 9px', fontSize: 14, color: 'var(--v2-ink3)' }}>‹</button>
+          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', minWidth: 42, textAlign: 'center' }}>{ano}</span>
+          <button onClick={() => setAno(a => a + 1)} title="Próximo ano" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 9px', fontSize: 14, color: 'var(--v2-ink3)' }}>›</button>
         </div>
         <span style={{ flex: 1 }} />
         {podeEditar && (
-          <button onClick={() => setEditar(true)} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={() => setEditar(true)} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
             {totalAno(meta) > 0 ? 'Editar meta' : 'Definir meta'}
           </button>
         )}
@@ -146,18 +146,18 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {[{ id: '', nome: 'Todos os funis' }, ...pipelines].map(p => (
             <button key={p.id} onClick={() => setFunil(p.id)}
-              style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid ' + (funil === p.id ? '#111' : '#e6e6e6'), background: funil === p.id ? '#111' : '#fff', color: funil === p.id ? '#fff' : '#555', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid ' + (funil === p.id ? 'var(--v2-ink)' : 'var(--v2-surface2)'), background: funil === p.id ? 'var(--v2-ink)' : 'var(--v2-surface)', color: funil === p.id ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               {p.nome}
             </button>
           ))}
         </div>
       )}
 
-      {carregando ? <p style={{ fontSize: 13, color: '#aaa' }}>Carregando…</p> : (<>
+      {carregando ? <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando…</p> : (<>
         {totalAno(meta) === 0 && (
-          <div style={{ ...cardStyle, marginBottom: 14, background: '#fffbeb', boxShadow: 'none', border: '1px solid #fde68a' }}>
-            <p style={{ margin: 0, fontSize: 13, color: '#92400e', fontWeight: 700 }}>Nenhuma meta definida para {ano}.</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#a16207' }}>
+          <div style={{ ...cardStyle, marginBottom: 14, background: 'var(--v2-amber-bg)', boxShadow: 'none', border: '1px solid var(--v2-amber-bg)' }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-amber)', fontWeight: 700 }}>Nenhuma meta definida para {ano}.</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--v2-amber)' }}>
               {podeEditar ? 'Clique em "Definir meta" para lançar o valor do ano — ele é distribuído entre os 12 meses e você ajusta mês a mês.' : 'O administrador precisa definir a meta do ano. O realizado abaixo continua sendo contado.'}
             </p>
           </div>
@@ -166,43 +166,43 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
         {/* ANO */}
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
-            <Anel pct={anoP.pct} cor={CORES_SITUACAO[anoP.situacao].cor === '#9ca3af' ? '#d4d4d4' : CORES_SITUACAO[anoP.situacao].cor} tamanho={140}>
-              <span style={{ fontSize: 28, fontWeight: 800, color: '#111', lineHeight: 1 }}>{Math.round(anoP.pct)}%</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>do ano</span>
+            <Anel pct={anoP.pct} cor={CORES_SITUACAO[anoP.situacao].cor === 'var(--v2-ink3)' ? '#d4d4d4' : CORES_SITUACAO[anoP.situacao].cor} tamanho={140}>
+              <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--v2-ink)', lineHeight: 1 }}>{Math.round(anoP.pct)}%</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>do ano</span>
             </Anel>
             <div style={{ flex: 1, minWidth: 260 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Meta anual {ano}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Meta anual {ano}</span>
                 <Selo p={anoP} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Meta</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: '#111' }}>{brl(anoP.meta)}</p></div>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Realizado</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: '#16a34a' }}>{brl(anoP.realizado)}</p></div>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>{anoP.excedente > 0 ? 'Excedente' : 'Falta'}</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: anoP.excedente > 0 ? '#16a34a' : '#b91c1c' }}>{brl(anoP.excedente > 0 ? anoP.excedente : anoP.falta)}</p></div>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Vendas ganhas</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: '#111' }}>{anoP.qtd}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Meta</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(anoP.meta)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Realizado</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: 'var(--v2-ok)' }}>{brl(anoP.realizado)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>{anoP.excedente > 0 ? 'Excedente' : 'Falta'}</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: anoP.excedente > 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(anoP.excedente > 0 ? anoP.excedente : anoP.falta)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Vendas ganhas</p><p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)' }}>{anoP.qtd}</p></div>
               </div>
-              <BarraRitmo p={anoP} cor={anoP.situacao === 'atrasado' ? '#ef4444' : '#16a34a'} />
+              <BarraRitmo p={anoP} cor={anoP.situacao === 'atrasado' ? 'var(--v2-hot)' : 'var(--v2-ok)'} />
             </div>
           </div>
         </div>
 
         {/* TRIMESTRES */}
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Trimestres</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Trimestres</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
           {trimestres.map(t => {
             const corrente = ehAnoCorrente && Math.floor(hoje.getMonth() / 3) === t.t
             const c = CORES_SITUACAO[t.situacao]
             return (
               <button key={t.t} onClick={() => setMesFoco(t.t * 3)} title={`Ver ${MESES_LONGO[t.t * 3]}`}
-                style={{ ...cardStyle, textAlign: 'left', cursor: 'pointer', border: corrente ? '1.5px solid #111' : '1.5px solid transparent', font: 'inherit' }}>
+                style={{ ...cardStyle, textAlign: 'left', cursor: 'pointer', border: corrente ? '1.5px solid var(--v2-ink)' : '1.5px solid transparent', font: 'inherit' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>T{t.t + 1}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: t.semMeta ? '#bbb' : c.cor }}>{t.semMeta ? '—' : `${Math.round(t.pct)}%`}</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>T{t.t + 1}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: t.semMeta ? 'var(--v2-ink3)' : c.cor }}>{t.semMeta ? '—' : `${Math.round(t.pct)}%`}</span>
                 </div>
-                <p style={{ margin: '8px 0 2px', fontSize: 15, fontWeight: 800, color: '#111' }}>{brl(t.realizado)}</p>
-                <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>de {brl(t.meta)}</p>
+                <p style={{ margin: '8px 0 2px', fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(t.realizado)}</p>
+                <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>de {brl(t.meta)}</p>
                 <div style={{ height: 7, background: '#f1f1f1', borderRadius: 6, overflow: 'hidden', marginTop: 8 }}>
-                  <div style={{ width: `${Math.min(100, t.pct)}%`, height: '100%', background: t.semMeta ? '#e5e5e5' : c.cor, transition: 'width .4s ease' }} />
+                  <div style={{ width: `${Math.min(100, t.pct)}%`, height: '100%', background: t.semMeta ? 'var(--v2-surface2)' : c.cor, transition: 'width .4s ease' }} />
                 </div>
               </button>
             )
@@ -210,7 +210,7 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
         </div>
 
         {/* MESES — clicar troca o foco de baixo */}
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Meses</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Meses</span>
         <div style={{ ...cardStyle, marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 150, overflowX: 'auto' }}>
             {meses.map(x => {
@@ -221,48 +221,48 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
               const c = CORES_SITUACAO[x.situacao]
               return (
                 <button key={x.m} onClick={() => setMesFoco(x.m)} title={`${MESES_LONGO[x.m]}: ${brl(x.realizado)} de ${brl(x.meta)}`}
-                  style={{ flex: 1, minWidth: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: selecionado ? '#f7f7f7' : 'none', border: 'none', borderRadius: 10, padding: '6px 2px', cursor: 'pointer', font: 'inherit' }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: x.realizado > 0 ? '#111' : '#ccc' }}>{x.realizado > 0 ? Math.round(x.realizado / 1000) + 'k' : ''}</span>
+                  style={{ flex: 1, minWidth: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: selecionado ? 'var(--v2-surface1)' : 'none', border: 'none', borderRadius: 10, padding: '6px 2px', cursor: 'pointer', font: 'inherit' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: x.realizado > 0 ? 'var(--v2-ink)' : 'var(--v2-rule2)' }}>{x.realizado > 0 ? Math.round(x.realizado / 1000) + 'k' : ''}</span>
                   {/* meta = coluna cinza atrás; realizado = coluna colorida na frente */}
                   <div style={{ position: 'relative', width: 26, height: 110, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                     <div style={{ position: 'absolute', bottom: 0, width: 26, height: Math.max(2, hMeta), background: '#f1f1f1', borderRadius: 6 }} />
                     <div style={{ position: 'absolute', bottom: 0, width: 26, height: hReal, background: x.semMeta ? '#cbd5e1' : c.cor, borderRadius: 6, transition: 'height .4s ease' }} />
                   </div>
-                  <span style={{ fontSize: 10.5, fontWeight: selecionado || corrente ? 800 : 600, color: corrente ? '#111' : '#999', borderBottom: corrente ? '2px solid #111' : '2px solid transparent', paddingBottom: 1 }}>{MESES_CURTO[x.m]}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: selecionado || corrente ? 800 : 600, color: corrente ? 'var(--v2-ink)' : 'var(--v2-ink3)', borderBottom: corrente ? '2px solid var(--v2-ink)' : '2px solid transparent', paddingBottom: 1 }}>{MESES_CURTO[x.m]}</span>
                 </button>
               )
             })}
           </div>
-          <p style={{ margin: '10px 0 0', fontSize: 11, color: '#bbb' }}>Coluna cinza = meta do mês · coluna colorida = ganho no mês. Clique num mês para abrir o detalhe.</p>
+          <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Coluna cinza = meta do mês · coluna colorida = ganho no mês. Clique num mês para abrir o detalhe.</p>
         </div>
 
         {/* FOCO DO MÊS — geral, parcial e quanto falta */}
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{MESES_LONGO[mesFoco]} de {ano}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{MESES_LONGO[mesFoco]} de {ano}</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 18 }}>
           <div style={cardStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <Anel pct={foco.pct} cor={foco.semMeta ? '#d4d4d4' : CORES_SITUACAO[foco.situacao].cor}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#111', lineHeight: 1 }}>{foco.semMeta ? '—' : `${Math.round(foco.pct)}%`}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#999' }}>da meta</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)', lineHeight: 1 }}>{foco.semMeta ? '—' : `${Math.round(foco.pct)}%`}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink3)' }}>da meta</span>
               </Anel>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Selo p={foco} />
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: '#999', fontWeight: 600 }}>{foco.excedente > 0 ? 'Passou da meta em' : 'Falta para bater'}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 24, fontWeight: 800, color: foco.excedente > 0 ? '#16a34a' : '#b91c1c', lineHeight: 1.1 }}>{brl(foco.excedente > 0 ? foco.excedente : foco.falta)}</p>
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#888' }}>{brl(foco.realizado)} de {brl(foco.meta)} · {foco.qtd} venda(s)</p>
+                <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{foco.excedente > 0 ? 'Passou da meta em' : 'Falta para bater'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 24, fontWeight: 800, color: foco.excedente > 0 ? 'var(--v2-ok)' : 'var(--v2-hot)', lineHeight: 1.1 }}>{brl(foco.excedente > 0 ? foco.excedente : foco.falta)}</p>
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{brl(foco.realizado)} de {brl(foco.meta)} · {foco.qtd} venda(s)</p>
               </div>
             </div>
-            <div style={{ marginTop: 14 }}><BarraRitmo p={foco} cor={foco.situacao === 'atrasado' ? '#ef4444' : '#16a34a'} /></div>
+            <div style={{ marginTop: 14 }}><BarraRitmo p={foco} cor={foco.situacao === 'atrasado' ? 'var(--v2-hot)' : 'var(--v2-ok)'} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Deveria estar hoje</p>
-                <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: '#111' }}>{brl(foco.esperadoAteHoje)}</p>
-                <p style={{ margin: 0, fontSize: 10.5, color: '#bbb' }}>dia {foco.diasDecorridos} de {foco.diasTotais}</p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Deveria estar hoje</p>
+                <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(foco.esperadoAteHoje)}</p>
+                <p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>dia {foco.diasDecorridos} de {foco.diasTotais}</p>
               </div>
               <div>
-                <p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Projeção no ritmo atual</p>
-                <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: foco.projecao >= foco.meta && foco.meta > 0 ? '#16a34a' : '#a16207' }}>{brl(foco.projecao)}</p>
-                <p style={{ margin: 0, fontSize: 10.5, color: '#bbb' }}>fechamento estimado</p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Projeção no ritmo atual</p>
+                <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: foco.projecao >= foco.meta && foco.meta > 0 ? 'var(--v2-ok)' : 'var(--v2-amber)' }}>{brl(foco.projecao)}</p>
+                <p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>fechamento estimado</p>
               </div>
             </div>
           </div>
@@ -271,32 +271,32 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
             {/* SEMANA — só faz sentido no mês corrente: semana de mês passado é história. */}
             {ehAnoCorrente && mesFoco === hoje.getMonth() ? (<>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Esta semana</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Esta semana</span>
                 <Selo p={semanaAtual} />
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: '#999' }}>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>
                 {dataCurta(intervaloSemana(hoje)[0].toISOString())} a {dataCurta(intervaloSemana(hoje)[1].toISOString())} · meta proporcional aos dias
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '12px 0' }}>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Meta</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: '#111' }}>{brl(semanaAtual.meta)}</p></div>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Realizado</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: '#16a34a' }}>{brl(semanaAtual.realizado)}</p></div>
-                <div><p style={{ margin: 0, fontSize: 11, color: '#999', fontWeight: 600 }}>Falta</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: semanaAtual.falta > 0 ? '#b91c1c' : '#16a34a' }}>{brl(semanaAtual.falta)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Meta</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(semanaAtual.meta)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Realizado</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: 'var(--v2-ok)' }}>{brl(semanaAtual.realizado)}</p></div>
+                <div><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 600 }}>Falta</p><p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 800, color: semanaAtual.falta > 0 ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{brl(semanaAtual.falta)}</p></div>
               </div>
-              <BarraRitmo p={semanaAtual} cor={semanaAtual.situacao === 'atrasado' ? '#ef4444' : '#16a34a'} />
+              <BarraRitmo p={semanaAtual} cor={semanaAtual.situacao === 'atrasado' ? 'var(--v2-hot)' : 'var(--v2-ok)'} />
             </>) : (
-              <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>A visão da semana aparece quando o mês em foco é o mês corrente.</p>
+              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>A visão da semana aparece quando o mês em foco é o mês corrente.</p>
             )}
 
             {/* O parcial que dá para conferir: as vendas que formaram o número. */}
             <div style={{ borderTop: '1px solid #f2f2f2', marginTop: 16, paddingTop: 12 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Vendas ganhas em {MESES_LONGO[mesFoco]}</span>
-              {foco.lista.length === 0 && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#aaa' }}>Nenhuma oportunidade ganha neste mês ainda.</p>}
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Vendas ganhas em {MESES_LONGO[mesFoco]}</span>
+              {foco.lista.length === 0 && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma oportunidade ganha neste mês ainda.</p>}
               <div style={{ maxHeight: 190, overflowY: 'auto', marginTop: 6 }}>
                 {foco.lista.map(n => (
-                  <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid #f7f7f7' }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#999', flexShrink: 0, minWidth: 34 }}>{dataCurta(dataDoGanho(n))}</span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo || 'Oportunidade'}{n.donoNome ? ` · ${n.donoNome}` : ''}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a', flexShrink: 0 }}>{brl(Number(n.valor) || 0)}</span>
+                  <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', flexShrink: 0, minWidth: 34 }}>{dataCurta(dataDoGanho(n))}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo || 'Oportunidade'}{n.donoNome ? ` · ${n.donoNome}` : ''}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ok)', flexShrink: 0 }}>{brl(Number(n.valor) || 0)}</span>
                   </div>
                 ))}
               </div>
@@ -337,43 +337,43 @@ function EditarMetaModal({ meta, ano, onClose, onSalvo }: { meta: MetaAno; ano: 
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '88vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '88vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Meta de vendas — {ano}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Meta de vendas — {ano}</h3>
           <span style={{ flex: 1 }} />
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1 }}>×</button>
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Valores em R$. O realizado vem sozinho das oportunidades ganhas no CRM.</p>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Valores em R$. O realizado vem sozinho das oportunidades ganhas no CRM.</p>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Meta do ano inteiro</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Meta do ano inteiro</label>
             <CampoMoeda valor={anual} onMuda={setAnual} placeholder="600.000" />
           </div>
           <button onClick={() => { const m = distribuirAnual(parseMoeda(anual)); setMeses(m.map(moedaParaCampo)) }}
-            style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ padding: '9px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Dividir em 12
           </button>
         </div>
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Mês a mês (ajuste o que for sazonal)</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Mês a mês (ajuste o que for sazonal)</label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
           {MESES_CURTO.map((nome, i) => (
             <div key={nome}>
-              <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 3 }}>{nome}</span>
+              <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 3 }}>{nome}</span>
               <CampoMoeda valor={meses[i]} onMuda={v => { const c = [...meses]; c[i] = v; setMeses(c) }} />
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, padding: '12px 14px', background: '#fafafa', borderRadius: 12 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#666' }}>Total do ano</span>
-          <span style={{ fontSize: 17, fontWeight: 800, color: '#111' }}>{brlExato(total)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, padding: '12px 14px', background: 'var(--v2-surface1)', borderRadius: 12 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>Total do ano</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)' }}>{brlExato(total)}</span>
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: '#666' }}>Cancelar</button>
-          <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1 }}>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: 'var(--v2-ink2)' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1 }}>
             {salvando ? 'Salvando…' : 'Salvar meta'}
           </button>
         </div>

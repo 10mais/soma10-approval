@@ -41,25 +41,25 @@ function RedeIcon({ rede, size = 12 }: { rede: 'instagram' | 'facebook'; size?: 
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  rascunho: '#eeeeee',
-  agendado: '#fef9c3',
-  aguardando_aprovacao: '#fef3c7',
-  aprovado: '#dcfce7',
+  rascunho: 'var(--v2-surface2)',
+  agendado: 'var(--v2-amber-bg)',
+  aguardando_aprovacao: 'var(--v2-amber-bg)',
+  aprovado: 'var(--v2-ok-bg)',
   corrigir: '#fff3cd',
-  reprovado: '#fee2e2',
-  publicado: '#dcfce7',
+  reprovado: 'var(--v2-hot-bg)',
+  publicado: 'var(--v2-ok-bg)',
   falha_publicacao: '#fde2e2',
 }
 
 const STATUS_DOT: Record<string, string> = {
-  rascunho: '#aaa',
-  agendado: '#a16207',
-  aguardando_aprovacao: '#f59e0b',
-  aprovado: '#16a34a',
-  corrigir: '#d97706',
-  reprovado: '#dc2626',
-  publicado: '#16a34a',
-  falha_publicacao: '#991b1b',
+  rascunho: 'var(--v2-ink3)',
+  agendado: 'var(--v2-amber)',
+  aguardando_aprovacao: 'var(--v2-amber-on)',
+  aprovado: 'var(--v2-ok)',
+  corrigir: 'var(--v2-amber)',
+  reprovado: 'var(--v2-hot)',
+  publicado: 'var(--v2-ok)',
+  falha_publicacao: 'var(--v2-hot)',
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -101,30 +101,30 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
   const ehPassado = (day: number) => new Date(year, month, day) < inicioHoje
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111' }}>{MESES[month]} {year}</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--v2-rule)' }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--v2-ink)' }}>{MESES[month]} {year}</h3>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => setRefDate(new Date(year, month - 1, 1))}
-            style={{ width: 32, height: 32, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>
+            style={{ width: 32, height: 32, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>
             ‹
           </button>
           <button onClick={() => setRefDate(new Date())}
-            style={{ padding: '0 14px', height: 32, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 12, fontWeight: 600 }}>
+            style={{ padding: '0 14px', height: 32, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 12, fontWeight: 600 }}>
             Hoje
           </button>
           <button onClick={() => setRefDate(new Date(year, month + 1, 1))}
-            style={{ width: 32, height: 32, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>
+            style={{ width: 32, height: 32, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>
             ›
           </button>
         </div>
       </div>
 
       {/* Dias da semana */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #f0f0f0' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--v2-rule)' }}>
         {DIAS_SEMANA.map(d => (
-          <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#aaa', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {d}
           </div>
         ))}
@@ -147,10 +147,10 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                 if (post) onMovePost(post, new Date(year, month, day, 9, 0))
               } : undefined}
               style={{
-                position: 'relative', minHeight: 92, padding: 8, borderRight: (i + 1) % 7 !== 0 ? '1px solid #f5f5f5' : 'none',
-                borderBottom: '1px solid #f5f5f5',
-                background: dragOverDay === day ? '#fffbeb' : (day ? '#fff' : '#fafafa'),
-                outline: dragOverDay === day ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+                position: 'relative', minHeight: 92, padding: 8, borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--v2-surface1)' : 'none',
+                borderBottom: '1px solid var(--v2-surface1)',
+                background: dragOverDay === day ? 'var(--v2-amber-bg)' : (day ? 'var(--v2-surface)' : 'var(--v2-surface1)'),
+                outline: dragOverDay === day ? '2px dashed var(--v2-amber-on)' : 'none', outlineOffset: -2,
               }}>
               {day && (
                 <>
@@ -158,14 +158,14 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: 600,
-                      color: isToday(day) ? '#111' : '#888',
-                      background: isToday(day) ? '#ffc00f' : 'transparent', marginBottom: 4,
+                      color: isToday(day) ? 'var(--v2-ink)' : 'var(--v2-ink3)',
+                      background: isToday(day) ? 'var(--v2-amber-on)' : 'transparent', marginBottom: 4,
                     }}>
                       {day}
                     </div>
                     {onAddPost && hoverDay === day && !ehPassado(day) && (
                       <button onClick={() => onAddPost(new Date(year, month, day, 9, 0))} title="Criar post neste dia"
-                        style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#111', color: '#ffc00f', fontSize: 14, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', fontSize: 14, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         +
                       </button>
                     )}
@@ -181,31 +181,31 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                         onDragStart={(e) => e.dataTransfer.setData('postId', p.id)}
                         onClick={() => onSelectPost?.(p)} title={p.legenda} style={{
                         display: 'flex', alignItems: 'center', gap: 6, padding: 4, borderRadius: 6,
-                        background: STATUS_COLOR[p.status] || '#f0f0f0', cursor: onMovePost ? 'grab' : (onSelectPost ? 'pointer' : 'default'),
+                        background: STATUS_COLOR[p.status] || 'var(--v2-surface2)', cursor: onMovePost ? 'grab' : (onSelectPost ? 'pointer' : 'default'),
                         overflow: 'hidden',
                       }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: '#e5e5e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {mostrarImg
                             ? <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : capa
                               ? <video src={capa} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg>}
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg>}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#333' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[p.status] || '#999', flexShrink: 0 }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: 'var(--v2-ink)' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[p.status] || 'var(--v2-ink3)', flexShrink: 0 }} />
                             {fmtHora(p.dataAgendada) && <span>{fmtHora(p.dataAgendada)}</span>}
-                            {p.formato && <span style={{ color: '#888' }}>· {FORMATO_LABEL[p.formato] || p.formato}</span>}
+                            {p.formato && <span style={{ color: 'var(--v2-ink3)' }}>· {FORMATO_LABEL[p.formato] || p.formato}</span>}
                             {redes.map(r => <RedeIcon key={r} rede={r} size={11} />)}
                           </div>
-                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#555', fontSize: 10 }}>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--v2-ink2)', fontSize: 10 }}>
                             {p.clienteNome}
                           </span>
                         </div>
                       </div>
                     )})}
                     {dayPosts.length > 3 && (
-                      <span style={{ fontSize: 10, color: '#aaa', paddingLeft: 6 }}>+{dayPosts.length - 3} mais</span>
+                      <span style={{ fontSize: 10, color: 'var(--v2-ink3)', paddingLeft: 6 }}>+{dayPosts.length - 3} mais</span>
                     )}
                   </div>
                 </>
@@ -216,11 +216,11 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
       </div>
 
       {/* Legenda */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, padding: '12px 20px', borderTop: '1px solid #f0f0f0', background: '#fafafa' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, padding: '12px 20px', borderTop: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
         {Object.entries(STATUS_DOT).map(([status, color]) => (
           <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />
-            <span style={{ fontSize: 11, color: '#888', textTransform: 'capitalize' }}>{status.replace('_', ' ')}</span>
+            <span style={{ fontSize: 11, color: 'var(--v2-ink3)', textTransform: 'capitalize' }}>{status.replace('_', ' ')}</span>
           </div>
         ))}
       </div>

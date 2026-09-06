@@ -8,7 +8,7 @@ import { Bloqueio, bloqueioNoDia, feriadoDoDia, ehProfissionalAgenda } from '@/l
 // detecção de conflito de horário (o servidor recusa; a UI oferece encaixe).
 
 type Usuario = { nome: string; email: string; areaSaude?: string; corAgenda?: string; recebeAgenda?: boolean; role?: string }
-const CORES_PROF = ['#7c3aed', '#1d4ed8', '#16a34a', '#d97706', '#db2777', '#0891b2', '#9333ea', '#ea580c']
+const CORES_PROF = ['#7c3aed', 'var(--v2-info)', 'var(--v2-ok)', 'var(--v2-amber)', '#db2777', '#0891b2', '#9333ea', '#ea580c']
 // Grade proporcional do dia: expediente 7h–21h, cada 30 min = SLOT_H px de altura.
 // SLOT_H=20 -> dia inteiro (14h) em ~560px, cabe numa tela sem rolar.
 const DIA_INICIO_H = 7, DIA_FIM_H = 21, SLOT_H = 20
@@ -27,11 +27,11 @@ const SERVICOS_CLINICA = ['Consulta', 'Revisão', 'Procedimento']
 type Espera = { id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string; servico?: string; observacoes?: string; criadoEm: string }
 
 const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
-  { key: 'agendado', label: 'Agendado', cor: '#1d4ed8', bg: '#eff6ff' },
-  { key: 'confirmado', label: 'Confirmado', cor: '#166534', bg: '#dcfce7' },
-  { key: 'atendido', label: 'Atendido', cor: '#374151', bg: '#e5e7eb' },
-  { key: 'faltou', label: 'Faltou', cor: '#b91c1c', bg: '#fee2e2' },
-  { key: 'cancelado', label: 'Cancelado', cor: '#9ca3af', bg: '#f4f4f5' },
+  { key: 'agendado', label: 'Agendado', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' },
+  { key: 'confirmado', label: 'Confirmado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  { key: 'atendido', label: 'Atendido', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
+  { key: 'faltou', label: 'Faltou', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' },
+  { key: 'cancelado', label: 'Cancelado', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 ]
 const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[0]
 // Rótulos de clínica: "aguardando confirmação" = aguardando pagamento; "confirmado" = pago
@@ -313,11 +313,11 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   // Eixo de horas (07:00…20:00). `spacer` alinha os rótulos com o cabeçalho das colunas na Semana.
   function EixoHoras({ spacer }: { spacer?: boolean }) {
     return (
-      <div style={{ width: 46, flexShrink: 0, borderRight: '1px solid #f0f0f0' }}>
+      <div style={{ width: 46, flexShrink: 0, borderRight: '1px solid var(--v2-rule)' }}>
         {spacer && <div style={{ height: HEADER_H }} />}
         {Array.from({ length: DIA_FIM_H - DIA_INICIO_H }, (_, i) => (
           <div key={i} style={{ height: SLOT_H * 2, position: 'relative' }}>
-            <span style={{ position: 'absolute', top: -7, right: 6, fontSize: 10, color: '#aaa', fontWeight: 600 }}>{String(DIA_INICIO_H + i).padStart(2, '0')}:00</span>
+            <span style={{ position: 'absolute', top: -7, right: 6, fontSize: 10, color: 'var(--v2-ink3)', fontWeight: 600 }}>{String(DIA_INICIO_H + i).padStart(2, '0')}:00</span>
           </div>
         ))}
       </div>
@@ -340,10 +340,10 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           const slot = Math.max(0, Math.floor((e.clientY - rect.top) / SLOT_H))
           novoEmMinutos(dia, DIA_INICIO_H * 60 + slot * 30)
         }}
-        style={{ position: 'relative', flex: 1, minWidth: compact ? 120 : undefined, height: GRID_H, cursor: podeEditar ? 'copy' : 'default', borderLeft: compact ? '1px solid #f0f0f0' : undefined }}>
+        style={{ position: 'relative', flex: 1, minWidth: compact ? 120 : undefined, height: GRID_H, cursor: podeEditar ? 'copy' : 'default', borderLeft: compact ? '1px solid var(--v2-rule)' : undefined }}>
         {/* Linhas de hora/meia-hora */}
         {Array.from({ length: (DIA_FIM_H - DIA_INICIO_H) * 2 + 1 }, (_, i) => (
-          <div key={i} style={{ position: 'absolute', left: 0, right: 0, top: i * SLOT_H, borderTop: `1px ${i % 2 === 0 ? 'solid #eee' : 'dashed #f4f4f4'}` }} />
+          <div key={i} style={{ position: 'absolute', left: 0, right: 0, top: i * SLOT_H, borderTop: `1px ${i % 2 === 0 ? 'solid var(--v2-surface2)' : 'dashed var(--v2-surface1)'}` }} />
         ))}
         {/* Bloqueios (ao fundo, não-clicáveis — editar/remover na tela de Bloqueios) */}
         {blocos.map(({ b, inicio, fim }, i) => {
@@ -366,9 +366,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           return (
             <div key={a.id} onClick={ev => { ev.stopPropagation(); setModal({ ...a, dataInicio: toLocalInput(new Date(a.dataInicio)) }) }}
               title={`${hora(a.dataInicio)} · ${a.pacienteNome} · ${a.profissionalNome}`}
-              style={{ position: 'absolute', top, height: altura, left: `calc(${(col / cols) * 100}% + 3px)`, width: `calc(${100 / cols}% - 6px)`, background: cancelado ? '#f4f4f5' : `${cor}18`, borderLeft: `3px solid ${cor}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: 'pointer', opacity: cancelado ? 0.6 : 1, boxSizing: 'border-box', zIndex: 1 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: cancelado ? 'line-through' : 'none' }}>{hora(a.dataInicio)} {a.pacienteNome}</div>
-              {altura > SLOT_H && <div style={{ fontSize: 9.5, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.servico, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>}
+              style={{ position: 'absolute', top, height: altura, left: `calc(${(col / cols) * 100}% + 3px)`, width: `calc(${100 / cols}% - 6px)`, background: cancelado ? 'var(--v2-surface1)' : `${cor}18`, borderLeft: `3px solid ${cor}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: 'pointer', opacity: cancelado ? 0.6 : 1, boxSizing: 'border-box', zIndex: 1 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: cancelado ? 'line-through' : 'none' }}>{hora(a.dataInicio)} {a.pacienteNome}</div>
+              {altura > SLOT_H && <div style={{ fontSize: 9.5, color: 'var(--v2-ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.servico, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>}
               {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{labelSt(st.key, st.label, perfilClinica)}</div>}
             </div>
           )
@@ -380,76 +380,76 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Agenda</h2>
-        <div style={{ display: 'inline-flex', gap: 2, background: '#f4f4f5', borderRadius: 10, padding: 3 }}>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Agenda</h2>
+        <div style={{ display: 'inline-flex', gap: 2, background: 'var(--v2-surface1)', borderRadius: 10, padding: 3 }}>
           {(['mes', 'semana', 'dia', 'lista'] as const).map(v => (
-            <button key={v} onClick={() => setVisao(v)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: visao === v ? '#fff' : 'transparent', fontWeight: visao === v ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: '#333', boxShadow: visao === v ? '0 1px 4px rgba(0,0,0,.1)' : 'none' }}>
+            <button key={v} onClick={() => setVisao(v)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: visao === v ? 'var(--v2-surface)' : 'transparent', fontWeight: visao === v ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)', boxShadow: visao === v ? '0 1px 4px rgba(0,0,0,.1)' : 'none' }}>
               {v === 'mes' ? 'Mês' : v === 'semana' ? 'Semana' : v === 'dia' ? 'Dia' : 'Lista'}
             </button>
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? -7 : -1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>‹</button>
-          <button onClick={() => setRef(new Date())} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#333' }}>Hoje</button>
-          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', cursor: 'pointer', fontSize: 14 }}>›</button>
+          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? -7 : -1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 14 }}>‹</button>
+          <button onClick={() => setRef(new Date())} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Hoje</button>
+          <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 14 }}>›</button>
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#555', textTransform: 'capitalize' }}>{tituloPeriodo}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', textTransform: 'capitalize' }}>{tituloPeriodo}</span>
         {visao === 'dia' && feriadoDe(ref) && (
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#be185d', background: '#fdf2f8', border: '1px solid #f9d7e6', borderRadius: 999, padding: '3px 10px' }}>Feriado · {feriadoDe(ref)}</span>
         )}
         <span style={{ flex: 1 }} />
         <select value={profFiltro} onChange={e => setProfFiltro(e.target.value)}
-          style={{ padding: '8px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+          style={{ padding: '8px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
           <option value="">Todos os profissionais</option>
           {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
         </select>
         {perfilClinica && (
-          <button onClick={() => setEsperaAberta(v => !v)} style={{ padding: '9px 14px', background: esperaAberta ? '#111' : '#fff', color: esperaAberta ? '#fff' : '#333', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+          <button onClick={() => setEsperaAberta(v => !v)} style={{ padding: '9px 14px', background: esperaAberta ? 'var(--v2-ink)' : 'var(--v2-surface)', color: esperaAberta ? 'var(--v2-surface)' : 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             Lista de espera{espera.length > 0 ? ` (${espera.length})` : ''}
           </button>
         )}
         {podeEditar && (
-          <button onClick={() => setBlocosModal(true)} style={{ padding: '9px 14px', background: '#fff', color: '#333', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+          <button onClick={() => setBlocosModal(true)} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             Bloqueios{bloqueios.length > 0 ? ` (${bloqueios.length})` : ''}
           </button>
         )}
         {podeEditar && (
-          <button onClick={() => novo()} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Agendamento</button>
+          <button onClick={() => novo()} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Agendamento</button>
         )}
       </div>
 
       {/* Painel da lista de espera */}
       {perfilClinica && esperaAberta && (
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+        <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <h3 style={{ margin: 0, fontSize: 14, color: '#111' }}>Lista de espera</h3>
-            <span style={{ fontSize: 11.5, color: '#999' }}>ordem de chegada</span>
+            <h3 style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink)' }}>Lista de espera</h3>
+            <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>ordem de chegada</span>
             <span style={{ flex: 1 }} />
             {podeEditar && !esperaForm && (
-              <button onClick={() => setEsperaForm({ pacienteNome: '', pacienteTelefone: '', servico: '', observacoes: '' })} style={{ padding: '6px 12px', background: '#f4f4f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: '#333' }}>+ Adicionar</button>
+              <button onClick={() => setEsperaForm({ pacienteNome: '', pacienteTelefone: '', servico: '', observacoes: '' })} style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Adicionar</button>
             )}
           </div>
           {esperaForm && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-              <input value={esperaForm.pacienteNome} onChange={e => setEsperaForm(f => f && { ...f, pacienteNome: e.target.value })} placeholder="Nome do paciente *" style={{ flex: 2, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.pacienteTelefone} onChange={e => setEsperaForm(f => f && { ...f, pacienteTelefone: e.target.value })} placeholder="Telefone" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.servico} onChange={e => setEsperaForm(f => f && { ...f, servico: e.target.value })} list="agenda-servicos" placeholder="Serviço" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.observacoes} onChange={e => setEsperaForm(f => f && { ...f, observacoes: e.target.value })} placeholder="Observações (preferência de horário...)" style={{ flex: 2, minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <button onClick={adicionarEspera} disabled={!esperaForm.pacienteNome.trim()} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: esperaForm.pacienteNome.trim() ? 1 : 0.5 }}>Salvar</button>
-              <button onClick={() => setEsperaForm(null)} style={{ padding: '8px 12px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
+              <input value={esperaForm.pacienteNome} onChange={e => setEsperaForm(f => f && { ...f, pacienteNome: e.target.value })} placeholder="Nome do paciente *" style={{ flex: 2, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.pacienteTelefone} onChange={e => setEsperaForm(f => f && { ...f, pacienteTelefone: e.target.value })} placeholder="Telefone" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.servico} onChange={e => setEsperaForm(f => f && { ...f, servico: e.target.value })} list="agenda-servicos" placeholder="Serviço" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.observacoes} onChange={e => setEsperaForm(f => f && { ...f, observacoes: e.target.value })} placeholder="Observações (preferência de horário...)" style={{ flex: 2, minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <button onClick={adicionarEspera} disabled={!esperaForm.pacienteNome.trim()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: esperaForm.pacienteNome.trim() ? 1 : 0.5 }}>Salvar</button>
+              <button onClick={() => setEsperaForm(null)} style={{ padding: '8px 12px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>Cancelar</button>
             </div>
           )}
-          {espera.length === 0 && !esperaForm && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Ninguém aguardando horário.</p>}
+          {espera.length === 0 && !esperaForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Ninguém aguardando horário.</p>}
           {espera.map((it, i) => (
-            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: i > 0 ? '1px solid #f6f6f6' : 'none' }}>
-              <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: '#bbb', flexShrink: 0 }}>{i + 1}º</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#111', flexShrink: 0 }}>{it.pacienteNome}</span>
-              <span style={{ flex: 1, fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[it.servico, it.pacienteTelefone, it.observacoes].filter(Boolean).join(' · ')}</span>
-              <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0 }}>desde {new Date(it.criadoEm).toLocaleDateString('pt-BR')}</span>
+            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--v2-surface1)' : 'none' }}>
+              <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', flexShrink: 0 }}>{i + 1}º</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', flexShrink: 0 }}>{it.pacienteNome}</span>
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[it.servico, it.pacienteTelefone, it.observacoes].filter(Boolean).join(' · ')}</span>
+              <span style={{ fontSize: 11, color: 'var(--v2-ink3)', flexShrink: 0 }}>desde {new Date(it.criadoEm).toLocaleDateString('pt-BR')}</span>
               {podeEditar && (
                 <>
-                  <button onClick={() => agendarDaEspera(it)} style={{ padding: '5px 12px', background: '#ffc00f', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: '#111', flexShrink: 0 }}>Agendar</button>
-                  <button onClick={() => removerEspera(it.id)} style={{ padding: '5px 10px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#b91c1c', flexShrink: 0 }}>Remover</button>
+                  <button onClick={() => agendarDaEspera(it)} style={{ padding: '5px 12px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: '#17150E', flexShrink: 0 }}>Agendar</button>
+                  <button onClick={() => removerEspera(it.id)} style={{ padding: '5px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>Remover</button>
                 </>
               )}
             </div>
@@ -458,12 +458,12 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       )}
 
       {carregando ? (
-        <p style={{ color: '#aaa', fontSize: 13, padding: 30, textAlign: 'center' }}>Carregando agenda...</p>
+        <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 30, textAlign: 'center' }}>Carregando agenda...</p>
       ) : visao === 'mes' ? (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', gap: 6, marginBottom: 6 }}>
             {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-              <span key={d} style={{ fontSize: 11, fontWeight: 800, color: '#999', textAlign: 'center' }}>{d}</span>
+              <span key={d} style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textAlign: 'center' }}>{d}</span>
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', gap: 6, overflowX: 'auto' }}>
@@ -475,18 +475,18 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               const lista = doDia(dia).filter(a => a.status !== 'cancelado')
               return (
                 <div key={i} onClick={() => { setRef(new Date(dia)); setVisao('dia') }}
-                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : foraDoMes ? '#fcfcfc' : '#fafafa', border: `1px solid ${hoje ? '#f3e3ac' : feriado ? '#f9d7e6' : '#f0f0f0'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
+                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : foraDoMes ? '#fcfcfc' : 'var(--v2-surface1)', border: `1px solid ${hoje ? '#f3e3ac' : feriado ? '#f9d7e6' : 'var(--v2-surface2)'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 4 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : '#111' }}>{dia.getDate()}</span>
-                    {lista.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: '#111', borderRadius: 999, padding: '1px 6px', marginLeft: 'auto' }}>{lista.length}</span>}
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : 'var(--v2-ink)' }}>{dia.getDate()}</span>
+                    {lista.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ink)', borderRadius: 999, padding: '1px 6px', marginLeft: 'auto' }}>{lista.length}</span>}
                   </div>
                   {feriado && <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: '#be185d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={feriado}>{feriado}</p>}
                   {lista.slice(0, 3).map(a => (
-                    <p key={a.id} style={{ margin: '0 0 2px', fontSize: 10.5, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p key={a.id} style={{ margin: '0 0 2px', fontSize: 10.5, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {hora(a.dataInicio)} {a.pacienteNome.split(' ')[0]}
                     </p>
                   ))}
-                  {lista.length > 3 && <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>+{lista.length - 3}</p>}
+                  {lista.length > 3 && <p style={{ margin: 0, fontSize: 10, color: 'var(--v2-ink3)' }}>+{lista.length - 3}</p>}
                 </div>
               )
             })}
@@ -494,7 +494,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         </div>
       ) : visao === 'semana' ? (
         // Semana proporcional: eixo de horas único + 7 colunas-dia com a mesma grade do Dia
-        <div style={{ display: 'flex', background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden', overflowX: 'auto' }}>
           <EixoHoras spacer />
           {Array.from({ length: 7 }, (_, i) => {
             const dia = new Date(semana); dia.setDate(dia.getDate() + i)
@@ -504,10 +504,10 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
             return (
               <div key={i} style={{ flex: 1, minWidth: 120, display: 'flex', flexDirection: 'column' }}>
                 <div onClick={() => { setRef(dia); setVisao('dia') }} title={feriado || undefined}
-                  style={{ height: HEADER_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer', background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : '#fafafa', borderBottom: '1px solid #f0f0f0', borderLeft: '1px solid #f0f0f0' }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: hoje ? '#a9781a' : feriado ? '#be185d' : '#888' }}>{DIAS[dia.getDay()]}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{dia.getDate()}</span>
-                  {feriado ? <span style={{ fontSize: 11, color: '#be185d' }}>•</span> : qtd > 0 && <span style={{ fontSize: 10, color: '#bbb' }}>· {qtd}</span>}
+                  style={{ height: HEADER_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer', background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)', borderLeft: '1px solid var(--v2-rule)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: hoje ? '#a9781a' : feriado ? '#be185d' : 'var(--v2-ink3)' }}>{DIAS[dia.getDay()]}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{dia.getDate()}</span>
+                  {feriado ? <span style={{ fontSize: 11, color: '#be185d' }}>•</span> : qtd > 0 && <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>· {qtd}</span>}
                 </div>
                 <LanesDia dia={dia} compact />
               </div>
@@ -516,38 +516,38 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         </div>
       ) : visao === 'dia' ? (
         // Visão DIA proporcional: expediente inteiro com altura ∝ duração
-        <div style={{ display: 'flex', background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', maxWidth: 820 }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden', maxWidth: 820 }}>
           <EixoHoras />
           <LanesDia dia={ref} />
         </div>
       ) : (
         // Visão LISTA: agendamentos da semana em ordem cronológica, agrupados por dia
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden', maxWidth: 760 }}>
+        <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden', maxWidth: 760 }}>
           {(() => {
             const dias = Array.from({ length: 7 }, (_, i) => { const d = new Date(semana); d.setDate(d.getDate() + i); return d })
               .map(d => ({ d, lista: doDia(d).sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime()), feriado: feriadoDe(d) }))
               .filter(x => x.lista.length > 0 || x.feriado)
-            if (!dias.length) return <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#aaa', fontSize: 13 }}>Nenhum agendamento nesta semana.</p>
+            if (!dias.length) return <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum agendamento nesta semana.</p>
             return dias.map(({ d, lista, feriado }) => {
               const hoje = new Date().toDateString() === d.toDateString()
               return (
                 <div key={d.toISOString()}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: hoje ? '#fffdf2' : '#fafafa', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f4f4f4', position: 'sticky', top: 0 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : '#333', textTransform: 'capitalize' }}>{d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: hoje ? '#fffdf2' : 'var(--v2-surface1)', borderTop: '1px solid var(--v2-rule)', borderBottom: '1px solid var(--v2-surface1)', position: 'sticky', top: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : 'var(--v2-ink)', textTransform: 'capitalize' }}>{d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
                     {feriado && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#be185d', background: '#fdf2f8', borderRadius: 999, padding: '2px 8px' }}>{feriado}</span>}
                     <span style={{ flex: 1 }} />
-                    {lista.length > 0 && <span style={{ fontSize: 11, color: '#bbb' }}>{lista.length}</span>}
+                    {lista.length > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{lista.length}</span>}
                   </div>
                   {lista.map(a => {
                     const st = stInfo(a.status), cor = corProf(a.profissionalEmail), cancelado = a.status === 'cancelado'
                     return (
                       <div key={a.id} onClick={() => setModal({ ...a, dataInicio: toLocalInput(new Date(a.dataInicio)) })}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderTop: '1px solid #f6f6f6', cursor: 'pointer', opacity: cancelado ? 0.55 : 1 }}>
-                        <span style={{ width: 42, fontSize: 13, fontWeight: 800, color: '#111', flexShrink: 0 }}>{hora(a.dataInicio)}</span>
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderTop: '1px solid var(--v2-surface1)', cursor: 'pointer', opacity: cancelado ? 0.55 : 1 }}>
+                        <span style={{ width: 42, fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', flexShrink: 0 }}>{hora(a.dataInicio)}</span>
                         <span style={{ width: 3, alignSelf: 'stretch', background: cor, borderRadius: 2, flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#222', textDecoration: cancelado ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}</div>
-                          <div style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[a.servico, `${a.duracaoMin}min`, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', textDecoration: cancelado ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[a.servico, `${a.duracaoMin}min`, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>
                         </div>
                         <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{labelSt(st.key, st.label, perfilClinica)}</span>
                       </div>
@@ -563,46 +563,46 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       {/* Modal criar/editar */}
       {modal && (
         <div onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{modal.id ? 'Editar agendamento' : 'Novo agendamento'}</h3>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{modal.id ? 'Editar agendamento' : 'Novo agendamento'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input list={perfilClinica ? 'agenda-pacientes' : undefined} value={modal.pacienteNome || ''} onChange={e => perfilClinica ? aoDigitarPaciente(e.target.value) : setModal(m => ({ ...m, pacienteNome: e.target.value }))} placeholder="Nome do paciente/cliente *"
-                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13.5, fontFamily: 'inherit' }} />
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit' }} />
               {perfilClinica && (
                 <>
                   <datalist id="agenda-pacientes">{contatos.filter(c => !c.tipo || c.tipo === 'paciente' || c.tipo === 'lead').map(c => <option key={c.id} value={c.nome} />)}</datalist>
                   {(modal.pacienteNome || '').trim() && (
                     modal.contatoId
-                      ? <p style={{ margin: '-4px 0 0', fontSize: 11, color: '#166534' }}>Paciente do cadastro — o atendimento entra no histórico dele.</p>
-                      : <p style={{ margin: '-4px 0 0', fontSize: 11, color: '#888' }}>Paciente novo — será cadastrado automaticamente ao salvar.</p>
+                      ? <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ok)' }}>Paciente do cadastro — o atendimento entra no histórico dele.</p>
+                      : <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Paciente novo — será cadastrado automaticamente ao salvar.</p>
                   )}
                 </>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input value={modal.pacienteTelefone || ''} onChange={e => setModal(m => ({ ...m, pacienteTelefone: e.target.value }))} placeholder="Telefone/WhatsApp"
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 {perfilClinica ? (
                   <select value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">Tipo de atendimento...</option>
                     {servicosClinica.map(s => <option key={s} value={s}>{s}</option>)}
                     {modal.servico && !servicosClinica.includes(modal.servico) && <option value={modal.servico}>{modal.servico}</option>}
                   </select>
                 ) : (
                   <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder="Serviço"
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 )}
                 <datalist id="agenda-servicos">{servicos.map(s => <option key={s} value={s} />)}</datalist>
               </div>
               <select value={modal.profissionalEmail || ''} onChange={e => setModal(m => ({ ...m, profissionalEmail: e.target.value }))}
-                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="datetime-local" value={(modal.dataInicio as string) || ''} onChange={e => setModal(m => ({ ...m, dataInicio: e.target.value }))}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 <select value={modal.duracaoMin || 30} onChange={e => setModal(m => ({ ...m, duracaoMin: Number(e.target.value) }))}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   {(perfilClinica ? [30, 45, 60, 90, 120, 150, 180, 210, 240] : [15, 30, 45, 60, 90, 120]).map(d => (
                     <option key={d} value={d}>{d < 60 ? `${d} min` : `${Math.floor(d / 60)}h${d % 60 ? ` ${d % 60}min` : ''}`}</option>
                   ))}
@@ -610,11 +610,11 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               </div>
               {(modal.id || perfilClinica) && (
                 <div>
-                  {perfilClinica && !modal.id && <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Situação (confirmado = pagamento recebido)</label>}
+                  {perfilClinica && !modal.id && <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Situação (confirmado = pagamento recebido)</label>}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {(modal.id ? STATUS : STATUS.filter(s => s.key === 'agendado' || s.key === 'confirmado')).map(s => (
                       <button key={s.key} onClick={() => setModal(m => ({ ...m, status: s.key }))}
-                        style={{ padding: '6px 12px', borderRadius: 999, border: modal.status === s.key ? `1.5px solid ${s.cor}` : '1px solid #e6e6e6', background: modal.status === s.key ? s.bg : '#fff', color: modal.status === s.key ? s.cor : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ padding: '6px 12px', borderRadius: 999, border: modal.status === s.key ? `1.5px solid ${s.cor}` : '1px solid var(--v2-surface2)', background: modal.status === s.key ? s.bg : 'var(--v2-surface)', color: modal.status === s.key ? s.cor : 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
                         {labelSt(s.key, s.label, perfilClinica)}
                       </button>
                     ))}
@@ -623,45 +623,45 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               )}
               {perfilClinica && (
                 <input value={modal.queixaPrincipal || ''} onChange={e => setModal(m => ({ ...m, queixaPrincipal: e.target.value }))} placeholder="Queixa principal (motivo da consulta)"
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               )}
               <textarea lang="pt-BR" value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder="Observações" rows={2}
-                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
               {perfilClinica && modal.id && (modal.status === 'atendido' || !!modal.registroAtendimento) && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Registro do atendimento (evolução)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Registro do atendimento (evolução)</label>
                   <textarea lang="pt-BR" value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder="O que foi feito, orientações, próximos passos..." rows={4}
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
                   {/* Pós-atendimento estruturado: procedimentos realizados (do catálogo) + investimento */}
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', margin: '10px 0 5px' }}>Procedimentos realizados</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', margin: '10px 0 5px' }}>Procedimentos realizados</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {Array.from(new Set([...servicosClinica, ...(modal.procedimentosRealizados || [])])).map(p => {
                       const marcado = (modal.procedimentosRealizados || []).includes(p)
                       return (
                         <button key={p} type="button" onClick={() => setModal(m => ({ ...m, procedimentosRealizados: marcado ? (m?.procedimentosRealizados || []).filter(x => x !== p) : [...(m?.procedimentosRealizados || []), p] }))}
-                          style={{ padding: '5px 12px', borderRadius: 999, border: marcado ? '1.5px solid #166534' : '1px solid #e6e6e6', background: marcado ? '#dcfce7' : '#fff', color: marcado ? '#166534' : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                          style={{ padding: '5px 12px', borderRadius: 999, border: marcado ? '1.5px solid var(--v2-ok)' : '1px solid var(--v2-surface2)', background: marcado ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: marcado ? 'var(--v2-ok)' : 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
                           {p}
                         </button>
                       )
                     })}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#888', flexShrink: 0 }}>Investimento (R$)</label>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', flexShrink: 0 }}>Investimento (R$)</label>
                     <input type="number" min={0} step="0.01" value={modal.valorInvestido ?? ''} onChange={e => setModal(m => ({ ...m, valorInvestido: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="0,00"
-                      style={{ width: 140, padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                      style={{ width: 140, padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   </div>
-                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#aaa' }}>Fica no histórico do paciente. Dado sensível — visível só para a equipe.</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Fica no histórico do paciente. Dado sensível — visível só para a equipe.</p>
                 </div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {modal.id && podeEditar && (
-                <button onClick={excluir} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>
+                <button onClick={excluir} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>
               )}
               <span style={{ flex: modal.id ? undefined : 1 }} />
-              <button onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
               {podeEditar && (
-                <button onClick={() => salvar()} disabled={salvando || !(modal.pacienteNome || '').trim()} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer', opacity: !(modal.pacienteNome || '').trim() ? 0.5 : 1 }}>
+                <button onClick={() => salvar()} disabled={salvando || !(modal.pacienteNome || '').trim()} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer', opacity: !(modal.pacienteNome || '').trim() ? 0.5 : 1 }}>
                   {salvando ? 'Salvando…' : 'Salvar'}
                 </button>
               )}
@@ -673,99 +673,99 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       {/* Modal de bloqueios/compromissos da profissional */}
       {blocosModal && (
         <div onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Bloqueios da agenda</h3>
+              <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Bloqueios da agenda</h3>
               <span style={{ flex: 1 }} />
               {podeEditar && !blocoForm && (
-                <button onClick={novoBloco} style={{ padding: '7px 13px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Novo bloqueio</button>
+                <button onClick={novoBloco} style={{ padding: '7px 13px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Novo bloqueio</button>
               )}
             </div>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#999' }}>Horários em que o profissional não atende (almoço, folga, reunião). A agenda avisa e recusa marcar por cima.</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>Horários em que o profissional não atende (almoço, folga, reunião). A agenda avisa e recusa marcar por cima.</p>
 
             {/* Formulário */}
             {blocoForm && (
-              <div style={{ background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 12, padding: 14, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 14, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <select value={blocoForm.profissionalEmail} onChange={e => setBlocoForm(f => f && { ...f, profissionalEmail: e.target.value })}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
                 </select>
                 <input value={blocoForm.titulo} onChange={e => setBlocoForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Almoço, Folga, Reunião)"
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
-                <div style={{ display: 'inline-flex', gap: 2, background: '#eee', borderRadius: 9, padding: 3, alignSelf: 'flex-start' }}>
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                <div style={{ display: 'inline-flex', gap: 2, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, alignSelf: 'flex-start' }}>
                   {([['recorrente', 'Recorrente'], ['pontual', 'Pontual']] as const).map(([k, label]) => {
                     const ativo = (k === 'recorrente') === blocoForm.recorrente
                     return (
                       <button key={k} onClick={() => setBlocoForm(f => f && { ...f, recorrente: k === 'recorrente' })}
-                        style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: ativo ? '#fff' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: '#333', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{label}</button>
+                        style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: ativo ? 'var(--v2-surface)' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,.1)' : 'none' }}>{label}</button>
                     )
                   })}
                 </div>
                 {blocoForm.recorrente ? (
                   <>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 6 }}>Dias da semana</label>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Dias da semana</label>
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {DIAS_ORDEM.map(d => {
                           const on = blocoForm.diasSemana.includes(d)
                           return (
                             <button key={d} onClick={() => setBlocoForm(f => f && { ...f, diasSemana: on ? f.diasSemana.filter(x => x !== d) : [...f.diasSemana, d] })}
-                              style={{ width: 40, padding: '7px 0', borderRadius: 8, border: on ? '1.5px solid #111' : '1px solid #e6e6e6', background: on ? '#111' : '#fff', color: on ? '#fff' : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>{DIAS[d]}</button>
+                              style={{ width: 40, padding: '7px 0', borderRadius: 8, border: on ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: on ? 'var(--v2-ink)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>{DIAS[d]}</button>
                           )
                         })}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Das</label>
-                        <input type="time" value={blocoForm.horaInicio} onChange={e => setBlocoForm(f => f && { ...f, horaInicio: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Das</label>
+                        <input type="time" value={blocoForm.horaInicio} onChange={e => setBlocoForm(f => f && { ...f, horaInicio: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Às</label>
-                        <input type="time" value={blocoForm.horaFim} onChange={e => setBlocoForm(f => f && { ...f, horaFim: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Às</label>
+                        <input type="time" value={blocoForm.horaFim} onChange={e => setBlocoForm(f => f && { ...f, horaFim: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Até (opcional)</label>
-                        <input type="date" value={blocoForm.ate} onChange={e => setBlocoForm(f => f && { ...f, ate: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Até (opcional)</label>
+                        <input type="date" value={blocoForm.ate} onChange={e => setBlocoForm(f => f && { ...f, ate: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                     </div>
                   </>
                 ) : (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="datetime-local" value={blocoForm.dataInicio} onChange={e => setBlocoForm(f => f && { ...f, dataInicio: e.target.value })} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }} />
+                    <input type="datetime-local" value={blocoForm.dataInicio} onChange={e => setBlocoForm(f => f && { ...f, dataInicio: e.target.value })} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                     <select value={blocoForm.duracaoMin} onChange={e => setBlocoForm(f => f && { ...f, duracaoMin: Number(e.target.value) })}
-                      style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                      style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                       {[30, 60, 90, 120, 180, 240, 480].map(d => <option key={d} value={d}>{d < 60 ? `${d} min` : `${Math.floor(d / 60)}h${d % 60 ? ` ${d % 60}min` : ''}`}</option>)}
                     </select>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setBlocoForm(null)} style={{ padding: '9px 14px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                  <button onClick={salvarBloco} disabled={salvandoBloco} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: salvandoBloco ? 'wait' : 'pointer' }}>{salvandoBloco ? 'Salvando…' : 'Salvar bloqueio'}</button>
+                  <button onClick={() => setBlocoForm(null)} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={salvarBloco} disabled={salvandoBloco} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: salvandoBloco ? 'wait' : 'pointer' }}>{salvandoBloco ? 'Salvando…' : 'Salvar bloqueio'}</button>
                 </div>
               </div>
             )}
 
             {/* Lista de bloqueios */}
-            {bloqueios.length === 0 && !blocoForm && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum bloqueio cadastrado.</p>}
+            {bloqueios.length === 0 && !blocoForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum bloqueio cadastrado.</p>}
             {[...bloqueios].sort((a, b) => (a.profissionalNome || '').localeCompare(b.profissionalNome || '')).map((b, i) => (
-              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: i > 0 ? '1px solid #f4f4f4' : 'none' }}>
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: i > 0 ? '1px solid var(--v2-surface1)' : 'none' }}>
                 <span style={{ width: 8, height: 8, borderRadius: 3, background: b.recorrente ? '#7c3aed' : '#0891b2', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {b.titulo || (b.recorrente ? 'Bloqueio recorrente' : 'Bloqueio')}
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#bbb' }}> · {(b.profissionalNome || '').split(' ')[0]}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)' }}> · {(b.profissionalNome || '').split(' ')[0]}</span>
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#999' }}>{descBloco(b)}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{descBloco(b)}</div>
                 </div>
                 {podeEditar && (
-                  <button onClick={() => removerBloco(b.id)} style={{ padding: '5px 11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#b91c1c', flexShrink: 0 }}>Remover</button>
+                  <button onClick={() => removerBloco(b.id)} style={{ padding: '5px 11px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>Remover</button>
                 )}
               </div>
             ))}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-              <button onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ padding: '10px 18px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#555', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
+              <button onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
             </div>
           </div>
         </div>

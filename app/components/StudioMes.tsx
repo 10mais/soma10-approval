@@ -46,8 +46,8 @@ const TEMPLATES_ART: { key: string; label: string }[] = [
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const FORMATOS = [
-  { key: 'feed', label: 'Feed', cor: '#1d4ed8' },
-  { key: 'reel', label: 'Reel', cor: '#dc2626' },
+  { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
+  { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
   { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
   { key: 'story', label: 'Story', cor: '#7c3aed' },
   { key: 'grafico', label: 'Material Gráfico', cor: '#059669' },
@@ -56,17 +56,17 @@ const FORMATOS = [
 // Estado da linha e a ação natural seguinte (o "próximo passo" de cada pauta).
 function estadoStudio(p: Pauta): { label: string; cor: string; bg: string } {
   switch (p.status) {
-    case 'publicado': return { label: 'Publicado', cor: '#166534', bg: '#dcfce7' }
-    case 'agendado': return { label: 'Agendado', cor: '#a16207', bg: '#fef9c3' }
-    case 'aprovado': return { label: 'Aprovado', cor: '#166534', bg: '#dcfce7' }
-    case 'aguardando_aprovacao': return { label: 'No cliente', cor: '#92400e', bg: '#fef3c7' }
-    case 'corrigir': return { label: 'Ajuste pedido', cor: '#b45309', bg: '#fff3cd' }
-    case 'reprovado': return { label: 'Reprovado', cor: '#b91c1c', bg: '#fee2e2' }
-    case 'falha_publicacao': return { label: 'Falha', cor: '#b91c1c', bg: '#fee2e2' }
+    case 'publicado': return { label: 'Publicado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+    case 'agendado': return { label: 'Agendado', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+    case 'aprovado': return { label: 'Aprovado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+    case 'aguardando_aprovacao': return { label: 'No cliente', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+    case 'corrigir': return { label: 'Ajuste pedido', cor: 'var(--v2-amber)', bg: '#fff3cd' }
+    case 'reprovado': return { label: 'Reprovado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
+    case 'falha_publicacao': return { label: 'Falha', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
     default: // rascunho
       return (p.imagens || []).length > 0
-        ? { label: 'Pronto p/ enviar', cor: '#1d4ed8', bg: '#eff6ff' }
-        : { label: 'Rascunho', cor: '#666', bg: '#f0f0f0' }
+        ? { label: 'Pronto p/ enviar', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
+        : { label: 'Rascunho', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' }
   }
 }
 
@@ -90,7 +90,7 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel }: {
   useEffect(() => { if (!focado.current) { setV(valor || ''); original.current = valor || '' } }, [valor])
   useEffect(() => { crescer() }, [v])
 
-  if (!editavel) return <div style={{ width: '100%', fontSize: 12.5, color: '#333', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{v || <span style={{ color: '#ccc' }}>—</span>}</div>
+  if (!editavel) return <div style={{ width: '100%', fontSize: 12.5, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.45 }}>{v || <span style={{ color: 'var(--v2-ink3)' }}>—</span>}</div>
 
   async function blur() {
     focado.current = false
@@ -105,9 +105,9 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel }: {
       <textarea lang="pt-BR" ref={ref} value={v} placeholder={placeholder} className="st-input"
         onFocus={() => { focado.current = true }}
         onChange={e => setV(e.target.value)} onBlur={blur}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', border: '1px solid #e6e6e6', borderRadius: 10, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 36, background: '#fff', color: '#222', lineHeight: 1.5 }} />
+        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 12.5, fontFamily: 'inherit', resize: 'none', overflow: 'hidden', minHeight: 36, background: 'var(--v2-surface)', color: 'var(--v2-ink)', lineHeight: 1.5 }} />
       {estado !== 'idle' && (
-        <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 9, fontWeight: 700, color: estado === 'ok' ? '#16a34a' : '#999' }}>
+        <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 9, fontWeight: 700, color: estado === 'ok' ? 'var(--v2-ok)' : 'var(--v2-ink3)' }}>
           {estado === 'ok' ? '✓ salvo' : 'salvando…'}
         </span>
       )}
@@ -117,7 +117,7 @@ function CelulaEditavel({ valor, onSalvar, placeholder, editavel }: {
 
 // Rótulo curto acima de cada campo do painel expandido.
 function CampoLabel({ children }: { children: ReactNode }) {
-  return <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{children}</span>
+  return <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{children}</span>
 }
 
 // Régua do pipeline IA-first da pauta:
@@ -146,10 +146,10 @@ function PipelinePauta({ p }: { p: Pauta }) {
   // seguintes ficam cinza (nada de destacar "Postagem" com a bola no cliente).
   const atualIdx = passos.findIndex(s => !s.ok)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '10px 12px', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12 }}>
       {passos.map((s, i) => {
-        const cor = s.alerta ? '#b91c1c' : s.ok ? '#16a34a' : s.meio ? '#a16207' : i === atualIdx ? '#111' : '#c2c2c6'
-        const bg = s.alerta ? '#fee2e2' : s.ok ? '#dcfce7' : s.meio ? '#fef3c7' : i === atualIdx ? '#ffcb3a33' : 'transparent'
+        const cor = s.alerta ? 'var(--v2-hot)' : s.ok ? 'var(--v2-ok)' : s.meio ? 'var(--v2-amber)' : i === atualIdx ? 'var(--v2-ink)' : '#c2c2c6'
+        const bg = s.alerta ? 'var(--v2-hot-bg)' : s.ok ? 'var(--v2-ok-bg)' : s.meio ? 'var(--v2-amber-bg)' : i === atualIdx ? '#ffcb3a33' : 'transparent'
         return (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, background: bg, color: cor, fontSize: 11, fontWeight: i === atualIdx || s.alerta ? 800 : 700, whiteSpace: 'nowrap' }}>
@@ -973,7 +973,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         .st-btn:active{transform:translateY(0)}
         .st-cta{box-shadow:0 1px 3px rgba(0,0,0,.1)}
         .st-cta:hover{filter:brightness(1.03);box-shadow:0 4px 12px -4px rgba(0,0,0,.2)}
-        .st-card{background:#fff;border:1px solid rgba(17,17,17,.05);border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.025),0 18px 44px -32px rgba(0,0,0,.22)}
+        .st-card{background:var(--v2-surface);border:1px solid rgba(17,17,17,.05);border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.025),0 18px 44px -32px rgba(0,0,0,.22)}
         .st-metric{transition:transform .18s var(--ease),box-shadow .18s}
         .st-metric:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(0,0,0,.28)}
         .st-row{animation:stFade .4s var(--ease) both;transition:background .16s ease}
@@ -982,57 +982,57 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         .st-preview{transition:transform .2s var(--ease),box-shadow .2s}
         .st-preview:hover{transform:scale(1.03) rotate(-.4deg);box-shadow:0 18px 40px -18px rgba(0,0,0,.5)}
         .st-input{transition:border-color .15s,box-shadow .15s,background .15s}
-        .st-input:focus{outline:none;border-color:var(--marca,#ffc00f);box-shadow:0 0 0 3px rgba(255,192,15,.2)}
+        .st-input:focus{outline:none;border-color:var(--marca,var(--v2-amber-on));box-shadow:0 0 0 3px rgba(255,192,15,.2)}
         .st-chev{transition:transform .2s var(--ease)}
         @keyframes stFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         @keyframes stSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
       `}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 800, color: '#111', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: 9 }}>
+          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 800, color: 'var(--v2-ink)', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: 9 }}>
             Studio
             <span style={{ fontSize: 10, fontWeight: 800, color: '#7c3aed', background: 'linear-gradient(135deg,#7c3aed18,#7c3aed08)', border: '1px solid #7c3aed30', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Beta</span>
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#999' }}>A IA opera a fábrica; você rege a orquestra. Clique numa linha para abrir e editar tudo.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>A IA opera a fábrica; você rege a orquestra. Clique numa linha para abrir e editar tudo.</p>
         </div>
         {!clienteFixo && clienteSel && (
           <button className="st-btn" onClick={() => { setClienteSel(''); setPlanoSel('') }} title="Voltar para a visão geral de todos os clientes"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
             Hoje na produção
           </button>
         )}
         {!clienteFixo && (
           <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
-            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 200, background: '#fff', cursor: 'pointer' }}>
+            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 200, background: 'var(--v2-surface)', cursor: 'pointer' }}>
             <option value="">Escolher cliente…</option>
             {clientesDosPlanos.map(c => <option key={c.id} value={c.id}>{c.nome}{c.temPlano ? '' : ' · sem plano'}</option>)}
           </select>
         )}
         {clienteSel && (
           <select className="st-input" value={planoSel} onChange={e => setPlanoSel(e.target.value)}
-            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', minWidth: 160, background: '#fff', cursor: 'pointer' }}>
+            style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 160, background: 'var(--v2-surface)', cursor: 'pointer' }}>
             <option value="">Mês…</option>
             {planosDoCliente.map(p => <option key={p.id} value={p.id}>{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
           </select>
         )}
-        {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {podeEditar && <button className="st-btn" onClick={() => { setFormPlano(f => ({ ...f, clienteId: clienteSel || f.clienteId })); setNovoPlano(true) }} style={{ padding: '10px 16px', background: 'var(--v2-surface)', color: '#3a3a3a', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {podeExcluir && (clienteSel || clienteFixo) && (
           <button className="st-btn" onClick={() => setMostrarLixeira(v => !v)} title="Pautas excluídas (ficam 30 dias)"
-            style={{ padding: '10px 14px', background: mostrarLixeira ? '#fef2f2' : '#fff', color: mostrarLixeira ? '#b91c1c' : '#3a3a3a', border: `1px solid ${mostrarLixeira ? '#fca5a5' : '#ececec'}`, borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            style={{ padding: '10px 14px', background: mostrarLixeira ? 'var(--v2-hot-bg)' : 'var(--v2-surface)', color: mostrarLixeira ? 'var(--v2-hot)' : '#3a3a3a', border: `1px solid ${mostrarLixeira ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)'}`, borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" /></svg>
             {mostrarLixeira ? 'Voltar' : 'Lixeira'}
           </button>
         )}
         {planoSel && podeEditar && !mostrarLixeira && (
-          <button className="st-btn" onClick={abrirRenomear} title="Renomear este plano" style={{ padding: '10px 14px', background: '#fff', color: '#3a3a3a', border: '1px solid #ececec', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button className="st-btn" onClick={abrirRenomear} title="Renomear este plano" style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: '#3a3a3a', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
             Renomear
           </button>
         )}
         {planoSel && podeEditar && <>
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>+ Nova linha</button>
-          {podeGerarIA && <button className="st-btn" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#fff', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 11, fontWeight: 500, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+          {podeGerarIA && <button className="st-btn" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--v2-surface)', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 11, fontWeight: 500, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
             {gerandoIA ? 'Gerando…' : 'Gerar plano com IA'}
           </button>}
@@ -1041,46 +1041,46 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Renomear plano — inline */}
       {renomeando && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Nome do plano <span style={{ fontWeight: 400, color: '#aaa' }}>(ex.: Campanha de Dia dos Pais)</span></label>
-            <input autoFocus value={tituloEdit} onChange={e => setTituloEdit(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvarRenomear() }} placeholder="Deixe em branco para usar só o mês" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Nome do plano <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>(ex.: Campanha de Dia dos Pais)</span></label>
+            <input autoFocus value={tituloEdit} onChange={e => setTituloEdit(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') salvarRenomear() }} placeholder="Deixe em branco para usar só o mês" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
           </div>
-          <button onClick={salvarRenomear} style={{ padding: '10px 20px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
-          <button onClick={() => setRenomeando(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvarRenomear} style={{ padding: '10px 20px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+          <button onClick={() => setRenomeando(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       )}
 
       {/* Form de novo plano */}
       {novoPlano && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           {!clienteFixo && (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente</label>
-              <select value={formPlano.clienteId} onChange={e => setFormPlano(f => ({ ...f, clienteId: e.target.value }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minWidth: 200 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente</label>
+              <select value={formPlano.clienteId} onChange={e => setFormPlano(f => ({ ...f, clienteId: e.target.value }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minWidth: 200 }}>
                 <option value="">Selecione...</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
           )}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mês</label>
-            <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Mês</label>
+            <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13 }}>
               {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Ano</label>
-            <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 90 }} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Ano</label>
+            <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, width: 90 }} />
           </div>
-          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
-          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
+          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       )}
 
       {iaMsg && (
-        <div style={{ background: iaMsg.includes('criadas') ? '#dcfce7' : iaMsg.includes('Gerando') ? '#eff6ff' : '#fef2f2', border: `1px solid ${iaMsg.includes('criadas') ? '#86efac' : iaMsg.includes('Gerando') ? '#bfdbfe' : '#fecaca'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: iaMsg.includes('criadas') ? '#166534' : iaMsg.includes('Gerando') ? '#1d4ed8' : '#b91c1c', display: 'flex', alignItems: 'center', gap: 10 }}>
-          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
+        <div style={{ background: iaMsg.includes('criadas') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? 'var(--v2-info-bg)' : 'var(--v2-hot-bg)', border: `1px solid ${iaMsg.includes('criadas') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? '#bfdbfe' : 'var(--v2-hot-bg)'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: iaMsg.includes('criadas') ? 'var(--v2-ok)' : iaMsg.includes('Gerando') ? 'var(--v2-info)' : 'var(--v2-hot)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: 'var(--v2-info)', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
           {iaMsg}
         </div>
       )}
@@ -1088,17 +1088,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {/* Barra de métricas — taxa de edição (payoff da Fase 0) */}
       {planoSel && pautas.length > 0 && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-          <div className="st-metric" style={{ background: '#fff', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#111', letterSpacing: '-0.02em', lineHeight: 1 }}>{nPautasAnim}</div>
-            <div style={{ color: '#999', marginTop: 3, fontSize: 12 }}>pautas no mês</div>
+          <div className="st-metric" style={{ background: 'var(--v2-surface)', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>{nPautasAnim}</div>
+            <div style={{ color: 'var(--v2-ink3)', marginTop: 3, fontSize: 12 }}>pautas no mês</div>
           </div>
           {taxa !== null && (
-            <div className="st-metric" title="Quantas pautas geradas pela IA a equipe ajustou. Alta = matéria-prima ainda precisa de trabalho; baixa = IA acertando bem." style={{ background: '#fff', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
+            <div className="st-metric" title="Quantas pautas geradas pela IA a equipe ajustou. Alta = matéria-prima ainda precisa de trabalho; baixa = IA acertando bem." style={{ background: 'var(--v2-surface)', border: '1px solid rgba(17,17,17,.06)', borderRadius: 14, padding: '12px 18px', fontSize: 12.5, boxShadow: '0 1px 2px rgba(0,0,0,.03)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, color: taxa >= 60 ? '#b45309' : '#16a34a' }}>{taxaAnim}%</span>
-                <span style={{ fontSize: 11.5, color: '#bbb', fontWeight: 700 }}>taxa de edição</span>
+                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, color: taxa >= 60 ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>{taxaAnim}%</span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 700 }}>taxa de edição</span>
               </div>
-              <div style={{ color: '#999', marginTop: 3, fontSize: 12 }}>{editadas.length} de {geradas.length} pautas da IA ajustadas</div>
+              <div style={{ color: 'var(--v2-ink3)', marginTop: 3, fontSize: 12 }}>{editadas.length} de {geradas.length} pautas da IA ajustadas</div>
             </div>
           )}
         </div>
@@ -1106,35 +1106,35 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
       {/* Barra de ações em massa — aparece quando há pautas selecionadas */}
       {pautasSel.size > 0 && (
-        <div className="anim-in" style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#111', color: '#fff', borderRadius: 12, padding: '10px 16px', marginBottom: 14 }}>
+        <div className="anim-in" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 12, padding: '10px 16px', marginBottom: 14 }}>
           <span style={{ fontSize: 13, fontWeight: 700 }}>{pautasSel.size} selecionada(s)</span>
           {pautasSel.size < pautas.length && (
-            <button onClick={() => setPautasSel(new Set(pautas.map(x => x.id)))} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ddd', cursor: 'pointer', fontWeight: 600 }}>Selecionar todas ({pautas.length})</button>
+            <button onClick={() => setPautasSel(new Set(pautas.map(x => x.id)))} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-rule2)', cursor: 'pointer', fontWeight: 600 }}>Selecionar todas ({pautas.length})</button>
           )}
-          <button onClick={() => setPautasSel(new Set())} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ddd', cursor: 'pointer', fontWeight: 600 }}>Limpar</button>
+          <button onClick={() => setPautasSel(new Set())} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-rule2)', cursor: 'pointer', fontWeight: 600 }}>Limpar</button>
           <span style={{ flex: 1 }} />
-          <button onClick={excluirSelecionadas} style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>
+          <button onClick={excluirSelecionadas} style={{ background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>
         </div>
       )}
 
       {/* LIXEIRA — pautas excluídas (30 dias), restaurar ou apagar de vez */}
       {mostrarLixeira ? (
         <div className="st-card" style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Pautas na lixeira</span>
-            <span style={{ fontSize: 11.5, color: '#999' }}>ficam 30 dias, depois são apagadas de vez</span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Pautas na lixeira</span>
+            <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>ficam 30 dias, depois são apagadas de vez</span>
           </div>
           {lixeiraPautas.length === 0 ? (
-            <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma pauta na lixeira.</p>
+            <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma pauta na lixeira.</p>
           ) : lixeiraPautas.map((p: any) => {
             const dias = diasRestantesLixeira(p.excluidoEm)
             return (
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid #f6f6f7' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || p.headline || p.legenda || 'Pauta sem título'}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: dias <= 5 ? '#b91c1c' : '#999' }}>Excluída {p.excluidoPor ? `por ${p.excluidoPor}` : ''} · {dias === 0 ? 'some hoje' : `${dias} dia(s) restante(s)`}</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || p.headline || p.legenda || 'Pauta sem título'}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: dias <= 5 ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>Excluída {p.excluidoPor ? `por ${p.excluidoPor}` : ''} · {dias === 0 ? 'some hoje' : `${dias} dia(s) restante(s)`}</p>
                 </div>
-                <button onClick={() => restaurarPauta(p)} style={{ padding: '7px 14px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Restaurar</button>
+                <button onClick={() => restaurarPauta(p)} style={{ padding: '7px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok-bg)', borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Restaurar</button>
                 <button onClick={() => excluirPautaPermanente(p)} title="Excluir de vez" style={{ padding: '7px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Excluir de vez</button>
               </div>
             )
@@ -1143,11 +1143,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       ) : (<>
       {/* Busca por pautas (lupa) — filtra a lista por qualquer texto da copy */}
       {planoSel && !carregando && pautas.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid #ececec', borderRadius: 11, padding: '2px 12px', marginBottom: 14, maxWidth: 420 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface)', border: '1.5px solid var(--v2-rule)', borderRadius: 11, padding: '2px 12px', marginBottom: 14, maxWidth: 420 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           <input value={buscaPauta} onChange={e => setBuscaPauta(e.target.value)} placeholder="Buscar pauta (briefing, headline, legenda…)"
             style={{ flex: 1, border: 'none', outline: 'none', padding: '9px 0', fontSize: 13, fontFamily: 'inherit', background: 'transparent' }} />
-          {buscaPauta && <button onClick={() => setBuscaPauta('')} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>}
+          {buscaPauta && <button onClick={() => setBuscaPauta('')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>}
         </div>
       )}
       {/* Lista viva do mês — grid fluido, cabe na página sem scroll lateral */}
@@ -1170,10 +1170,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#fff4cf,#ffe79a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="#a9781a"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                 </div>
-                <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.02em' }}>Com qual cliente vamos trabalhar hoje?</h3>
-                <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Escolha um cliente para abrir o Studio do mês.</p>
+                <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: 'var(--v2-ink)', letterSpacing: '-0.02em' }}>Com qual cliente vamos trabalhar hoje?</h3>
+                <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>Escolha um cliente para abrir o Studio do mês.</p>
                 <select className="st-input" value={clienteSel} onChange={e => escolherCliente(e.target.value)}
-                  style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid #e6e6e6', fontSize: 14, minWidth: 280, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ padding: '12px 18px', borderRadius: 12, border: '1.5px solid var(--v2-rule)', fontSize: 14, minWidth: 280, background: 'var(--v2-surface)', cursor: 'pointer', fontFamily: 'inherit' }}>
                   <option value="">Escolher cliente…</option>
                   {clientesDosPlanos.some(c => c.temPlano) && (
                     <optgroup label="Com plano">
@@ -1186,25 +1186,25 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     </optgroup>
                   )}
                 </select>
-                {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: '#bbb' }}>Nenhum cliente cadastrado ainda.</p>}
+                {clientesDosPlanos.length === 0 && <p style={{ margin: '16px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum cliente cadastrado ainda.</p>}
               </>
             ) : (
               <>
-                <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#111' }}>Escolha o mês</h3>
-                <p style={{ margin: 0, fontSize: 13, color: '#999' }}>Selecione um mês acima, ou clique em “+ Novo plano” para começar.</p>
+                <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--v2-ink)' }}>Escolha o mês</h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Selecione um mês acima, ou clique em “+ Novo plano” para começar.</p>
               </>
             )}
           </div>
         )
       ) : carregando ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>Carregando pautas...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>Carregando pautas...</div>
       ) : pautas.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 50, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+        <div style={{ textAlign: 'center', padding: 50, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
           <p style={{ margin: '0 0 6px' }}>Nenhuma pauta neste plano ainda.</p>
           {podeEditar && <p style={{ margin: 0, fontSize: 13 }}>Clique em <strong>Gerar plano com IA</strong> para a IA propor o mês, ou <strong>+ Nova linha</strong> para começar do zero.</p>}
         </div>
       ) : pautasVis.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 44, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+        <div style={{ textAlign: 'center', padding: 44, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
           <p style={{ margin: 0, fontSize: 13.5 }}>Nenhuma pauta encontrada para <strong>“{buscaPauta}”</strong>.</p>
         </div>
       ) : (
@@ -1222,25 +1222,25 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               const fmt = FORMATOS.find(f => f.key === (p.formato || 'feed')) || FORMATOS[0]
               const dataFmt = p.dataAgendada ? `${new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · ${new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'sem data'
               return (
-                <div key={p.id} id={`pauta-${p.id}`} className="st-row" style={{ borderBottom: '1px solid #f4f4f5', background: aberto ? '#fbfbfd' : undefined, ...(foco?.pautaId === p.id ? { boxShadow: 'inset 3px 0 0 #ffc00f' } : {}), animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
+                <div key={p.id} id={`pauta-${p.id}`} className="st-row" style={{ borderBottom: '1px solid var(--v2-surface1)', background: aberto ? '#fbfbfd' : undefined, ...(foco?.pautaId === p.id ? { boxShadow: 'inset 3px 0 0 #ffc00f' } : {}), animationDelay: `${Math.min(idx, 16) * 26}ms` }}>
                   {/* Item recolhido — lista limpa, sem controles nativos */}
                   <div onClick={() => toggleLinha(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', cursor: 'pointer' }}>
                     {podeExcluir && (
                       <input type="checkbox" checked={pautasSel.has(p.id)} title="Selecionar para ações em massa"
                         onClick={e => e.stopPropagation()} onChange={() => toggleSel(p.id)}
-                        style={{ width: 15, height: 15, accentColor: '#111', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
+                        style={{ width: 15, height: 15, accentColor: 'var(--v2-ink)', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
                     )}
                     <svg className="st-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbcbce" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: aberto ? 'rotate(90deg)' : 'none' }}><path d="M9 18l6-6-6-6" /></svg>
                     {capa ? (
                       <img src={capa} alt="" onClick={e => { e.stopPropagation(); setPreview(p) }} title="Ver prévia" style={{ width: 46, height: 58, borderRadius: 10, objectFit: 'cover', flexShrink: 0, boxShadow: '0 5px 14px -7px rgba(0,0,0,.45)', cursor: 'zoom-in' }} />
                     ) : (
-                      <div style={{ width: 46, height: 58, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,#f4f4f5,#ececed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfcfd3' }}>
+                      <div style={{ width: 46, height: 58, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--v2-surface1),#ececed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfcfd3' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M3 15l5-4 4 3 4-4 5 4" /><circle cx="9" cy="8.5" r="1.4" /></svg>
                       </div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 600, color: p.briefing ? '#1a1a1a' : '#bbb', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.briefing || 'Sem título — clique para editar'}</span>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: p.briefing ? 'var(--v2-ink)' : 'var(--v2-ink3)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.briefing || 'Sem título — clique para editar'}</span>
                         {p.editadoAposIA && <span title="Ajustada pela equipe após a IA" style={{ fontSize: 9, fontWeight: 700, color: '#7c3aed', flexShrink: 0 }}>editada</span>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 5 }}>
@@ -1252,12 +1252,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <span style={{ width: 6, height: 6, borderRadius: 2, background: fmt.cor }} />{fmt.label}
                         </span>
                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
-                        <span style={{ fontSize: 11.5, color: atrasada(p) ? '#b91c1c' : '#9a9a9a', fontWeight: atrasada(p) ? 800 : undefined, whiteSpace: 'nowrap' }}>{dataFmt}</span>
+                        <span style={{ fontSize: 11.5, color: atrasada(p) ? 'var(--v2-hot)' : '#9a9a9a', fontWeight: atrasada(p) ? 800 : undefined, whiteSpace: 'nowrap' }}>{dataFmt}</span>
                         {atrasada(p) && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#fee2e2', color: '#b91c1c', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Atrasado</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Atrasado</span>
                         )}
                         {!atrasada(p) && emRisco(p) && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Vence em breve</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, background: 'var(--v2-amber-bg)', color: 'var(--v2-amber)', fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>Vence em breve</span>
                         )}
                       </div>
                     </div>
@@ -1273,15 +1273,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
-                        <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
+                        <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
                       )}
                       {podeEditar && (p.status === 'aguardando_aprovacao' || p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo') && (
                         <button className="st-btn" onClick={() => voltarDaAprovacao(p)} disabled={acaoPauta === p.id} title="Tira da aprovação do cliente sem excluir a pauta"
-                          style={{ padding: '8px 13px', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>Voltar</button>
+                          style={{ padding: '8px 13px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>Voltar</button>
                       )}
                       {podeExcluir && (
                         <button onClick={() => excluir(p)} title="Excluir pauta"
-                          onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#b91c1c' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--v2-hot-bg)'; e.currentTarget.style.color = 'var(--v2-hot)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c8c8cc' }}
                           style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', color: '#c8c8cc', border: 'none', borderRadius: 8, cursor: 'pointer', padding: 0, flexShrink: 0 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -1296,11 +1296,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       prende o position:fixed dentro da linha (modal saía clipado). */}
                   {aberto && createPortal(
                     <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
-                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
+                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: est.cor, background: est.bg, borderRadius: 999, padding: '4px 11px', flexShrink: 0 }}>{est.label}</span>
-                      <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || 'Pauta sem título'}</span>
-                      <button onClick={() => toggleLinha(p.id)} title="Fechar" style={{ width: 30, height: 30, borderRadius: 9, background: '#f4f4f5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', flexShrink: 0 }}>
+                      <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || 'Pauta sem título'}</span>
+                      <button onClick={() => toggleLinha(p.id)} title="Fechar" style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--v2-surface1)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink2)', flexShrink: 0 }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                       </button>
                     </div>
@@ -1309,7 +1309,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
                       <div><PipelinePauta p={p} /></div>
                       {(ajuste || anot.length > 0) && (
-                        <div style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: 12, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
                           <strong>Cliente pediu:</strong>
                           {ajuste && <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{String(ajuste)}</div>}
                           {anot.length > 0 && <ol style={{ margin: '4px 0 0', paddingLeft: 16 }}>{anot.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}</ol>}
@@ -1319,12 +1319,12 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                         <div>
                           <CampoLabel>Formato</CampoLabel>
-                          <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3 }}>
+                          <div style={{ display: 'inline-flex', gap: 4, background: 'var(--v2-surface1)', borderRadius: 11, padding: 3 }}>
                             {FORMATOS.map(f => {
                               const on = fk === f.key
                               return (
                                 <button key={f.key} className="st-btn" disabled={!podeEditar} onClick={() => salvarCampo(p.id, 'formato', f.key)}
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? 'var(--v2-surface)' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
                                   <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{f.label}
                                 </button>
                               )
@@ -1334,7 +1334,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         <div>
                           <CampoLabel>Data e hora</CampoLabel>
                           <input type="datetime-local" className="st-input" value={toLocalInput(p.dataAgendada)} disabled={!podeEditar} onChange={e => salvarData(p.id, e.target.value)}
-                            style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', color: '#333', background: '#fff' }} />
+                            style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', color: 'var(--v2-ink)', background: 'var(--v2-surface)' }} />
                         </div>
                         {podeEditar && podeGerarIA && fk !== 'grafico' && (
                           <div style={{ marginLeft: 'auto' }}>
@@ -1370,7 +1370,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <CampoLabel>Lâminas do carrossel (uma a uma, cada lâmina com seu anexo)</CampoLabel>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {(p.laminas || []).map((l, i) => (
-                              <div key={i} className="anim-item" style={{ border: '1px solid #ececec', borderRadius: 12, padding: '10px 12px', background: '#fbfbfc', ['--i' as any]: i }}>
+                              <div key={i} className="anim-item" style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, padding: '10px 12px', background: '#fbfbfc', ['--i' as any]: i }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                                   <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0891b2', background: '#e0f2fe', borderRadius: 999, padding: '2px 10px' }}>Lâmina {i + 1}</span>
                                   <span style={{ flex: 1 }} />
@@ -1386,14 +1386,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                                     <>
                                       {/(image\/|\.(jpg|jpeg|png|gif|webp))/i.test(`${l.anexo.tipo} ${l.anexo.url}`) ? (
                                         <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-                                          <img src={l.anexo.url} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e5e5', display: 'block' }} />
+                                          <img src={l.anexo.url} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--v2-rule)', display: 'block' }} />
                                         </a>
                                       ) : (
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                                       )}
-                                      <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.anexo.nome}</a>
+                                      <a href={l.anexo.url} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: 'var(--v2-info)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.anexo.nome}</a>
                                       {podeEditar && (
-                                        <label title="Trocar o anexo desta lâmina" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: '#555', cursor: 'pointer', flexShrink: 0 }}>
+                                        <label title="Trocar o anexo desta lâmina" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', flexShrink: 0 }}>
                                           Trocar
                                           <input type="file" style={{ display: 'none' }} disabled={anexandoLamina !== null}
                                             onChange={e => { if (e.target.files?.[0]) anexarLamina(p, i, e.target.files[0]); e.target.value = '' }} />
@@ -1406,7 +1406,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                                       )}
                                     </>
                                   ) : podeEditar && (
-                                    <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: '#fff', color: '#0891b2', border: '1px dashed #7dd3fc', borderRadius: 10, fontWeight: 600, fontSize: 11, cursor: anexandoLamina ? 'wait' : 'pointer' }}>
+                                    <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: 'var(--v2-surface)', color: '#0891b2', border: '1px dashed #7dd3fc', borderRadius: 10, fontWeight: 600, fontSize: 11, cursor: anexandoLamina ? 'wait' : 'pointer' }}>
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                                       {anexandoLamina === `${p.id}:${i}` ? 'Enviando…' : `Anexar arte da lâmina ${i + 1}`}
                                       <input type="file" style={{ display: 'none' }} disabled={anexandoLamina !== null}
@@ -1418,7 +1418,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             ))}
                             {podeEditar && (
                               <button className="st-btn" onClick={() => salvarLaminas(p.id, [...(p.laminas || []), { texto: '' }])}
-                                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#0891b2', border: '1px solid #bae6fd', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>
+                                style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: '#0891b2', border: '1px solid #bae6fd', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
                                 Adicionar lâmina
                               </button>
@@ -1440,9 +1440,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           {(p.anexos || []).length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                               {(p.anexos || []).map(a => (
-                                <div key={a.url} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa', border: '1px solid #eee', borderRadius: 9, padding: '6px 10px' }}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-                                  <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 12, color: '#1d4ed8', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nome}</a>
+                                <div key={a.url} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '6px 10px' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                                  <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 12, color: 'var(--v2-info)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nome}</a>
                                   {podeEditar && (
                                     <button onClick={() => salvarAnexos(p.id, (p.anexos || []).filter(x => x.url !== a.url))} title="Remover anexo" style={{ background: 'none', border: 'none', color: '#c0716b', cursor: 'pointer', padding: 0, display: 'flex' }}>
                                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -1453,7 +1453,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             </div>
                           )}
                           {podeEditar && (
-                            <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: anexando === p.id ? 'wait' : 'pointer' }}>
+                            <label className="st-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: anexando === p.id ? 'wait' : 'pointer' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
                               {anexando === p.id ? 'Enviando…' : 'Anexar arquivo'}
                               <input type="file" multiple style={{ display: 'none' }} disabled={anexando !== null}
@@ -1463,14 +1463,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         </div>
                       {/* RODAPÉ: as ações da pauta. Sem bloco "Criativo" aqui — a arte
                           vive no nível da TAREFA do designer (decisão do dono, 23/07). */}
-                      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         {podeExcluir && (
                           <button onClick={() => excluir(p)} style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>Excluir</button>
                         )}
                         {/* Mover a pauta para outro plano do mesmo cliente */}
                         {podeEditar && planosDoCliente.filter(pl => pl.id !== planoSel).length > 0 && (
                           <select value="" onChange={e => { if (e.target.value) moverPautaDePlano(p, e.target.value) }} title="Mover para outro plano"
-                            style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid #e0e0e0', fontSize: 11.5, fontFamily: 'inherit', background: '#fff', color: '#555', cursor: 'pointer' }}>
+                            style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 11.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer' }}>
                             <option value="">Mover para…</option>
                             {planosDoCliente.filter(pl => pl.id !== planoSel).map(pl => (
                               <option key={pl.id} value={pl.id}>{MESES[pl.mes - 1]}/{pl.ano}{pl.titulo ? ` · ${pl.titulo}` : ''}</option>
@@ -1479,32 +1479,32 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         )}
                         <span style={{ flex: 1 }} />
                         {podeEditar && onAbrirComposer && (
-                          <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: '#fff', color: '#555', border: '1px solid #ececec', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no Planner'}</button>
+                          <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no Planner'}</button>
                         )}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
                           <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
                             title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
-                            style={{ padding: '10px 14px', background: '#fff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
                           </button>
                         )}
                         {podeEditar && p.etapa === 'aprovacao_copy' && (
                           <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
-                            style={{ padding: '10px 14px', background: '#fff', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Aprovar copy internamente
                           </button>
                         )}
                         {podeEditar && (p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo' || p.status === 'aguardando_aprovacao') && (
                           <button className="st-btn" onClick={() => voltarDaAprovacao(p)} disabled={acaoPauta === p.id}
                             title="Subiu como teste ou por engano? Tira do link/portal do cliente sem excluir a pauta"
-                            style={{ padding: '10px 14px', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px dashed #fcd34d', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Voltar da aprovação
                           </button>
                         )}
                         {podeEditar && p.etapa === 'criativo' && (
                           <button className="st-btn" onClick={() => enviarAoPlannerManual(p)} disabled={acaoPauta === p.id}
                             title="Mesmo destino de concluir a tarefa do designer — sem precisar concluir"
-                            style={{ padding: '10px 14px', background: '#fff', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: '#7c3aed', border: '1px solid #e6dcf7', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Enviar ao Planner (rascunho)
                           </button>
                         )}
@@ -1551,32 +1551,32 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {editorPost && editorSpec && (() => {
         const s = editorSpec
         const set = (patch: Partial<CriativoSpec>) => setEditorSpec(sp => sp ? { ...sp, ...patch } : sp)
-        const inp: any = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }
-        const ghost: any = { padding: '5px 10px', background: '#f5f5f5', border: 'none', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
+        const inp: any = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }
+        const ghost: any = { padding: '5px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }
         return (
           <div onClick={fecharFora(() => !editorAplicando && setEditorPost(null))} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 18, maxWidth: editorModo === 'visual' ? 940 : 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14, gap: 10 }}>
-                <h3 style={{ margin: 0, fontSize: 17, color: '#111' }}>Editar arte</h3>
-                <div style={{ display: 'inline-flex', gap: 3, background: '#f4f4f5', borderRadius: 999, padding: 3, marginLeft: 'auto' }}>
+                <h3 style={{ margin: 0, fontSize: 17, color: 'var(--v2-ink)' }}>Editar arte</h3>
+                <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface1)', borderRadius: 999, padding: 3, marginLeft: 'auto' }}>
                   {(['simples', 'visual'] as const).map(m => { const on = editorModo === m; return (
-                    <button key={m} onClick={() => m === 'visual' ? entrarVisual() : setEditorModo('simples')} style={{ padding: '5px 15px', borderRadius: 999, border: 'none', background: on ? '#1f1f22' : 'transparent', color: on ? '#fff' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer' }}>{m === 'simples' ? 'Simples' : 'Visual'}</button>
+                    <button key={m} onClick={() => m === 'visual' ? entrarVisual() : setEditorModo('simples')} style={{ padding: '5px 15px', borderRadius: 999, border: 'none', background: on ? '#1f1f22' : 'transparent', color: on ? 'var(--v2-surface)' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer' }}>{m === 'simples' ? 'Simples' : 'Visual'}</button>
                   ) })}
                 </div>
-                <button onClick={() => setEditorPost(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+                <button onClick={() => setEditorPost(null)} aria-label="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
               </div>
               {editorModo === 'simples' && (
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 220px' }}>
-                  {editorImg ? <img src={editorImg} alt="" style={{ width: 220, height: 275, objectFit: 'cover', borderRadius: 14, border: '1px solid #eee', boxShadow: '0 14px 34px -18px rgba(0,0,0,.4)' }} /> : <div style={{ width: 220, height: 275, borderRadius: 14, background: '#f4f4f5' }} />}
+                  {editorImg ? <img src={editorImg} alt="" style={{ width: 220, height: 275, objectFit: 'cover', borderRadius: 14, border: '1px solid var(--v2-rule)', boxShadow: '0 14px 34px -18px rgba(0,0,0,.4)' }} /> : <div style={{ width: 220, height: 275, borderRadius: 14, background: 'var(--v2-surface1)' }} />}
                   {editorAplicando && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>Aplicando…</p>}
                 </div>
                 <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
                     <CampoLabel>Template</CampoLabel>
-                    <div style={{ display: 'inline-flex', gap: 4, background: '#f4f4f5', borderRadius: 11, padding: 3, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'inline-flex', gap: 4, background: 'var(--v2-surface1)', borderRadius: 11, padding: 3, flexWrap: 'wrap' }}>
                       {TEMPLATES_ART.map(t => { const on = s.template === t.key; return (
-                        <button key={t.key} onClick={() => set({ template: t.key })} style={{ padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? '#fff' : 'transparent', color: on ? '#111' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>{t.label}</button>
+                        <button key={t.key} onClick={() => set({ template: t.key })} style={{ padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? 'var(--v2-surface)' : 'transparent', color: on ? 'var(--v2-ink)' : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: 'pointer', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>{t.label}</button>
                       ) })}
                     </div>
                   </div>
@@ -1600,7 +1600,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <div><CampoLabel>Cor de destaque</CampoLabel><input type="color" value={s.corAccent || '#ffc00f'} onChange={e => set({ corAccent: e.target.value })} style={{ width: 48, height: 34, borderRadius: 8, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} /></div>
                   </div>
                   <button className="st-btn st-cta" onClick={() => aplicarEditor(false)} disabled={editorAplicando} style={{ padding: '11px 0', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13, cursor: editorAplicando ? 'wait' : 'pointer', opacity: editorAplicando ? 0.6 : 1 }}>Aplicar mudanças</button>
-                  <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                  <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 12 }}>
                     <CampoLabel>Refinar com IA</CampoLabel>
                     <textarea lang="pt-BR" value={editorPrompt} onChange={e => setEditorPrompt(e.target.value)} placeholder="Ex.: deixa mais minimalista, encurta a headline, tom mais sério…" rows={2} className="st-input" style={inp} />
                     <button className="st-btn" onClick={() => aplicarEditor(true)} disabled={editorAplicando || !editorPrompt.trim()} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: editorPrompt.trim() && !editorAplicando ? 'pointer' : 'not-allowed', opacity: editorPrompt.trim() && !editorAplicando ? 1 : 0.5 }}>
@@ -1616,8 +1616,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 const sel = camadas.find(c => c.id === selCamada) || null
                 const onMove = (e: any) => { const d = dragRef.current; if (!d) return; updCamada(d.id, { x: Math.round(d.ox + (e.clientX - d.sx) / scale), y: Math.round(d.oy + (e.clientY - d.sy) / scale) }) }
                 const startDrag = (c: Camada, e: any) => { e.stopPropagation(); setSelCamada(c.id); dragRef.current = { id: c.id, sx: e.clientX, sy: e.clientY, ox: c.x, oy: c.y } }
-                const num: any = { width: 62, padding: '5px 7px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit' }
-                const mini: any = { padding: '4px 8px', background: '#f5f5f5', border: 'none', borderRadius: 7, color: '#666', cursor: 'pointer', fontSize: 11.5, fontWeight: 600 }
+                const num: any = { width: 62, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }
+                const mini: any = { padding: '4px 8px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, color: 'var(--v2-ink2)', cursor: 'pointer', fontSize: 11.5, fontWeight: 600 }
                 return (
                   <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
                     <div style={{ flex: '0 0 auto' }}>
@@ -1632,7 +1632,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           return <div key={c.id} onPointerDown={e => startDrag(c, e)} style={{ ...common, width: c.w * scale, height: c.h * scale, background: c.cor, borderRadius: c.radius * scale }} />
                         })}
                       </div>
-                      <p style={{ margin: '8px 0 0', fontSize: 11, color: '#aaa' }}>Arraste os elementos. Toque para selecionar.</p>
+                      <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Arraste os elementos. Toque para selecionar.</p>
                       {editorAplicando && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7c3aed', fontWeight: 700 }}>Aplicando…</p>}
                     </div>
                     <div style={{ flex: '1 1 300px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1645,7 +1645,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           <CampoLabel>Adicionar imagem da marca</CampoLabel>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {modalAssets.slice(0, 10).map(a => (
-                              <button key={a.url} onClick={() => addCamada({ id: rid(), tipo: 'imagem', url: a.url, x: 120, y: 120, w: 320, h: 320, radius: 0, fit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover' })} style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', border: '1px solid #e6e6e6', padding: 0, cursor: 'pointer', background: '#fff' }}>
+                              <button key={a.url} onClick={() => addCamada({ id: rid(), tipo: 'imagem', url: a.url, x: 120, y: 120, w: 320, h: 320, radius: 0, fit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover' })} style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', background: 'var(--v2-surface)' }}>
                                 <img src={a.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               </button>
                             ))}
@@ -1663,45 +1663,45 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             const on = c.id === selCamada
                             const nome = c.tipo === 'texto' ? (c.texto || 'Texto').slice(0, 20) : c.tipo === 'imagem' ? 'Imagem' : 'Forma'
                             return (
-                              <div key={c.id} onClick={() => setSelCamada(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 8, background: on ? '#f3ecff' : '#fafafa', border: on ? '1px solid #d9c9f7' : '1px solid #f0f0f0', cursor: 'pointer' }}>
-                                <span style={{ flex: 1, fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome}</span>
+                              <div key={c.id} onClick={() => setSelCamada(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 8, background: on ? '#f3ecff' : 'var(--v2-surface1)', border: on ? '1px solid #d9c9f7' : '1px solid var(--v2-surface2)', cursor: 'pointer' }}>
+                                <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome}</span>
                                 <button onClick={e => { e.stopPropagation(); moveCamada(c.id, 1) }} style={mini} title="Trazer para frente">↑</button>
                                 <button onClick={e => { e.stopPropagation(); moveCamada(c.id, -1) }} style={mini} title="Enviar para trás">↓</button>
                                 <button onClick={e => { e.stopPropagation(); delCamada(c.id) }} style={{ ...mini, color: '#c0392b' }} title="Excluir">×</button>
                               </div>
                             )
                           })}
-                          {!camadas.length && <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>Sem camadas. Adicione texto, forma ou imagem.</p>}
+                          {!camadas.length && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem camadas. Adicione texto, forma ou imagem.</p>}
                         </div>
                       </div>
                       {sel && (
-                        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <CampoLabel>Selecionado</CampoLabel>
                           {sel.tipo === 'texto' && <>
                             <textarea lang="pt-BR" value={sel.texto} onChange={e => updCamada(sel.id, { texto: e.target.value })} rows={2} className="st-input" style={inp} />
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <label style={{ fontSize: 11, color: '#888' }}>Tam. <input type="number" value={sel.fontSize} onChange={e => updCamada(sel.id, { fontSize: Number(e.target.value) || 12 })} style={num} /></label>
-                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 40 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Tam. <input type="number" value={sel.fontSize} onChange={e => updCamada(sel.id, { fontSize: Number(e.target.value) || 12 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 40 })} style={num} /></label>
                               <select value={sel.peso} onChange={e => updCamada(sel.id, { peso: Number(e.target.value) })} style={{ ...num, width: 96 }}><option value={400}>Regular</option><option value={600}>Semibold</option><option value={700}>Bold</option></select>
                               <input type="color" value={sel.cor} onChange={e => updCamada(sel.id, { cor: e.target.value })} style={{ width: 40, height: 30, borderRadius: 7, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} />
                             </div>
-                            <div style={{ display: 'inline-flex', gap: 3, background: '#f4f4f5', borderRadius: 8, padding: 3, alignSelf: 'flex-start' }}>
-                              {(['left', 'center', 'right'] as const).map(al => { const ona = sel.align === al; return <button key={al} onClick={() => updCamada(sel.id, { align: al })} style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: ona ? '#fff' : 'transparent', color: ona ? '#111' : '#999', fontSize: 11, fontWeight: ona ? 700 : 500, cursor: 'pointer', boxShadow: ona ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>{al === 'left' ? 'Esq.' : al === 'center' ? 'Centro' : 'Dir.'}</button> })}
+                            <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface1)', borderRadius: 8, padding: 3, alignSelf: 'flex-start' }}>
+                              {(['left', 'center', 'right'] as const).map(al => { const ona = sel.align === al; return <button key={al} onClick={() => updCamada(sel.id, { align: al })} style={{ padding: '4px 11px', borderRadius: 6, border: 'none', background: ona ? 'var(--v2-surface)' : 'transparent', color: ona ? 'var(--v2-ink)' : 'var(--v2-ink3)', fontSize: 11, fontWeight: ona ? 700 : 500, cursor: 'pointer', boxShadow: ona ? '0 1px 3px rgba(0,0,0,.12)' : 'none' }}>{al === 'left' ? 'Esq.' : al === 'center' ? 'Centro' : 'Dir.'}</button> })}
                             </div>
                           </>}
                           {sel.tipo === 'imagem' && (
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
-                              <label style={{ fontSize: 11, color: '#888' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
-                              <label style={{ fontSize: 11, color: '#888' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
                               <select value={sel.fit} onChange={e => updCamada(sel.id, { fit: e.target.value })} style={{ ...num, width: 104 }}><option value="cover">Preencher</option><option value="contain">Conter</option></select>
                             </div>
                           )}
                           {sel.tipo === 'forma' && (
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <label style={{ fontSize: 11, color: '#888' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
-                              <label style={{ fontSize: 11, color: '#888' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
-                              <label style={{ fontSize: 11, color: '#888' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Larg. <input type="number" value={sel.w} onChange={e => updCamada(sel.id, { w: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Alt. <input type="number" value={sel.h} onChange={e => updCamada(sel.id, { h: Number(e.target.value) || 20 })} style={num} /></label>
+                              <label style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Raio <input type="number" value={sel.radius} onChange={e => updCamada(sel.id, { radius: Number(e.target.value) || 0 })} style={num} /></label>
                               <input type="color" value={sel.cor} onChange={e => updCamada(sel.id, { cor: e.target.value })} style={{ width: 40, height: 30, borderRadius: 7, border: '1px solid #e6e6e6', cursor: 'pointer', background: '#fff' }} />
                             </div>
                           )}
@@ -1720,40 +1720,40 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {/* Quantas pautas gerar e com quais pilares. Entram NO PLANO ATUAL. */}
       {planoModal && (
         <div onClick={fecharFora(() => setPlanoModal(false), { temAlteracoes: () => !!gerarPilares.trim() })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Gerar pautas com IA</h3>
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: '#999', lineHeight: 1.5 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 420, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Gerar pautas com IA</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>
               Elas entram no plano aberto, a partir de hoje. A IA recebe o que esta marca já publicou e não repete tema usado.
             </p>
 
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Quantas pautas</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Quantas pautas</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
               {[1, 2, 3, 5, 8, 12].map(n => (
                 <button key={n} onClick={() => setGerarQtd(n)} style={{
                   minWidth: 40, padding: '7px 12px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  background: gerarQtd === n ? '#111' : '#fff', color: gerarQtd === n ? '#fff' : '#555',
-                  border: gerarQtd === n ? '1px solid #111' : '1px solid #e5e7eb',
+                  background: gerarQtd === n ? 'var(--v2-ink)' : 'var(--v2-surface)', color: gerarQtd === n ? 'var(--v2-surface)' : 'var(--v2-ink2)',
+                  border: gerarQtd === n ? '1px solid var(--v2-ink)' : '1px solid var(--v2-surface2)',
                 }}>{n}</button>
               ))}
               <input type="number" min={1} max={30} value={gerarQtd}
                 onChange={e => setGerarQtd(Math.min(Math.max(Number(e.target.value) || 1, 1), 30))}
-                style={{ width: 74, padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                style={{ width: 74, padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
             </div>
-            <p style={{ margin: '0 0 14px', fontSize: 11, color: '#bbb' }}>De 1 a 30. O mês fechado costuma ser 12.</p>
+            <p style={{ margin: '0 0 14px', fontSize: 11, color: 'var(--v2-ink3)' }}>De 1 a 30. O mês fechado costuma ser 12.</p>
 
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Pilares (opcional)</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Pilares (opcional)</label>
             <input value={gerarPilares} onChange={e => setGerarPilares(e.target.value)}
               placeholder="Ex.: bastidor, prova social, educativo"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-            <p style={{ margin: '5px 0 16px', fontSize: 11, color: '#bbb' }}>Em branco, a IA equilibra os pilares da marca sozinha.</p>
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+            <p style={{ margin: '5px 0 16px', fontSize: 11, color: 'var(--v2-ink3)' }}>Em branco, a IA equilibra os pilares da marca sozinha.</p>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPlanoModal(false)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setPlanoModal(false)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={() => gerarPlanoIA(gerarQtd, gerarPilares)} style={{ padding: '9px 18px', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
                 Gerar {gerarQtd} {gerarQtd === 1 ? 'pauta' : 'pautas'}
               </button>
             </div>
-            <p style={{ margin: '10px 0 0', fontSize: 11, color: '#bbb' }}>Consome créditos da IA.</p>
+            <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Consome créditos da IA.</p>
           </div>
         </div>
       )}
@@ -1763,82 +1763,82 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const p = gerarModal
         return (
           <div onClick={fecharFora(() => setGerarModal(null))} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>A IA usa a imagem de referência + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 18, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--v2-ink)', letterSpacing: '-0.01em' }}>Gerar arte com IA</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>A IA usa a imagem de referência + <strong>logo</strong>, <strong>cores</strong> e <strong>fontes</strong> da marca.</p>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Texto principal (headline)</label>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Texto principal (headline)</label>
                 <textarea lang="pt-BR" value={refHeadline} onChange={e => setRefHeadline(e.target.value)} placeholder="Frase forte que aparece na arte..." rows={2}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }} />
-                <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>A IA usa <strong>exatamente</strong> essa frase como título da arte (seguida à risca).</p>
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.4 }} />
+                <p style={{ margin: '5px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A IA usa <strong>exatamente</strong> essa frase como título da arte (seguida à risca).</p>
               </div>
 
               {/* Brief do anúncio (motor novo) — objetivo + campos que entram na arte */}
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Objetivo do post</label>
+                <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Objetivo do post</label>
                 <select value={briefObj} onChange={e => setBriefObj(e.target.value)}
-                  style={{ width: '100%', padding: '9px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', background: '#fff' }}>
+                  style={{ width: '100%', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', background: 'var(--v2-surface)' }}>
                   <option value="">Automático (a IA decide pelo briefing)</option>
                   {OBJETIVOS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
                 {(() => {
                   const def = objetivoDef(briefObj)
                   const campos = def?.campos?.length ? def.campos : []
-                  if (!campos.length) return def ? <p style={{ margin: '5px 0 0', fontSize: 11, color: '#bbb' }}>{def.dica}</p> : null
+                  if (!campos.length) return def ? <p style={{ margin: '5px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{def.dica}</p> : null
                   const rotulo: Record<string, string> = { cta: 'Chamada (CTA)', oferta: 'Oferta', preco: 'Preço', dataEvento: 'Data', horaEvento: 'Hora', localEvento: 'Local', legal: 'Texto legal', whatsapp: 'WhatsApp' }
                   return (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginTop: 8 }}>
                       {campos.map(c => (
                         <input key={c} value={briefVals[c] || ''} onChange={e => setBriefVals(v => ({ ...v, [c]: e.target.value }))}
                           placeholder={rotulo[c] || c}
-                          style={{ padding: '8px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+                          style={{ padding: '8px 10px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
                       ))}
                     </div>
                   )
                 })()}
               </div>
 
-              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Imagem de referência</label>
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Imagem de referência</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 10 }}>
-                <button onClick={() => setRefSel('sem')} style={{ aspectRatio: '1/1', borderRadius: 12, border: refSel === 'sem' ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: '#fafafa', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600 }}>
+                <button onClick={() => setRefSel('sem')} style={{ aspectRatio: '1/1', borderRadius: 12, border: refSel === 'sem' ? '2px solid var(--marca, var(--v2-amber-on))' : '1.5px solid var(--v2-surface2)', background: 'var(--v2-surface1)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--v2-ink3)', fontSize: 11, fontWeight: 600 }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 4l16 16M20 4L4 20" /></svg>
                   Sem imagem
                 </button>
-                <label style={{ aspectRatio: '1/1', borderRadius: 12, border: '1.5px dashed #d8d8d8', background: '#fbfbfc', cursor: modalEnviando ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#888', fontSize: 11, fontWeight: 600, textAlign: 'center', padding: 6 }}>
+                <label style={{ aspectRatio: '1/1', borderRadius: 12, border: '1.5px dashed #d8d8d8', background: '#fbfbfc', cursor: modalEnviando ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--v2-ink3)', fontSize: 11, fontWeight: 600, textAlign: 'center', padding: 6 }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                   {modalEnviando ? (modalProg != null ? `${modalProg}%` : 'Enviando…') : 'Nova imagem'}
                   <input type="file" accept="image/*" style={{ display: 'none' }} disabled={modalEnviando} onChange={e => { if (e.target.files?.[0]) subirNovaRef(p, e.target.files[0]); e.target.value = '' }} />
                 </label>
                 {modalAssets.map(a => (
-                  <button key={a.url} onClick={() => setRefSel(a.url)} style={{ aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: refSel === a.url ? '2px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', padding: 0, cursor: 'pointer', background: '#eee' }}>
-                    <img src={a.url} alt="" style={{ width: '100%', height: '100%', objectFit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover', background: '#fff' }} />
+                  <button key={a.url} onClick={() => setRefSel(a.url)} style={{ aspectRatio: '1/1', borderRadius: 12, overflow: 'hidden', border: refSel === a.url ? '2px solid var(--marca, var(--v2-amber-on))' : '1.5px solid var(--v2-surface2)', padding: 0, cursor: 'pointer', background: 'var(--v2-surface2)' }}>
+                    <img src={a.url} alt="" style={{ width: '100%', height: '100%', objectFit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover', background: 'var(--v2-surface)' }} />
                   </button>
                 ))}
               </div>
-              {modalCarregando && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>Carregando ativos…</p>}
-              {!modalCarregando && modalAssets.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#bbb' }}>Nenhum ativo da marca ainda. Use “Nova imagem” ou gere sem imagem.</p>}
+              {modalCarregando && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Carregando ativos…</p>}
+              {!modalCarregando && modalAssets.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum ativo da marca ainda. Use “Nova imagem” ou gere sem imagem.</p>}
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
                 <button className="st-btn st-cta" onClick={() => gerarCriativoHtml(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', background: '#1f1f22', color: '#ffce4a', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13.5, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
                   Gerar arte (IA designer)
                 </button>
-                <button onClick={() => setGerarModal(null)} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={() => setGerarModal(null)} style={{ padding: '12px 20px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               </div>
               <button className="st-btn" onClick={() => gerarCriativo(p, { ...(refSel === 'sem' ? { semFoto: true } : { fundoUrl: refSel }), headline: refHeadline.trim() || undefined })} disabled={modalEnviando}
-                style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
+                style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
                 Modo clássico (templates)
               </button>
               {ideogramOn && (
                 <button className="st-btn" onClick={() => gerarFotoIA(p)} disabled={modalEnviando}
-                  style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#fff', color: '#111', border: '1px solid #e6e6e6', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
+                  style={{ marginTop: 10, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: modalEnviando ? 'wait' : 'pointer', opacity: modalEnviando ? 0.6 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
                   Foto realista (IA) — {motorFoto === 'nano-banana' ? 'Nano Banana' : 'Ideogram'}
                 </button>
               )}
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb', textAlign: 'center' }}>{ideogramOn ? (motorFoto === 'nano-banana' ? 'A foto usa as FOTOS REAIS da marca como referência (Nano Banana).' : 'Arte de marca (template) ou foto realista gerada por IA.') : 'Foto realista por IA disponível ao configurar GEMINI_API_KEY (Nano Banana).'}</p>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center' }}>{ideogramOn ? (motorFoto === 'nano-banana' ? 'A foto usa as FOTOS REAIS da marca como referência (Nano Banana).' : 'Arte de marca (template) ou foto realista gerada por IA.') : 'Foto realista por IA disponível ao configurar GEMINI_API_KEY (Nano Banana).'}</p>
             </div>
           </div>
         )
@@ -1847,27 +1847,27 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       {/* Modal de compartilhamento do link de aprovação */}
       {linkModal && (
         <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+          <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--v2-ok-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ok)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
               </span>
-              <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Link de aprovação — {linkModal.cliente}</h3>
+              <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Link de aprovação — {linkModal.cliente}</h3>
             </div>
-            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <input readOnly value={linkModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, color: '#333', background: '#fafafa', fontFamily: 'inherit' }} />
+              <input readOnly value={linkModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', fontFamily: 'inherit' }} />
               <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
-                style={{ padding: '10px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
+                style={{ padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkModal.url)}`, '_blank')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2-1s-.5-.2-.7.1-.8 1-1 1.2-.4.2-.7.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.6.3-.5v-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.8.4A3.4 3.4 0 0 0 4.5 9c0 2 1.5 4 1.7 4.2s2.9 4.4 7 6c2.4 1 3.4 1 4.6.9.7 0 1.8-.8 2.1-1.5.3-.8.3-1.4.2-1.5l-.6-.3z" /><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" /></svg>
                 WhatsApp
               </button>
-              <button onClick={() => window.open(linkModal.url, '_blank')} style={{ padding: '11px 18px', background: '#fff', color: '#555', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-              <button onClick={() => setLinkModal(null)} style={{ padding: '11px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+              <button onClick={() => window.open(linkModal.url, '_blank')} style={{ padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+              <button onClick={() => setLinkModal(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
             </div>
           </div>
         </div>
@@ -1879,18 +1879,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const inicial = (preview.clienteNome || '?').trim().charAt(0).toUpperCase()
         return (
           <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: '#fff', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 18, maxWidth: 400, width: '100%', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
-                <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--marca, #ffc00f)', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{inicial}</div>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>{preview.clienteNome}</span>
-                <button onClick={() => setPreview(null)} aria-label="Fechar" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--marca, var(--v2-amber-on))', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{inicial}</div>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{preview.clienteNome}</span>
+                <button onClick={() => setPreview(null)} aria-label="Fechar" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               </div>
-              {img && <img src={img} alt="" style={{ width: '100%', display: 'block', maxHeight: '64vh', objectFit: 'contain', background: '#000' }} />}
+              {img && <img src={img} alt="" style={{ width: '100%', display: 'block', maxHeight: '64vh', objectFit: 'contain', background: 'var(--v2-ink)' }} />}
               {preview.legenda && (
                 <div style={{ padding: '12px 14px', overflowY: 'auto' }}>
-                  <p style={{ margin: 0, fontSize: 13, color: '#222', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}><strong>{preview.clienteNome}</strong> {preview.legenda}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}><strong>{preview.clienteNome}</strong> {preview.legenda}</p>
                 </div>
               )}
             </div>

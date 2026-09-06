@@ -118,43 +118,43 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
     setForm(f => ({ ...f, plataformas: f.plataformas.includes(p) ? f.plataformas.filter(x => x !== p) : [...f.plataformas, p] }))
   }
 
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
-  const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+  const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }
 
   if (modo === 'lista') {
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Briefings de campanha</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Crie briefings de campanha com a IA, a partir do Brand Board do cliente.</p>
+            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Briefings de campanha</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Crie briefings de campanha com a IA, a partir do Brand Board do cliente.</p>
           </div>
-          <button onClick={novo} className="soma10-no-invert" style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo briefing</button>
+          <button onClick={novo} className="soma10-no-invert" style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo briefing</button>
         </div>
 
         {briefings.length === 0 ? (
-          <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum briefing ainda.</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Clique em "Novo briefing" para gerar o primeiro com a IA.</p>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum briefing ainda.</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Clique em "Novo briefing" para gerar o primeiro com a IA.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {briefings.map(b => {
               const cli = clientes.find(c => c.id === b.clienteId)
               return (
-                <div key={b.id} onClick={() => abrir(b)} style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #eee' }}>
+                <div key={b.id} onClick={() => abrir(b)} style={{ background: 'var(--v2-surface)', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid var(--v2-rule)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: cli?.corPrimaria || '#eee', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#111' }}>
                       <AvatarCliente logo={cli?.logo} nome={b.clienteNome} />
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>{b.clienteNome}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{b.clienteNome}</span>
                   </div>
-                  <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#111' }}>{b.titulo}</p>
+                  <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{b.titulo}</p>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     {b.objetivo && <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 999, padding: '2px 8px' }}>{b.objetivo}</span>}
-                    {(b.plataformas || []).slice(0, 2).map(p => <span key={p} style={{ fontSize: 10, color: '#666', background: '#f0f0f0', borderRadius: 999, padding: '2px 8px' }}>{p.split(' ')[0]}</span>)}
+                    {(b.plataformas || []).slice(0, 2).map(p => <span key={p} style={{ fontSize: 10, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>{p.split(' ')[0]}</span>)}
                   </div>
-                  <p style={{ margin: 0, fontSize: 11, color: '#aaa' }}>{new Date(b.atualizadoEm || b.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(b.atualizadoEm || b.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</p>
                 </div>
               )
             })}
@@ -168,16 +168,16 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <button onClick={() => setModo('lista')} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Voltar</button>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>{editId ? 'Editar briefing' : 'Novo briefing'}</h2>
+        <button onClick={() => setModo('lista')} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Voltar</button>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editId ? 'Editar briefing' : 'Novo briefing'}</h2>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 18, alignItems: 'start' }}>
         {/* Coluna de parametros */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={label}>Cliente *</label>
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)} style={{ ...inputStyle, background: '#fff' }} disabled={!!editId}>
+            <select value={clienteId} onChange={e => setClienteId(e.target.value)} style={{ ...inputStyle, background: 'var(--v2-surface)' }} disabled={!!editId}>
               <option value="">Selecione...</option>
               {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
@@ -191,7 +191,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
           </div>
           <div>
             <label style={label}>Etapa do Playbook *</label>
-            <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))} style={{ ...inputStyle, background: '#fff' }} disabled={!clienteId}>
+            <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))} style={{ ...inputStyle, background: 'var(--v2-surface)' }} disabled={!clienteId}>
               <option value="">{!clienteId ? 'Selecione um cliente primeiro' : marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
               {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
             </select>
@@ -199,7 +199,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
           </div>
           <div>
             <label style={label}>Objetivo</label>
-            <select value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} style={{ ...inputStyle, background: '#fff' }}>
+            <select value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
               {OBJETIVOS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
@@ -208,7 +208,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {PLATAFORMAS.map(p => {
                 const on = form.plataformas.includes(p)
-                return <button key={p} type="button" onClick={() => togglePlataforma(p)} style={{ padding: '6px 10px', borderRadius: 8, border: on ? '1.5px solid #7c3aed' : '1px solid #e0e0e0', background: on ? '#f3e8ff' : '#fff', color: on ? '#7c3aed' : '#666', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{p.split(' ')[0]}</button>
+                return <button key={p} type="button" onClick={() => togglePlataforma(p)} style={{ padding: '6px 10px', borderRadius: 8, border: on ? '1.5px solid #7c3aed' : '1px solid var(--v2-rule)', background: on ? '#f3e8ff' : 'var(--v2-surface)', color: on ? '#7c3aed' : 'var(--v2-ink2)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{p.split(' ')[0]}</button>
               })}
             </div>
           </div>
@@ -220,41 +220,41 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
           <div><label style={label}>Oferta / promoção</label><input value={form.oferta} onChange={e => setForm(f => ({ ...f, oferta: e.target.value }))} placeholder="Ex: 30% off, brinde, frete grátis" style={inputStyle} /></div>
           <div><label style={label}>Observações</label><textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer direcionamento extra..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
 
-          <button onClick={() => gerar(false)} disabled={gerando || !clienteId} className="soma10-no-invert" style={{ padding: '11px 0', background: (gerando || !clienteId) ? '#f0f0f0' : '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (gerando || !clienteId) ? 'not-allowed' : 'pointer' }}>
+          <button onClick={() => gerar(false)} disabled={gerando || !clienteId} className="soma10-no-invert" style={{ padding: '11px 0', background: (gerando || !clienteId) ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (gerando || !clienteId) ? 'not-allowed' : 'pointer' }}>
             {gerando ? 'Gerando com IA...' : form.conteudo ? 'Gerar novamente' : 'Gerar com IA'}
           </button>
-          {erro && <p style={{ margin: 0, fontSize: 12, color: '#b91c1c' }}>{erro}</p>}
+          {erro && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-hot)' }}>{erro}</p>}
         </div>
 
         {/* Coluna do conteudo */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 400 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 400 }}>
           <label style={label}>Briefing {gerando && <span style={{ color: '#7c3aed' }}>· gerando...</span>}</label>
           <textarea lang="pt-BR" value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder="O briefing gerado pela IA aparece aqui. Você também pode escrever/editar manualmente."
-            style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+            style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
 
           {form.conteudo && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input value={refino} onChange={e => setRefino(e.target.value)} placeholder='Peça um ajuste à IA (ex: "mais agressivo", "foco em remarketing")'
-                style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}
                 onKeyDown={e => { if (e.key === 'Enter' && refino.trim() && !gerando) gerar(true) }} />
-              <button onClick={() => gerar(true)} disabled={gerando || !refino.trim()} style={{ padding: '9px 16px', background: refino.trim() && !gerando ? '#111' : '#f0f0f0', color: refino.trim() && !gerando ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: refino.trim() && !gerando ? 'pointer' : 'not-allowed' }}>Refinar</button>
+              <button onClick={() => gerar(true)} disabled={gerando || !refino.trim()} style={{ padding: '9px 16px', background: refino.trim() && !gerando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: refino.trim() && !gerando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: refino.trim() && !gerando ? 'pointer' : 'not-allowed' }}>Refinar</button>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={salvar} disabled={salvando || !form.conteudo.trim()} className="soma10-no-invert" style={{ flex: 1, padding: '11px 0', background: form.conteudo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.conteudo.trim() ? 'pointer' : 'not-allowed' }}>
+            <button onClick={salvar} disabled={salvando || !form.conteudo.trim()} className="soma10-no-invert" style={{ flex: 1, padding: '11px 0', background: form.conteudo.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.conteudo.trim() ? 'pointer' : 'not-allowed' }}>
               {salvando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Salvar briefing'}
             </button>
             {editId && (
-              <button onClick={abrirRelModal} disabled={relacionando} title="Criar uma tarefa nova ou vincular a uma existente, com o briefing completo" style={{ padding: '11px 16px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <button onClick={abrirRelModal} disabled={relacionando} title="Criar uma tarefa nova ou vincular a uma existente, com o briefing completo" style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
               </button>
             )}
             {editId && (
-              <button onClick={() => excluir(editId)} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+              <button onClick={() => excluir(editId)} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
             )}
           </div>
-          {relMsg && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Não') ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
+          {relMsg && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Não') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{relMsg}</p>}
         </div>
       </div>
 
@@ -264,25 +264,25 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
         const filtradas = q ? tarefasCliente.filter(t => (t.titulo || '').toLowerCase().includes(q)) : tarefasCliente
         return (
           <div onClick={fecharFora(() => !relacionando && setRelModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 20 }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Relacionar a tarefa</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>O briefing completo vai para a descrição da tarefa. Crie uma nova ou vincule a uma existente deste cliente.</p>
-              <button onClick={() => relacionar()} disabled={relacionando} style={{ width: '100%', padding: '12px 0', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 13.5, cursor: relacionando ? 'wait' : 'pointer', marginBottom: 14 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 20 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Relacionar a tarefa</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>O briefing completo vai para a descrição da tarefa. Crie uma nova ou vincule a uma existente deste cliente.</p>
+              <button onClick={() => relacionar()} disabled={relacionando} style={{ width: '100%', padding: '12px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 13.5, cursor: relacionando ? 'wait' : 'pointer', marginBottom: 14 }}>
                 {relacionando ? 'Criando...' : '+ Criar tarefa nova (campanha)'}
               </button>
-              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Ou vincular a uma existente</label>
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Ou vincular a uma existente</label>
               <input value={buscaTarefa} onChange={e => setBuscaTarefa(e.target.value)} placeholder="Buscar tarefa deste cliente..."
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }} />
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }} />
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {filtradas.length === 0 && <p style={{ margin: '6px 0', fontSize: 12.5, color: '#bbb' }}>Nenhuma tarefa {clienteId ? 'deste cliente' : ''} encontrada.</p>}
+                {filtradas.length === 0 && <p style={{ margin: '6px 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma tarefa {clienteId ? 'deste cliente' : ''} encontrada.</p>}
                 {filtradas.map(t => (
-                  <button key={t.id} onClick={() => relacionar(t.id)} disabled={relacionando} style={{ textAlign: 'left', padding: '9px 11px', background: '#fafafa', border: '1px solid #eee', borderRadius: 9, cursor: relacionando ? 'wait' : 'pointer' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{t.titulo || 'Sem título'}</span>
-                    <span style={{ display: 'block', fontSize: 11, color: '#999', marginTop: 1 }}>{(t.tipo || 'tarefa')}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
+                  <button key={t.id} onClick={() => relacionar(t.id)} disabled={relacionando} style={{ textAlign: 'left', padding: '9px 11px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, cursor: relacionando ? 'wait' : 'pointer' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{t.titulo || 'Sem título'}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--v2-ink3)', marginTop: 1 }}>{(t.tipo || 'tarefa')}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
                   </button>
                 ))}
               </div>
-              <button onClick={() => setRelModal(false)} disabled={relacionando} style={{ marginTop: 12, alignSelf: 'flex-end', padding: '9px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setRelModal(false)} disabled={relacionando} style={{ marginTop: 12, alignSelf: 'flex-end', padding: '9px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
         )

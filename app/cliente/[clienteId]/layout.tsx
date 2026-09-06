@@ -85,9 +85,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
   // Layout padrao da agencia para TODOS os clientes (sem tematizacao por cliente).
   // Header neutro (branco/escuro) e botoes primarios no amarelo Soma10.
-  const MARCA = '#ffc00f'          // amarelo Soma10 (botoes primarios via var(--marca))
-  const MARCA_TEXTO = '#111'       // texto sobre o amarelo
-  const corTextoHeader = '#111'    // header branco -> texto escuro
+  const MARCA = 'var(--v2-amber-on)'          // amarelo Soma10 (botoes primarios via var(--marca))
+  const MARCA_TEXTO = 'var(--v2-ink)'       // texto sobre o amarelo
+  const corTextoHeader = 'var(--v2-ink)'    // header branco -> texto escuro
   const logoSrc = '/logo.svg'
 
   // Responsivo: no celular a sidebar vira um drawer (menu hamburguer)
@@ -103,7 +103,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   // Fecha o drawer ao navegar
   useEffect(() => { setMenuAberto(false) }, [subpath])
 
-  const asideBase: React.CSSProperties = { width: mobile ? 264 : 220, flexShrink: 0, background: '#fff', borderRight: '1px solid #f0f0f0', boxSizing: 'border-box', padding: '20px 14px' }
+  const asideBase: React.CSSProperties = { width: mobile ? 264 : 220, flexShrink: 0, background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', boxSizing: 'border-box', padding: '20px 14px' }
   const asideStyle: React.CSSProperties = mobile
     ? { ...asideBase, position: 'fixed', top: 'calc(56px + env(safe-area-inset-top))', left: 0, height: 'calc(100vh - 56px - env(safe-area-inset-top))', overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s ease', boxShadow: menuAberto ? '2px 0 16px rgba(0,0,0,0.18)' : 'none' }
     : { ...asideBase, minHeight: 'calc(100vh - 56px)', position: 'sticky', top: 56 }
@@ -115,14 +115,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   if (bloqueio) {
     const arq = bloqueio === 'arquivado'
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#fafafa' }}>
-        <div style={{ maxWidth: 440, width: '100%', background: '#fff', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', padding: '32px 28px', textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--v2-surface1)' }}>
+        <div style={{ maxWidth: 440, width: '100%', background: 'var(--v2-surface)', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', padding: '32px 28px', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--v2-hot-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           </div>
-          <h1 style={{ margin: '0 0 8px', fontSize: 19, color: '#111' }}>{arq ? 'Acesso encerrado' : 'Acesso temporariamente suspenso'}</h1>
-          <p style={{ margin: '0 0 20px', fontSize: 14, color: '#666', lineHeight: 1.6 }}>{arq ? 'O acesso a este portal foi encerrado. Se você acredita que isso é um engano, fale com a nossa equipe.' : 'O acesso ao portal está pausado por pendência de pagamento. Assim que a situação for regularizada, tudo volta ao normal. Fale com a nossa equipe para resolver.'}</p>
-          <button onClick={() => signOut()} style={{ padding: '10px 22px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Sair</button>
+          <h1 style={{ margin: '0 0 8px', fontSize: 19, color: 'var(--v2-ink)' }}>{arq ? 'Acesso encerrado' : 'Acesso temporariamente suspenso'}</h1>
+          <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--v2-ink2)', lineHeight: 1.6 }}>{arq ? 'O acesso a este portal foi encerrado. Se você acredita que isso é um engano, fale com a nossa equipe.' : 'O acesso ao portal está pausado por pendência de pagamento. Assim que a situação for regularizada, tudo volta ao normal. Fale com a nossa equipe para resolver.'}</p>
+          <button onClick={() => signOut()} style={{ padding: '10px 22px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Sair</button>
         </div>
       </div>
     )
@@ -131,7 +131,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   return (
     <div style={{ ['--marca' as any]: MARCA, ['--marca-texto' as any]: MARCA_TEXTO }}>
       {/* Header padrao da agencia (neutro) — igual para todos os clientes */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', paddingLeft: mobile ? 14 : 24, paddingRight: mobile ? 14 : 24, paddingTop: mobile ? 'env(safe-area-inset-top)' : 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, height: mobile ? undefined : 56, position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)', paddingLeft: mobile ? 14 : 24, paddingRight: mobile ? 14 : 24, paddingTop: mobile ? 'env(safe-area-inset-top)' : 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, height: mobile ? undefined : 56, position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div onClick={() => router.push(ehEquipe ? '/dashboard' : basePath)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
             <img src={logoSrc} alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
@@ -161,19 +161,19 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
       {/* Banner do modo "Visualizar como cliente" */}
       {isTeam && viewAs && (
-        <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '8px 24px', fontSize: 12.5, color: '#92400e', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--v2-amber-bg)', borderBottom: '1px solid var(--v2-amber-bg)', padding: '8px 24px', fontSize: 12.5, color: 'var(--v2-amber)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700 }}>Modo visualização — você está vendo o portal como o cliente vê (somente leitura).</span>
-          <button onClick={() => alternarViewAs(false)} style={{ background: '#92400e', color: '#fff', border: 'none', borderRadius: 7, padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Sair do modo cliente</button>
+          <button onClick={() => alternarViewAs(false)} style={{ background: 'var(--v2-amber)', color: 'var(--v2-surface)', border: 'none', borderRadius: 7, padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Sair do modo cliente</button>
         </div>
       )}
 
       {/* Banner "o que está esperando você" — visível em todo o portal, exceto na própria Aprovações */}
       {pendentesAprov > 0 && subpath !== '/aprovacoes' && (
-        <div style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#b91c1c' }}>
+        <div style={{ background: 'var(--v2-hot-bg)', borderBottom: '1px solid var(--v2-hot-bg)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--v2-hot)' }}>
             Você tem {pendentesAprov} {pendentesAprov === 1 ? 'item aguardando' : 'itens aguardando'} a sua aprovação.
           </span>
-          <button onClick={() => router.push(`${basePath}/aprovacoes`)} style={{ background: '#b91c1c', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Revisar agora</button>
+          <button onClick={() => router.push(`${basePath}/aprovacoes`)} style={{ background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Revisar agora</button>
         </div>
       )}
 
@@ -187,13 +187,13 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         <aside style={asideStyle}>
           {/* Cliente info */}
           {cliente && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#111', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 16px', borderBottom: '1px solid var(--v2-rule)', marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)', flexShrink: 0 }}>
                 <AvatarCliente logo={cliente.logo} nome={cliente.nome} clienteId={clienteId} />
               </div>
               <div>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111' }}>{cliente.nome}</p>
-                {cliente.instagram && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#888' }}>@{cliente.instagram.replace(/^@/, '')}</p>}
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)' }}>{cliente.nome}</p>
+                {cliente.instagram && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>@{cliente.instagram.replace(/^@/, '')}</p>}
               </div>
             </div>
           )}
@@ -207,14 +207,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
               return (
                 <button key={item.key} onClick={() => irPara(href)} style={{
                   padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                  fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : '#888',
+                  fontWeight: ativo ? 700 : 500, color: ativo ? corTextoHeader : 'var(--v2-ink3)',
                   background: ativo ? MARCA : 'transparent',
                   fontSize: 14, transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 }}>
                   <span>{item.label}</span>
                   {item.key === '/aprovacoes' && pendentesAprov > 0 && (
-                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{pendentesAprov}</span>
+                    <span style={{ background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, minWidth: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, padding: '0 5px' }}>{pendentesAprov}</span>
                   )}
                 </button>
               )
@@ -223,14 +223,14 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
             // Para a equipe (ehEquipe), os add-ons aparecem em "Ferramentas da equipe".
             const grupoCliente = NAV_ITEMS.filter(i => (i.todos && clientePode((i as any).perm)) || (!ehEquipe && (i as any).modulo && temModulo((cliente as any)?.modulos, (i as any).modulo)))
             const grupoEquipe = NAV_ITEMS.filter(i => i.equipe)
-            const rotulo = { display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }
+            const rotulo = { display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }
             return (
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {ehEquipe && <span style={rotulo}>O que o cliente vê</span>}
                 {grupoCliente.map(renderItem)}
                 {ehEquipe && grupoEquipe.length > 0 && (
                   <>
-                    <div style={{ height: 1, background: '#f0f0f0', margin: '12px 0' }} />
+                    <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
                     <span style={rotulo}>Ferramentas da equipe</span>
                     {grupoEquipe.map(renderItem)}
                   </>
@@ -240,10 +240,10 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           })()}
 
           {/* Minha conta */}
-          <div style={{ paddingTop: 16, borderTop: '1px solid #f0f0f0', marginTop: 20 }}>
+          <div style={{ paddingTop: 16, borderTop: '1px solid var(--v2-rule)', marginTop: 20 }}>
             <button onClick={() => irPara(`${basePath}/conta`)} style={{
               padding: '11px 14px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-              fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corTextoHeader : '#888',
+              fontWeight: subpath === '/conta' ? 700 : 500, color: subpath === '/conta' ? corTextoHeader : 'var(--v2-ink3)',
               background: subpath === '/conta' ? MARCA : 'transparent', fontSize: 13, width: '100%',
             }}>
               Minha conta
@@ -265,18 +265,18 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           { key: '/entregas', label: 'Entregas', icon: 'entregas', perm: 'entregas' },
         ].filter(i => clientePode((i as any).perm))
         const btn = (ativo: boolean, icon: string, label: string, onClick: () => void, badge?: number) => (
-          <button key={label} onClick={onClick} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? '#111' : '#9aa0a6', position: 'relative' }}>
+          <button key={label} onClick={onClick} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6', position: 'relative' }}>
             <span style={{ position: 'relative', display: 'flex' }}>
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICON_PATH[icon]} /></svg>
               {!!badge && badge > 0 && (
-                <span style={{ position: 'absolute', top: -5, right: -8, background: '#dc2626', color: '#fff', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 800, padding: '0 4px' }}>{badge > 9 ? '9+' : badge}</span>
+                <span style={{ position: 'absolute', top: -5, right: -8, background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 800, padding: '0 4px' }}>{badge > 9 ? '9+' : badge}</span>
               )}
             </span>
             <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{label}</span>
           </button>
         )
         return (
-          <nav style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', alignItems: 'stretch', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
+          <nav style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', alignItems: 'stretch', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
             {itens.map(i => btn(subpath === i.key && !menuAberto, i.icon, i.label, () => irPara(`${basePath}${i.key}`), i.key === '/aprovacoes' ? pendentesAprov : undefined))}
             {btn(menuAberto, 'menu', 'Menu', () => setMenuAberto(v => !v))}
           </nav>

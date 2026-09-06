@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   if (!fresh) {
     const emCache = await redis.get<any>(chaveCache).catch(() => null)
     if (emCache && emCache.geradoEm && agora - emCache.geradoEm < 60000) {
-      return NextResponse.json(emCache, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', 'X-Home-Cache': 'hit' } })
+      return NextResponse.json(emCache, { headers: { 'Cache-Control': 'private, no-store', 'X-Home-Cache': 'hit' } })
     }
   }
 
@@ -130,5 +130,5 @@ export async function GET(req: NextRequest) {
   }
   // Grava o cache sem bloquear a resposta; TTL 90s (a checagem de 60s acima é a autoridade).
   redis.set(chaveCache, payload, { ex: 90 }).catch(() => {})
-  return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', 'X-Home-Cache': 'miss' } })
+  return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store', 'X-Home-Cache': 'miss' } })
 }

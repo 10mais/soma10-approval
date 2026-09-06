@@ -39,10 +39,10 @@ const dataHora = (iso?: string) => { if (!iso) return '—'; const d = new Date(
 const dataBr = (iso?: string) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR') }
 const hojeYmd = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
-const rotulo: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }
-const valor: React.CSSProperties = { display: 'block', fontSize: 12.5, color: '#222', fontWeight: 600, marginTop: 2 }
-const secao: React.CSSProperties = { padding: '12px 14px', borderBottom: '1px solid #f4f4f4' }
-const botaoTexto: React.CSSProperties = { width: '100%', textAlign: 'left', background: '#fff', border: '1px solid #ececec', borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit', marginBottom: 6 }
+const rotulo: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+const valor: React.CSSProperties = { display: 'block', fontSize: 12.5, color: 'var(--v2-ink)', fontWeight: 600, marginTop: 2 }
+const secao: React.CSSProperties = { padding: '12px 14px', borderBottom: '1px solid var(--v2-surface1)' }
+const botaoTexto: React.CSSProperties = { width: '100%', textAlign: 'left', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit', marginBottom: 6 }
 
 export default function PainelLead({
   telefone, nome, contato, mensagens, negocios, podeEditar = false, movel = false,
@@ -153,17 +153,17 @@ export default function PainelLead({
   const passosAbertos = (contato?.proximosPassos || []).filter(p => !p.feito)
 
   return (
-    <div style={{ width: movel ? '100%' : 330, borderLeft: movel ? 'none' : '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#fff', minWidth: 0 }}>
+    <div style={{ width: movel ? '100%' : 330, borderLeft: movel ? 'none' : '1px solid var(--v2-surface2)', display: 'flex', flexDirection: 'column', flexShrink: 0, background: 'var(--v2-surface)', minWidth: 0 }}>
       {/* Cabeçalho + abas */}
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Raio-X do lead</span>
+      <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Raio-X do lead</span>
         <span style={{ flex: 1 }} />
-        <button onClick={onFechar} title="Fechar o painel" style={{ background: 'none', border: 'none', fontSize: 18, color: '#bbb', cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+        <button onClick={onFechar} title="Fechar o painel" style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--v2-ink3)', cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
       </div>
-      <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--v2-rule)', flexShrink: 0 }}>
         {([['geral', 'Geral'], ['followup', 'Follow-up'], ['paciente', 'Paciente'], ['financeiro', 'Financeiro']] as [Aba, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setAba(k)}
-            style={{ flex: 1, padding: '9px 2px', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: aba === k ? 800 : 600, color: aba === k ? '#111' : '#999', borderBottom: `2px solid ${aba === k ? '#111' : 'transparent'}` }}>
+            style={{ flex: 1, padding: '9px 2px', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: aba === k ? 800 : 600, color: aba === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', borderBottom: `2px solid ${aba === k ? 'var(--v2-ink)' : 'transparent'}` }}>
             {label}
           </button>
         ))}
@@ -177,29 +177,29 @@ export default function PainelLead({
               <Selo texto={sit.label} cor={sit.cor} fundo={sit.fundo} />
               <Selo texto={temp.label} cor={temp.cor} fundo={temp.fundo} />
             </div>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#777', lineHeight: 1.5 }}>{sit.detalhe}</p>
-            <p style={{ margin: '3px 0 0', fontSize: 11.5, color: '#777', lineHeight: 1.5 }}>{temp.motivo}</p>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{sit.detalhe}</p>
+            <p style={{ margin: '3px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{temp.motivo}</p>
           </div>
 
           <div style={{ ...secao, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><span style={rotulo}>Entrou em contato</span><span style={valor}>{dataHora(resumo.primeiroEm)}</span></div>
             <div><span style={rotulo}>Última mensagem</span><span style={valor}>{dataHora(resumo.ultimaEm)}</span></div>
             <div><span style={rotulo}>Quem falou por último</span><span style={valor}>{resumo.ultimaDe === 'cliente' ? (contato?.nome || nome || 'A pessoa') : resumo.ultimaDe === 'agente' ? 'Nós' : '—'}</span></div>
-            <div><span style={rotulo}>Mensagens</span><span style={valor}>{resumo.total} <span style={{ fontWeight: 400, color: '#999' }}>({resumo.doCliente} dela)</span></span></div>
+            <div><span style={rotulo}>Mensagens</span><span style={valor}>{resumo.total} <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>({resumo.doCliente} dela)</span></span></div>
           </div>
 
           <div style={secao}>
             <span style={rotulo}>Interesses (o que ela pediu)</span>
             {interesses.length === 0 ? (
-              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#bbb' }}>Nenhum procedimento do catálogo foi citado por ela ainda.</p>
+              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Nenhum procedimento do catálogo foi citado por ela ainda.</p>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                {interesses.map(i => <span key={i} style={{ fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: '#eef2ff', padding: '3px 9px', borderRadius: 999 }}>{i}</span>)}
+                {interesses.map(i => <span key={i} style={{ fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', padding: '3px 9px', borderRadius: 999 }}>{i}</span>)}
               </div>
             )}
             {!!contato?.etiquetas?.length && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                {contato.etiquetas.map(e => <span key={e} style={{ fontSize: 11, fontWeight: 700, color: '#666', background: '#f4f4f5', padding: '3px 9px', borderRadius: 999 }}>{e}</span>)}
+                {contato.etiquetas.map(e => <span key={e} style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', padding: '3px 9px', borderRadius: 999 }}>{e}</span>)}
               </div>
             )}
           </div>
@@ -207,35 +207,35 @@ export default function PainelLead({
           {/* ASSISTENTE — o método da casa aplicado a ESTA conversa */}
           <div style={secao}>
             <span style={rotulo}>Assistente</span>
-            <p style={{ margin: '5px 0 8px', fontSize: 11.5, color: '#888', lineHeight: 1.5 }}>Ela lê a conversa e responde pelo método da Biblioteca de Vendas — o treinamento que você escreveu.</p>
+            <p style={{ margin: '5px 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Ela lê a conversa e responde pelo método da Biblioteca de Vendas — o treinamento que você escreveu.</p>
             <input value={foco} onChange={e => setFoco(e.target.value)} placeholder="Opcional: o que você precisa? (ex.: objeção de preço)"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', outline: 'none', marginBottom: 7 }} />
+              style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', outline: 'none', marginBottom: 7 }} />
             <button onClick={chamarAssistente} disabled={pensando}
-              style={{ width: '100%', padding: '9px 12px', background: pensando ? '#f4f4f5' : '#111', color: pensando ? '#999' : '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 12.5, cursor: pensando ? 'wait' : 'pointer' }}>
+              style={{ width: '100%', padding: '9px 12px', background: pensando ? 'var(--v2-surface1)' : 'var(--v2-ink)', color: pensando ? 'var(--v2-ink3)' : 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 12.5, cursor: pensando ? 'wait' : 'pointer' }}>
               {pensando ? 'Lendo a conversa…' : orientacao ? 'Pedir de novo' : 'Pedir orientação'}
             </button>
 
             {orientacao && (
-              <div style={{ marginTop: 10, background: '#fafafa', borderRadius: 12, padding: 11 }}>
+              <div style={{ marginTop: 10, background: 'var(--v2-surface1)', borderRadius: 12, padding: 11 }}>
                 {orientacao.fase && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#7c3aed', background: '#f5f3ff', padding: '2px 8px', borderRadius: 999 }}>{orientacao.fase}</span>}
-                {orientacao.leitura && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#333', lineHeight: 1.5 }}>{orientacao.leitura}</p>}
+                {orientacao.leitura && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--v2-ink)', lineHeight: 1.5 }}>{orientacao.leitura}</p>}
                 {orientacao.proximaAcao && (<>
                   <span style={{ ...rotulo, marginTop: 10 }}>Próxima ação</span>
-                  <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#111', fontWeight: 700, lineHeight: 1.45 }}>{orientacao.proximaAcao}</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--v2-ink)', fontWeight: 700, lineHeight: 1.45 }}>{orientacao.proximaAcao}</p>
                 </>)}
                 {orientacao.alertas.length > 0 && (
                   <ul style={{ margin: '8px 0 0', paddingLeft: 16 }}>
-                    {orientacao.alertas.map((a, i) => <li key={i} style={{ fontSize: 11.5, color: '#b45309', lineHeight: 1.45 }}>{a}</li>)}
+                    {orientacao.alertas.map((a, i) => <li key={i} style={{ fontSize: 11.5, color: 'var(--v2-amber)', lineHeight: 1.45 }}>{a}</li>)}
                   </ul>
                 )}
                 {orientacao.mensagem && (<>
                   <span style={{ ...rotulo, marginTop: 10 }}>Mensagem sugerida</span>
-                  <p style={{ margin: '4px 0 8px', fontSize: 12, color: '#333', lineHeight: 1.5, whiteSpace: 'pre-wrap', background: '#fff', border: '1px solid #ececec', borderRadius: 9, padding: 9 }}>{orientacao.mensagem}</p>
+                  <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: 9 }}>{orientacao.mensagem}</p>
                   <button onClick={() => inserir(orientacao.mensagem)}
-                    style={{ width: '100%', padding: '8px 12px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                    style={{ width: '100%', padding: '8px 12px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
                     Usar esta mensagem
                   </button>
-                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#bbb', lineHeight: 1.4 }}>Ela vai para o compositor — leia e ajuste antes de enviar. Nada é enviado sozinho.</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>Ela vai para o compositor — leia e ajuste antes de enviar. Nada é enviado sozinho.</p>
                 </>)}
               </div>
             )}
@@ -247,25 +247,25 @@ export default function PainelLead({
           <div style={secao}>
             <span style={rotulo}>Follow-up agendado</span>
             {!contato?.id ? (
-              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#bbb' }}>Vincule esta conversa a um contato para agendar follow-up.</p>
+              <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Vincule esta conversa a um contato para agendar follow-up.</p>
             ) : (<>
-              {passosAbertos.length === 0 && <p style={{ margin: '6px 0 8px', fontSize: 11.5, color: '#bbb' }}>Nenhum retorno marcado.</p>}
+              {passosAbertos.length === 0 && <p style={{ margin: '6px 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Nenhum retorno marcado.</p>}
               {passosAbertos.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid #f7f7f7' }}>
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                   <button onClick={() => concluirPasso(p.id)} title="Marcar como feito"
-                    style={{ width: 16, height: 16, borderRadius: 5, border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: p.quando <= hojeYmd() ? '#b91c1c' : '#999' }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
+                    style={{ width: 16, height: 16, borderRadius: 5, border: '1.5px solid #cbd5e1', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: p.quando <= hojeYmd() ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
                 </div>
               ))}
               {podeEditar && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   <input value={novoPasso.titulo} onChange={e => setNovoPasso({ ...novoPasso, titulo: e.target.value })} placeholder="O que fazer (ex.: chamar de novo)"
-                    style={{ flex: 1, minWidth: 0, padding: '7px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                    style={{ flex: 1, minWidth: 0, padding: '7px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
                   <input type="date" value={novoPasso.quando} onChange={e => setNovoPasso({ ...novoPasso, quando: e.target.value })}
-                    style={{ width: 118, padding: '7px 6px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 11.5, fontFamily: 'inherit', outline: 'none' }} />
+                    style={{ width: 118, padding: '7px 6px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 11.5, fontFamily: 'inherit', outline: 'none' }} />
                   <button onClick={agendarPasso} disabled={salvandoPasso || !novoPasso.titulo.trim()}
-                    style={{ padding: '7px 11px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() ? 1 : 0.4 }}>+</button>
+                    style={{ padding: '7px 11px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() ? 1 : 0.4 }}>+</button>
                 </div>
               )}
             </>)}
@@ -276,17 +276,17 @@ export default function PainelLead({
           {bib.cadencias.map(c => (
             <div key={c.id} style={secao}>
               <span style={rotulo}>{c.nome}</span>
-              {c.descricao && <p style={{ margin: '3px 0 7px', fontSize: 11, color: '#aaa' }}>{c.descricao}</p>}
+              {c.descricao && <p style={{ margin: '3px 0 7px', fontSize: 11, color: 'var(--v2-ink3)' }}>{c.descricao}</p>}
               {c.mensagens.map(m => {
                 const fase = FASES.find(f => f.key === m.fase)
                 return (
                   <button key={m.id} onClick={() => inserir(m.texto)} title="Colocar no compositor" style={botaoTexto}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {fase && <span style={{ fontSize: 9.5, fontWeight: 800, color: fase.cor }}>{fase.label.toUpperCase()}</span>}
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{m.titulo}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{m.titulo}</span>
                     </span>
-                    {m.contexto && <span style={{ display: 'block', fontSize: 10.5, color: '#aaa', marginTop: 2 }}>{m.contexto}</span>}
-                    <span style={{ display: 'block', fontSize: 11.5, color: '#666', marginTop: 4, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(m.texto, contato?.nome || nome)}</span>
+                    {m.contexto && <span style={{ display: 'block', fontSize: 10.5, color: 'var(--v2-ink3)', marginTop: 2 }}>{m.contexto}</span>}
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink2)', marginTop: 4, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(m.texto, contato?.nome || nome)}</span>
                   </button>
                 )
               })}
@@ -298,12 +298,12 @@ export default function PainelLead({
               <span style={rotulo}>Reaquecimento</span>
               {[...bib.reaquecimento.leads, ...bib.reaquecimento.clientes].map(s => (
                 <div key={s.id} style={{ marginTop: 7 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, color: '#111' }}>{s.nome}</span>
-                  {s.quando && <span style={{ display: 'block', fontSize: 10.5, color: '#aaa', margin: '1px 0 5px' }}>{s.quando}</span>}
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{s.nome}</span>
+                  {s.quando && <span style={{ display: 'block', fontSize: 10.5, color: 'var(--v2-ink3)', margin: '1px 0 5px' }}>{s.quando}</span>}
                   {s.mensagens.map(m => (
                     <button key={m.id} onClick={() => inserir(m.texto)} title="Colocar no compositor" style={botaoTexto}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{m.titulo}</span>
-                      <span style={{ display: 'block', fontSize: 11.5, color: '#666', marginTop: 3, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(m.texto, contato?.nome || nome)}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{m.titulo}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink2)', marginTop: 3, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(m.texto, contato?.nome || nome)}</span>
                     </button>
                   ))}
                 </div>
@@ -316,13 +316,13 @@ export default function PainelLead({
               <span style={rotulo}>Objeções</span>
               {bib.objecoes.map(cat => (
                 <details key={cat.id} style={{ marginTop: 7 }}>
-                  <summary style={{ fontSize: 12, fontWeight: 700, color: '#111', cursor: 'pointer' }}>{cat.nome} <span style={{ color: '#bbb', fontWeight: 600 }}>({cat.respostas.length})</span></summary>
+                  <summary style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>{cat.nome} <span style={{ color: 'var(--v2-ink3)', fontWeight: 600 }}>({cat.respostas.length})</span></summary>
                   <div style={{ marginTop: 6 }}>
                     {cat.respostas.map(r => (
                       <button key={r.id} onClick={() => inserir(r.texto)} title="Colocar no compositor" style={botaoTexto}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{r.titulo}</span>
-                        {r.contexto && <span style={{ display: 'block', fontSize: 10.5, color: '#aaa', marginTop: 2 }}>{r.contexto}</span>}
-                        <span style={{ display: 'block', fontSize: 11.5, color: '#666', marginTop: 3, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(r.texto, contato?.nome || nome)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{r.titulo}</span>
+                        {r.contexto && <span style={{ display: 'block', fontSize: 10.5, color: 'var(--v2-ink3)', marginTop: 2 }}>{r.contexto}</span>}
+                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink2)', marginTop: 3, lineHeight: 1.45, maxHeight: 46, overflow: 'hidden' }}>{aplicarPlaceholders(r.texto, contato?.nome || nome)}</span>
                       </button>
                     ))}
                   </div>
@@ -333,7 +333,7 @@ export default function PainelLead({
 
           {bib.cadencias.length === 0 && bib.objecoes.length === 0 && (
             <div style={secao}>
-              <p style={{ margin: 0, fontSize: 11.5, color: '#bbb', lineHeight: 1.5 }}>A Biblioteca de Vendas ainda está vazia. Preencha em CRM → Playbook e os textos aparecem aqui, prontos para usar na conversa.</p>
+              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>A Biblioteca de Vendas ainda está vazia. Preencha em CRM → Playbook e os textos aparecem aqui, prontos para usar na conversa.</p>
             </div>
           )}
         </>)}
@@ -342,7 +342,7 @@ export default function PainelLead({
         {aba === 'paciente' && (<>
           {!contato ? (
             <div style={secao}>
-              <p style={{ margin: 0, fontSize: 11.5, color: '#bbb', lineHeight: 1.5 }}>Esta conversa ainda não está vinculada a um contato. Use “Vincular contato” no topo para abrir a ficha da paciente aqui.</p>
+              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Esta conversa ainda não está vinculada a um contato. Use “Vincular contato” no topo para abrir a ficha da paciente aqui.</p>
             </div>
           ) : (<>
             <div style={{ ...secao, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -354,22 +354,22 @@ export default function PainelLead({
               <div><span style={rotulo}>Último procedimento</span><span style={valor}>{contato.ultimoProcedimento || '—'}</span></div>
             </div>
             {contato.observacoes && (
-              <div style={secao}><span style={rotulo}>Observações</span><p style={{ margin: '4px 0 0', fontSize: 12, color: '#444', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{contato.observacoes}</p></div>
+              <div style={secao}><span style={rotulo}>Observações</span><p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink2)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{contato.observacoes}</p></div>
             )}
             <div style={secao}>
               <span style={rotulo}>Atendimentos ({atendimentos.length})</span>
-              {atendimentos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#bbb' }}>Nenhum atendimento registrado.</p>}
+              {atendimentos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Nenhum atendimento registrado.</p>}
               {atendimentos.slice(0, 12).map(a => (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid #f7f7f7' }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#999', flexShrink: 0, minWidth: 42 }}>{dataBr(a.dataInicio).slice(0, 5)}</span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.servico || 'Atendimento'}{a.profissionalNome ? ` · ${a.profissionalNome}` : ''}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'atendido' ? '#166534' : a.status === 'cancelado' ? '#b91c1c' : '#a16207', flexShrink: 0 }}>{a.status}</span>
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', flexShrink: 0, minWidth: 42 }}>{dataBr(a.dataInicio).slice(0, 5)}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.servico || 'Atendimento'}{a.profissionalNome ? ` · ${a.profissionalNome}` : ''}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'atendido' ? 'var(--v2-ok)' : a.status === 'cancelado' ? 'var(--v2-hot)' : 'var(--v2-amber)', flexShrink: 0 }}>{a.status}</span>
                 </div>
               ))}
             </div>
             <div style={{ ...secao, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {onAbrirFicha && <button onClick={onAbrirFicha} style={{ flex: 1, padding: '9px 10px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: '#333' }}>Abrir ficha completa</button>}
-              {onAgendar && <button onClick={onAgendar} style={{ flex: 1, padding: '9px 10px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>}
+              {onAbrirFicha && <button onClick={onAbrirFicha} style={{ flex: 1, padding: '9px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink)' }}>Abrir ficha completa</button>}
+              {onAgendar && <button onClick={onAgendar} style={{ flex: 1, padding: '9px 10px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>}
             </div>
           </>)}
         </>)}
@@ -377,28 +377,28 @@ export default function PainelLead({
         {/* ---------------- FINANCEIRO ---------------- */}
         {aba === 'financeiro' && (<>
           {!contato ? (
-            <div style={secao}><p style={{ margin: 0, fontSize: 11.5, color: '#bbb', lineHeight: 1.5 }}>Vincule a conversa a um contato para ver as oportunidades e os valores desta pessoa.</p></div>
+            <div style={secao}><p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Vincule a conversa a um contato para ver as oportunidades e os valores desta pessoa.</p></div>
           ) : (<>
             <div style={{ ...secao, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><span style={rotulo}>Já fechou</span><span style={{ ...valor, color: '#16a34a', fontSize: 15, fontWeight: 800 }}>{brl(totalGanho)}</span></div>
-              <div><span style={rotulo}>Em aberto</span><span style={{ ...valor, color: '#111', fontSize: 15, fontWeight: 800 }}>{brl(emAberto)}</span></div>
+              <div><span style={rotulo}>Já fechou</span><span style={{ ...valor, color: 'var(--v2-ok)', fontSize: 15, fontWeight: 800 }}>{brl(totalGanho)}</span></div>
+              <div><span style={rotulo}>Em aberto</span><span style={{ ...valor, color: 'var(--v2-ink)', fontSize: 15, fontWeight: 800 }}>{brl(emAberto)}</span></div>
               <div><span style={rotulo}>Oportunidades</span><span style={valor}>{meus.length}</span></div>
               <div><span style={rotulo}>Perdidas</span><span style={valor}>{perdidos.length}</span></div>
             </div>
             <div style={secao}>
               <span style={rotulo}>Oportunidades desta pessoa</span>
-              {meus.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#bbb' }}>Nenhuma oportunidade ainda.</p>}
+              {meus.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Nenhuma oportunidade ainda.</p>}
               {meus.map(n => (
-                <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f7f7f7' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: n.status === 'ganho' ? '#16a34a' : n.status === 'perdido' ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo || 'Oportunidade'}</span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#111', flexShrink: 0 }}>{brl(Number(n.valor) || 0)}</span>
+                <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: n.status === 'ganho' ? 'var(--v2-ok)' : n.status === 'perdido' ? 'var(--v2-hot)' : 'var(--v2-amber-on)', flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo || 'Oportunidade'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', flexShrink: 0 }}>{brl(Number(n.valor) || 0)}</span>
                 </div>
               ))}
             </div>
             {onAbrirOportunidade && (
               <div style={secao}>
-                <button onClick={onAbrirOportunidade} style={{ width: '100%', padding: '9px 10px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Nova oportunidade</button>
+                <button onClick={onAbrirOportunidade} style={{ width: '100%', padding: '9px 10px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Nova oportunidade</button>
               </div>
             )}
           </>)}

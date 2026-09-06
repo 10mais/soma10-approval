@@ -24,29 +24,29 @@ export default function ClienteHome() {
     })
   }, [clienteId])
 
-  if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
+  if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--v2-ink3)' }}>Carregando...</div>
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 20px', fontSize: 20, color: '#111' }}>Bem-vindo, {cliente.nome}</h2>
+      <h2 style={{ margin: '0 0 20px', fontSize: 20, color: 'var(--v2-ink)' }}>Bem-vindo, {cliente.nome}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Posts no mês', valor: stats?.mes ?? 0, cor: '#16a34a' },
-          { label: 'Pendências de aprovação', valor: stats?.pendentes ?? 0, cor: stats?.pendentes > 0 ? '#b91c1c' : '#16a34a' },
-          { label: 'Total de posts', valor: stats?.total ?? 0, cor: '#111' },
+          { label: 'Posts no mês', valor: stats?.mes ?? 0, cor: 'var(--v2-ok)' },
+          { label: 'Pendências de aprovação', valor: stats?.pendentes ?? 0, cor: stats?.pendentes > 0 ? 'var(--v2-hot)' : 'var(--v2-ok)' },
+          { label: 'Total de posts', valor: stats?.total ?? 0, cor: 'var(--v2-ink)' },
         ].map(k => (
-          <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#888' }}>{k.label}</p>
+          <div key={k.label} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{k.label}</p>
             <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: k.cor }}>{k.valor}</p>
           </div>
         ))}
       </div>
       {cliente.segmento && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 15, color: '#111' }}>Sobre o projeto</h3>
-          <p style={{ margin: '0 0 4px', fontSize: 13, color: '#555' }}><strong>Segmento:</strong> {cliente.segmento}</p>
-          {cliente.descricao && <p style={{ margin: '0 0 4px', fontSize: 13, color: '#555' }}><strong>Descricao:</strong> {cliente.descricao}</p>}
-          {cliente.publicoAlvo && <p style={{ margin: 0, fontSize: 13, color: '#555' }}><strong>Publico-alvo:</strong> {cliente.publicoAlvo}</p>}
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ margin: '0 0 10px', fontSize: 15, color: 'var(--v2-ink)' }}>Sobre o projeto</h3>
+          <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--v2-ink2)' }}><strong>Segmento:</strong> {cliente.segmento}</p>
+          {cliente.descricao && <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--v2-ink2)' }}><strong>Descricao:</strong> {cliente.descricao}</p>}
+          {cliente.publicoAlvo && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink2)' }}><strong>Publico-alvo:</strong> {cliente.publicoAlvo}</p>}
         </div>
       )}
     </div>

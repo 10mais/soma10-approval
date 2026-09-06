@@ -16,7 +16,7 @@ const CATEGORIAS = [
 ]
 const catLabel = (k: string) => CATEGORIAS.find(c => c.key === k)?.label || k
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e2e2e2', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
 export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAtiva = '', podeGerirLojas = false }: { podeEditar?: boolean; podeExcluir?: boolean; lojaAtiva?: string; podeGerirLojas?: boolean }) {
   const [sub, setSub] = useState<'catalogo' | 'estoque' | 'lojas'>('catalogo')
@@ -37,19 +37,19 @@ export default function Produtos({ podeEditar = true, podeExcluir = true, lojaAt
     <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Produtos</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Catálogo compartilhado entre as lojas · estoque por loja.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Produtos</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Catálogo compartilhado entre as lojas · estoque por loja.</p>
         </div>
-        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {(['catalogo', 'estoque', ...(podeGerirLojas ? ['lojas'] as const : [])] as const).map(v => (
-            <button key={v} onClick={() => setSub(v)} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, background: sub === v ? '#fff' : 'transparent', color: sub === v ? '#111' : '#888', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+            <button key={v} onClick={() => setSub(v)} style={{ padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, background: sub === v ? 'var(--v2-surface)' : 'transparent', color: sub === v ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: sub === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
               {v === 'catalogo' ? 'Catálogo' : v === 'estoque' ? 'Estoque' : 'Lojas'}
             </button>
           ))}
         </div>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa', padding: 30, textAlign: 'center' }}>Carregando…</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', padding: 30, textAlign: 'center' }}>Carregando…</p>
         : sub === 'catalogo'
           ? <Catalogo produtos={produtos} lojas={lojas} podeEditar={podeEditar} podeExcluir={podeExcluir} lojaAtiva={lojaAtiva} onMudou={carregar} />
           : sub === 'lojas'
@@ -107,33 +107,33 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, SKU, marca…" style={{ ...inp, flex: 1, minWidth: 200 }} />
-        {podeEditar && lojas.length > 0 && <button onClick={() => setImportar(true)} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: '#fff', color: bloquearCriar ? '#bbb' : '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>Importar</button>}
-        {podeEditar && <button onClick={() => setEditor({ categoria: 'smartphone', precoVenda: 0, ativo: true })} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: bloquearCriar ? '#eee' : '#111', color: bloquearCriar ? '#aaa' : '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>+ Produto</button>}
+        {podeEditar && lojas.length > 0 && <button onClick={() => setImportar(true)} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: bloquearCriar ? 'var(--v2-ink3)' : 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>Importar</button>}
+        {podeEditar && <button onClick={() => setEditor({ categoria: 'smartphone', precoVenda: 0, ativo: true })} disabled={bloquearCriar} title={bloquearCriar ? 'Escolha uma loja no seletor lateral' : undefined} style={{ padding: '9px 16px', background: bloquearCriar ? 'var(--v2-surface2)' : 'var(--v2-ink)', color: bloquearCriar ? 'var(--v2-ink3)' : 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: bloquearCriar ? 'not-allowed' : 'pointer' }}>+ Produto</button>}
       </div>
-      {bloquearCriar && <p style={{ margin: '0 0 12px', fontSize: 12.5, color: '#a16207' }}>Você está vendo <strong>todas as lojas</strong>. Escolha uma loja no seletor “Ver loja” para cadastrar/importar produtos nela.</p>}
+      {bloquearCriar && <p style={{ margin: '0 0 12px', fontSize: 12.5, color: 'var(--v2-amber)' }}>Você está vendo <strong>todas as lojas</strong>. Escolha uma loja no seletor “Ver loja” para cadastrar/importar produtos nela.</p>}
       {importar && <ImportarProdutosModal lojas={lojas} lojaAtiva={lojaAtiva} onFechar={() => setImportar(false)} onImportado={() => { setImportar(false); onMudou() }} />}
 
-      {filtrados.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>{produtos.length === 0 ? 'Nenhum produto ainda. Cadastre o primeiro.' : 'Nada encontrado.'}</p> : (
+      {filtrados.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 20 }}>{produtos.length === 0 ? 'Nenhum produto ainda. Cadastre o primeiro.' : 'Nada encontrado.'}</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {grupos.map(g => (
             <div key={g.cat}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '0 0 8px', padding: '0 2px' }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{catLabel(g.cat)}</span>
-                <span style={{ fontSize: 12, color: '#aaa' }}>{g.total}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{catLabel(g.cat)}</span>
+                <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{g.total}</span>
               </div>
               {g.marcas.map(m => (
                 <div key={m.marca || 'sem'} style={{ marginBottom: 10 }}>
-                  {m.marca && <p style={{ margin: '0 0 5px', fontSize: 11.5, fontWeight: 700, color: '#888', padding: '0 4px' }}>{m.marca}</p>}
+                  {m.marca && <p style={{ margin: '0 0 5px', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', padding: '0 4px' }}>{m.marca}</p>}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {m.produtos.map(p => (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--v2-surface)', borderRadius: 11, border: '1px solid var(--v2-rule)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome} {p.ativo === false && <span style={{ fontSize: 10.5, color: '#999', fontWeight: 700 }}>· inativo</span>}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{[p.modelo, p.codigo && `cód ${p.codigo}`, p.sku].filter(Boolean).join(' · ') || catLabel(p.categoria)}</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome} {p.ativo === false && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', fontWeight: 700 }}>· inativo</span>}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{[p.modelo, p.codigo && `cód ${p.codigo}`, p.sku].filter(Boolean).join(' · ') || catLabel(p.categoria)}</p>
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap' }}>{brl(p.precoVenda)}</span>
-                        {podeEditar && <button onClick={() => setEditor({ ...p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
-                        {podeExcluir && <button onClick={() => excluir(p)} style={{ padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
+                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--v2-ok)', whiteSpace: 'nowrap' }}>{brl(p.precoVenda)}</span>
+                        {podeEditar && <button onClick={() => setEditor({ ...p })} style={{ padding: '6px 12px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>}
+                        {podeExcluir && <button onClick={() => excluir(p)} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>×</button>}
                       </div>
                     ))}
                   </div>
@@ -146,8 +146,8 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
 
       {editor && (
         <div onClick={fecharFora(() => setEditor(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, padding: 22, margin: '24px 0' }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{editor.id ? 'Editar produto' : 'Novo produto'}</h3>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, padding: 22, margin: '24px 0' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--v2-ink)' }}>{editor.id ? 'Editar produto' : 'Novo produto'}</h3>
             <label style={lbl}>Nome *</label>
             <input value={editor.nome || ''} onChange={e => setEditor({ ...editor, nome: e.target.value })} placeholder="Ex.: iPhone 15 128GB" style={{ ...inp, width: '100%', marginBottom: 10 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -155,7 +155,7 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
               <div><label style={lbl}>Modelo</label><input value={editor.modelo || ''} onChange={e => setEditor({ ...editor, modelo: e.target.value })} placeholder="Ex.: 15 Pro Max 256GB" style={{ ...inp, width: '100%' }} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={lbl}>Categoria</label><select value={editor.categoria} onChange={e => setEditor({ ...editor, categoria: e.target.value })} style={{ ...inp, width: '100%', background: '#fff' }}>{CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
+              <div><label style={lbl}>Categoria</label><select value={editor.categoria} onChange={e => setEditor({ ...editor, categoria: e.target.value })} style={{ ...inp, width: '100%', background: 'var(--v2-surface)' }}>{CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
               <div><label style={lbl}>Código</label><input value={editor.codigo || ''} onChange={e => setEditor({ ...editor, codigo: e.target.value })} placeholder="interno" style={{ ...inp, width: '100%' }} /></div>
               <div><label style={lbl}>SKU / barras</label><input value={editor.sku || ''} onChange={e => setEditor({ ...editor, sku: e.target.value })} placeholder="opcional" style={{ ...inp, width: '100%' }} /></div>
             </div>
@@ -164,12 +164,12 @@ function Catalogo({ produtos, lojas, podeEditar, podeExcluir, lojaAtiva, bloquea
               <div><label style={lbl}>Custo</label><input type="number" min="0" step="0.01" value={editor.precoCusto ?? ''} onChange={e => setEditor({ ...editor, precoCusto: e.target.value === '' ? undefined : Number(e.target.value) })} style={{ ...inp, width: '100%' }} /></div>
               <div><label style={lbl}>Estoque mín.</label><input type="number" min="0" value={editor.estoqueMinimo ?? ''} onChange={e => setEditor({ ...editor, estoqueMinimo: e.target.value === '' ? undefined : Number(e.target.value) })} style={{ ...inp, width: '100%' }} /></div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#444', margin: '2px 0 16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--v2-ink2)', margin: '2px 0 16px' }}>
               <input type="checkbox" checked={editor.ativo !== false} onChange={e => setEditor({ ...editor, ativo: e.target.checked })} /> Ativo (aparece nas vendas)
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={salvar} disabled={!(editor.nome || '').trim()} style={{ flex: 1, padding: '11px 0', background: (editor.nome || '').trim() ? '#ffc00f' : '#f0f0f0', color: (editor.nome || '').trim() ? '#111' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Salvar</button>
-              <button onClick={() => setEditor(null)} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={!(editor.nome || '').trim()} style={{ flex: 1, padding: '11px 0', background: (editor.nome || '').trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: (editor.nome || '').trim() ? 'var(--v2-ink)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Salvar</button>
+              <button onClick={() => setEditor(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -202,9 +202,9 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
 
   if (lojas.length === 0) {
     return (
-      <div style={{ padding: 24, background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', textAlign: 'center' }}>
-        <p style={{ margin: '0 0 12px', fontSize: 14, color: '#666' }}>Nenhuma loja cadastrada. O estoque é por loja — crie a primeira.</p>
-        {podeGerirLojas && <button onClick={onGerirLojas} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
+      <div style={{ padding: 24, background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', textAlign: 'center' }}>
+        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--v2-ink2)' }}>Nenhuma loja cadastrada. O estoque é por loja — crie a primeira.</p>
+        {podeGerirLojas && <button onClick={onGerirLojas} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Cadastrar loja</button>}
       </div>
     )
   }
@@ -217,16 +217,16 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 13.5, fontWeight: 800, color: '#111' }}>{consolidado ? 'Estoque · todas as lojas (rede)' : `Estoque · ${lojaFocoNome || 'loja'}`}</span>
-        {podeGerirLojas && <button onClick={onGerirLojas} style={{ marginLeft: 'auto', padding: '9px 14px', background: '#fff', color: '#444', border: '1.5px solid #e2e2e2', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
+        <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{consolidado ? 'Estoque · todas as lojas (rede)' : `Estoque · ${lojaFocoNome || 'loja'}`}</span>
+        {podeGerirLojas && <button onClick={onGerirLojas} style={{ marginLeft: 'auto', padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Gerenciar lojas</button>}
       </div>
 
-      {produtos.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p>
+      {produtos.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 20 }}>Cadastre produtos no Catálogo antes de gerir estoque.</p>
         : consolidado ? (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 11, overflow: 'hidden', border: '1px solid #f0f0f0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--v2-surface)', borderRadius: 11, overflow: 'hidden', border: '1px solid var(--v2-rule)' }}>
               <thead>
-                <tr style={{ background: '#fafafa' }}>
+                <tr style={{ background: 'var(--v2-surface1)' }}>
                   <th style={thL}>Produto</th>
                   {lojas.map(l => <th key={l.id} style={thR}>{l.nome}</th>)}
                   <th style={thR}>Total</th>
@@ -237,16 +237,16 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
                   const cols = lojas.map(l => (porLoja?.[l.id]?.[p.id]) || 0)
                   const total = cols.reduce((a, b) => a + b, 0)
                   return (
-                    <tr key={p.id} style={{ borderTop: '1px solid #f4f4f4' }}>
-                      <td style={tdL}><span style={{ fontWeight: 600, color: '#111' }}>{p.nome}</span>{p.sku ? <span style={{ color: '#aaa', fontSize: 12 }}> · {p.sku}</span> : ''}</td>
-                      {cols.map((s, i) => { const baixo = abaixoDoMinimo(s, p.estoqueMinimo); return <td key={i} style={{ ...tdR, color: baixo ? '#dc2626' : '#111', fontWeight: baixo ? 800 : 600 }}>{s}</td> })}
+                    <tr key={p.id} style={{ borderTop: '1px solid var(--v2-surface1)' }}>
+                      <td style={tdL}><span style={{ fontWeight: 600, color: 'var(--v2-ink)' }}>{p.nome}</span>{p.sku ? <span style={{ color: 'var(--v2-ink3)', fontSize: 12 }}> · {p.sku}</span> : ''}</td>
+                      {cols.map((s, i) => { const baixo = abaixoDoMinimo(s, p.estoqueMinimo); return <td key={i} style={{ ...tdR, color: baixo ? 'var(--v2-hot)' : 'var(--v2-ink)', fontWeight: baixo ? 800 : 600 }}>{s}</td> })}
                       <td style={{ ...tdR, fontWeight: 800 }}>{total}</td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-            <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: '#aaa' }}>Para movimentar o estoque, escolha uma loja no seletor lateral.</p>
+            <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Para movimentar o estoque, escolha uma loja no seletor lateral.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -254,14 +254,14 @@ function Estoque({ produtos, lojas, podeEditar, onLojasMudaram, lojaAtiva, podeG
               const s = saldos[p.id] || 0
               const baixo = abaixoDoMinimo(s, p.estoqueMinimo)
               return (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: '#fff', borderRadius: 11, border: '1px solid #f0f0f0' }}>
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--v2-surface)', borderRadius: 11, border: '1px solid var(--v2-rule)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>{p.nome}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#999' }}>{catLabel(p.categoria)}{p.sku ? ` · ${p.sku}` : ''}</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--v2-ink)' }}>{p.nome}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{catLabel(p.categoria)}{p.sku ? ` · ${p.sku}` : ''}</p>
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: baixo ? '#dc2626' : '#111', whiteSpace: 'nowrap' }}>{s} un.</span>
-                  {baixo && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', borderRadius: 999, padding: '3px 9px' }}>abaixo do mín.</span>}
-                  {podeEditar && <button onClick={() => setMov({ produto: p })} style={{ padding: '6px 12px', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Movimentar</button>}
+                  <span style={{ fontSize: 14, fontWeight: 800, color: baixo ? 'var(--v2-hot)' : 'var(--v2-ink)', whiteSpace: 'nowrap' }}>{s} un.</span>
+                  {baixo && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '3px 9px' }}>abaixo do mín.</span>}
+                  {podeEditar && <button onClick={() => setMov({ produto: p })} style={{ padding: '6px 12px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Movimentar</button>}
                 </div>
               )
             })}
@@ -295,12 +295,12 @@ function MovimentarModal({ produto, lojaId, lojas, saldoAtual, onFechar, onFeito
 
   return (
     <div onClick={fecharFora(onFechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 420, padding: 22 }}>
-        <h3 style={{ margin: '0 0 2px', fontSize: 16, color: '#111' }}>{produto.nome}</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#888' }}>Saldo atual nesta loja: <strong>{saldoAtual} un.</strong></p>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 22 }}>
+        <h3 style={{ margin: '0 0 2px', fontSize: 16, color: 'var(--v2-ink)' }}>{produto.nome}</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Saldo atual nesta loja: <strong>{saldoAtual} un.</strong></p>
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
           {([['entrada', 'Entrada'], ['ajuste', 'Ajuste'], ['transferencia', 'Transferir']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setTipo(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: tipo === k ? '1.5px solid #111' : '1.5px solid #e2e2e2', background: tipo === k ? '#111' : '#fff', color: tipo === k ? '#fff' : '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{l}</button>
+            <button key={k} onClick={() => setTipo(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: tipo === k ? '1.5px solid var(--v2-ink)' : '1.5px solid var(--v2-rule)', background: tipo === k ? 'var(--v2-ink)' : 'var(--v2-surface)', color: tipo === k ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{l}</button>
           ))}
         </div>
         <label style={lbl}>{tipo === 'ajuste' ? 'Saldo correto (contagem física)' : 'Quantidade'}</label>
@@ -308,7 +308,7 @@ function MovimentarModal({ produto, lojaId, lojas, saldoAtual, onFechar, onFeito
         {tipo === 'transferencia' && (
           <>
             <label style={lbl}>Loja de destino</label>
-            <select value={lojaDestinoId} onChange={e => setLojaDestinoId(e.target.value)} style={{ ...inp, width: '100%', background: '#fff', marginBottom: 10 }}>
+            <select value={lojaDestinoId} onChange={e => setLojaDestinoId(e.target.value)} style={{ ...inp, width: '100%', background: 'var(--v2-surface)', marginBottom: 10 }}>
               <option value="">Selecione…</option>
               {outras.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </select>
@@ -317,8 +317,8 @@ function MovimentarModal({ produto, lojaId, lojas, saldoAtual, onFechar, onFeito
         <label style={lbl}>Motivo (opcional)</label>
         <input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex.: recebimento NF 123" style={{ ...inp, width: '100%', marginBottom: 18 }} />
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={aplicar} disabled={enviando} style={{ flex: 1, padding: '11px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{enviando ? 'Aplicando…' : 'Aplicar'}</button>
-          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={aplicar} disabled={enviando} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{enviando ? 'Aplicando…' : 'Aplicar'}</button>
+          <button onClick={onFechar} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -351,11 +351,11 @@ function LojasView({ lojas, onMudou }: { lojas: Loja[]; onMudou: () => void }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <p style={{ margin: 0, fontSize: 13, color: '#999' }}>{lojas.length} loja(s) · cada uma tem estoque, PDV, CRM e WhatsApp próprios.</p>
-        <button onClick={() => setEditando('novo')} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Nova loja</button>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{lojas.length} loja(s) · cada uma tem estoque, PDV, CRM e WhatsApp próprios.</p>
+        <button onClick={() => setEditando('novo')} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Nova loja</button>
       </div>
 
-      {lojas.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, padding: 20 }}>Nenhuma loja ainda. Crie a primeira unidade.</p> : (
+      {lojas.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 20 }}>Nenhuma loja ainda. Crie a primeira unidade.</p> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {lojas.map(l => {
             const saldos = porLoja[l.id] || {}
@@ -366,26 +366,26 @@ function LojasView({ lojas, onMudou }: { lojas: Loja[]; onMudou: () => void }) {
             const unidades = Object.values(saldos).reduce((s, v) => s + (Number(v) || 0), 0)
             const inativa = l.ativa === false
             return (
-              <div key={l.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', boxShadow: '0 1px 5px rgba(0,0,0,0.05)', padding: 16, opacity: inativa ? 0.65 : 1 }}>
+              <div key={l.id} style={{ background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', boxShadow: '0 1px 5px rgba(0,0,0,0.05)', padding: 16, opacity: inativa ? 0.65 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>{l.nome}{l.codigo && <span style={{ fontSize: 11, fontWeight: 800, color: '#666', background: '#f0f0f0', borderRadius: 6, padding: '2px 7px', marginLeft: 8 }}>{l.codigo}</span>}</p>
-                    {l.endereco && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.endereco}</p>}
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.nome}{l.codigo && <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 6, padding: '2px 7px', marginLeft: 8 }}>{l.codigo}</span>}</p>
+                    {l.endereco && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.endereco}</p>}
                   </div>
-                  {inativa && <span style={{ fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>inativa</span>}
+                  {inativa && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>inativa</span>}
                 </div>
-                <div style={{ display: 'flex', gap: 16, margin: '12px 0', fontSize: 12.5, color: '#444' }}>
-                  <span><strong style={{ color: '#111' }}>{comEstoque}</strong> produtos</span>
-                  <span><strong style={{ color: '#111' }}>{unidades}</strong> un. em estoque</span>
+                <div style={{ display: 'flex', gap: 16, margin: '12px 0', fontSize: 12.5, color: 'var(--v2-ink2)' }}>
+                  <span><strong style={{ color: 'var(--v2-ink)' }}>{comEstoque}</strong> produtos</span>
+                  <span><strong style={{ color: 'var(--v2-ink)' }}>{unidades}</strong> un. em estoque</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#888', marginBottom: 12 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.evolutionInstance ? '#16a34a' : '#ccc', flexShrink: 0 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--v2-ink3)', marginBottom: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.evolutionInstance ? 'var(--v2-ok)' : 'var(--v2-rule2)', flexShrink: 0 }} />
                   {l.evolutionInstance ? `WhatsApp: ${l.evolutionInstance}` : 'WhatsApp não configurado'}
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => setEditando(l)} style={{ flex: 1, padding: '7px 0', background: '#f5f5f5', color: '#444', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => salvarLista(lojas.map(x => x.id === l.id ? { ...x, ativa: inativa } : x))} style={{ padding: '7px 12px', background: '#fff', color: '#666', border: '1px solid #e2e2e2', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{inativa ? 'Ativar' : 'Desativar'}</button>
-                  <button onClick={() => excluir(l)} title="Excluir" style={{ padding: '7px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>×</button>
+                  <button onClick={() => setEditando(l)} style={{ flex: 1, padding: '7px 0', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => salvarLista(lojas.map(x => x.id === l.id ? { ...x, ativa: inativa } : x))} style={{ padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{inativa ? 'Ativar' : 'Desativar'}</button>
+                  <button onClick={() => excluir(l)} title="Excluir" style={{ padding: '7px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>×</button>
                 </div>
               </div>
             )
@@ -410,8 +410,8 @@ function LojaEditor({ loja, onSalvar, onFechar }: { loja: Loja | null; onSalvar:
   }
   return (
     <div onClick={fecharFora(onFechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 20, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 22, margin: '24px 0' }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>{loja ? 'Editar loja' : 'Nova loja'}</h3>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 460, padding: 22, margin: '24px 0' }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--v2-ink)' }}>{loja ? 'Editar loja' : 'Nova loja'}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
           <div><label style={lbl}>Nome *</label><input value={f.nome} onChange={e => set({ nome: e.target.value })} placeholder="Ex.: Santo Ângelo (Matriz)" style={{ ...inp, width: '100%' }} autoFocus /></div>
           <div><label style={lbl}>Código</label><input value={f.codigo || ''} onChange={e => set({ codigo: e.target.value })} placeholder="01" style={{ ...inp, width: '100%' }} /></div>
@@ -424,13 +424,13 @@ function LojaEditor({ loja, onSalvar, onFechar }: { loja: Loja | null; onSalvar:
         </div>
         <label style={lbl}>Instância WhatsApp</label>
         <input value={f.evolutionInstance || ''} onChange={e => set({ evolutionInstance: e.target.value })} placeholder="ex.: space-cruzalta" title="Nome único desta loja no host do Evolution (minúsculas, números e hífen)" style={{ ...inp, width: '100%', marginBottom: 6 }} />
-        <p style={{ margin: '0 0 14px', fontSize: 11, color: '#aaa' }}>Cada loja pareia o seu próprio número. Deixe vazio se ainda não usa WhatsApp por loja.</p>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#444', marginBottom: 16 }}>
+        <p style={{ margin: '0 0 14px', fontSize: 11, color: 'var(--v2-ink3)' }}>Cada loja pareia o seu próprio número. Deixe vazio se ainda não usa WhatsApp por loja.</p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--v2-ink2)', marginBottom: 16 }}>
           <input type="checkbox" checked={f.ativa !== false} onChange={e => set({ ativa: e.target.checked })} /> Loja ativa (aparece nos seletores e no PDV)
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: f.nome.trim() ? '#111' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar loja'}</button>
-          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: f.nome.trim() ? 'var(--v2-ink)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar loja'}</button>
+          <button onClick={onFechar} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -464,37 +464,37 @@ function ImportarProdutosModal({ lojas, lojaAtiva, onFechar, onImportado }: { lo
 
   return (
     <div onClick={fecharFora(onFechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 20, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, padding: 22, margin: '24px 0' }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Importar produtos em massa</h3>
-        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888' }}>O catálogo é compartilhado; casa por SKU (ou nome) — existente atualiza, novo é criado. A quantidade entra no estoque da <strong>loja escolhida</strong>.</p>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 580, padding: 22, margin: '24px 0' }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Importar produtos em massa</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>O catálogo é compartilhado; casa por SKU (ou nome) — existente atualiza, novo é criado. A quantidade entra no estoque da <strong>loja escolhida</strong>.</p>
         <label style={lbl}>Loja de destino do estoque</label>
-        <select value={lojaId} onChange={e => setLojaId(e.target.value)} style={{ ...inp, width: '100%', background: '#fff', marginBottom: 12 }}>
+        <select value={lojaId} onChange={e => setLojaId(e.target.value)} style={{ ...inp, width: '100%', background: 'var(--v2-surface)', marginBottom: 12 }}>
           <option value="">Selecione a loja…</option>
           {lojasAtivas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
         </select>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
           <label style={{ ...lbl, margin: 0 }}>Envie o arquivo do seu sistema (.csv) ou cole abaixo</label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#111', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
             Enviar arquivo
             <input type="file" accept=".csv,.txt,text/csv" onChange={onArquivo} style={{ display: 'none' }} />
           </label>
         </div>
-        <div style={{ margin: '0 0 6px', fontSize: 11, color: '#aaa' }}>Reconhece o export do seu ERP (Descrição, Preço Venda, Estoque, Custo, Est. Mínimo, Código Barras…) OU o formato simples: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mín · Quantidade</code>.</div>
+        <div style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--v2-ink3)' }}>Reconhece o export do seu ERP (Descrição, Preço Venda, Estoque, Custo, Est. Mínimo, Código Barras…) OU o formato simples: <code>Nome · SKU · Categoria · Preço · Custo · Estoque mín · Quantidade</code>.</div>
         <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\niPhone 15 128GB;IP15128;smartphone;5.999,00;4.200,00;2;10'} style={{ ...inp, width: '100%', minHeight: 150, fontFamily: 'ui-monospace, monospace', fontSize: 12, resize: 'vertical' }} />
-        <div style={{ margin: '10px 0 16px', fontSize: 12.5, color: '#444' }}>
-          {texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> produto(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} linha(s) ignorada(s) (sem preço)</span>}</> : <span style={{ color: '#aaa' }}>Cole os dados para ver a prévia.</span>}
+        <div style={{ margin: '10px 0 16px', fontSize: 12.5, color: 'var(--v2-ink2)' }}>
+          {texto.trim() ? <><strong style={{ color: linhas.length ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{linhas.length}</strong> produto(s) prontos{ignoradas > 0 && <span style={{ color: 'var(--v2-amber)' }}> · {ignoradas} linha(s) ignorada(s) (sem preço)</span>}</> : <span style={{ color: 'var(--v2-ink3)' }}>Cole os dados para ver a prévia.</span>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={importar} disabled={enviando || !linhas.length || !lojaId} style={{ flex: 1, padding: '11px 0', background: (linhas.length && lojaId) ? '#16a34a' : '#eee', color: (linhas.length && lojaId) ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{enviando ? 'Importando…' : `Importar ${linhas.length || ''}`}</button>
-          <button onClick={onFechar} style={{ padding: '11px 18px', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={importar} disabled={enviando || !linhas.length || !lojaId} style={{ flex: 1, padding: '11px 0', background: (linhas.length && lojaId) ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: (linhas.length && lojaId) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{enviando ? 'Importando…' : `Importar ${linhas.length || ''}`}</button>
+          <button onClick={onFechar} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
   )
 }
 
-const lbl: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }
-const thL: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', fontSize: 11.5, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }
+const lbl: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
+const thL: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }
 const thR: React.CSSProperties = { ...thL, textAlign: 'right' }
 const tdL: React.CSSProperties = { textAlign: 'left', padding: '10px 14px', fontSize: 13.5 }
 const tdR: React.CSSProperties = { textAlign: 'right', padding: '10px 14px', fontSize: 13.5, whiteSpace: 'nowrap' }

@@ -33,10 +33,10 @@ type Contato = { id: string; nome: string }
 type Usuario = { nome?: string; email: string; role?: string }
 
 const STATUS: { key: StatusProcesso; label: string; cor: string; bg: string }[] = [
-  { key: 'ativo', label: 'Ativo', cor: '#166534', bg: '#dcfce7' },
-  { key: 'pausado', label: 'Pausado', cor: '#a16207', bg: '#fef9c3' },
-  { key: 'concluido', label: 'Concluído', cor: '#1e3a8a', bg: '#dbeafe' },
-  { key: 'arquivado', label: 'Arquivado', cor: '#9ca3af', bg: '#f4f4f5' },
+  { key: 'ativo', label: 'Ativo', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  { key: 'pausado', label: 'Pausado', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  { key: 'concluido', label: 'Concluído', cor: '#1e3a8a', bg: 'var(--v2-info-bg)' },
+  { key: 'arquivado', label: 'Arquivado', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 ]
 const stInfo = (s?: string) => STATUS.find(x => x.key === s) || STATUS[0]
 const fmtBRL = (v?: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -190,30 +190,30 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
 
   const totalFinais = lista.filter(p => ehFinal(p.etapa)).length
 
-  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', margin: '0 0 4px' }
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', margin: '0 0 4px' }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 10px', border: '1px solid var(--v2-rule2)', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Processos</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#6b7280' }}>Cada caso/família da viabilidade ao deferimento.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Processos</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Cada caso/família da viabilidade ao deferimento.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setVerFinais(v => !v)} style={{ padding: '8px 12px', background: verFinais ? '#eef2ff' : '#fff', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+          <button onClick={() => setVerFinais(v => !v)} style={{ padding: '8px 12px', background: verFinais ? 'var(--v2-info-bg)' : 'var(--v2-surface)', border: '1px solid var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
             {verFinais ? 'Ocultar encerrados' : `Ver encerrados${totalFinais ? ` (${totalFinais})` : ''}`}
           </button>
           {podeEditar && (
-            <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Novo processo</button>
+            <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Novo processo</button>
           )}
         </div>
       </div>
 
       {carregando ? (
-        <p style={{ color: '#9ca3af', fontSize: 13 }}>Carregando…</p>
+        <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando…</p>
       ) : lista.length === 0 ? (
-        <div style={{ border: '1px dashed #d1d5db', borderRadius: 12, padding: 40, textAlign: 'center', color: '#6b7280' }}>
+        <div style={{ border: '1px dashed var(--v2-rule2)', borderRadius: 12, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)' }}>
           <p style={{ margin: 0, fontSize: 14 }}>Nenhum processo ainda.</p>
           {podeEditar && <p style={{ margin: '6px 0 0', fontSize: 12.5 }}>Clique em <strong>+ Novo processo</strong> para começar o primeiro caso.</p>}
         </div>
@@ -232,10 +232,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                   if (p) moverEtapa(p, chave)
                   setDragId(null); setOverCol(null); pararScroll()
                 }}
-                style={{ flex: '0 0 250px', width: 250, background: ativa ? '#fff8e1' : '#f9fafb', border: ativa ? '1.5px dashed #ffc00f' : '1.5px solid #eef0f2', borderRadius: 12, padding: 10, minHeight: 120 }}>
+                style={{ flex: '0 0 250px', width: 250, background: ativa ? '#fff8e1' : 'var(--v2-surface1)', border: ativa ? '1.5px dashed var(--v2-amber-on)' : '1.5px solid var(--v2-surface2)', borderRadius: 12, padding: 10, minHeight: 120 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: def.ganho ? '#166534' : def.perdido ? '#9ca3af' : '#374151' }}>{def.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', background: '#fff', border: '1px solid #eef0f2', borderRadius: 999, padding: '1px 7px' }}>{itens.length}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: def.ganho ? 'var(--v2-ok)' : def.perdido ? 'var(--v2-ink3)' : 'var(--v2-ink2)' }}>{def.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '1px 7px' }}>{itens.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {itens.map(p => {
@@ -247,27 +247,27 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                         onDragStart={() => setDragId(p.id)}
                         onDragEnd={() => { setDragId(null); setOverCol(null); pararScroll() }}
                         onClick={() => abrirEdicao(p)}
-                        style={{ background: '#fff', border: '1px solid #eef0f2', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: dragId === p.id ? 0.5 : 1 }}>
+                        style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer', opacity: dragId === p.id ? 0.5 : 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <strong style={{ fontSize: 13, color: '#111' }}>{p.titulo}</strong>
+                          <strong style={{ fontSize: 13, color: 'var(--v2-ink)' }}>{p.titulo}</strong>
                           <span style={{ fontSize: 10, fontWeight: 600, color: st.cor, background: st.bg, borderRadius: 999, padding: '1px 7px', whiteSpace: 'nowrap' }}>{st.label}</span>
                         </div>
-                        <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#6b7280' }}>
+                        <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
                           {p.paisAlvo}{p.ascendente ? ` · ${p.ascendente}` : ''}
                         </p>
                         {p.clienteId && nomeContato[p.clienteId] && (
-                          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#6b7280' }}>Cliente: {nomeContato[p.clienteId]}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Cliente: {nomeContato[p.clienteId]}</p>
                         )}
                         {p.responsavelEmail && (
-                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Resp.: {nomeUsuario[p.responsavelEmail] || p.responsavelEmail}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Resp.: {nomeUsuario[p.responsavelEmail] || p.responsavelEmail}</p>
                         )}
                         {!finalCol && (
-                          <div style={{ marginTop: 7, height: 4, background: '#eef0f2', borderRadius: 999, overflow: 'hidden' }}>
-                            <div style={{ width: `${Math.round(prog * 100)}%`, height: '100%', background: '#111' }} />
+                          <div style={{ marginTop: 7, height: 4, background: 'var(--v2-surface2)', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.round(prog * 100)}%`, height: '100%', background: 'var(--v2-ink)' }} />
                           </div>
                         )}
                         {typeof p.valorContrato === 'number' && p.valorContrato > 0 && (
-                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#374151', fontWeight: 600 }}>{fmtBRL(p.valorContrato)}</p>
+                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', fontWeight: 600 }}>{fmtBRL(p.valorContrato)}</p>
                         )}
                       </div>
                     )
@@ -282,10 +282,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
 
       {form && (
         <div onMouseDown={fecharFora(fecharForm)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflowY: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: 24, width: '100%', maxWidth: 560, margin: 'auto' }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 560, margin: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{form.id ? 'Editar processo' : 'Novo processo'}</h3>
-              <button onClick={fecharForm} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9ca3af', cursor: 'pointer', lineHeight: 1 }}>×</button>
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{form.id ? 'Editar processo' : 'Novo processo'}</h3>
+              <button onClick={fecharForm} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--v2-ink3)', cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -351,7 +351,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
               {/* COBRANÇA — parcelas do contrato. O motor (gerarParcelas/saldo) é
                   o mesmo do turismo; aqui é só a tela. Marcar "pago" espelha no
                   Financeiro sozinho, com id determinístico (sem duplicar). */}
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                 <label style={labelStyle}>Cobrança do contrato</label>
                 {(() => {
                   const fin: FinanceiroContrato = form.financeiro || { valorTotal: 0, parcelas: [], pagamentos: [] }
@@ -365,38 +365,38 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                     {fin.parcelas.length === 0 ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <div style={{ width: 70 }}>
-                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>Vezes</span>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: 'var(--v2-ink3)', marginBottom: 3 }}>Vezes</span>
                           <input type="number" min={1} max={120} value={parcVezes} onChange={e => setParcVezes(e.target.value)} style={inputStyle} />
                         </div>
                         <div style={{ flex: 1, minWidth: 130 }}>
-                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>1º vencimento</span>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: 'var(--v2-ink3)', marginBottom: 3 }}>1º vencimento</span>
                           <input type="date" value={parcPrimeiro} onChange={e => setParcPrimeiro(e.target.value)} style={inputStyle} />
                         </div>
                         <div style={{ width: 120 }}>
-                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', marginBottom: 3 }}>Método</span>
+                          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: 'var(--v2-ink3)', marginBottom: 3 }}>Método</span>
                           <select value={parcMetodo} onChange={e => setParcMetodo(e.target.value as MetodoPagamento)} style={inputStyle}>
                             {METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
                           </select>
                         </div>
                         <button type="button" disabled={!(total > 0) || !parcPrimeiro}
                           onClick={() => setFin({ valorTotal: total, parcelas: gerarParcelas(total, Number(parcVezes) || 1, parcPrimeiro, parcMetodo), pagamentos: fin.pagamentos || [] })}
-                          style={{ padding: '9px 14px', background: total > 0 && parcPrimeiro ? '#111' : '#f3f4f6', color: total > 0 && parcPrimeiro ? '#fff' : '#c4c8cc', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: total > 0 && parcPrimeiro ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>Gerar parcelas</button>
+                          style={{ padding: '9px 14px', background: total > 0 && parcPrimeiro ? 'var(--v2-ink)' : '#f3f4f6', color: total > 0 && parcPrimeiro ? 'var(--v2-surface)' : '#c4c8cc', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: total > 0 && parcPrimeiro ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>Gerar parcelas</button>
                       </div>
                     ) : (<>
                       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8, fontSize: 11.5 }}>
-                        <span style={{ color: '#6b7280' }}>Total <strong style={{ color: '#111' }}>{fmtBRL(total)}</strong></span>
-                        <span style={{ color: '#6b7280' }}>Recebido <strong style={{ color: '#166534' }}>{fmtBRL(pago)}</strong></span>
-                        <span style={{ color: '#6b7280' }}>Saldo <strong style={{ color: '#111' }}>{fmtBRL(saldo)}</strong></span>
-                        {vencido > 0 && <span style={{ color: '#b91c1c', fontWeight: 700 }}>Vencido {fmtBRL(vencido)}</span>}
+                        <span style={{ color: 'var(--v2-ink3)' }}>Total <strong style={{ color: 'var(--v2-ink)' }}>{fmtBRL(total)}</strong></span>
+                        <span style={{ color: 'var(--v2-ink3)' }}>Recebido <strong style={{ color: 'var(--v2-ok)' }}>{fmtBRL(pago)}</strong></span>
+                        <span style={{ color: 'var(--v2-ink3)' }}>Saldo <strong style={{ color: 'var(--v2-ink)' }}>{fmtBRL(saldo)}</strong></span>
+                        {vencido > 0 && <span style={{ color: 'var(--v2-hot)', fontWeight: 700 }}>Vencido {fmtBRL(vencido)}</span>}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
                         {fin.parcelas.map(p => {
                           const atrasada = p.status !== 'pago' && p.vencimento < hoje
                           return (
-                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: p.status === 'pago' ? '#f0fdf4' : atrasada ? '#fef2f2' : '#fafafa', border: '1px solid ' + (p.status === 'pago' ? '#bbf7d0' : atrasada ? '#fecaca' : '#eef0f2'), borderRadius: 8, fontSize: 12 }}>
-                              <span style={{ width: 26, color: '#9ca3af', fontWeight: 700 }}>{p.numero}</span>
-                              <span style={{ flex: 1, color: '#111', fontWeight: 600 }}>{fmtBRL(p.valor)}</span>
-                              <span style={{ color: atrasada ? '#b91c1c' : '#6b7280', whiteSpace: 'nowrap' }}>{fmtData(p.vencimento)}</span>
+                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: p.status === 'pago' ? 'var(--v2-ok-bg)' : atrasada ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', border: '1px solid ' + (p.status === 'pago' ? 'var(--v2-ok-bg)' : atrasada ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)'), borderRadius: 8, fontSize: 12 }}>
+                              <span style={{ width: 26, color: 'var(--v2-ink3)', fontWeight: 700 }}>{p.numero}</span>
+                              <span style={{ flex: 1, color: 'var(--v2-ink)', fontWeight: 600 }}>{fmtBRL(p.valor)}</span>
+                              <span style={{ color: atrasada ? 'var(--v2-hot)' : 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{fmtData(p.vencimento)}</span>
                               <button type="button" disabled={!podeEditar}
                                 onClick={() => setFin({
                                   ...fin, valorTotal: total,
@@ -404,7 +404,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                                     ? (x.status === 'pago' ? { ...x, status: 'pendente' as const, pagoEm: undefined } : { ...x, status: 'pago' as const, pagoEm: hoje })
                                     : x),
                                 })}
-                                style={{ padding: '3px 10px', background: p.status === 'pago' ? '#166534' : '#fff', color: p.status === 'pago' ? '#fff' : '#374151', border: '1px solid ' + (p.status === 'pago' ? '#166534' : '#d1d5db'), borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: podeEditar ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                                style={{ padding: '3px 10px', background: p.status === 'pago' ? 'var(--v2-ok)' : 'var(--v2-surface)', color: p.status === 'pago' ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: '1px solid ' + (p.status === 'pago' ? 'var(--v2-ok)' : 'var(--v2-rule2)'), borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: podeEditar ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                                 {p.status === 'pago' ? 'Pago' : 'Marcar pago'}
                               </button>
                             </div>
@@ -413,10 +413,10 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                       </div>
                       {podeEditar && (
                         <button type="button" onClick={() => { if (confirm('Refazer o parcelamento? As baixas de pagamento serão perdidas.')) setFin({ valorTotal: total, parcelas: [], pagamentos: fin.pagamentos || [] }) }}
-                          style={{ marginTop: 8, padding: '5px 10px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 7, fontSize: 11.5, color: '#6b7280', cursor: 'pointer' }}>Refazer parcelamento</button>
+                          style={{ marginTop: 8, padding: '5px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule2)', borderRadius: 7, fontSize: 11.5, color: 'var(--v2-ink3)', cursor: 'pointer' }}>Refazer parcelamento</button>
                       )}
                     </>)}
-                    <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9ca3af' }}>As parcelas viram lançamentos no Financeiro automaticamente.</p>
+                    <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>As parcelas viram lançamentos no Financeiro automaticamente.</p>
                   </>)
                 })()}
               </div>
@@ -427,13 +427,13 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
               </div>
 
               {/* Requerentes — quem vai obter a cidadania (contatos com selo requerente) */}
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                 <label style={labelStyle}>Requerentes ({(form.requerentes || []).length})</label>
-                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>As pessoas da família que vão obter a cidadania.</p>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>As pessoas da família que vão obter a cidadania.</p>
                 {(form.requerentes || []).length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                     {(form.requerentes || []).map(id => (
-                      <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 999, padding: '3px 8px 3px 10px', fontSize: 12, color: '#3730a3' }}>
+                      <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-info-bg)', border: '1px solid #c7d2fe', borderRadius: 999, padding: '3px 8px 3px 10px', fontSize: 12, color: '#3730a3' }}>
                         {nomeContato[id] || 'Requerente'}
                         <button type="button" onClick={() => toggleRequerente(id)} style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                       </span>
@@ -447,23 +447,23 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                   </select>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input value={novoReqNome} onChange={e => setNovoReqNome(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarRequerente() } }} placeholder="Ou criar novo requerente pelo nome" style={{ ...inputStyle, flex: 1 }} />
-                    <button type="button" onClick={criarRequerente} disabled={criandoReq || !novoReqNome.trim()} style={{ padding: '0 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: criandoReq || !novoReqNome.trim() ? 'default' : 'pointer', opacity: criandoReq || !novoReqNome.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>{criandoReq ? '…' : 'Criar'}</button>
+                    <button type="button" onClick={criarRequerente} disabled={criandoReq || !novoReqNome.trim()} style={{ padding: '0 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: criandoReq || !novoReqNome.trim() ? 'default' : 'pointer', opacity: criandoReq || !novoReqNome.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>{criandoReq ? '…' : 'Criar'}</button>
                   </div>
                 </div>
               </div>
 
               {/* Linhagem — a prova de descendência (cadeia até o ascendente) */}
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                 <label style={labelStyle}>Linhagem (prova de descendência)</label>
                 {(() => { const r = resumoLinhagem(form.linhagem || []); return (
-                  <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>
                     {r.total === 0 ? 'Monte a cadeia do requerente até o ascendente estrangeiro.' : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
                   </p>
                 ) })()}
                 <EditorLinhagem value={form.linhagem || []} onChange={l => setForm({ ...form, linhagem: l })} />
               </div>
 
-              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                 <label style={labelStyle}>Observações</label>
                 <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
@@ -472,12 +472,12 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
               <div>
                 {form.id && podeExcluir && (
-                  <button onClick={() => { const p = lista.find(x => x.id === form.id); if (p) { setForm(null); excluir(p) } }} style={{ padding: '9px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Excluir</button>
+                  <button onClick={() => { const p = lista.find(x => x.id === form.id); if (p) { setForm(null); excluir(p) } }} style={{ padding: '9px 14px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Excluir</button>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={fecharForm} style={{ padding: '9px 16px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={salvar} disabled={salvando} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1 }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+                <button onClick={fecharForm} style={{ padding: '9px 16px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule2)', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={salvar} disabled={salvando} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1 }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
               </div>
             </div>
           </div>

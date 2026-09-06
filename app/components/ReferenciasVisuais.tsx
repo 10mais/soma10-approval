@@ -103,7 +103,7 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div style={{ flex: 1, minWidth: 240 }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#111', letterSpacing: '-0.01em' }}>Ativos da marca</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', letterSpacing: '-0.01em' }}>Ativos da marca</h3>
           <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#8a8a8a', lineHeight: 1.5 }}>
             Suba logo, fotos, elementos, ícones e prints. A IA do Studio <strong>olha esses ativos</strong> para reconhecer fonte, logomarca e cores e dirigir a arte no estilo da marca.
           </p>
@@ -117,9 +117,9 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
           const n = c.key === 'todos' ? assets.length : contagem(c.key as Categoria)
           return (
             <button key={c.key} className="am-chip" onClick={() => { setFiltro(c.key as any); if (c.key !== 'todos') setAlvo(c.key as Categoria) }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, background: ativo ? '#111' : '#fff', color: ativo ? '#fff' : '#555', borderColor: ativo ? '#111' : '#e6e6e6' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, background: ativo ? 'var(--v2-ink)' : 'var(--v2-surface)', color: ativo ? 'var(--v2-surface)' : 'var(--v2-ink2)', borderColor: ativo ? 'var(--v2-ink)' : 'var(--v2-surface2)' }}>
               {c.label}
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: ativo ? '#ffc00f' : '#bbb' }}>{n}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: ativo ? 'var(--v2-amber-on)' : 'var(--v2-ink3)' }}>{n}</span>
             </button>
           )
         })}
@@ -131,41 +131,41 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
         onDragLeave={() => setArrasta(false)}
         onDrop={e => { e.preventDefault(); setArrasta(false); if (e.dataTransfer.files?.length) enviarArquivos(e.dataTransfer.files) }}
         onClick={() => !enviando && inputRef.current?.click()}
-        style={{ border: `1.5px dashed ${arrasta ? 'var(--marca, #ffc00f)' : '#dcdcdc'}`, background: arrasta ? '#fffdf5' : '#fbfbfc', borderRadius: 16, padding: '20px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 16 }}>
+        style={{ border: `1.5px dashed ${arrasta ? 'var(--marca, var(--v2-amber-on))' : '#dcdcdc'}`, background: arrasta ? '#fffdf5' : '#fbfbfc', borderRadius: 16, padding: '20px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={enviando}
           onChange={e => { if (e.target.files?.length) enviarArquivos(e.target.files); e.target.value = '' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: '#333' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
             {enviando ? (envLabel || 'Enviando…') : 'Arraste imagens ou clique para enviar (até 20 por vez)'}
           </span>
-          <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#888' }}>
+          <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--v2-ink3)' }}>
             em
             <select value={alvo} onChange={e => setAlvo(e.target.value as Categoria)}
-              style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>
               {CATS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
             </select>
           </span>
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#aaa' }}>{CATS.find(c => c.key === alvo)?.dica}</p>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{CATS.find(c => c.key === alvo)?.dica}</p>
         {prog !== null && <div style={{ marginTop: 10, maxWidth: 320, marginInline: 'auto' }}><UploadProgress valor={prog} /></div>}
       </div>
 
       {/* Grade de ativos */}
       {carregando ? (
-        <p style={{ fontSize: 12.5, color: '#aaa' }}>Carregando...</p>
+        <p style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>Carregando...</p>
       ) : visiveis.length === 0 ? (
-        <div style={{ borderRadius: 14, padding: '26px 16px', textAlign: 'center', color: '#bbb', fontSize: 13, background: '#fafafa', border: '1px solid #f0f0f0' }}>
+        <div style={{ borderRadius: 14, padding: '26px 16px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)' }}>
           {filtro === 'todos' ? 'Nenhum ativo ainda. Comece pela logo e por alguns posts de referência.' : `Nenhum ativo em "${CATS.find(c => c.key === filtro)?.label}".`}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(116px, 1fr))', gap: 12 }}>
           {visiveis.map(a => (
             <div key={a.id} className="am-card">
-              <img src={a.url} alt={a.nome || ''} style={{ width: '100%', height: '100%', objectFit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover', background: a.categoria === 'logo' || a.categoria === 'icone' ? '#fff' : undefined, padding: a.categoria === 'logo' || a.categoria === 'icone' ? 10 : 0, boxSizing: 'border-box' }} />
+              <img src={a.url} alt={a.nome || ''} style={{ width: '100%', height: '100%', objectFit: a.categoria === 'logo' || a.categoria === 'icone' ? 'contain' : 'cover', background: a.categoria === 'logo' || a.categoria === 'icone' ? 'var(--v2-surface)' : undefined, padding: a.categoria === 'logo' || a.categoria === 'icone' ? 10 : 0, boxSizing: 'border-box' }} />
               <div className="am-tools" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 55%)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 6 }}>
                 <button onClick={() => remover(a.id)} title="Remover"
-                  style={{ alignSelf: 'flex-end', width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  style={{ alignSelf: 'flex-end', width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
                 <select value={a.categoria} onChange={e => mudarCategoria(a.id, e.target.value as Categoria)} onClick={e => e.stopPropagation()}

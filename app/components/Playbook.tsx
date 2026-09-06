@@ -21,24 +21,24 @@ const PERIODOS = [
 ]
 
 const CATEGORIAS: { key: string; label: string; cor: string }[] = [
-  { key: 'social_media', label: 'Social Media', cor: '#1d4ed8' },
+  { key: 'social_media', label: 'Social Media', cor: 'var(--v2-info)' },
   { key: 'trafego', label: 'Trafego pago', cor: '#ea580c' },
   { key: 'branding', label: 'Branding', cor: '#7c3aed' },
   { key: 'landing_page', label: 'Landing Page', cor: '#0891b2' },
-  { key: 'estrategia', label: 'Estrategia', cor: '#16a34a' },
-  { key: 'reuniao', label: 'Reuniao', cor: '#ca8a04' },
-  { key: 'entrega', label: 'Entrega', cor: '#dc2626' },
-  { key: 'outro', label: 'Outro', cor: '#6b7280' },
+  { key: 'estrategia', label: 'Estrategia', cor: 'var(--v2-ok)' },
+  { key: 'reuniao', label: 'Reuniao', cor: 'var(--v2-amber)' },
+  { key: 'entrega', label: 'Entrega', cor: 'var(--v2-hot)' },
+  { key: 'outro', label: 'Outro', cor: 'var(--v2-ink3)' },
 ]
 
 const STATUS_COR: Record<string, string> = {
-  planejado: '#e0e0e0', em_andamento: '#ffc00f', concluido: '#16a34a', atrasado: '#dc2626', cancelado: '#aaa',
+  planejado: 'var(--v2-rule)', em_andamento: 'var(--v2-amber-on)', concluido: 'var(--v2-ok)', atrasado: 'var(--v2-hot)', cancelado: 'var(--v2-ink3)',
 }
 const STATUS_LABEL: Record<string, string> = {
   planejado: 'Planejado', em_andamento: 'Em andamento', concluido: 'Concluido', atrasado: 'Atrasado', cancelado: 'Cancelado',
 }
 
-function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || '#888' }
+function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || 'var(--v2-ink3)' }
 function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
@@ -65,11 +65,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const corMarca = clienteFixo ? (clientes.find(c => c.id === clienteFixo)?.corPrimaria || '#ffc00f') : '#ffc00f'
   const corMarcaTexto = (() => {
     const h = corMarca.replace('#', '')
-    if (h.length < 6) return '#111'
+    if (h.length < 6) return 'var(--v2-ink)'
     const r = parseInt(h.substring(0, 2), 16) || 0
     const g = parseInt(h.substring(2, 4), 16) || 0
     const b = parseInt(h.substring(4, 6), 16) || 0
-    return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? '#fff' : '#111'
+    return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? 'var(--v2-surface)' : 'var(--v2-ink)'
   })()
 
   function carregar() {
@@ -115,27 +115,27 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Playbook</h2>
-        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Playbook</h2>
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {PERIODOS.map(p => (
             <button key={p.key} onClick={() => setPeriodo(p.key)} style={{
               padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-              background: periodo === p.key ? '#fff' : 'transparent', color: periodo === p.key ? '#111' : '#888',
+              background: periodo === p.key ? 'var(--v2-surface)' : 'transparent', color: periodo === p.key ? 'var(--v2-ink)' : 'var(--v2-ink3)',
               boxShadow: periodo === p.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
             }}>{p.label}</button>
           ))}
         </div>
         {!clienteFixo && (
-          <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+          <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
             <option value="">Selecione um cliente...</option>
             {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         )}
         {clienteAtivo && <>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setRefDate(d => new Date(d.getTime() - periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8249;</button>
-            <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 11, fontWeight: 600 }}>Hoje</button>
-            <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid #e0e0e0', background: '#fff', borderRadius: 8, cursor: 'pointer', color: '#666', fontSize: 14 }}>&#8250;</button>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() - periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
+            <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>
           {editavel && <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>}
         </>}
@@ -143,9 +143,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
       {/* Sem cliente selecionado (agencia): exige escolher um cliente */}
       {!clienteAtivo && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Selecione um cliente para ver o Playbook.</p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Cada cliente tem seu próprio Playbook — escolha um acima para ver, criar ou editar as etapas.</p>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Selecione um cliente para ver o Playbook.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Cada cliente tem seu próprio Playbook — escolha um acima para ver, criar ou editar as etapas.</p>
         </div>
       )}
 
@@ -160,26 +160,26 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         const fundo = doCliente ? '#dff0ec' : '#e6e8f5'
         const atrasado = doCliente && (bola.diasParado || 0) >= 3
         return (
-          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '16px 18px', marginBottom: 14, borderLeft: `4px solid ${atrasado ? '#dc2626' : cor}` }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '16px 18px', marginBottom: 14, borderLeft: `4px solid ${atrasado ? 'var(--v2-hot)' : cor}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: cor, background: fundo, padding: '4px 11px', borderRadius: 999 }}>
                 {doCliente ? (somenteLeitura ? 'Sua vez' : 'Com o cliente') : (somenteLeitura ? 'Com a agência' : 'Com a equipe')}
               </span>
-              <span style={{ fontSize: 14.5, color: '#111', fontWeight: 600 }}>{fraseDaBola(bola, somenteLeitura)}</span>
-              {atrasado && <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fef2f2', padding: '3px 9px', borderRadius: 999 }}>parado</span>}
+              <span style={{ fontSize: 14.5, color: 'var(--v2-ink)', fontWeight: 600 }}>{fraseDaBola(bola, somenteLeitura)}</span>
+              {atrasado && <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', padding: '3px 9px', borderRadius: 999 }}>parado</span>}
             </div>
             {bola.itens.length > 0 && (
               <ul style={{ margin: '10px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {bola.itens.map((i, n) => (
-                  <li key={n} style={{ fontSize: 13, color: '#555' }}>
+                  <li key={n} style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>
                     {i.titulo}
-                    {typeof i.desde === 'string' && <span style={{ color: '#aaa' }}> · desde {fmtData(i.desde)}</span>}
+                    {typeof i.desde === 'string' && <span style={{ color: 'var(--v2-ink3)' }}> · desde {fmtData(i.desde)}</span>}
                   </li>
                 ))}
               </ul>
             )}
             {!doCliente && !somenteLeitura && bola.totalCliente > 0 && (
-              <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#888' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>
                 E há {bola.totalCliente} {bola.totalCliente > 1 ? 'materiais' : 'material'} esperando o cliente.
               </p>
             )}
@@ -190,40 +190,40 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {/* Legenda de categorias */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
-          <span key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#888' }}>
+          <span key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--v2-ink3)' }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: c.cor }} />{c.label}
           </span>
         ))}
       </div>
 
       {/* Timeline */}
-      <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
-        <div style={{ position: 'relative', height: 28, borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+        <div style={{ position: 'relative', height: 28, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
           {labels.map((l, i) => (
-            <span key={i} style={{ position: 'absolute', left: `${l.pct}%`, top: 6, fontSize: 9, color: '#aaa', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>{l.txt}</span>
+            <span key={i} style={{ position: 'absolute', left: `${l.pct}%`, top: 6, fontSize: 9, color: 'var(--v2-ink3)', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>{l.txt}</span>
           ))}
           {/* Linha de hoje */}
           {(() => {
             const hojePct = posicaoPct(new Date().toISOString())
-            return hojePct > 0 && hojePct < 100 ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${hojePct}%`, width: 2, background: '#ffc00f', zIndex: 2 }} /> : null
+            return hojePct > 0 && hojePct < 100 ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${hojePct}%`, width: 2, background: 'var(--v2-amber-on)', zIndex: 2 }} /> : null
           })()}
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
-          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
+          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
         )}
 
         {clientesComMarcos.map(c => {
           const marcosCliente = marcos.filter(m => m.clienteId === c.id)
           return (
-            <div key={c.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#fafafa' }}>
+            <div key={c.id} style={{ borderBottom: '1px solid var(--v2-surface1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--v2-surface1)' }}>
                 <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, flexShrink: 0 }}>
                   <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#111' }}>{c.nome}</span>
-                <span style={{ fontSize: 10, color: '#aaa' }}>{marcosCliente.length} marco(s)</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
+                <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
               </div>
               <div style={{ position: 'relative', minHeight: 36 * marcosCliente.length || 36, padding: '4px 0' }}>
                 {/* Linha de hoje */}
@@ -240,9 +240,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                         position: 'absolute', top: 4 + i * 34, left: `${left}%`, width: `${width}%`, height: 28,
                         background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
-                        border: m.status === 'atrasado' ? '2px solid #dc2626' : 'none',
+                        border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
                       }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
                     </div>
                   )
                 })}
@@ -279,18 +279,18 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
     fetch(`/api/playbook/entregas?clienteId=${marco.clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setEntregas(d) }).catch(() => {})
   }, [marco.clienteId])
   const cat = CATEGORIAS.find(c => c.key === marco.categoria)
-  const statusCor = STATUS_COR[marco.status] === '#e0e0e0' ? '#9ca3af' : (STATUS_COR[marco.status] || '#9ca3af')
-  const lbl: React.CSSProperties = { margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }
-  const val: React.CSSProperties = { margin: 0, fontSize: 14, color: '#222' }
+  const statusCor = STATUS_COR[marco.status] === 'var(--v2-rule)' ? 'var(--v2-ink3)' : (STATUS_COR[marco.status] || 'var(--v2-ink3)')
+  const lbl: React.CSSProperties = { margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const val: React.CSSProperties = { margin: 0, fontSize: 14, color: 'var(--v2-ink)' }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: cat?.cor || '#888' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>{cat?.label || 'Outro'}</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: '#fff', background: statusCor, padding: '3px 10px', borderRadius: 999 }}>{STATUS_LABEL[marco.status] || marco.status}</span>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: cat?.cor || 'var(--v2-ink3)' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cat?.label || 'Outro'}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: 'var(--v2-surface)', background: statusCor, padding: '3px 10px', borderRadius: 999 }}>{STATUS_LABEL[marco.status] || marco.status}</span>
         </div>
-        <h3 style={{ margin: '0 0 16px', fontSize: 17, color: '#111' }}>{marco.titulo}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 17, color: 'var(--v2-ink)' }}>{marco.titulo}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div>
@@ -312,16 +312,16 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
           )}
           <div>
             <p style={lbl}>Entregas desta etapa</p>
-            <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="#16a34a" />
+            <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="var(--v2-ok)" />
           </div>
         </div>
-        <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+        <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
       </div>
     </div>
   )
 }
 
-function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corMarcaTexto = '#111', onClose, onSalvo, onExcluir }: {
+function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber-on)', corMarcaTexto = 'var(--v2-ink)', onClose, onSalvo, onExcluir }: {
   marco: Marco | null; clientes: { id: string; nome: string }[]; clientePadrao?: string
   corMarca?: string; corMarcaTexto?: string
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
@@ -355,77 +355,77 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = '#ffc00f', corM
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Titulo *</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>
             <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ex.: Lancamento campanha de inverno"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Descrição</label>
             <textarea lang="pt-BR" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, objetivos, KPIs..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente *</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente *</label>
               <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 <option value="">Selecione...</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Categoria</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Categoria</label>
               <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Data início</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Data início</label>
               <input type="date" value={form.dataInicio} onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Data fim (opcional)</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Data fim (opcional)</label>
               <input type="date" value={form.dataFim} onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Status</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Status</label>
               <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsável</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Responsável</label>
             <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsável"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
         </div>
 
         {/* Entregas vinculadas a esta etapa */}
         {marco && (
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: '#111' }}>Entregas desta etapa</h4>
-            <EntregasMarco marcoId={marco.id} entregas={entregas} cor={STATUS_COR[form.status] === '#ffc00f' ? '#ca8a04' : '#16a34a'} />
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
+            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas desta etapa</h4>
+            <EntregasMarco marcoId={marco.id} entregas={entregas} cor={STATUS_COR[form.status] === 'var(--v2-amber-on)' ? 'var(--v2-amber)' : 'var(--v2-ok)'} />
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-          <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? corMarca : '#f0f0f0', color: (form.titulo.trim() && form.clienteId) ? corMarcaTexto : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
+          <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? corMarca : 'var(--v2-surface2)', color: (form.titulo.trim() && form.clienteId) ? corMarcaTexto : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (marco ? 'Salvar' : 'Criar marco')}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onExcluir && (
-            <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+            <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
           )}
         </div>
       </div>

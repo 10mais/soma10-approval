@@ -47,11 +47,14 @@ function prazoCurto(iso?: string) {
 // Painel (import dinâmico + aba condicional). Com isto ela abre na hora com o
 // que já tinha e atualiza em segundo plano, em vez de mostrar esqueleto e
 // refazer a chamada inteira a cada clique.
+// A chave leva o e-mail de QUEM está logado: no mesmo navegador, sair de uma conta e
+// entrar em outra (o dono testou como o revisor da Meta) não pode mostrar a Home alheia.
 const memoria: Record<string, Dados> = {}
 
-export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'claro' | 'escuro'; onIr: (aba: string) => void; onVerCliente: (id: string) => void }) {
+export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: { tema: 'claro' | 'escuro'; meuEmail: string; onIr: (aba: string) => void; onVerCliente: (id: string) => void }) {
   const [como, setComo] = useState('')
-  const [dados, setDados] = useState<Dados | null>(() => memoria[''] || null)
+  const chave = (c: string) => `${meuEmail.toLowerCase()}|${c}`
+  const [dados, setDados] = useState<Dados | null>(() => memoria[chave('')] || null)
   const [erro, setErro] = useState('')
   const [paleta, setPaleta] = useState(false)
   const [q, setQ] = useState('')
@@ -71,10 +74,15 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
 
   function carregar(c = como) {
     setErro('')
-    if (memoria[c]) setDados(memoria[c]) // mostra o que já tinha; a rede atualiza em seguida
-    fetch(`/api/home${c ? `?como=${encodeURIComponent(c)}` : ''}`)
+    if (memoria[chave(c)]) setDados(memoria[chave(c)]) // mostra o que já tinha; a rede atualiza em seguida
+    // no-store: o cache HTTP do navegador é por URL, não por usuário — a resposta de outra
+    // conta ficava válida por até 150s. A velocidade vem do cache no Redis (por e-mail).
+    fetch(`/api/home${c ? `?como=${encodeURIComponent(c)}` : ''}`, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then((d: Dados) => { memoria[c] = d; setDados(d) })
+      .then((d: Dados) => {
+        if (d?.eu?.email && meuEmail && d.eu.email.toLowerCase() !== meuEmail.toLowerCase()) return // resposta de outra sessão: ignora
+        memoria[chave(c)] = d; setDados(d)
+      })
       .catch(e => setErro(e?.message || 'Não foi possível carregar a Home.'))
   }
   useEffect(() => { carregar() }, [como]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -25,8 +25,8 @@ type Reuniao = {
 }
 type Usuario = { nome: string; email: string }
 
-const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }
-const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }
+const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }
+const label: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 function toLocalInput(d: Date): string {
@@ -135,17 +135,17 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
     const pendentes = (r.pautas || []).filter(p => !p.feita).length
     return (
       <button onClick={() => setAberta(r)} title={`${r.titulo}${r.participantes ? ` · ${r.participantes}` : ''}`}
-        style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: compacto ? '3px 6px' : '6px 8px', cursor: 'pointer', font: 'inherit', background: '#fff', borderLeft: `3px solid ${cor}`, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', marginBottom: 3, opacity: feito ? 0.75 : 1 }}>
+        style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 8, padding: compacto ? '3px 6px' : '6px 8px', cursor: 'pointer', font: 'inherit', background: 'var(--v2-surface)', borderLeft: `3px solid ${cor}`, boxShadow: '0 1px 2px rgba(0,0,0,0.06)', marginBottom: 3, opacity: feito ? 0.75 : 1 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {feito && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6 9 17l-5-5" /></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ok)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6 9 17l-5-5" /></svg>
           )}
-          <span style={{ flex: 1, minWidth: 0, fontSize: compacto ? 10.5 : 12, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: compacto ? 10.5 : 12, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {hhmm(r.data)} {r.titulo}
           </span>
         </span>
         {!compacto && (
-          <span style={{ display: 'block', fontSize: 10.5, color: '#999', marginTop: 1 }}>
+          <span style={{ display: 'block', fontSize: 10.5, color: 'var(--v2-ink3)', marginTop: 1 }}>
             {(r.pautas || []).length > 0 ? `${(r.pautas || []).length} pauta(s)${pendentes ? ` · ${pendentes} aberta(s)` : ''}` : feito ? 'realizada' : 'agendada'}
             {r.serieId ? ' · série' : ''}
           </span>
@@ -164,18 +164,18 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
     const doMes = vista === 'semana' || d.getMonth() === ref.getMonth()
     const hoje = ehHoje(d)
     return (
-      <div style={{ flex: 1, minWidth: 0, background: rit ? tomClaro(cor, '0f') : '#fff', border: `1px solid ${hoje ? cor : '#f0f0f0'}`, boxShadow: hoje ? `0 0 0 1.5px ${tomClaro(cor, '55')}` : 'none', borderRadius: 10, overflow: 'hidden', minHeight: altura, display: 'flex', flexDirection: 'column', opacity: doMes ? 1 : 0.45 }}>
+      <div style={{ flex: 1, minWidth: 0, background: rit ? tomClaro(cor, '0f') : 'var(--v2-surface)', border: `1px solid ${hoje ? cor : 'var(--v2-surface2)'}`, boxShadow: hoje ? `0 0 0 1.5px ${tomClaro(cor, '55')}` : 'none', borderRadius: 10, overflow: 'hidden', minHeight: altura, display: 'flex', flexDirection: 'column', opacity: doMes ? 1 : 0.45 }}>
         {/* faixa da cor do dia */}
-        <div style={{ height: 4, background: rit ? cor : '#f0f0f0', flexShrink: 0 }} />
+        <div style={{ height: 4, background: rit ? cor : 'var(--v2-surface2)', flexShrink: 0 }} />
         <div style={{ padding: 7, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: rit ? cor : '#999' }}>{d.getDate()}</span>
-            {compacto && <span style={{ fontSize: 9.5, color: '#bbb' }}>{NOMES_DIA_CURTO[diaDaSemana(d)]}</span>}
-            {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: '#fff', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: rit ? cor : 'var(--v2-ink3)' }}>{d.getDate()}</span>
+            {compacto && <span style={{ fontSize: 9.5, color: 'var(--v2-ink3)' }}>{NOMES_DIA_CURTO[diaDaSemana(d)]}</span>}
+            {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: 'var(--v2-surface)', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
             <span style={{ flex: 1 }} />
             {podeEditar && (
               <button onClick={() => setNovaEm(d)} title="Nova reunião neste dia"
-                style={{ background: 'none', border: 'none', color: rit ? cor : '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, opacity: 0.7 }}>+</button>
+                style={{ background: 'none', border: 'none', color: rit ? cor : 'var(--v2-rule2)', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, opacity: 0.7 }}>+</button>
             )}
           </div>
           {rit && !compacto && (
@@ -183,7 +183,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
           )}
           <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             {lista.slice(0, compacto ? 3 : 20).map(r => <Chip key={r.id} r={r} compacto={compacto} cor={cor} />)}
-            {compacto && lista.length > 3 && <span style={{ fontSize: 9.5, color: '#bbb', fontWeight: 700 }}>+{lista.length - 3}</span>}
+            {compacto && lista.length > 3 && <span style={{ fontSize: 9.5, color: 'var(--v2-ink3)', fontWeight: 700 }}>+{lista.length - 3}</span>}
           </div>
         </div>
       </div>
@@ -198,18 +198,18 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
     <div style={{ maxWidth: 1080 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Reuniões internas</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Uma por dia, cada dia com a sua área. Pauta antes, ata depois — e cada decisão pode virar tarefa.</p>
+          <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Reuniões internas</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Uma por dia, cada dia com a sua área. Pauta antes, ata depois — e cada decisão pode virar tarefa.</p>
         </div>
         <span style={{ flex: 1 }} />
-        {podeEditar && <button onClick={() => setNovaEm(new Date())} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova reunião</button>}
+        {podeEditar && <button onClick={() => setNovaEm(new Date())} style={{ padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova reunião</button>}
       </div>
 
       {/* RITUAL DA SEMANA — cartões, um por dia, na cor da área. É o mapa da
           semana: bate o olho e sabe que hoje é comercial. Clicar leva o
           calendário para aquele dia. */}
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        {ritual.length === 0 && <span style={{ fontSize: 12, color: '#bbb' }}>Nenhuma área definida para os dias da semana.</span>}
+        {ritual.length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma área definida para os dias da semana.</span>}
         {ritual.map(r => {
           const cor = r.cor || '#64748b'
           const dia = semanaDe(ref).find(d => diaDaSemana(d) === r.dia)!
@@ -218,15 +218,15 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
           return (
             <button key={r.dia} onClick={() => { setRef(dia); if (vista === 'mes') setVista('semana') }}
               title={`Ver ${NOMES_DIA[r.dia]} (${dia.toLocaleDateString('pt-BR')})`}
-              style={{ flex: '1 1 150px', minWidth: 132, textAlign: 'left', font: 'inherit', cursor: 'pointer', border: `1px solid ${hoje ? cor : '#efefef'}`, borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: hoje ? `0 2px 10px ${tomClaro(cor, '40')}` : '0 1px 3px rgba(0,0,0,0.05)', padding: 0 }}>
+              style={{ flex: '1 1 150px', minWidth: 132, textAlign: 'left', font: 'inherit', cursor: 'pointer', border: `1px solid ${hoje ? cor : '#efefef'}`, borderRadius: 12, overflow: 'hidden', background: 'var(--v2-surface)', boxShadow: hoje ? `0 2px 10px ${tomClaro(cor, '40')}` : '0 1px 3px rgba(0,0,0,0.05)', padding: 0 }}>
               <div style={{ height: 5, background: cor }} />
               <div style={{ padding: '9px 11px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{NOMES_DIA[r.dia]}</span>
-                  {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: '#fff', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{NOMES_DIA[r.dia]}</span>
+                  {hoje && <span style={{ fontSize: 8.5, fontWeight: 800, color: 'var(--v2-surface)', background: cor, borderRadius: 999, padding: '1px 6px' }}>HOJE</span>}
                 </div>
                 <p style={{ margin: '3px 0 0', fontSize: 13.5, fontWeight: 800, color: cor, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.area}</p>
-                <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#aaa' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>
                   {r.hora ? `${r.hora} · ` : ''}{qtd ? `${qtd} nesta semana` : 'sem reunião'}
                 </p>
               </div>
@@ -235,7 +235,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
         })}
         {podeEditar && (
           <button onClick={() => setRitualAberto(true)} title="Definir a área e a cor de cada dia"
-            style={{ flex: '0 0 auto', minWidth: 104, border: '1px dashed #dcdcdc', borderRadius: 12, background: '#fff', cursor: 'pointer', font: 'inherit', color: '#999', fontSize: 11.5, fontWeight: 700, padding: '10px 12px' }}>
+            style={{ flex: '0 0 auto', minWidth: 104, border: '1px dashed #dcdcdc', borderRadius: 12, background: 'var(--v2-surface)', cursor: 'pointer', font: 'inherit', color: 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, padding: '10px 12px' }}>
             Editar ritual
           </button>
         )}
@@ -243,24 +243,24 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
 
       {/* Navegação do calendário */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: '#fff', borderRadius: 999, padding: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <button onClick={() => andar(-1)} title="Anterior" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 10px', fontSize: 14, color: '#888' }}>‹</button>
-          <button onClick={() => setRef(new Date())} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 700, color: '#111' }}>Hoje</button>
-          <button onClick={() => andar(1)} title="Próximo" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 10px', fontSize: 14, color: '#888' }}>›</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--v2-surface)', borderRadius: 999, padding: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <button onClick={() => andar(-1)} title="Anterior" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 10px', fontSize: 14, color: 'var(--v2-ink3)' }}>‹</button>
+          <button onClick={() => setRef(new Date())} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Hoje</button>
+          <button onClick={() => andar(1)} title="Próximo" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 10px', fontSize: 14, color: 'var(--v2-ink3)' }}>›</button>
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#111', textTransform: 'capitalize' }}>{periodo}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', textTransform: 'capitalize' }}>{periodo}</span>
         <span style={{ flex: 1 }} />
-        <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
           {(['semana', 'mes'] as const).map(v => (
             <button key={v} onClick={() => setVista(v)}
-              style={{ padding: '6px 14px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888' }}>
+              style={{ padding: '6px 14px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: vista === v ? 'var(--v2-surface)' : 'transparent', color: vista === v ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
               {v === 'semana' ? 'Semana' : 'Mês'}
             </button>
           ))}
         </div>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p> : (<>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p> : (<>
         {/* Cabeçalho dos dias (só no mês — na semana cada célula já se identifica) */}
         {vista === 'mes' && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 5 }}>
@@ -268,7 +268,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
               const rit = ritual.find(r => r.dia === d)
               return (
                 <div key={d} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-                  <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: '#999' }}>{NOMES_DIA_CURTO[d]}</span>
+                  <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)' }}>{NOMES_DIA_CURTO[d]}</span>
                   {rit && <span style={{ display: 'block', fontSize: 9, fontWeight: 800, color: rit.cor || '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{rit.area}</span>}
                 </div>
               )
@@ -281,7 +281,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
               {semana.map(d => (
                 <div key={ymd(d)} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   {vista === 'semana' && (
-                    <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: ritualDoDia(ritual, d) ? corDoDia(ritual, d) : '#bbb', marginBottom: 3, textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: ritualDoDia(ritual, d) ? corDoDia(ritual, d) : 'var(--v2-ink3)', marginBottom: 3, textAlign: 'center' }}>
                       {NOMES_DIA_CURTO[diaDaSemana(d)]}
                     </span>
                   )}
@@ -294,13 +294,13 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
 
         {realizadas.length > 0 && (
           <div style={{ maxWidth: 760 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Atas recentes</p>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Atas recentes</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {realizadas.map(r => (
-                <button key={r.id} onClick={() => setAberta(r)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #f0f0f0', cursor: 'pointer', font: 'inherit' }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, color: '#999', flexShrink: 0, minWidth: 44 }}>{new Date(r.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#111', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.titulo}</span>
-                  {!!(r.decisoes || []).length && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#4f46e5', background: '#eef2ff', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>{(r.decisoes || []).length} decisão(ões)</span>}
+                <button key={r.id} onClick={() => setAberta(r)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--v2-surface)', borderRadius: 10, border: '1px solid var(--v2-rule)', cursor: 'pointer', font: 'inherit' }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)', flexShrink: 0, minWidth: 44 }}>{new Date(r.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.titulo}</span>
+                  {!!(r.decisoes || []).length && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#4f46e5', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>{(r.decisoes || []).length} decisão(ões)</span>}
                 </button>
               ))}
             </div>
@@ -348,14 +348,14 @@ function RitualModal({ ritual, onClose, onSalvo }: { ritual: DiaRitual[]; onClos
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Ritual da semana</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>A área que é tema de cada dia. Deixe em branco o dia que não tem reunião fixa.</p>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Ritual da semana</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>A área que é tema de cada dia. Deixe em branco o dia que não tem reunião fixa.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {dias.map((d, i) => (
-            <div key={d.dia} style={{ border: '1px solid #f2f2f2', borderRadius: 12, padding: 10, borderLeft: `4px solid ${d.area.trim() ? d.cor : '#eee'}` }}>
+            <div key={d.dia} style={{ border: '1px solid #f2f2f2', borderRadius: 12, padding: 10, borderLeft: `4px solid ${d.area.trim() ? d.cor : 'var(--v2-surface2)'}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 62, fontSize: 12.5, fontWeight: 800, color: '#666', flexShrink: 0 }}>{NOMES_DIA[d.dia]}</span>
+                <span style={{ width: 62, fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink2)', flexShrink: 0 }}>{NOMES_DIA[d.dia]}</span>
                 <input value={d.area} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, area: e.target.value } : x))}
                   placeholder="Ex.: Comercial" style={{ ...input, flex: 1 }} />
                 <input type="time" value={d.hora} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, hora: e.target.value } : x))}
@@ -365,15 +365,15 @@ function RitualModal({ ritual, onClose, onSalvo }: { ritual: DiaRitual[]; onClos
               <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap', opacity: d.area.trim() ? 1 : 0.4 }}>
                 {CORES_RITUAL.map(c => (
                   <button key={c.cor} onClick={() => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, cor: c.cor } : x))} title={c.nome}
-                    style={{ width: 20, height: 20, borderRadius: 6, background: c.cor, cursor: 'pointer', border: d.cor === c.cor ? '2px solid #111' : '2px solid transparent', padding: 0 }} />
+                    style={{ width: 20, height: 20, borderRadius: 6, background: c.cor, cursor: 'pointer', border: d.cor === c.cor ? '2px solid var(--v2-ink)' : '2px solid transparent', padding: 0 }} />
                 ))}
               </div>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         </div>
       </div>
     </div>
@@ -404,9 +404,9 @@ function NovaReuniaoModal({ dia, ritual, onCriar, onClose, salvando }: { dia: Da
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>Nova reunião</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Nova reunião</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>
           {NOMES_DIA[diaDaSemana(dia)]}, {dia.toLocaleDateString('pt-BR')}{rit ? ` · área do dia: ${rit.area}` : ' · sem área fixa neste dia'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -419,46 +419,46 @@ function NovaReuniaoModal({ dia, ritual, onCriar, onClose, salvando }: { dia: Da
 
           <div>
             <label style={label}>Pautas do dia</label>
-            {pautas.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 11.5, color: '#bbb' }}>Vários assuntos da mesma área — dá para adicionar depois, durante a reunião.</p>}
+            {pautas.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Vários assuntos da mesma área — dá para adicionar depois, durante a reunião.</p>}
             {pautas.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: i ? '1px solid #f7f7f7' : 'none' }}>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: '#bbb', minWidth: 16 }}>{i + 1}.</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: '#333' }}>{p}</span>
-                <button onClick={() => setPautas(ps => ps.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15 }}>×</button>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: i ? '1px solid var(--v2-surface1)' : 'none' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)', minWidth: 16 }}>{i + 1}.</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--v2-ink)' }}>{p}</span>
+                <button onClick={() => setPautas(ps => ps.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15 }}>×</button>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               <input value={nova} onChange={e => setNova(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPauta() } }}
                 placeholder="Nova pauta… (Enter adiciona)" style={{ ...input, flex: 1 }} />
-              <button onClick={addPauta} style={{ padding: '10px 14px', background: '#f4f4f5', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: '#333' }}>+</button>
+              <button onClick={addPauta} style={{ padding: '10px 14px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>+</button>
             </div>
           </div>
 
           {/* RECORRÊNCIA — gera as ocorrências de verdade, cada uma com sua ata */}
-          <div style={{ background: '#fafafa', borderRadius: 12, padding: 12 }}>
+          <div style={{ background: 'var(--v2-surface1)', borderRadius: 12, padding: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <input type="checkbox" checked={recorrente} onChange={e => setRecorrente(e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer' }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#111' }}>Repetir toda {NOMES_DIA[diaDaSemana(dia)].toLowerCase()}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>Repetir toda {NOMES_DIA[diaDaSemana(dia)].toLowerCase()}</span>
             </label>
             {recorrente && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-                <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>até</span>
+                <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>até</span>
                 <input type="date" value={ate} onChange={e => setAte(e.target.value)} style={{ ...input, width: 160 }} />
-                <span style={{ fontSize: 11, color: '#aaa' }}>máx. 53 semanas</span>
+                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>máx. 53 semanas</span>
               </div>
             )}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
           <button onClick={() => onCriar({
             titulo: f.titulo, area: f.area, participantes: f.participantes,
             data: new Date(f.data).toISOString(),
             pautas: pautas.map(texto => ({ texto })),
             ...(recorrente ? { recorrencia: { tipo: 'semanal', ate } } : {}),
           })} disabled={salvando || !f.titulo.trim()}
-            style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: f.titulo.trim() ? 1 : 0.5 }}>
+            style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: f.titulo.trim() ? 1 : 0.5 }}>
             {salvando ? 'Criando…' : recorrente ? 'Criar recorrência' : 'Criar'}
           </button>
         </div>
@@ -506,25 +506,25 @@ function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalva
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 620, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 620, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <input value={r.titulo} onChange={e => setR({ ...r, titulo: e.target.value })} disabled={!podeEditar}
-            style={{ flex: 1, fontSize: 16.5, fontWeight: 800, color: '#111', border: 'none', outline: 'none', fontFamily: 'inherit' }} />
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>×</button>
+            style={{ flex: 1, fontSize: 16.5, fontWeight: 800, color: 'var(--v2-ink)', border: 'none', outline: 'none', fontFamily: 'inherit' }} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
           {r.area && <span style={{ fontSize: 10.5, fontWeight: 800, color: corArea, background: tomClaro(corArea, '22'), borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{r.area}</span>}
-          {r.serieId && <span title="Faz parte de uma recorrência semanal" style={{ fontSize: 10.5, fontWeight: 700, color: '#a16207', background: '#fffbeb', borderRadius: 999, padding: '3px 9px' }}>série semanal</span>}
+          {r.serieId && <span title="Faz parte de uma recorrência semanal" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 9px' }}>série semanal</span>}
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
           <input type="datetime-local" value={toLocalInput(new Date(r.data))} onChange={e => setR({ ...r, data: new Date(e.target.value).toISOString() })} disabled={!podeEditar}
-            style={{ padding: '7px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+            style={{ padding: '7px 10px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
           <input value={r.participantes || ''} onChange={e => setR({ ...r, participantes: e.target.value })} placeholder="Participantes" disabled={!podeEditar}
-            style={{ flex: 1, minWidth: 140, padding: '7px 10px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+            style={{ flex: 1, minWidth: 140, padding: '7px 10px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
           {(['agendada', 'realizada'] as const).map(st => (
             <button key={st} onClick={() => podeEditar && setR({ ...r, status: st })}
-              style={{ padding: '7px 14px', borderRadius: 999, border: r.status === st ? '1.5px solid #111' : '1px solid #e6e6e6', background: r.status === st ? '#111' : '#fff', color: r.status === st ? '#fff' : '#777', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '7px 14px', borderRadius: 999, border: r.status === st ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: r.status === st ? 'var(--v2-ink)' : 'var(--v2-surface)', color: r.status === st ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
               {st === 'agendada' ? 'Agendada' : 'Realizada'}
             </button>
           ))}
@@ -534,17 +534,17 @@ function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalva
           {/* PAUTAS DO DIA — vários assuntos da área daquele dia */}
           <div>
             <label style={label}>Pautas{pautas.length ? ` · ${feitas}/${pautas.length} tratadas` : ''}</label>
-            {pautas.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#bbb' }}>Nenhuma pauta listada.</p>}
+            {pautas.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma pauta listada.</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {pautas.map((p, i) => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: i ? '1px solid #f7f7f7' : 'none' }}>
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: i ? '1px solid var(--v2-surface1)' : 'none' }}>
                   <input type="checkbox" checked={!!p.feita} disabled={!podeEditar} onChange={e => mudaPauta(p.id, { feita: e.target.checked })}
                     title="Tratada nesta reunião" style={{ width: 15, height: 15, cursor: 'pointer', flexShrink: 0 }} />
                   <input value={p.texto} disabled={!podeEditar} onChange={e => mudaPauta(p.id, { texto: e.target.value })}
-                    style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 12.5, fontFamily: 'inherit', color: p.feita ? '#aaa' : '#333', textDecoration: p.feita ? 'line-through' : 'none', background: 'transparent' }} />
+                    style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 12.5, fontFamily: 'inherit', color: p.feita ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: p.feita ? 'line-through' : 'none', background: 'transparent' }} />
                   {podeEditar && (
                     <button onClick={() => setR(x => ({ ...x, pautas: (x.pautas || []).filter(y => y.id !== p.id) }))}
-                      style={{ background: 'none', border: 'none', color: '#ddd', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>
+                      style={{ background: 'none', border: 'none', color: 'var(--v2-rule2)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>
                   )}
                 </div>
               ))}
@@ -553,7 +553,7 @@ function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalva
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <input value={novaPauta} onChange={e => setNovaPauta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPauta() } }}
                   placeholder="Nova pauta… (Enter adiciona)" style={{ ...input, flex: 1 }} />
-                <button onClick={addPauta} style={{ padding: '10px 14px', background: '#f4f4f5', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: '#333' }}>+ Adicionar</button>
+                <button onClick={addPauta} style={{ padding: '10px 14px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Adicionar</button>
               </div>
             )}
           </div>
@@ -573,28 +573,28 @@ function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalva
 
           <div>
             <label style={label}>Decisões</label>
-            {(r.decisoes || []).length === 0 && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#bbb' }}>Nenhuma decisão registrada.</p>}
+            {(r.decisoes || []).length === 0 && <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma decisão registrada.</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(r.decisoes || []).map(d => (
-                <div key={d.id} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 10 }}>
+                <div key={d.id} style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10 }}>
                   <input value={d.texto} onChange={e => mudaDecisao(d.id, { texto: e.target.value })} disabled={!podeEditar || !!d.tarefaId}
                     style={{ ...input, border: 'none', padding: '2px 0', fontWeight: 600, borderRadius: 0 }} />
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
                     <select value={d.responsavelEmail || ''} disabled={!podeEditar || !!d.tarefaId}
                       onChange={e => { const u = usuarios.find(x => x.email === e.target.value); mudaDecisao(d.id, { responsavelEmail: e.target.value || undefined, responsavelNome: u?.nome }) }}
-                      style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+                      style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                       <option value="">Responsável…</option>
                       {usuarios.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
                     </select>
                     <input type="date" value={(d.prazo || '').slice(0, 10)} disabled={!podeEditar || !!d.tarefaId}
                       onChange={e => mudaDecisao(d.id, { prazo: e.target.value || undefined })}
-                      style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12, fontFamily: 'inherit' }} />
+                      style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                     <span style={{ flex: 1 }} />
                     {d.tarefaId
-                      ? <span style={{ fontSize: 11, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '4px 10px' }}>Virou tarefa</span>
+                      ? <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '4px 10px' }}>Virou tarefa</span>
                       : podeEditar && (
                         <button onClick={() => virarTarefa(d)} disabled={salvando}
-                          style={{ padding: '6px 12px', background: 'var(--marca, #ffc00f)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: 'var(--marca-texto, #111)' }}>
+                          style={{ padding: '6px 12px', background: 'var(--marca, var(--v2-amber-on))', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: 'var(--marca-texto, var(--v2-ink))' }}>
                           Virar tarefa
                         </button>
                       )}
@@ -606,18 +606,18 @@ function ReuniaoModal({ reuniao, ritual, usuarios, salvando, podeEditar, onSalva
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <input value={novaDecisao} onChange={e => setNovaDecisao(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addDecisao() }}
                   placeholder="Nova decisão… (Enter adiciona)" style={{ ...input, flex: 1 }} />
-                <button onClick={addDecisao} style={{ padding: '10px 14px', background: '#f4f4f5', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: '#333' }}>+ Adicionar</button>
+                <button onClick={addDecisao} style={{ padding: '10px 14px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Adicionar</button>
               </div>
             )}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18, alignItems: 'center' }}>
-          {podeEditar && <button onClick={onExcluir} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Excluir</button>}
+          {podeEditar && <button onClick={onExcluir} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Excluir</button>}
           <span style={{ flex: 1 }} />
-          <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
           {podeEditar && (
-            <button onClick={() => onSalvar(r)} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>
+            <button onClick={() => onSalvar(r)} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>
               {salvando ? 'Salvando…' : 'Salvar'}
             </button>
           )}

@@ -11,8 +11,8 @@ type Conexao = { id: string; de: string; para: string }
 type ClienteLite = { id: string; nome: string; logo?: string }
 type MapaMeta = { id: string; titulo: string; atualizadoEm: string; nosQtd?: number; clienteId?: string; clienteNome?: string }
 
-const CORES = ['#ffc00f', '#7c3aed', '#1d4ed8', '#0891b2', '#16a34a', '#ea580c', '#dc2626']
-const COR_LIGACAO = '#ffc00f' // cor padrão das ligações (amarelo da marca)
+const CORES = ['var(--v2-amber-on)', '#7c3aed', 'var(--v2-info)', '#0891b2', 'var(--v2-ok)', '#ea580c', 'var(--v2-hot)']
+const COR_LIGACAO = 'var(--v2-amber-on)' // cor padrão das ligações (amarelo da marca)
 const LARG = 170, ALT = 46 // largura fixa do nó e altura aproximada (p/ centro das conexões)
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
@@ -55,37 +55,37 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
     <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Mapas mentais</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Organize ideias em nós e conexões — brainstorm, estratégia, planejamento.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Mapas mentais</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Organize ideias em nós e conexões — brainstorm, estratégia, planejamento.</p>
         </div>
-        <button onClick={abrirNovo} style={{ padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo mapa</button>
+        <button onClick={abrirNovo} style={{ padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo mapa</button>
       </div>
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : mapas.length === 0 ? (
-        <div onClick={abrirNovo} style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
-          <p style={{ margin: '0 0 4px', fontSize: 14, color: '#888' }}>Nenhum mapa ainda.</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Clique para criar o primeiro.</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : mapas.length === 0 ? (
+        <div onClick={abrirNovo} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum mapa ainda.</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Clique para criar o primeiro.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
           {mapas.map(m => {
             const cli = m.clienteId ? clientes.find(c => c.id === m.clienteId) : null
             return (
-            <div key={m.id} onClick={() => setAbertoId(m.id)} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
+            <div key={m.id} onClick={() => setAbertoId(m.id)} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><circle cx="6" cy="18" r="3" /><path d="M9 6h6a3 3 0 0 1 3 3v6M6 9v6" /></svg>
                 </span>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo?.trim() || 'Sem título'}</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo?.trim() || 'Sem título'}</p>
               </div>
               {(cli || m.clienteNome) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#888' }}>
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)' }}>
                     <AvatarCliente logo={cli?.logo} nome={cli?.nome || m.clienteNome} clienteId={m.clienteId} />
                   </span>
                   <span style={{ fontSize: 11.5, color: '#7c3aed', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cli?.nome || m.clienteNome}</span>
                 </div>
               )}
-              <p style={{ margin: 0, fontSize: 11.5, color: '#aaa' }}>{m.nosQtd || 0} nó(s) · {new Date(m.atualizadoEm).toLocaleDateString('pt-BR')}</p>
+              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{m.nosQtd || 0} nó(s) · {new Date(m.atualizadoEm).toLocaleDateString('pt-BR')}</p>
               <button onClick={e => { e.stopPropagation(); excluir(m.id) }} style={{ marginTop: 8, background: 'none', border: 'none', color: '#c00', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Excluir</button>
             </div>
           )})}
@@ -94,28 +94,28 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
 
       {novoModal && (
         <div onClick={fecharFora(() => !gerando && setNovoModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Novo mapa mental</h3>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>Novo mapa mental</h3>
             {!modoIA ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button onClick={criarDoZero} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: '#fafafa', border: '1.5px solid #eee', borderRadius: 12, cursor: 'pointer' }}>
-                  <span style={{ width: 38, height: 38, borderRadius: 10, background: '#f0f0f0', color: '#444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111' }}>Começar do zero</span><span style={{ display: 'block', fontSize: 12, color: '#999' }}>Um mapa em branco com o nó central</span></span>
+                <button onClick={criarDoZero} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, cursor: 'pointer' }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>Começar do zero</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>Um mapa em branco com o nó central</span></span>
                 </button>
                 <button onClick={() => setModoIA(true)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: 12, cursor: 'pointer' }}>
                   <span style={{ width: 38, height: 38, borderRadius: 10, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" /></svg></span>
-                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#111' }}>Gerar com IA</span><span style={{ display: 'block', fontSize: 12, color: '#999' }}>Descreva um tema e a IA monta o mapa</span></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>Gerar com IA</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>Descreva um tema e a IA monta o mapa</span></span>
                 </button>
               </div>
             ) : (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 6 }}>Sobre o que é o mapa?</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Sobre o que é o mapa?</label>
                 <textarea lang="pt-BR" value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder="Ex.: Estrutura organizacional da Clínica Norah · Plano de marketing 2026 · Onboarding de novo cliente…"
-                  style={{ width: '100%', minHeight: 90, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>A IA cria os ramos e subtópicos. Você ajusta tudo depois.</p>
+                  style={{ width: '100%', minHeight: 90, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A IA cria os ramos e subtópicos. Você ajusta tudo depois.</p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                  <button onClick={gerarIA} disabled={!tema.trim() || gerando} style={{ flex: 1, padding: '11px 0', background: tema.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: tema.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{gerando ? 'Gerando…' : 'Gerar mapa'}</button>
-                  <button onClick={() => setModoIA(false)} disabled={gerando} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Voltar</button>
+                  <button onClick={gerarIA} disabled={!tema.trim() || gerando} style={{ flex: 1, padding: '11px 0', background: tema.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: tema.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{gerando ? 'Gerando…' : 'Gerar mapa'}</button>
+                  <button onClick={() => setModoIA(false)} disabled={gerando} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Voltar</button>
                 </div>
               </div>
             )}
@@ -405,7 +405,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
     setSelId(null); setEditId(null); setConectarDe(null)
   }
 
-  if (carregando) return <p style={{ color: '#aaa' }}>Carregando mapa...</p>
+  if (carregando) return <p style={{ color: 'var(--v2-ink3)' }}>Carregando mapa...</p>
 
   // Colapso: esconde os descendentes de qualquer nó colapsado.
   const filhosMap: Record<string, string[]> = {}
@@ -420,50 +420,50 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   const sel = nos.find(n => n.id === selId && !oculto.has(n.id))
   const cliente = clienteId ? clientes.find(c => c.id === clienteId) : null
   const TBtn = ({ title, onClick, children, cor }: any) => (
-    <button onPointerDown={e => e.stopPropagation()} onClick={onClick} title={title} style={{ width: 30, height: 30, border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', color: cor || '#444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
+    <button onPointerDown={e => e.stopPropagation()} onClick={onClick} title={title} style={{ width: 30, height: 30, border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', color: cor || 'var(--v2-ink2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
   )
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button onClick={onVoltar} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', padding: 4 }}>
+        <button onClick={onVoltar} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', alignItems: 'center', padding: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 140, maxWidth: 320, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
+        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 140, maxWidth: 320, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)', fontFamily: 'inherit', background: 'transparent' }} />
 
         {/* Atribuir a um cliente (fixa a logomarca) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {cliente && (
-            <span title={cliente.nome} style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#888', border: '2px solid var(--marca, #ffc00f)' }}>
+            <span title={cliente.nome} style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', border: '2px solid var(--marca, var(--v2-amber-on))' }}>
               <AvatarCliente logo={cliente.logo} nome={cliente.nome} clienteId={cliente.id} />
             </span>
           )}
-          <select value={clienteId} onChange={e => setClienteId(e.target.value)} title="Atribuir a um cliente" style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', color: clienteId ? '#111' : '#888', maxWidth: 160 }}>
+          <select value={clienteId} onChange={e => setClienteId(e.target.value)} title="Atribuir a um cliente" style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: clienteId ? 'var(--v2-ink)' : 'var(--v2-ink3)', maxWidth: 160 }}>
             <option value="">Sem cliente</option>
             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
 
-        {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: '#aaa' }}>salvando…</span>}
-        {salvo === 'ok' && <span style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>salvo</span>}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+        {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
+        {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
           {([['mapa', 'Mapa mental'], ['organograma', 'Organograma'], ['lista', 'Lista']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Ligações curvas, fluxo horizontal' : k === 'organograma' ? 'Ligações retas, ramificação vertical' : 'Lista indentada'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? '#fff' : 'transparent', color: layout === k ? '#111' : '#888', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Ligações curvas, fluxo horizontal' : k === 'organograma' ? 'Ligações retas, ramificação vertical' : 'Lista indentada'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? 'var(--v2-surface)' : 'transparent', color: layout === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
         {/* Auto-organizar: reflui os espaços conforme os ramos são criados */}
-        <button onClick={() => setAutoArrumar(v => !v)} title={autoArrumar ? 'Auto-organizar ligado — desligar' : 'Auto-organizar os espaços conforme cria ramos'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: autoArrumar ? '1.5px solid var(--marca, #ffc00f)' : '1.5px solid #e6e6e6', background: autoArrumar ? '#fffbeb' : '#fff', color: autoArrumar ? '#a16207' : '#666', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+        <button onClick={() => setAutoArrumar(v => !v)} title={autoArrumar ? 'Auto-organizar ligado — desligar' : 'Auto-organizar os espaços conforme cria ramos'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: autoArrumar ? '1.5px solid var(--marca, var(--v2-amber-on))' : '1.5px solid var(--v2-surface2)', background: autoArrumar ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: autoArrumar ? 'var(--v2-amber)' : 'var(--v2-ink2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
           Auto
         </button>
-        <button onClick={() => aplicarLayout(layout)} title="Organizar agora" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid #e6e6e6', background: '#fff', color: '#666', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Organizar</button>
-        <button onClick={() => addNo()} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
+        <button onClick={() => aplicarLayout(layout)} title="Organizar agora" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Organizar</button>
+        <button onClick={() => addNo()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
         <ExportarMenu titulo={titulo} nos={nos} conexoes={conexoes} layout={layout} desabilitado={nos.length === 0} />
       </div>
 
       <div ref={canvasRef}
         onPointerDown={e => { dragRef.current = { tipo: 'pan', sx: e.clientX, sy: e.clientY, ox: pan.x, oy: pan.y, moved: false } }}
-        style={{ position: 'relative', height: 'calc(100vh - 220px)', minHeight: 440, overflow: 'hidden', background: '#fbfbfc', backgroundImage: 'radial-gradient(#e7e7ea 1px, transparent 1px)', backgroundSize: `${22 * zoom}px ${22 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px`, border: '1px solid #eee', borderRadius: 14, cursor: dragRef.current?.tipo === 'pan' ? 'grabbing' : 'default', touchAction: 'none' }}>
+        style={{ position: 'relative', height: 'calc(100vh - 220px)', minHeight: 440, overflow: 'hidden', background: '#fbfbfc', backgroundImage: 'radial-gradient(#e7e7ea 1px, transparent 1px)', backgroundSize: `${22 * zoom}px ${22 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px`, border: '1px solid var(--v2-rule)', borderRadius: 14, cursor: dragRef.current?.tipo === 'pan' ? 'grabbing' : 'default', touchAction: 'none' }}>
 
         <div style={{ position: 'absolute', top: 0, left: 0, transformOrigin: '0 0', transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
           {/* Conexões — NÃO deletáveis por clique (a estrutura vem dos nós). Cor: amarelo da marca. */}
@@ -505,7 +505,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                   dragRef.current = { tipo: 'no', id: no.id, sx: e.clientX, sy: e.clientY, ox: no.x, oy: no.y, moved: false, orig }
                 }}
                 onDoubleClick={() => { setSelId(no.id); setEditId(no.id) }}
-                style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? '#1f2937' : '#fff', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
+                style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? 'var(--v2-ink)' : 'var(--v2-surface)', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
                   ? <textarea lang="pt-BR" value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder="Ideia…"
@@ -514,12 +514,12 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizarNo(no) }
                         else if (e.key === 'Tab') { e.preventDefault(); criarFilho(no) } // Tab = novo filho (regra inalterada)
                       }}
-                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? '#fff' : '#222', background: 'transparent', minHeight: 30 }} rows={2} />
-                  : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? '#fff' : (no.texto ? '#222' : '#bbb'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
+                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? 'var(--v2-surface)' : 'var(--v2-ink)', background: 'transparent', minHeight: 30 }} rows={2} />
+                  : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? 'var(--v2-surface)' : (no.texto ? 'var(--v2-ink)' : 'var(--v2-ink3)'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
                 {/* Botão de ocultar/mostrar ramificação (só em nós com filhos) */}
                 {pai && !editando && (
                   <button onPointerDown={e => e.stopPropagation()} onClick={() => alternarColapso(no)} title={no.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'}
-                    style={{ position: 'absolute', ...(colapBottom ? { bottom: -12, left: '50%', transform: 'translateX(-50%)' } : { right: -12, top: '50%', transform: 'translateY(-50%)' }), width: 22, height: 22, borderRadius: '50%', background: no.colapsado ? 'var(--marca, #ffc00f)' : '#fff', border: '1.5px solid ' + (no.colapsado ? 'var(--marca, #ffc00f)' : '#d0d0d5'), color: no.colapsado ? '#111' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0, fontSize: 13, fontWeight: 900, lineHeight: 1, zIndex: 2 }}>
+                    style={{ position: 'absolute', ...(colapBottom ? { bottom: -12, left: '50%', transform: 'translateX(-50%)' } : { right: -12, top: '50%', transform: 'translateY(-50%)' }), width: 22, height: 22, borderRadius: '50%', background: no.colapsado ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface)', border: '1.5px solid ' + (no.colapsado ? 'var(--marca, var(--v2-amber-on))' : '#d0d0d5'), color: no.colapsado ? 'var(--v2-ink)' : 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0, fontSize: 13, fontWeight: 900, lineHeight: 1, zIndex: 2 }}>
                     {no.colapsado ? '+' : '−'}
                   </button>
                 )}
@@ -530,28 +530,28 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
 
         {/* Barra flutuante do nó selecionado (coordenadas de tela) */}
         {sel && !editId && (
-          <div style={{ position: 'absolute', left: clamp(pan.x + sel.x * zoom, 6, (canvasRef.current?.clientWidth || 600) - 210), top: Math.max(6, pan.y + sel.y * zoom - 46), zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: '#fff', borderRadius: 12, boxShadow: '0 6px 22px rgba(0,0,0,0.16)', border: '1px solid #eee', padding: 4 }}>
+          <div style={{ position: 'absolute', left: clamp(pan.x + sel.x * zoom, 6, (canvasRef.current?.clientWidth || 600) - 210), top: Math.max(6, pan.y + sel.y * zoom - 46), zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 6px 22px rgba(0,0,0,0.16)', border: '1px solid var(--v2-rule)', padding: 4 }}>
             <TBtn title="Editar texto" onClick={() => setEditId(sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
             </TBtn>
             <TBtn title="Cor" onClick={() => cicloCor(sel)}>
-              <span style={{ width: 16, height: 16, borderRadius: '50%', background: sel.cor || CORES[0], border: '2px solid #fff', boxShadow: '0 0 0 1px #ddd' }} />
+              <span style={{ width: 16, height: 16, borderRadius: '50%', background: sel.cor || CORES[0], border: '2px solid var(--v2-surface)', boxShadow: '0 0 0 1px #ddd' }} />
             </TBtn>
             <TBtn title="Adicionar nó ligado" onClick={() => addNo(sel)}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </TBtn>
-            <TBtn title={conectarDe === sel.id ? 'Clique em outro nó (ou aqui p/ cancelar)' : 'Conectar a outro nó'} cor={conectarDe === sel.id ? '#7c3aed' : '#444'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
+            <TBtn title={conectarDe === sel.id ? 'Clique em outro nó (ou aqui p/ cancelar)' : 'Conectar a outro nó'} cor={conectarDe === sel.id ? '#7c3aed' : 'var(--v2-ink2)'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
             </TBtn>
             {temFilho(sel.id) && <>
-              <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
+              <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 2px' }} />
               <TBtn title={sel.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'} onClick={() => alternarColapso(sel)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d={sel.colapsado ? 'M12 5v14M5 12h14' : 'M5 12h14'} /></svg>
               </TBtn>
             </>}
             {temPai(sel.id) && <>
-              <div style={{ width: 1, height: 18, background: '#eee', margin: '0 2px' }} />
-              <TBtn title="Excluir nó" cor="#dc2626" onClick={() => excluirNo(sel.id)}>
+              <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 2px' }} />
+              <TBtn title="Excluir nó" cor="var(--v2-hot)" onClick={() => excluirNo(sel.id)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </TBtn>
             </>}
@@ -559,16 +559,16 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
         )}
 
         {/* Controles de zoom */}
-        <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4, background: '#fff', borderRadius: 10, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', border: '1px solid #eee', padding: 4 }}>
-          <button onClick={() => zoomBotao(1.2)} title="Aproximar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#444', borderRadius: 7 }}>+</button>
-          <span style={{ textAlign: 'center', fontSize: 10.5, color: '#999', fontWeight: 700 }}>{Math.round(zoom * 100)}%</span>
-          <button onClick={() => zoomBotao(1 / 1.2)} title="Afastar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#444', borderRadius: 7 }}>−</button>
-          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title="Redefinir zoom" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', color: '#888', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--v2-surface)', borderRadius: 10, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)', padding: 4 }}>
+          <button onClick={() => zoomBotao(1.2)} title="Aproximar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: 'var(--v2-ink2)', borderRadius: 7 }}>+</button>
+          <span style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--v2-ink3)', fontWeight: 700 }}>{Math.round(zoom * 100)}%</span>
+          <button onClick={() => zoomBotao(1 / 1.2)} title="Afastar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: 'var(--v2-ink2)', borderRadius: 7 }}>−</button>
+          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title="Redefinir zoom" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--v2-ink3)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: '#bbb' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: '#999' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: '#999' }}>Tab</b> cria filho, <b style={{ color: '#999' }}>Delete</b> apaga o nó · o botão <b style={{ color: '#999' }}>−</b> oculta a ramificação · <b style={{ color: '#999' }}>Auto</b> mantém tudo organizado · <b style={{ color: '#999' }}>Ctrl+Z</b> desfaz.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: 'var(--v2-ink3)' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: 'var(--v2-ink3)' }}>Tab</b> cria filho, <b style={{ color: 'var(--v2-ink3)' }}>Delete</b> apaga o nó · o botão <b style={{ color: 'var(--v2-ink3)' }}>−</b> oculta a ramificação · <b style={{ color: 'var(--v2-ink3)' }}>Auto</b> mantém tudo organizado · <b style={{ color: 'var(--v2-ink3)' }}>Ctrl+Z</b> desfaz.</p>
     </div>
   )
 }
@@ -586,19 +586,19 @@ function ExportarMenu({ titulo, nos, conexoes, layout, desabilitado }: { titulo:
     finally { setOcupado(false) }
   }
 
-  const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', border: 'none', background: 'none', textAlign: 'left', fontSize: 13, color: '#111', cursor: 'pointer', fontFamily: 'inherit' }
+  const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', border: 'none', background: 'none', textAlign: 'left', fontSize: 13, color: 'var(--v2-ink)', cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
     <div style={{ position: 'relative' }}>
       <button onClick={() => setAberto(v => !v)} disabled={desabilitado || ocupado}
         title={desabilitado ? 'Adicione ao menos um nó para exportar' : 'Exportar para enviar ao cliente'}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: desabilitado ? '#bbb' : '#111', border: '1.5px solid #e6e6e6', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: desabilitado ? 'default' : 'pointer' }}>
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: desabilitado ? 'var(--v2-ink3)' : 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: desabilitado ? 'default' : 'pointer' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
         {ocupado ? 'Exportando…' : 'Exportar'}
       </button>
       {aberto && !desabilitado && (
         <div onClick={fecharFora(() => setAberto(false))} style={{ position: 'fixed', inset: 0, zIndex: 40 }}>
-          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 12, top: 100, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', border: '1px solid #eee', overflow: 'hidden', minWidth: 180, zIndex: 41 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 12, top: 100, background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', border: '1px solid var(--v2-rule)', overflow: 'hidden', minWidth: 180, zIndex: 41 }}>
             <button style={item} onClick={() => exportar(() => exportarPdf(mapa))}><b>PDF</b> — uma página pronta</button>
             <button style={item} onClick={() => exportar(() => exportarPng(mapa))}><b>PNG</b> — imagem</button>
             <button style={item} onClick={() => exportar(() => exportarSvg(mapa))}><b>SVG</b> — vetor</button>

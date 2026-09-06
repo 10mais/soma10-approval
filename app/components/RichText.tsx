@@ -6,7 +6,7 @@ import { sanitizeHtml } from '@/lib/sanitize'
 // cores e links clicáveis. Guarda HTML. Usa document.execCommand (suportado em
 // todos os navegadores atuais). Colar texto vira link clicável automaticamente.
 
-const CORES = ['#111111', '#dc2626', '#ea580c', '#16a34a', '#1d4ed8', '#7c3aed', '#888888']
+const CORES = ['var(--v2-ink)', 'var(--v2-hot)', '#ea580c', 'var(--v2-ok)', 'var(--v2-info)', '#7c3aed', 'var(--v2-ink3)']
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -64,24 +64,24 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
 
   const Btn = ({ onClick: oc, title, children, ativo }: any) => (
     <button type="button" title={title} onMouseDown={e => { e.preventDefault(); oc() }}
-      style={{ width: 28, height: 28, border: 'none', borderRadius: 6, background: ativo ? '#eee' : 'transparent', cursor: 'pointer', fontSize: 14, color: '#444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
+      style={{ width: 28, height: 28, border: 'none', borderRadius: 6, background: ativo ? 'var(--v2-surface2)' : 'transparent', cursor: 'pointer', fontSize: 14, color: 'var(--v2-ink2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
   )
 
   return (
-    <div style={{ border: '1.5px solid #e0e0e0', borderRadius: 10, overflow: 'visible', position: 'relative' }}>
-      <style>{`.rt-edit:empty:before{content:attr(data-ph);color:#aaa}.rt-edit a{color:#1d4ed8;text-decoration:underline}
+    <div style={{ border: '1.5px solid var(--v2-rule)', borderRadius: 10, overflow: 'visible', position: 'relative' }}>
+      <style>{`.rt-edit:empty:before{content:attr(data-ph);color:var(--v2-ink3)}.rt-edit a{color:var(--v2-info);text-decoration:underline}
         .rt-edit h1{font-size:1.5em;font-weight:800;margin:.5em 0 .3em}.rt-edit h2{font-size:1.25em;font-weight:800;margin:.5em 0 .3em}.rt-edit h3{font-size:1.08em;font-weight:700;margin:.4em 0 .2em}
         .rt-edit ul,.rt-edit ol{padding-left:1.4em;margin:.3em 0}.rt-edit li{margin:.15em 0}
-        .rt-edit blockquote{border-left:3px solid #e0e0e0;margin:.4em 0;padding:.1em 0 .1em .8em;color:#666}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 4, borderBottom: '1px solid #f0f0f0', background: '#fafafa', borderRadius: '8px 8px 0 0', flexWrap: 'wrap', ...(sticky ? { position: 'sticky', top: 0, zIndex: 6 } : {}) }}>
+        .rt-edit blockquote{border-left:3px solid var(--v2-rule);margin:.4em 0;padding:.1em 0 .1em .8em;color:var(--v2-ink2)}`}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 4, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)', borderRadius: '8px 8px 0 0', flexWrap: 'wrap', ...(sticky ? { position: 'sticky', top: 0, zIndex: 6 } : {}) }}>
         <Btn title="Negrito" onClick={() => cmd('bold')}><b>B</b></Btn>
         <Btn title="Itálico" onClick={() => cmd('italic')}><i>I</i></Btn>
         <Btn title="Sublinhado" onClick={() => cmd('underline')}><u>U</u></Btn>
-        <div style={{ width: 1, height: 18, background: '#e5e5e5', margin: '0 3px' }} />
+        <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 3px' }} />
         <div style={{ position: 'relative' }}>
-          <Btn title="Cor do texto" onClick={() => setCorAberta(v => !v)}><span style={{ borderBottom: '3px solid #dc2626', lineHeight: 0.9 }}>A</span></Btn>
+          <Btn title="Cor do texto" onClick={() => setCorAberta(v => !v)}><span style={{ borderBottom: '3px solid var(--v2-hot)', lineHeight: 0.9 }}>A</span></Btn>
           {corAberta && (
-            <div style={{ position: 'absolute', top: 30, left: 0, zIndex: 20, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, padding: 6, display: 'flex', gap: 5, boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+            <div style={{ position: 'absolute', top: 30, left: 0, zIndex: 20, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: 6, display: 'flex', gap: 5, boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
               {CORES.map(c => (
                 <button key={c} type="button" title={c} onMouseDown={e => { e.preventDefault(); cmd('foreColor', c); setCorAberta(false) }}
                   style={{ width: 18, height: 18, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.1)', background: c, cursor: 'pointer' }} />
@@ -93,7 +93,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
         </Btn>
         {completo && <>
-          <div style={{ width: 1, height: 18, background: '#e5e5e5', margin: '0 3px' }} />
+          <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 3px' }} />
           <Btn title="Título" onClick={() => cmd('formatBlock', 'H2')}><b style={{ fontSize: 13 }}>H1</b></Btn>
           <Btn title="Subtítulo" onClick={() => cmd('formatBlock', 'H3')}><b style={{ fontSize: 11 }}>H2</b></Btn>
           <Btn title="Texto normal" onClick={() => cmd('formatBlock', 'P')}><span style={{ fontSize: 11 }}>¶</span></Btn>
@@ -104,7 +104,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4l2-2.5V15a1 1 0 0 0-2 0" /></svg>
           </Btn>
           <Btn title="Citação" onClick={() => cmd('formatBlock', 'BLOCKQUOTE')}><span style={{ fontSize: 15, fontWeight: 800, lineHeight: 0.6 }}>&rdquo;</span></Btn>
-          <div style={{ width: 1, height: 18, background: '#e5e5e5', margin: '0 3px' }} />
+          <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 3px' }} />
           <Btn title="Alinhar à esquerda" onClick={() => cmd('justifyLeft')}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h12M3 18h15" /></svg>
           </Btn>
@@ -130,7 +130,7 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
         onPaste={onPaste}
         onClick={onClick}
         title="Clique num link para abrir em nova aba"
-        style={{ minHeight, padding: '10px 12px', fontSize: fontSize || 13, lineHeight: 1.5, outline: 'none', color: '#222', fontFamily: 'inherit', wordBreak: 'break-word' }}
+        style={{ minHeight, padding: '10px 12px', fontSize: fontSize || 13, lineHeight: 1.5, outline: 'none', color: 'var(--v2-ink)', fontFamily: 'inherit', wordBreak: 'break-word' }}
       />
     </div>
   )

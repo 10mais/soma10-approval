@@ -18,9 +18,9 @@ export default function AvatarCliente({ logo, nome, clienteId }: { logo?: string
     // Fundo NEUTRO por baixo da logo: várias telas põem o avatar num círculo
     // amarelo (var --marca) para a inicial ficar legível. Logo com cantos
     // transparentes (ex.: o selo da Sua Dupla Cidadania) deixava esse amarelo
-    // vazar pelas beiradas. `background:#fff` cobre o container só onde há logo;
+    // vazar pelas beiradas. `background:var(--v2-surface)` cobre o container só onde há logo;
     // quando cai na inicial (return abaixo), o amarelo do container reaparece.
-    return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#fff' }} />
+    return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', background: 'var(--v2-surface)' }} />
   }
   return <>{inicial}</>
 }

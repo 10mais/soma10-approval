@@ -105,24 +105,24 @@ export default function PushSetup() {
 
   // Mobile: banner acima da barra inferior (clear da safe-area). Desktop: card no canto.
   const contStyle: React.CSSProperties = mobile
-    ? { position: 'fixed', left: 12, right: 12, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 4000, background: '#111', color: '#fff', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
-    : { position: 'fixed', right: 16, bottom: 16, zIndex: 4000, maxWidth: 300, background: '#111', color: '#fff', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
+    ? { position: 'fixed', left: 12, right: 12, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 4000, background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
+    : { position: 'fixed', right: 16, bottom: 16, zIndex: 4000, maxWidth: 300, background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', padding: 16 }
 
   return (
     <div style={contStyle} className="soma10-no-invert">
-      <button onClick={dispensar} title="Dispensar" style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
-      <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#ffc00f' }}>Soma10 no seu celular</p>
+      <button onClick={dispensar} title="Dispensar" style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: 'var(--v2-ink3)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-amber-on)' }}>Soma10 no seu celular</p>
       {showIosDica && (
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#ddd', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-rule2)', lineHeight: 1.5 }}>
           No iPhone: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b> para instalar e receber notificações.
         </p>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {canInstall && (
-          <button onClick={instalar} style={{ padding: '9px 14px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Instalar app</button>
+          <button onClick={instalar} style={{ padding: '9px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Instalar app</button>
         )}
         {showAtivarPush && (
-          <button onClick={ativarPush} style={{ padding: '9px 14px', background: '#fff', color: '#111', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Ativar notificações</button>
+          <button onClick={ativarPush} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Ativar notificações</button>
         )}
       </div>
     </div>

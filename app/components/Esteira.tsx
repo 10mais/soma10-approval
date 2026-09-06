@@ -53,8 +53,8 @@ const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julh
 const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
 
 const FORMATO_INFO: Record<string, { label: string; cor: string; icon: string }> = {
-  feed: { label: 'Feed', cor: '#1d4ed8', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
-  reel: { label: 'Reel', cor: '#dc2626', icon: 'M5.76 2h12.48L22 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6l3.76-4zM10 12l5 3-5 3v-6z' },
+  feed: { label: 'Feed', cor: 'var(--v2-info)', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
+  reel: { label: 'Reel', cor: 'var(--v2-hot)', icon: 'M5.76 2h12.48L22 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6l3.76-4zM10 12l5 3-5 3v-6z' },
   story: { label: 'Story', cor: '#7c3aed', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z' },
   carrossel: { label: 'Carrossel', cor: '#0891b2', icon: 'M4 4h12v12H4zM8 8h12v12H8z' },
 }
@@ -210,16 +210,16 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Esteira de Criativos</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Esteira de Criativos</h2>
         <select value={planoSel} onChange={e => setPlanoSel(e.target.value)}
-          style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', minWidth: 240 }}>
+          style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 240 }}>
           <option value="">Selecione um plano...</option>
           {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
         </select>
-        {podeEditar && <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {podeEditar && <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
         {planoSel && podeEditar && <>
-          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
-          <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
           </button>
         </>}
@@ -227,49 +227,49 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 
       {/* Form de novo plano */}
       {novoPlano && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           {!clienteFixo && (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente</label>
-              <select value={formPlano.clienteId} onChange={e => setFormPlano(f => ({ ...f, clienteId: e.target.value }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minWidth: 200 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente</label>
+              <select value={formPlano.clienteId} onChange={e => setFormPlano(f => ({ ...f, clienteId: e.target.value }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minWidth: 200 }}>
                 <option value="">Selecione...</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
           )}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mês</label>
-            <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Mês</label>
+            <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13 }}>
               {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Ano</label>
-            <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, width: 90 }} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Ano</label>
+            <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, width: 90 }} />
           </div>
-          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
-          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
+          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       )}
 
       {iaMsg && (
-        <div style={{ background: iaMsg.includes('sucesso') ? '#dcfce7' : iaMsg.includes('Gerando') ? '#eff6ff' : '#fef2f2',
-          border: `1px solid ${iaMsg.includes('sucesso') ? '#86efac' : iaMsg.includes('Gerando') ? '#bfdbfe' : '#fecaca'}`,
+        <div style={{ background: iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? 'var(--v2-info-bg)' : 'var(--v2-hot-bg)',
+          border: `1px solid ${iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? '#bfdbfe' : 'var(--v2-hot-bg)'}`,
           borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13,
-          color: iaMsg.includes('sucesso') ? '#166534' : iaMsg.includes('Gerando') ? '#1d4ed8' : '#b91c1c',
+          color: iaMsg.includes('sucesso') ? 'var(--v2-ok)' : iaMsg.includes('Gerando') ? 'var(--v2-info)' : 'var(--v2-hot)',
           display: 'flex', alignItems: 'center', gap: 10 }}>
-          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
+          {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: 'var(--v2-info)', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
           {iaMsg}
         </div>
       )}
 
       {/* Kanban */}
       {!planoSel ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
           <p>Selecione ou crie um plano para abrir a esteira.</p>
         </div>
       ) : carregando ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>Carregando pautas...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>Carregando pautas...</div>
       ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {ETAPAS.map(col => {
@@ -284,20 +284,20 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                 onDragLeave={() => setOverCol(o => (o === col.key ? null : o))}
                 onDrop={() => { const p = pautas.find(x => x.id === dragId); if (p) moverEtapa(p, col.key); setDragId(null); setOverCol(null) }}
                 style={{
-                  flex: '0 0 230px', width: 230, background: overCol === col.key ? '#fffbeb' : '#f6f6f7', borderRadius: 12, padding: 10,
-                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+                  flex: '0 0 230px', width: 230, background: overCol === col.key ? 'var(--v2-amber-bg)' : '#f6f6f7', borderRadius: 12, padding: 10,
+                  outline: overCol === col.key ? '2px dashed var(--v2-amber-on)' : 'none', outlineOffset: -2,
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
                 {(() => { const limite = LIMITE_WIP[col.key] || 0; const excedeu = limite > 0 && cards.length > limite; return (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: '#444' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink2)' }}>
                     {col.label}
-                    {(ehGargalo || excedeu) && <span title={excedeu ? `Acima do limite de ${limite} em produção` : 'Etapa com mais itens acumulados'} style={{ fontSize: 9.5, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{excedeu ? 'Limite' : 'Gargalo'}</span>}
+                    {(ehGargalo || excedeu) && <span title={excedeu ? `Acima do limite de ${limite} em produção` : 'Etapa com mais itens acumulados'} style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{excedeu ? 'Limite' : 'Gargalo'}</span>}
                   </span>
-                  <span title={limite > 0 ? `Limite de WIP: ${limite}` : undefined} style={{ fontSize: 11, fontWeight: 700, color: (ehGargalo || excedeu) ? '#b91c1c' : '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}{limite > 0 ? `/${limite}` : ''}</span>
+                  <span title={limite > 0 ? `Limite de WIP: ${limite}` : undefined} style={{ fontSize: 11, fontWeight: 700, color: (ehGargalo || excedeu) ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 999, padding: '1px 8px' }}>{cards.length}{limite > 0 ? `/${limite}` : ''}</span>
                 </div>
                 ) })()}
-                {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: '#b45309' }}>Aguarda o cliente</p>}
+                {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: 'var(--v2-amber)' }}>Aguarda o cliente</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(p => {
                     const capa = capaDaPauta(p)
@@ -305,43 +305,43 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                     return (
                       <div key={p.id} draggable onDragStart={() => setDragId(p.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                         onClick={() => setPautaModal(p)}
-                        style={{ background: '#fff', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === p.id ? 0.4 : 1 }}>
+                        style={{ background: 'var(--v2-surface)', borderRadius: 10, padding: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === p.id ? 0.4 : 1 }}>
                         {(p.imagens || []).length > 0 && (
-                          <div style={{ width: '100%', aspectRatio: '1.6', borderRadius: 8, overflow: 'hidden', background: '#eee', marginBottom: 8 }}>
+                          <div style={{ width: '100%', aspectRatio: '1.6', borderRadius: 8, overflow: 'hidden', background: 'var(--v2-surface2)', marginBottom: 8 }}>
                             {mostrarImg ? <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               : capa ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                           </div>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                           {formatoBadge(p.formato, (p.imagens || []).length)}
-                          {(p as any).preAprovado && <span title="Conteúdo recorrente pré-aprovado pelo cliente" style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Pré-aprovado</span>}
-                          {p.dataAgendada && <span style={{ fontSize: 10, color: '#666' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                          {(p as any).preAprovado && <span title="Conteúdo recorrente pré-aprovado pelo cliente" style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Pré-aprovado</span>}
+                          {p.dataAgendada && <span style={{ fontSize: 10, color: 'var(--v2-ink2)' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
                             {p.briefing || p.legenda || 'Sem título'}
                           </p>
                           {col.key !== 'pronto' && (() => { const a = idadeNaEtapa(p); return a ? (
-                            <span title="Tempo parado nesta etapa" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? '#b91c1c' : '#999', background: a.atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
+                            <span title="Tempo parado nesta etapa" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: a.atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
                           ) : null })()}
                         </div>
-                        {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#888' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
+                        {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
                         {(p.ajusteCopy || p.ajusteCriativo) && (
-                          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: '#b91c1c', background: '#fef2f2', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
+                          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
                         )}
                         {col.cliente && (() => { const e = tempoEspera(p.aguardandoDesde); return e ? (
-                          <p style={{ margin: '5px 0 0', fontSize: 10.5, fontWeight: 700, color: e.atrasado ? '#b91c1c' : '#888', background: e.atrasado ? '#fef2f2' : '#f5f5f5', borderRadius: 6, padding: '4px 6px' }}>Aguardando {e.texto}</p>
+                          <p style={{ margin: '5px 0 0', fontSize: 10.5, fontWeight: 700, color: e.atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: e.atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', borderRadius: 6, padding: '4px 6px' }}>Aguardando {e.texto}</p>
                         ) : null })()}
                         {col.key === 'criativo' && (p.imagens || []).length > 0 && (
                           <button onClick={(e) => { e.stopPropagation(); moverEtapa(p, 'aprovacao_criativo') }}
-                            style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                            style={{ marginTop: 6, width: '100%', padding: '6px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
                             Enviar para aprovacao
                           </button>
                         )}
                       </div>
                     )
                   })}
-                  {cards.length === 0 && <p style={{ margin: 0, fontSize: 11, color: '#bbb', textAlign: 'center', padding: '14px 0' }}>--</p>}
+                  {cards.length === 0 && <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center', padding: '14px 0' }}>--</p>}
                 </div>
               </div>
             )
@@ -352,20 +352,20 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
       {/* Modal de nova pauta */}
       {novaPautaModal && (
         <div onClick={fecharFora(fecharNovaPauta, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>Nova pauta</h3>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>Nova pauta</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Tema / ideia da pauta *</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Tema / ideia da pauta *</label>
                 <textarea lang="pt-BR" value={formPauta.briefing} onChange={e => setFormPauta(f => ({ ...f, briefing: e.target.value }))} placeholder="Ex.: Post sobre cuidados com joias no inverno..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem (opcional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Referencia de imagem (opcional)</label>
                 <textarea lang="pt-BR" value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder="Descreva a ideia visual: foto de produto, lifestyle, bastidores..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)' }}>
                     {enviandoRefImagem ? 'Enviando...' : '+ Anexar imagem'}
                     <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRefImagem} onChange={async e => {
                       if (!e.target.files?.[0]) return
@@ -379,52 +379,52 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                     }} />
                   </label>
                   <div style={{ width: '100%' }}><UploadProgress valor={progRefImagem} /></div>
-                  <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
+                  <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>ou</span>
                   <input value={formPauta.refImagemUrl} onChange={e => setFormPauta(f => ({ ...f, refImagemUrl: e.target.value }))} placeholder="Link do Drive ou URL da referencia"
-                    style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 11, fontFamily: 'inherit' }} />
                 </div>
                 {formPauta.refImagemUrl && /\.(jpg|jpeg|png|gif|webp)/i.test(formPauta.refImagemUrl) && (
                   <img src={formPauta.refImagemUrl} alt="" style={{ marginTop: 8, maxWidth: 120, maxHeight: 80, borderRadius: 8, objectFit: 'cover' }} />
                 )}
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto na imagem (opcional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Texto na imagem (opcional)</label>
                 <input value={formPauta.textoImagem} onChange={e => setFormPauta(f => ({ ...f, textoImagem: e.target.value }))} placeholder="Texto que deve aparecer na arte/criativo"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Legenda (opcional)</label>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Legenda (opcional)</label>
                   <button onClick={gerarLegendaNovaPauta} disabled={gerandoLegendaNova || !formPauta.briefing.trim()} type="button"
-                    style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? '#ccc' : '#7c3aed', border: `1px solid ${(gerandoLegendaNova || !formPauta.briefing.trim()) ? '#e0e0e0' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'var(--v2-ink3)' : '#7c3aed', border: `1px solid ${(gerandoLegendaNova || !formPauta.briefing.trim()) ? 'var(--v2-rule)' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
                     {gerandoLegendaNova ? 'Gerando...' : 'Criar com IA'}
                   </button>
                 </div>
-                {legendaNovaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaNovaMsg.includes('Erro') || legendaNovaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaNovaMsg}</p>}
+                {legendaNovaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaNovaMsg.includes('Erro') || legendaNovaMsg.includes('Falha') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{legendaNovaMsg}</p>}
                 <textarea lang="pt-BR" value={formPauta.sugestaoLegenda} onChange={e => setFormPauta(f => ({ ...f, sugestaoLegenda: e.target.value }))} placeholder="Rascunho da legenda/copy para o post..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Formato</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Formato</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
-                  { key: 'feed', label: 'Feed', cor: '#1d4ed8' },
-                  { key: 'reel', label: 'Reel', cor: '#dc2626' },
+                  { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
+                  { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
                   { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
                   { key: 'story', label: 'Story', cor: '#7c3aed' },
                 ].map(f => (
                   <button key={f.key} type="button" onClick={() => setFormPauta(p => ({ ...p, formato: f.key }))}
-                    style={{ padding: '6px 14px', borderRadius: 8, border: formPauta.formato === f.key ? `2px solid ${f.cor}` : '1px solid #e0e0e0', background: formPauta.formato === f.key ? `${f.cor}10` : '#fff', fontSize: 12, fontWeight: formPauta.formato === f.key ? 700 : 500, color: formPauta.formato === f.key ? f.cor : '#666', cursor: 'pointer' }}>
+                    style={{ padding: '6px 14px', borderRadius: 8, border: formPauta.formato === f.key ? `2px solid ${f.cor}` : '1px solid var(--v2-rule)', background: formPauta.formato === f.key ? `${f.cor}10` : 'var(--v2-surface)', fontSize: 12, fontWeight: formPauta.formato === f.key ? 700 : 500, color: formPauta.formato === f.key ? f.cor : 'var(--v2-ink2)', cursor: 'pointer' }}>
                     {f.label}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-              <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: formPauta.briefing.trim() ? 'var(--marca-texto, #111)' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
-              <button onClick={fecharNovaPauta} style={{ padding: '12px 20px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: formPauta.briefing.trim() ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
+              <button onClick={fecharNovaPauta} style={{ padding: '12px 20px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -541,18 +541,18 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#111' }}>Pauta — {pauta.clienteNome}</h3>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--v2-ink)' }}>Pauta — {pauta.clienteNome}</h3>
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Briefing / ideia</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Briefing / ideia</label>
         <textarea lang="pt-BR" value={briefing} onChange={e => setBriefing(e.target.value)} placeholder="Tema, ângulo, objetivo..."
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Referencia de imagem</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Referencia de imagem</label>
         <textarea lang="pt-BR" value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder="Descreva a ideia visual..."
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: '#444' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)' }}>
             {enviandoRef ? 'Enviando...' : '+ Anexar imagem'}
             <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRef} onChange={async e => {
               if (!e.target.files?.[0]) return
@@ -567,9 +567,9 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             }} />
           </label>
           <div style={{ width: '100%' }}><UploadProgress valor={progRef} /></div>
-          <span style={{ fontSize: 11, color: '#aaa' }}>ou</span>
+          <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>ou</span>
           <input value={refImgUrl} onChange={e => setRefImgUrl(e.target.value)} placeholder="Link do Drive ou URL da referencia"
-            style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 11, fontFamily: 'inherit' }} />
+            style={{ flex: 1, minWidth: 180, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 11, fontFamily: 'inherit' }} />
         </div>
         {(() => {
           const urls = ((sugestaoImagem || '') + '\n' + (refImgUrl || '')).match(/https?:\/\/\S+/g) || []
@@ -578,40 +578,40 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               {imgs.map((u, i) => (
                 <a key={i} href={u} target="_blank" rel="noreferrer" title="Abrir imagem">
-                  <img src={u} alt="" style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid #eee' }} />
+                  <img src={u} alt="" style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--v2-rule)' }} />
                 </a>
               ))}
             </div>
           ) : null
         })()}
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto na imagem</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Texto na imagem</label>
         <input value={textoImagem} onChange={e => setTextoImagem(e.target.value)} placeholder="Texto que aparece na arte"
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Copy (legenda)</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Copy (legenda)</label>
           <button onClick={gerarLegendaIA} disabled={gerandoLegenda || !briefing.trim()} type="button"
-            style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegenda || !briefing.trim()) ? '#ccc' : '#7c3aed', border: `1px solid ${(gerandoLegenda || !briefing.trim()) ? '#e0e0e0' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegenda || !briefing.trim()) ? 'var(--v2-ink3)' : '#7c3aed', border: `1px solid ${(gerandoLegenda || !briefing.trim()) ? 'var(--v2-rule)' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
             {gerandoLegenda ? 'Gerando...' : 'Criar com IA'}
           </button>
         </div>
-        {legendaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaMsg.includes('Erro') || legendaMsg.includes('Falha') ? '#dc2626' : '#16a34a' }}>{legendaMsg}</p>}
+        {legendaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaMsg.includes('Erro') || legendaMsg.includes('Falha') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{legendaMsg}</p>}
         <textarea lang="pt-BR" value={legenda} onChange={e => setLegenda(e.target.value)} placeholder="Texto da publicacao..."
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, minHeight: 100, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 100, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Formato</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Formato</label>
           <div style={{ display: 'flex', gap: 6 }}>
             {[
-              { key: 'feed', label: 'Feed', cor: '#1d4ed8' },
-              { key: 'reel', label: 'Reel', cor: '#dc2626' },
+              { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
+              { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
               { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
               { key: 'story', label: 'Story', cor: '#7c3aed' },
             ].map(f => (
               <button key={f.key} type="button" onClick={() => setFormato(f.key)}
-                style={{ padding: '6px 14px', borderRadius: 8, border: formato === f.key ? `2px solid ${f.cor}` : '1px solid #e0e0e0', background: formato === f.key ? `${f.cor}10` : '#fff', fontSize: 12, fontWeight: formato === f.key ? 700 : 500, color: formato === f.key ? f.cor : '#666', cursor: 'pointer' }}>
+                style={{ padding: '6px 14px', borderRadius: 8, border: formato === f.key ? `2px solid ${f.cor}` : '1px solid var(--v2-rule)', background: formato === f.key ? `${f.cor}10` : 'var(--v2-surface)', fontSize: 12, fontWeight: formato === f.key ? 700 : 500, color: formato === f.key ? f.cor : 'var(--v2-ink2)', cursor: 'pointer' }}>
                 {f.label}
               </button>
             ))}
@@ -619,13 +619,13 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         </div>
 
         {/* Conteúdo recorrente pré-aprovado */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer', background: preAprovado ? '#f0fdf4' : '#fafafa', border: `1.5px solid ${preAprovado ? '#86efac' : '#eee'}`, borderRadius: 10, padding: '10px 12px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer', background: preAprovado ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: `1.5px solid ${preAprovado ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)'}`, borderRadius: 10, padding: '10px 12px' }}>
           <input type="checkbox" checked={preAprovado} onChange={e => setPreAprovado(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: preAprovado ? '#166534' : '#555' }}>Conteúdo recorrente <strong>pré-aprovado</strong> pelo cliente (dispensa aprovação — pode ir direto para Pronto)</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: preAprovado ? 'var(--v2-ok)' : 'var(--v2-ink2)' }}>Conteúdo recorrente <strong>pré-aprovado</strong> pelo cliente (dispensa aprovação — pode ir direto para Pronto)</span>
         </label>
 
         {(pauta.ajusteCopy || pauta.ajusteCriativo) && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: '#b91c1c' }}>
+          <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: 'var(--v2-hot)' }}>
             <strong>Ajuste solicitado pelo cliente:</strong> {pauta.ajusteCopy || pauta.ajusteCriativo}
           </div>
         )}
@@ -642,59 +642,59 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             pauta.dataAgendada ? `DATA: ${new Date(pauta.dataAgendada).toLocaleString('pt-BR')}` : '',
           ].filter(Boolean).join('\n\n')
           navigator.clipboard.writeText(txt).then(() => toast('Instrucoes copiadas para a area de transferencia!', 'sucesso')).catch(() => toast('Não foi possível copiar. Selecione e copie manualmente.', 'erro'))
-        }} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#555', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
+        }} style={{ width: '100%', padding: '10px 0', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Copiar instrucoes para producao
         </button>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
+          <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
           {onAbrirComposer && pauta.etapa === 'criativo' && (
-            <button onClick={() => onAbrirComposer(pauta)} style={{ padding: '11px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={() => onAbrirComposer(pauta)} style={{ padding: '11px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               Adicionar criativo
             </button>
           )}
-          <button onClick={abrirPainelRel} disabled={relacionando || vinculada} title="Relacionar esta pauta a uma tarefa existente (ou criar uma nova)" style={{ padding: '11px 16px', background: vinculada ? '#f0fdf4' : '#fff', color: vinculada ? '#16a34a' : '#111', border: `1.5px solid ${vinculada ? '#bbf7d0' : '#111'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
+          <button onClick={abrirPainelRel} disabled={relacionando || vinculada} title="Relacionar esta pauta a uma tarefa existente (ou criar uma nova)" style={{ padding: '11px 16px', background: vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: vinculada ? 'var(--v2-ok)' : 'var(--v2-ink)', border: `1.5px solid ${vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-ink)'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
             {vinculada ? '✓ Tarefa vinculada' : relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onDescartar && (
-            <button onClick={onDescartar} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={onDescartar} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               Descartar
             </button>
           )}
         </div>
-        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: (relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') || relMsg.startsWith('A tarefa')) ? '#b91c1c' : '#16a34a' }}>{relMsg}</p>}
+        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: (relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') || relMsg.startsWith('A tarefa')) ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{relMsg}</p>}
 
         {/* Seletor de tarefa existente (item: relacionar a tarefa EXISTENTE, ou criar nova) */}
         {relPainel && !vinculada && (
-          <div style={{ marginTop: 10, border: '1.5px solid #e5e7eb', borderRadius: 12, padding: 12, background: '#fafafa' }}>
+          <div style={{ marginTop: 10, border: '1.5px solid var(--v2-rule)', borderRadius: 12, padding: 12, background: 'var(--v2-surface1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <strong style={{ fontSize: 12.5, color: '#111' }}>Relacionar a uma tarefa existente</strong>
+              <strong style={{ fontSize: 12.5, color: 'var(--v2-ink)' }}>Relacionar a uma tarefa existente</strong>
               <button onClick={criarNovaTarefa} disabled={relacionando} type="button"
-                style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: relacionando ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: relacionando ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 + Criar tarefa nova
               </button>
             </div>
             <input value={relBusca} onChange={e => setRelBusca(e.target.value)} placeholder="Buscar tarefa por título..." autoFocus
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
             <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {relCarregando && <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Carregando tarefas...</p>}
+              {relCarregando && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Carregando tarefas...</p>}
               {!relCarregando && relTarefas !== null && (() => {
                 const q = relBusca.trim().toLowerCase()
                 const lista = (relTarefas || []).filter((t: any) =>
                   !q || (t.titulo || '').toLowerCase().includes(q) || (t.descricao || '').toLowerCase().includes(q))
                 if (lista.length === 0) return (
-                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>
                     {relBusca.trim() ? 'Nenhuma tarefa encontrada.' : (pauta.clienteId ? 'Este cliente ainda não tem tarefas. Use "Criar tarefa nova".' : 'Nenhuma tarefa. Use "Criar tarefa nova".')}
                   </p>
                 )
                 return lista.slice(0, 40).map((t: any) => (
                   <button key={t.id} type="button" onClick={() => vincularExistente(t.id)} disabled={relacionando}
-                    style={{ textAlign: 'left', padding: '8px 10px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, cursor: relacionando ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#111' }}>{t.titulo || '(sem título)'}</span>
-                    <span style={{ fontSize: 10.5, color: '#888' }}>{t.tipo || 'tarefa'}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
+                    style={{ textAlign: 'left', padding: '8px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: relacionando ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{t.titulo || '(sem título)'}</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)' }}>{t.tipo || 'tarefa'}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}</span>
                   </button>
                 ))
               })()}

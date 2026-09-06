@@ -81,11 +81,11 @@ function LoadingPlaceholder() {
   return (
     <div style={{ padding: '40px 0' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ width: '35%', height: 22, background: '#f0f0f0', borderRadius: 8, animation: 'shimmer 1.5s infinite' }} />
+        <div style={{ width: '35%', height: 22, background: 'var(--v2-surface2)', borderRadius: 8, animation: 'shimmer 1.5s infinite' }} />
         <div style={{ display: 'flex', gap: 12 }}>
-          {[1,2,3].map(i => <div key={i} style={{ flex: 1, height: 120, background: '#f5f5f5', borderRadius: 12, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.2}s` }} />)}
+          {[1,2,3].map(i => <div key={i} style={{ flex: 1, height: 120, background: 'var(--v2-surface1)', borderRadius: 12, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.2}s` }} />)}
         </div>
-        <div style={{ width: '60%', height: 14, background: '#f5f5f5', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
+        <div style={{ width: '60%', height: 14, background: 'var(--v2-surface1)', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
         <div style={{ width: '40%', height: 14, background: '#f8f8f8', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
       </div>
     </div>
@@ -115,28 +115,28 @@ const STATUS_LABEL: Record<string, string> = {
 
 // Cor de fundo (clara) do selo / bolinha
 const STATUS_COLOR: Record<string, string> = {
-  rascunho: '#eeeeee',
-  agendado: '#fef9c3',
-  aguardando_aprovacao: '#fef3c7',
-  aprovado: '#dcfce7',
+  rascunho: 'var(--v2-surface2)',
+  agendado: 'var(--v2-amber-bg)',
+  aguardando_aprovacao: 'var(--v2-amber-bg)',
+  aprovado: 'var(--v2-ok-bg)',
   corrigir: '#fff3cd',
-  reprovado: '#fee2e2',
-  publicando: '#dbeafe',
-  publicado: '#dcfce7',
+  reprovado: 'var(--v2-hot-bg)',
+  publicando: 'var(--v2-info-bg)',
+  publicado: 'var(--v2-ok-bg)',
   falha_publicacao: '#fde2e2',
 }
 
 // Cor do texto do selo
 const STATUS_TEXT: Record<string, string> = {
-  rascunho: '#666666',
-  agendado: '#a16207',       // amarelo/âmbar
-  aguardando_aprovacao: '#92400e',
-  aprovado: '#16a34a',
-  corrigir: '#b45309',
-  reprovado: '#b91c1c',
-  publicando: '#1d4ed8',     // azul
-  publicado: '#16a34a',      // verde
-  falha_publicacao: '#991b1b', // vermelho escuro
+  rascunho: 'var(--v2-ink2)',
+  agendado: 'var(--v2-amber)',       // amarelo/âmbar
+  aguardando_aprovacao: 'var(--v2-amber)',
+  aprovado: 'var(--v2-ok)',
+  corrigir: 'var(--v2-amber)',
+  reprovado: 'var(--v2-hot)',
+  publicando: 'var(--v2-info)',     // azul
+  publicado: 'var(--v2-ok)',      // verde
+  falha_publicacao: 'var(--v2-hot)', // vermelho escuro
 }
 
 const ENTREGAVEIS_OPCOES = [
@@ -232,8 +232,8 @@ function PostThumb({ src, size = 60, radius = 10 }: { src?: string; size?: numbe
   if (!src || erro) {
     return (
       <div style={{
-        width: size, height: size, borderRadius: radius, background: '#f4f4f4', border: '1px solid #eee',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', flexShrink: 0,
+        width: size, height: size, borderRadius: radius, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', flexShrink: 0,
       }}>
         <IconImageOff size={Math.round(size * 0.4)} />
       </div>
@@ -247,7 +247,7 @@ function ImagemComFallback({ src }: { src: string }) {
   const [erro, setErro] = useState(false)
   if (erro) {
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, gap: 6, flexDirection: 'column' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 12, gap: 6, flexDirection: 'column' }}>
         <IconImageOff size={22} />
         Imagem indisponível
       </div>
@@ -282,9 +282,9 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: '#111' }}>Minhas aprovações</h2>
+      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>Minhas aprovações</h2>
       {pendentes.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
           <p>Nenhuma pendência de aprovação no momento.</p>
         </div>
       ) : (
@@ -294,10 +294,10 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
             const cli = clientes.find((c: any) => c.id === p.clienteId)
             const capa = capaDoPost(p)
             return (
-              <div key={p.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+              <div key={p.id} style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                 <div style={{ padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   {capa && (
-                    <div style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', background: '#eee', flexShrink: 0 }}>
+                    <div style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0 }}>
                       {/\.(mp4|mov|m4v)(\?|$)/i.test(capa) ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                     </div>
@@ -305,21 +305,21 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       {cli?.logo && (
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#111', flexShrink: 0 }}>
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: 'var(--v2-ink)', flexShrink: 0 }}>
                           <AvatarCliente logo={cli.logo} nome={p.clienteNome} />
                         </span>
                       )}
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{p.clienteNome}</span>
-                      <span style={{ background: ehCopy ? '#dbeafe' : '#fef3c7', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? '#1d4ed8' : '#92400e' }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{p.clienteNome}</span>
+                      <span style={{ background: ehCopy ? 'var(--v2-info-bg)' : 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? 'var(--v2-info)' : 'var(--v2-amber)' }}>
                         {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
                       </span>
                     </div>
-                    {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: '#888' }}>Briefing: {p.briefing}</p>}
-                    <p style={{ margin: '0 0 6px', fontSize: 13, color: '#333', whiteSpace: 'pre-wrap', maxHeight: 100, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>
+                    {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--v2-ink3)' }}>Briefing: {p.briefing}</p>}
+                    <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', maxHeight: 100, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>
                     {(p.imagens || []).length > 0 && !ehCopy && (
                       <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto' }}>
                         {p.imagens.map((m: string, i: number) => (
-                          <div key={i} style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', background: '#eee', flexShrink: 0 }}>
+                          <div key={i} style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0 }}>
                             {/\.(mp4|mov|m4v)(\?|$)/i.test(m) ? <video src={m} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                           </div>
@@ -328,15 +328,15 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
                     )}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                       <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
-                        style={{ padding: '8px 20px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        style={{ padding: '8px 20px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
                         Aprovar
                       </button>
                       <button onClick={() => { setComentario(c => ({ ...c, [p.id]: '' })); agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo') }} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: '#fff', color: '#92400e', border: '1px solid #fde68a', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
                         Pedir ajuste
                       </button>
                       <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
+                        style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
                         Rejeitar
                       </button>
                     </div>
@@ -351,17 +351,17 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
       {/* Modal de rejeicao */}
       {rejeitar && (
         <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#b91c1c' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#888' }}>Informe o motivo da rejeição. O criativo voltará para a equipe com esta justificativa.</p>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-hot)' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>Informe o motivo da rejeição. O criativo voltará para a equipe com esta justificativa.</p>
             <textarea lang="pt-BR" value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #fca5a5', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-hot-bg)', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
               <button disabled={!motivoRejeicao.trim() || enviando === rejeitar.id} onClick={async () => {
                 await agir(rejeitar.id, rejeitar.ehCopy ? 'ajuste_copy' : 'ajuste_criativo', `REJEITADO: ${motivoRejeicao}`)
                 setRejeitar(null)
-              }} style={{ padding: '9px 20px', background: motivoRejeicao.trim() ? '#b91c1c' : '#f0f0f0', color: motivoRejeicao.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: motivoRejeicao.trim() ? 'pointer' : 'not-allowed' }}>
+              }} style={{ padding: '9px 20px', background: motivoRejeicao.trim() ? 'var(--v2-hot)' : 'var(--v2-surface2)', color: motivoRejeicao.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: motivoRejeicao.trim() ? 'pointer' : 'not-allowed' }}>
                 Confirmar rejeicao
               </button>
             </div>
@@ -389,8 +389,8 @@ function capaDoPost(post: any): string {
 function RedeBadge({ rede }: { rede: 'instagram' | 'facebook' }) {
   const fb = rede === 'facebook'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: 999, padding: '2px 8px 2px 6px', fontSize: 9, fontWeight: 700 }}>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff">{fb
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', borderRadius: 999, padding: '2px 8px 2px 6px', fontSize: 9, fontWeight: 700 }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--v2-surface)">{fb
         ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         : <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z" />}</svg>
       {fb ? 'Facebook' : 'Instagram'}
@@ -694,25 +694,12 @@ function Dashboard() {
   useEffect(() => { if (mobile && recolhida) setRecolhida(false) }, [mobile, recolhida])
   // Fecha o drawer ao trocar de aba
   useEffect(() => { setMenuMobile(false) }, [aba])
-  // Modo escuro: mantém botões amarelos AMARELOS (texto branco). O filtro de inversão
-  // deixaria-os marrons; marcamos por cor computada (#ffc00f) e a classe .btn-amarelo
-  // os re-inverte de volta. Reaplica via MutationObserver (modais/listas que surgem).
+  // Tema no <html>: os tokens --v2-* vivem em :root[data-theme] (globals.css), então
+  // modais em portal (fora da raiz do painel) e o body inteiro acompanham o tema.
   useEffect(() => {
     if (typeof document === 'undefined') return
-    if (tema !== 'escuro') { document.querySelectorAll('.btn-amarelo').forEach(b => b.classList.remove('btn-amarelo')); return }
-    const marcar = () => {
-      document.querySelectorAll('button').forEach(b => {
-        const amarelo = getComputedStyle(b).backgroundColor === 'rgb(255, 192, 15)'
-        if (amarelo) b.classList.add('btn-amarelo')
-        else if (b.classList.contains('btn-amarelo')) b.classList.remove('btn-amarelo')
-      })
-    }
-    let raf = 0
-    const agendar = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(marcar) }
-    marcar()
-    const obs = new MutationObserver(agendar)
-    obs.observe(document.body, { childList: true, subtree: true })
-    return () => { obs.disconnect(); cancelAnimationFrame(raf) }
+    document.documentElement.setAttribute('data-theme', tema === 'escuro' ? 'dark' : 'light')
+    document.body.style.background = tema === 'escuro' ? '#0F0E0A' : '#F5F4EF'
   }, [tema])
   // Notificação aberta em modal (sem sair do Inbox)
   const [notifAberta, setNotifAberta] = useState<any | null>(null)
@@ -930,27 +917,27 @@ function Dashboard() {
     const setNivel = (g: string, n: 'ver' | 'editar' | 'excluir', valor: boolean) =>
       onChange({ ...(perm || {}), [g]: { ...normalizaNivel(perm?.[g]), [n]: valor } })
     return (
-      <div style={{ width: '100%', marginTop: 4, background: '#fafafa', borderRadius: 10, padding: 12 }}>
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo}</label>
+      <div style={{ width: '100%', marginTop: 4, background: 'var(--v2-surface1)', borderRadius: 10, padding: 12 }}>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo}</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 6, columnGap: 12, alignItems: 'center' }}>
           <span />
-          <div style={{ display: 'flex', gap: 6 }}>{PERM_NIVEIS.map(n => <span key={n.chave} style={{ width: 52, textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#aaa' }}>{n.label}</span>)}</div>
+          <div style={{ display: 'flex', gap: 6 }}>{PERM_NIVEIS.map(n => <span key={n.chave} style={{ width: 52, textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)' }}>{n.label}</span>)}</div>
           {gruposDoPerfil(perfilInstancia).map(g => (
             <div key={g.chave} style={{ display: 'contents' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: '#333' }}>{g.label}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink)' }}>{g.label}</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 {PERM_NIVEIS.map(n => {
                   const on = efetivo(g.chave, n.chave)
                   return (
                     <button key={n.chave} type="button" onClick={() => setNivel(g.chave, n.chave, !on)}
-                      style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#16a34a' : '#fff', color: on ? '#fff' : '#bbb', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
+                      style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid var(--v2-ok)' : '1.5px solid var(--v2-rule)', background: on ? 'var(--v2-ok)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
                   )
                 })}
               </div>
             </div>
           ))}
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>Começa no padrão do papel; ajuste clicando. O Financeiro é exclusivo do admin.</p>
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Começa no padrão do papel; ajuste clicando. O Financeiro é exclusivo do admin.</p>
       </div>
     )
   }
@@ -968,41 +955,41 @@ function Dashboard() {
     const setAcao = (acao: string, valor: boolean) => onChange({ ...g, acoes: { ...(g.acoes || {}), [acao]: valor } })
     const Cel = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
       <button type="button" onClick={onClick}
-        style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: on ? '#16a34a' : '#fff', color: on ? '#fff' : '#bbb', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
+        style={{ width: 52, height: 28, borderRadius: 7, border: on ? '1.5px solid var(--v2-ok)' : '1.5px solid var(--v2-rule)', background: on ? 'var(--v2-ok)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{on ? '✓' : '—'}</button>
     )
     // Só as telas que EXISTEM nesta instância: tira as ocultas pelo perfil e as
     // exclusivas de outro perfil (a clínica não precisa ver "Viagens").
     const abasVisiveis = ABAS_PERM.filter(a => !ocultas.includes(a.key) && (!a.perfil || a.perfil === perfilInstancia))
     const cats = Array.from(new Set(abasVisiveis.map(a => a.categoria)))
     return (
-      <div style={{ width: '100%', marginTop: 8, background: '#fafafa', borderRadius: 10, padding: 12 }}>
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões detalhadas (telas e ações)</label>
-        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ações</p>
+      <div style={{ width: '100%', marginTop: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: 12 }}>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões detalhadas (telas e ações)</label>
+        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ações</p>
         {ACOES_PERM.map(a => {
           const on = podeAcaoGranular(r, a.key, perm, permGranular)
           return (
             <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '5px 0' }}>
-              <span style={{ flex: 1, fontSize: 12.5, color: on ? '#333' : '#bbb' }}>{a.label}</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: on ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>{a.label}</span>
               <Cel on={on} onClick={() => setAcao(a.key, !on)} />
             </div>
           )
         })}
-        <p style={{ margin: '10px 0 6px', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Telas</p>
+        <p style={{ margin: '10px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Telas</p>
         {cats.map(cat => (
           <div key={cat} style={{ marginBottom: 6 }}>
-            <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#bbb' }}>{cat}</p>
+            <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cat}</p>
             {abasVisiveis.filter(a => a.categoria === cat).map(a => {
               const on = podeAbaGranular(r, a.key, perm, permGranular)
               return (
                 <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
-                  <span style={{ flex: 1, fontSize: 12.5, color: on ? '#333' : '#bbb' }}>{a.label}</span>
+                  <span style={{ flex: 1, fontSize: 12.5, color: on ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>{a.label}</span>
                   <Cel on={on} onClick={() => setAba(a.key, !on)} />
                 </div>
               )
             })}
           </div>
         ))}
-        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#bbb' }}>{escopo === 'papel' ? 'Vale para todo mundo com este papel. Salva na hora.' : 'Começa no padrão do papel; ajuste só o que for específico deste usuário.'}</p>
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{escopo === 'papel' ? 'Vale para todo mundo com este papel. Salva na hora.' : 'Começa no padrão do papel; ajuste só o que for específico deste usuário.'}</p>
       </div>
     )
   }
@@ -1913,28 +1900,13 @@ function Dashboard() {
     ? <SplashRegra pronto={false} onFim={() => setSplash(false)} tema={tema} />
     : <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
 
+  // RAIZ DO PAINEL — tema escuro de VERDADE (tokens), sem o antigo filter:invert.
+  // O filtro criava containing block para ~80 elementos position:fixed e estourava
+  // o layout; agora cada cor lê var(--v2-*) e o tema troca no <html> (efeito acima),
+  // então portais (modais no body) também acompanham.
   return (
-    <div className={tema === 'escuro' ? 'soma10-tema-escuro' : ''} style={{ minHeight: '100vh', background: '#F5F4EF', fontFamily: 'Inter, sans-serif', ...(tema === 'escuro' ? { filter: 'invert(1) hue-rotate(180deg)' } : {}) }}>
-      {/* Inverte de volta imagens, vídeos e miniaturas para que continuem com cores naturais no modo escuro (técnica de inversão = "cores opostas") */}
+    <div className="soma10-v2" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ minHeight: '100vh', background: 'var(--v2-ground)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)' }}>
       <style jsx global>{`
-        .soma10-tema-escuro img, .soma10-tema-escuro video, .soma10-tema-escuro iframe {
-          filter: invert(1) hue-rotate(180deg);
-        }
-        .soma10-tema-escuro .soma10-no-invert {
-          filter: invert(1) hue-rotate(180deg);
-        }
-        /* Imagens/fotos dentro de container no-invert: ja sao re-invertidas pelo proprio
-           container, entao nao aplicar a inversao de imagem de novo (mantem cor natural). */
-        .soma10-tema-escuro .soma10-no-invert img,
-        .soma10-tema-escuro .soma10-no-invert video {
-          filter: none;
-        }
-        /* Botoes amarelos (marcados via JS): continuam amarelos no escuro, com texto branco. */
-        .soma10-tema-escuro .btn-amarelo {
-          filter: invert(1) hue-rotate(180deg);
-          color: #fff !important;
-        }
-        .soma10-tema-escuro .btn-amarelo svg { stroke: #fff !important; }
         /* Rail do layout novo (escopo PRÓPRIO — nunca em .soma10-v2, que é só tokens) */
         .v2-rail::-webkit-scrollbar { display: none; }
         .v2-rail .v2-nav:hover { background: var(--v2-surface2) !important; color: var(--v2-ink) !important; }
@@ -1967,8 +1939,8 @@ function Dashboard() {
               <IconBell size={18} />
               {notificacoes.some(n => !n.lida) && (
                 <span style={{
-                  position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: '#ef4444',
-                  color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #fff',
+                  position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: 'var(--v2-hot)',
+                  color: 'var(--v2-surface)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid var(--v2-surface)',
                 }}>
                   {notificacoes.filter(n => !n.lida).length > 9 ? '9+' : notificacoes.filter(n => !n.lida).length}
                 </span>
@@ -1978,13 +1950,13 @@ function Dashboard() {
             {inboxAberto && (
               <>
                 <div onClick={fecharFora(() => setInboxAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
-                <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: '#fff', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid #eee', zIndex: 200 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff' }}>
+                <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid var(--v2-rule)', zIndex: 200 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--v2-rule)', position: 'sticky', top: 0, background: 'var(--v2-surface)' }}>
                     <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)' }}>Notificações</span>
-                    <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Ver todas</button>
+                    <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Ver todas</button>
                   </div>
                   {notificacoes.length === 0 ? (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma notificação.</div>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma notificação.</div>
                   ) : (
                     notificacoes.slice(0, 12).map(n => (
                       <div key={n.id} onClick={() => {
@@ -1993,14 +1965,14 @@ function Dashboard() {
                         else if (n.postId) { const p = posts.find((x: any) => x.id === n.postId); if (p) { setInboxAberto(false); setPostPreview(p) } }
                         else if (n.tipo?.startsWith('tarefa_')) { setInboxAberto(false); setAba('tarefas' as any) }
                         else if (n.tipo === 'mensagem_privada') { setInboxAberto(false); setAba('mensagens' as any) }
-                      }} style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: n.lida ? '#fff' : '#fffbeb', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : '#f59e0b', marginTop: 5, flexShrink: 0 }} />
+                      }} style={{ padding: '12px 16px', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', background: n.lida ? 'var(--v2-surface)' : 'var(--v2-amber-bg)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.lida ? 'transparent' : 'var(--v2-amber-on)', marginTop: 5, flexShrink: 0 }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888', lineHeight: 1.4 }}>{n.mensagem}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>{n.mensagem}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
-                        <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
+                        <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
                       </div>
                     ))
                   )}
@@ -2017,7 +1989,7 @@ function Dashboard() {
               if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
               // Visualizar como CLIENTE (somente leitura): abre o portal
               if (v.startsWith('cli:')) { setViewAsClient(true); router.push(`/cliente/${v.replace('cli:', '')}`); return }
-            }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? '#ffc00f' : '#e0e0e0'}`, background: verComoPapel ? '#fffbeb' : '#fff', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
+            }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoPapel ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
               <option value="">Visualizar como...</option>
               {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
               <optgroup label="Colaboradores (papel)">
@@ -2032,23 +2004,23 @@ function Dashboard() {
             </select>
           )}
           <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
-            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: minhaFoto ? '#eee' : '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: minhaFoto ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {minhaFoto
                 ? <img src={minhaFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ color: 'var(--v2-ink)', fontSize: 12, fontWeight: 800 }}>{session?.user?.name?.[0]?.toUpperCase()}</span>}
             </div>
             {!mobile && <span style={{ fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600 }}>{session?.user?.name}</span>}
           </button>
-          {!mobile && <span style={{ background: '#ffc00f', color: 'var(--v2-ink)', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
-          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid #ddd', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Sair</button>
+          {!mobile && <span style={{ background: 'var(--v2-amber-on)', color: '#17150E', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
+          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid var(--v2-rule)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Sair</button>
         </div>
       </div>
 
       {/* Menu hamburguer (mobile) — abre o drawer da sidebar */}
       {mobile && !menuMobile && (
         <button onClick={() => setMenuMobile(true)} aria-label="Menu" className="soma10-no-invert"
-          style={{ position: 'fixed', top: 'calc(12px + env(safe-area-inset-top))', left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: '#fff', border: '1px solid #eee', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          style={{ position: 'fixed', top: 'calc(12px + env(safe-area-inset-top))', left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink)" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
       )}
       {/* Backdrop do drawer (mobile) */}
@@ -2069,7 +2041,7 @@ function Dashboard() {
           height: '100vh', overflowY: 'auto', padding: recolhida ? '22px 10px' : '24px 16px', boxSizing: 'border-box', transition: 'width 0.18s', scrollbarWidth: 'none',
         }}>
           {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
-          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid #f4f4f4' }} title="Ir para o início">
+          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid var(--v2-surface1)' }} title="Ir para o início">
             {recolhida
               ? <div style={{ background: 'var(--v2-ink)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} /></div>
               : <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />}
@@ -2110,7 +2082,7 @@ function Dashboard() {
           {podeTrocarLoja && !recolhida && (
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>Ver loja</label>
-              <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? '#ffc00f' : '#e0e0e0'}`, background: verComoLojaId ? '#fffbeb' : '#fff', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+              <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoLojaId ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                 <option value="">Todas (rede)</option>
                 {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
               </select>
@@ -2127,7 +2099,7 @@ function Dashboard() {
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
               <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-on)', borderRadius: 12, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', flexShrink: 0, border: '1px solid #fde68a' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#17150E', flexShrink: 0, border: '1px solid var(--v2-amber-bg)' }}>
                     <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                   </span>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--v2-ink)' }}>
@@ -2146,13 +2118,13 @@ function Dashboard() {
                 {/* Cabecalho colapsavel — clique para abrir a busca/lista */}
                 <button onClick={() => setClientesAberto(v => !v)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
-                  border: '1.5px solid #e0e0e0', background: '#f8f8f8', cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1.5px solid var(--v2-rule)', background: '#f8f8f8', cursor: 'pointer', fontFamily: 'inherit',
                 }}>
                   <span style={{ color: 'var(--v2-ink3)', display: 'flex' }}><IconSearch size={14} /></span>
-                  <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? '#111' : '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? 'var(--v2-ink)' : 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {clienteEmVisualizacao ? clienteEmVisualizacao.nome : 'Acessar cliente (sub-account)'}
                   </span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: clientesAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: clientesAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
                 </button>
 
                 {clientesAberto && (
@@ -2165,8 +2137,8 @@ function Dashboard() {
                         placeholder="Buscar cliente..."
                         autoFocus
                         style={{
-                          width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid #e0e0e0',
-                          fontSize: 13, fontWeight: 600, background: '#fff', color: 'var(--v2-ink)', fontFamily: 'inherit', boxSizing: 'border-box',
+                          width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid var(--v2-rule)',
+                          fontSize: 13, fontWeight: 600, background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'inherit', boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -2327,7 +2299,7 @@ function Dashboard() {
                       background: 'none', border: 'none', cursor: 'pointer',
                     }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
                     </button>
                     {configAberto && (
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2346,7 +2318,7 @@ function Dashboard() {
             <div>
               {!recolhida && <>
                 <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente</p>
-                <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: '#16a34a' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
+                <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: 'var(--v2-ok)' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
               </>}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {([['planner', 'Planner'], ['aprovacoes', 'Aprovações'], ['marca', 'Marca (Brand Board)'], ['listening', 'Social Listening'], ['analytics', 'Analytics']] as [string, string][]).map(([a, label]) => (
@@ -2368,17 +2340,17 @@ function Dashboard() {
 
         {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
         {mobile && !ehCliente && (
-          <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
+          <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
             {[{ k: 'home', label: 'Início' }, { k: 'meu-dia', label: 'Meu dia' }, { k: 'mensagens', label: 'Chat' }].map(it => {
               const ativo = aba === it.k && !menuMobile
               return (
-                <button key={it.k} onClick={() => { setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? '#111' : '#9aa0a6' }}>
+                <button key={it.k} onClick={() => { setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
                   <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONE_ABA[it.k] || ICONE_ABA.default} /></svg>
                   <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{it.label}</span>
                 </button>
               )
             })}
-            <button onClick={() => setMenuMobile(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: menuMobile ? '#111' : '#9aa0a6' }}>
+            <button onClick={() => setMenuMobile(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: menuMobile ? 'var(--v2-ink)' : '#9aa0a6' }}>
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
               <span style={{ fontSize: 10.5, fontWeight: menuMobile ? 700 : 500 }}>Menu</span>
             </button>
@@ -2393,26 +2365,26 @@ function Dashboard() {
 
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>Visualizando como <b>{verComoPapel === 'gerente' ? 'Gerente' : 'Usuário'}</b> — você vê o menu que esse papel enxerga. Suas permissões reais não mudam.</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-amber)' }}>Visualizando como <b>{verComoPapel === 'gerente' ? 'Gerente' : 'Usuário'}</b> — você vê o menu que esse papel enxerga. Suas permissões reais não mudam.</span>
             <span style={{ flex: 1 }} />
-            <button onClick={() => setVerComoPapel('')} style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Voltar à minha visão</button>
+            <button onClick={() => setVerComoPapel('')} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Voltar à minha visão</button>
           </div>
         )}
 
         {/* Faixa indicando visualizacao filtrada por cliente (so para equipe, nao para o cliente logado) */}
         {clienteEmVisualizacao && !ehCliente && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, background: '#fffbeb', border: '1px solid #fde68a',
+            display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)',
             borderRadius: 12, padding: '10px 16px', marginBottom: 20,
           }}>
-            <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', flexShrink: 0, border: '1px solid #fde68a' }}>
+            <span style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#17150E', flexShrink: 0, border: '1px solid var(--v2-amber-bg)' }}>
               <AvatarCliente logo={clienteEmVisualizacao.logo} nome={clienteEmVisualizacao.nome} />
             </span>
-            <p style={{ margin: 0, fontSize: 13, color: '#92400e' }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-amber)' }}>
               Você está visualizando o painel como o cliente <strong>{clienteEmVisualizacao.nome}</strong> (@{clienteEmVisualizacao.instagram?.replace(/^@/, '')}) — somente o conteúdo dele é exibido.
             </p>
-            <button onClick={() => { setVerComoClienteId('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#92400e', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={() => { setVerComoClienteId('') }} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={13} /> Voltar ao Painel
             </button>
           </div>
@@ -2423,12 +2395,12 @@ function Dashboard() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
-              <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 4 }}>
+              <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 4 }}>
                 {(['lista', 'calendario', 'fluxo'] as const).map(v => (
                   <button key={v} onClick={() => setVisualizacaoPosts(v)} style={{
                     padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                    background: visualizacaoPosts === v ? '#111' : 'transparent',
-                    color: visualizacaoPosts === v ? '#ffc00f' : '#888',
+                    background: visualizacaoPosts === v ? 'var(--v2-ink)' : 'transparent',
+                    color: visualizacaoPosts === v ? 'var(--v2-amber-on)' : 'var(--v2-ink3)',
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                   }}>
                     {v === 'lista' ? <IconList size={14} /> : v === 'calendario' ? <IconCalendar size={14} /> : <IconFlow size={14} />}
@@ -2440,19 +2412,19 @@ function Dashboard() {
 
             {/* Aviso de falhas de publicação */}
             {!avisoFalhaOculto && postsView.some(p => p.status === 'falha_publicacao') && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
-                <span style={{ color: '#b91c1c', display: 'flex' }}><IconAlert size={18} /></span>
-                <p style={{ margin: 0, fontSize: 13, color: '#b91c1c', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+                <span style={{ color: 'var(--v2-hot)', display: 'flex' }}><IconAlert size={18} /></span>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-hot)', flex: 1 }}>
                   {postsView.filter(p => p.status === 'falha_publicacao').length === 1
                     ? 'Há 1 post que falhou ao publicar. Verifique e tente novamente.'
                     : `Há ${postsView.filter(p => p.status === 'falha_publicacao').length} posts que falharam ao publicar. Verifique e tente novamente.`}
                 </p>
-                <button onClick={() => setAvisoFalhaOculto(true)} title="Dispensar" style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
+                <button onClick={() => setAvisoFalhaOculto(true)} title="Dispensar" style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
               </div>
             )}
 
             {postsView.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>
                 <p>Nenhum post {clienteEmVisualizacao ? 'para este cliente ainda' : 'criado ainda. Clique em "Novo Post" para começar'}.</p>
               </div>
             ) : visualizacaoPosts === 'calendario' ? (
@@ -2462,25 +2434,25 @@ function Dashboard() {
                 {(['rascunho', 'aguardando_aprovacao', 'corrigir', 'aprovado', 'reprovado', 'publicado', 'falha_publicacao'] as const).map(st => {
                   const itens = postsView.filter(p => p.status === st)
                   return (
-                    <div key={st} style={{ flex: '0 0 240px', background: '#fafafa', borderRadius: 14, border: '1px solid #eee', display: 'flex', flexDirection: 'column', maxHeight: 640 }}>
-                      <div style={{ padding: '12px 14px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#333' }}>
-                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[st] || '#ddd', display: 'inline-block', border: '1px solid rgba(0,0,0,0.08)' }} />
+                    <div key={st} style={{ flex: '0 0 240px', background: 'var(--v2-surface1)', borderRadius: 14, border: '1px solid var(--v2-rule)', display: 'flex', flexDirection: 'column', maxHeight: 640 }}>
+                      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[st] || 'var(--v2-surface2)', display: 'inline-block', border: '1px solid rgba(0,0,0,0.08)' }} />
                           {STATUS_LABEL[st]}
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '2px 8px', border: '1px solid #eee' }}>{itens.length}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 999, padding: '2px 8px', border: '1px solid var(--v2-rule)' }}>{itens.length}</span>
                       </div>
                       <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
                         {itens.length === 0 ? (
-                          <p style={{ margin: '8px 4px', fontSize: 12, color: '#ccc', textAlign: 'center' }}>Nenhum post</p>
+                          <p style={{ margin: '8px 4px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>Nenhum post</p>
                         ) : itens.map(post => (
                           <div key={post.id} onClick={() => router.push(`/aprovar/${post.id}`)} style={{
-                            background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
+                            background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
                           }}>
                             <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={38} radius={8} />
                             <div style={{ minWidth: 0 }}>
                               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.clienteNome}</p>
-                              <p style={{ margin: 0, fontSize: 11, color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
+                              <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.legenda}</p>
                             </div>
                           </div>
                         ))}
@@ -2492,47 +2464,47 @@ function Dashboard() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {postsView.map(post => (
-                  <div key={post.id} style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div key={post.id} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', gap: 16, alignItems: 'center' }}>
                     <PostThumb src={(post as any).thumbnail || post.imagens?.[0]} size={60} radius={10} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: 'var(--v2-ink)', flexShrink: 0 }}>
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: '#17150E', flexShrink: 0 }}>
                           {(() => {
                             const cli = clientes.find(c => c.id === post.clienteId || c.nome === post.clienteNome)
                             return <AvatarCliente logo={cli?.logo} nome={post.clienteNome} />
                           })()}
                         </span>
                         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{post.clienteNome}</span>
-                        <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || '#555', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || 'var(--v2-ink2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
                         </span>
                         {(post as any).rascunhoInterno && (
-                          <span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ background: 'var(--v2-info-bg)', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <IconLock size={12} /> Interno (cliente não vê)
                           </span>
                         )}
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
-                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#aaa' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
+                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
                       {post.status === 'falha_publicacao' && post.erroPublicacao && (
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#b91c1c' }}>Erro: {post.erroPublicacao}</p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>Erro: {post.erroPublicacao}</p>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       {post.status === 'falha_publicacao' && (
                         <button onClick={() => republicarPost(post)} disabled={republicandoId === post.id} style={{
-                          padding: '8px 14px', background: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: 'var(--v2-ink)', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
+                          padding: '8px 14px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: '#17150E', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
                         }}>
                           {republicandoId === post.id ? 'Publicando...' : 'Tentar novamente'}
                         </button>
                       )}
                       <button onClick={() => iniciarEdicaoPost(post)} style={{
-                        padding: '8px 14px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
+                        padding: '8px 14px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
                       }}>
                         Editar
                       </button>
                       <button onClick={() => router.push(`/aprovar/${post.id}`)} style={{
-                        padding: '8px 14px', background: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: '#ffc00f', cursor: 'pointer',
+                        padding: '8px 14px', background: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-amber-on)', cursor: 'pointer',
                       }}>
                         Ver
                       </button>
@@ -2542,14 +2514,14 @@ function Dashboard() {
                           if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast('Link de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(url, 'info'))
                           else toast(url, 'info')
                         }} title="Copiar o link público de aprovação (sem login) para enviar ao cliente" style={{
-                          padding: '8px 14px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
+                          padding: '8px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
                         }}>
                           Copiar link
                         </button>
                       )}
                       {role !== 'cliente' && (
                         <button onClick={() => excluirPost(post)} title="Excluir post" style={{
-                          padding: '8px 10px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, color: '#b91c1c', cursor: 'pointer',
+                          padding: '8px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, color: 'var(--v2-hot)', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <IconTrash size={14} />
@@ -2568,16 +2540,16 @@ function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
             <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Planner{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+              <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
                 {(['lista', 'calendario'] as const).map(v => (
                   <button key={v} onClick={() => setPlannerView(v)} style={{
                     padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                    background: plannerView === v ? '#fff' : 'transparent', color: plannerView === v ? '#111' : '#888',
+                    background: plannerView === v ? 'var(--v2-surface)' : 'transparent', color: plannerView === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                     boxShadow: plannerView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                   }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
                 ))}
               </div>
-              <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+              <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
                 <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Novo Post
               </button>
             </div>
@@ -2586,14 +2558,14 @@ function Dashboard() {
 
         {/* Status/barra de progresso ao publicar/agendar/salvar */}
         {aba === 'planner' && (criandoPost || rascunhoMsg) && (
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: 13, color: '#1d4ed8' }}>
+          <div style={{ background: 'var(--v2-info-bg)', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: 13, color: 'var(--v2-info)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: '#1d4ed8', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
+              {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: 'var(--v2-info)', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
               <span>{rascunhoMsg || 'Processando...'}</span>
             </div>
             {criandoPost && (
-              <div style={{ position: 'relative', height: 4, borderRadius: 999, background: '#dbeafe', overflow: 'hidden', marginTop: 10 }}>
-                <div style={{ position: 'absolute', top: 0, bottom: 0, background: '#1d4ed8', borderRadius: 999, animation: 'barraInd 1.2s ease-in-out infinite' }} />
+              <div style={{ position: 'relative', height: 4, borderRadius: 999, background: 'var(--v2-info-bg)', overflow: 'hidden', marginTop: 10 }}>
+                <div style={{ position: 'absolute', top: 0, bottom: 0, background: 'var(--v2-info)', borderRadius: 999, animation: 'barraInd 1.2s ease-in-out infinite' }} />
               </div>
             )}
             <style>{`@keyframes barraInd{0%{left:-40%;width:40%}50%{left:30%;width:50%}100%{left:100%;width:40%}}`}</style>
@@ -2607,7 +2579,7 @@ function Dashboard() {
             {/* Filtro de cliente — mesma seleção da Lista (persiste ao atualizar) */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
               <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
-                style={{ minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 <option value="">Todos os clientes</option>
                 {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               </select>
@@ -2624,14 +2596,14 @@ function Dashboard() {
             {/* Filtros */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
               <input value={bibBusca} onChange={e => setBibBusca(e.target.value)} placeholder="Buscar por legenda..."
-                style={{ flex: 1.5, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                style={{ flex: 1.5, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
-                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }}>
+                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }}>
                 <option value="">Todos os clientes</option>
                 {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               </select>
               <select value={bibStatus} onChange={e => setBibStatus(e.target.value)}
-                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }}>
+                style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }}>
                 <option value="">Todos os status</option>
                 {Object.keys(STATUS_LABEL).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
               </select>
@@ -2655,7 +2627,7 @@ function Dashboard() {
                 .sort((a, b) => new Date(quando(b)).getTime() - new Date(quando(a)).getTime())
               if (filtrados.length === 0) {
                 return (
-                  <div style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>
+                  <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
                     <p>Nenhum conteúdo encontrado com esses filtros.</p>
                   </div>
                 )
@@ -2663,11 +2635,11 @@ function Dashboard() {
               return (
                 <>
                 {bibSelecionados.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{bibSelecionados.length} selecionado(s)</span>
-                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Selecionar todos</button>
-                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
-                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} /> Apagar selecionados</button>
+                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Selecionar todos</button>
+                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
+                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} /> Apagar selecionados</button>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
@@ -2678,14 +2650,14 @@ function Dashboard() {
                     const capa = capaDoPost(post)
                     return redesDoPost.map(rede => (
                     <div key={post.id + (rede || '')} onClick={() => setPostPreview(post)} style={{
-                      background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
-                      border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid #eee',
+                      background: 'var(--v2-surface)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                      border: bibSelecionados.includes(post.id) ? '2px solid #1877f2' : '1px solid var(--v2-surface2)',
                     }}>
-                      <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: 'var(--v2-surface1)', position: 'relative', overflow: 'hidden' }}>
                         {capa ? (
                           <ImagemComFallback src={capa} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11, gap: 4, flexDirection: 'column' }}>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 11, gap: 4, flexDirection: 'column' }}>
                             <IconImageOff size={18} />
                             Sem imagem
                           </div>
@@ -2696,19 +2668,19 @@ function Dashboard() {
                           style={{
                             position: 'absolute', top: 6, left: 6, width: 20, height: 20, borderRadius: 5, cursor: 'pointer',
                             background: bibSelecionados.includes(post.id) ? '#1877f2' : 'rgba(255,255,255,0.9)',
-                            border: bibSelecionados.includes(post.id) ? '1px solid #1877f2' : '1px solid #ccc',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 800,
+                            border: bibSelecionados.includes(post.id) ? '1px solid #1877f2' : '1px solid var(--v2-rule2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-surface)', fontSize: 13, fontWeight: 800,
                           }}>{bibSelecionados.includes(post.id) ? <IconCheck size={13} /> : null}</span>
 
                         {/* Lixeira — canto inferior direito */}
                         <button onClick={async (e) => { e.stopPropagation(); if (await confirmar('Excluir este post? Esta ação não pode ser desfeita.', { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true })) excluirPostDireto(post.id) }} title="Excluir"
                           style={{
                             position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: '50%', cursor: 'pointer',
-                            background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                            background: 'rgba(0,0,0,0.6)', border: 'none', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
                           }}><IconTrash size={13} /></button>
 
                         {post.imagens?.length > 1 && (
-                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 600, borderRadius: 999, padding: '1px 7px' }}>
+                          <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', fontSize: 10, fontWeight: 600, borderRadius: 999, padding: '1px 7px' }}>
                             {post.imagens.length}
                           </span>
                         )}
@@ -2726,15 +2698,15 @@ function Dashboard() {
                             )})()}
                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
                           </span>
-                          <span style={{ background: STATUS_COLOR[post.status] || '#eee', color: STATUS_TEXT[post.status] || '#555', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                          <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', color: STATUS_TEXT[post.status] || 'var(--v2-ink2)', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {STATUS_LABEL[post.status] || post.status}
                           </span>
                         </div>
-                        <p style={{ margin: '0 0 5px', fontSize: 10, color: '#aaa', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <p style={{ margin: '0 0 5px', fontSize: 10, color: 'var(--v2-ink3)', display: 'flex', alignItems: 'center', gap: 4 }}>
                           {post.status === 'agendado' ? <IconCalendar size={11} /> : null}{fmtData(dataMostrar)}
                         </p>
                         <p style={{
-                          margin: 0, fontSize: 11, color: '#888', lineHeight: 1.35,
+                          margin: 0, fontSize: 11, color: 'var(--v2-ink3)', lineHeight: 1.35,
                           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>
                           {post.legenda}
@@ -2756,16 +2728,16 @@ function Dashboard() {
                 alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
               }}>
                 <div onClick={e => e.stopPropagation()} style={{
-                  background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+                  background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
                 }}>
                   {/* Cabeçalho estilo Instagram */}
                   {(() => { const clientePreview = clientes.find(c => c.id === postPreview.clienteId || c.nome === postPreview.clienteNome); return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--v2-rule)' }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: clientePreview?.corPrimaria || '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: clientePreview?.corSecundaria || '#111', flexShrink: 0 }}>
                       <AvatarCliente logo={clientePreview?.logo} nome={postPreview.clienteNome} />
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)' }}>{postPreview.clienteNome}</span>
-                    <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || '#eee', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || '#333', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
+                    <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || 'var(--v2-surface2)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || 'var(--v2-ink)', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
                       onClick={() => { if (postPreview.erroPublicacao) toast(postPreview.erroPublicacao, 'erro', 'Motivo da falha') }}
                       title={postPreview.erroPublicacao || ''}>
                       {STATUS_LABEL[postPreview.status] || postPreview.status}
@@ -2775,7 +2747,7 @@ function Dashboard() {
 
                   {/* Motivo da falha */}
                   {postPreview.erroPublicacao && (
-                    <div style={{ padding: '10px 16px', background: '#fef2f2', borderBottom: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.5 }}>
+                    <div style={{ padding: '10px 16px', background: 'var(--v2-hot-bg)', borderBottom: '1px solid var(--v2-hot-bg)', fontSize: 12, color: 'var(--v2-hot)', lineHeight: 1.5 }}>
                       <strong style={{ display: 'block', marginBottom: 4 }}>Motivo da falha:</strong>
                       {postPreview.erroPublicacao}
                     </div>
@@ -2790,7 +2762,7 @@ function Dashboard() {
                     // Mostra o criativo no FORMATO REAL: o wrapper inline-block se ajusta
                     // à imagem (sem recorte), então os pinos das marcações caem no ponto certo.
                     return (
-                      <div style={{ position: 'relative', width: '100%', background: '#000', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ position: 'relative', width: '100%', background: 'var(--v2-ink)', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                         <div style={{ position: 'relative', display: 'inline-block', lineHeight: 0, maxWidth: '100%' }}>
                         {ehVideo
                           ? <video src={m} poster={(postPreview as any).capasVideo?.[m]} controls playsInline muted style={{ display: 'block', maxWidth: '100%', maxHeight: '58vh' }} />
@@ -2799,20 +2771,20 @@ function Dashboard() {
                           <>
                             {sidx > 0 && (
                               <button type="button" onClick={() => setPostPreviewSlide(sidx - 1)} aria-label="Anterior"
-                                style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                                style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                               </button>
                             )}
                             {sidx < imgs.length - 1 && (
                               <button type="button" onClick={() => setPostPreviewSlide(sidx + 1)} aria-label="Próxima"
-                                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                               </button>
                             )}
-                            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{sidx + 1}/{imgs.length}</div>
+                            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{sidx + 1}/{imgs.length}</div>
                             <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
                               {imgs.map((_, i) => (
-                                <span key={i} onClick={() => setPostPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === sidx ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
+                                <span key={i} onClick={() => setPostPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === sidx ? 'var(--v2-surface)' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
                               ))}
                             </div>
                           </>
@@ -2820,7 +2792,7 @@ function Dashboard() {
                         {/* Marcações do cliente sobre a imagem (pinos numerados = itens da lista abaixo) */}
                         {!ehVideo && Array.isArray((postPreview as any).anotacoes) && (postPreview as any).anotacoes.map((a: any, i: number) => (
                           (typeof a?.x === 'number' && typeof a?.y === 'number' && ((a.img ?? 0) === sidx))
-                            ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid #fff' }}>{i + 1}</div>
+                            ? <div key={i} title={a.text || a.texto} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%,-50%)', zIndex: 6, width: 24, height: 24, borderRadius: '50%', background: 'var(--v2-amber-on)', color: '#17150E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', border: '2px solid var(--v2-surface)' }}>{i + 1}</div>
                             : null
                         ))}
                         </div>
@@ -2844,7 +2816,7 @@ function Dashboard() {
                       </div>
                     )}
                     {postPreview.dataAgendada && (
-                      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>
                         Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
                       </p>
                     )}
@@ -2853,10 +2825,10 @@ function Dashboard() {
                         onde o cliente cai vindo de "Ver no planner", nas Solicitações). */}
                     {role !== 'cliente' && !['publicado', 'publicando'].includes(postPreview.status) && (
                       reprogramandoId === postPreview.id ? (
-                        <div style={{ margin: '0 0 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px' }}>
+                        <div style={{ margin: '0 0 10px', background: 'var(--v2-surface1)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px' }}>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Nova data e hora</label>
                           <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', background: '#fff' }} />
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }} />
                           <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#64748b', lineHeight: 1.45 }}>
                             {postPreview.status === 'aprovado'
                               ? 'O material já está aprovado — salvar coloca ele na fila de publicação nesta data.'
@@ -2866,11 +2838,11 @@ function Dashboard() {
                           </p>
                           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                             <button onClick={() => reprogramarPost(postPreview, novaDataReprog)} disabled={salvandoReprog} className="soma10-no-invert"
-                              style={{ flex: 1, padding: '9px 0', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: salvandoReprog ? 'not-allowed' : 'pointer' }}>
+                              style={{ flex: 1, padding: '9px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: salvandoReprog ? 'not-allowed' : 'pointer' }}>
                               {salvandoReprog ? 'Salvando...' : 'Salvar programação'}
                             </button>
                             <button onClick={() => setReprogramandoId(null)} disabled={salvandoReprog}
-                              style={{ padding: '9px 16px', background: '#fff', color: 'var(--v2-ink2)', border: '1px solid #e5e7eb', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                              style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                               Cancelar
                             </button>
                           </div>
@@ -2878,7 +2850,7 @@ function Dashboard() {
                       ) : (
                         <button onClick={() => { setNovaDataReprog(paraDatetimeLocal(postPreview.dataAgendada)); setReprogramandoId(postPreview.id) }}
                           title="Remarcar a data e a hora sem abrir o editor"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 0 10px', padding: '7px 13px', background: '#eef2ff', color: '#1d4ed8', border: '1px solid #dbeafe', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 0 10px', padding: '7px 13px', background: 'var(--v2-info-bg)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
                           {postPreview.dataAgendada ? 'Programar novamente' : 'Programar'}
                         </button>
@@ -2894,15 +2866,15 @@ function Dashboard() {
                       const tudo = total > 0 && feitos === total
                       const podeReenviar = tudo && ['rascunho', 'corrigir', 'reprovado'].includes(postPreview.status)
                       const Check = ({ on }: { on: boolean }) => (
-                        <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, border: on ? '1.5px solid #16a34a' : '1.5px solid #d6c48f', background: on ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: 'pointer' }}>
-                          {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                        <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, border: on ? '1.5px solid var(--v2-ok)' : '1.5px solid #d6c48f', background: on ? 'var(--v2-ok)' : 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: 'pointer' }}>
+                          {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
                         </span>
                       )
                       return (
-                        <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                        <div style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                             <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
-                            {total > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: tudo ? '#16a34a' : '#b45309', whiteSpace: 'nowrap' }}>{feitos}/{total} resolvido{total > 1 ? 's' : ''}</span>}
+                            {total > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: tudo ? 'var(--v2-ok)' : 'var(--v2-amber)', whiteSpace: 'nowrap' }}>{feitos}/{total} resolvido{total > 1 ? 's' : ''}</span>}
                           </div>
                           <p style={{ margin: '2px 0 6px', fontSize: 10.5, color: '#b98a2e' }}>Marque cada item ao resolver. Ao concluir tudo, libera o reenvio para aprovação.</p>
                           {temMotivo && (
@@ -2917,31 +2889,31 @@ function Dashboard() {
                             return (
                               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
                                 <span onClick={() => marcarAnotacaoResolvida(postPreview, i, !done)}><Check on={done} /></span>
-                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? '#ffc00f' : '#e5d5a8', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
+                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? 'var(--v2-amber-on)' : '#e5d5a8', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
                                 <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.55 : 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
                               </div>
                             )
                           })}
                           {podeReenviar && (
-                            <button onClick={() => reenviarAprovacao(postPreview)} className="soma10-no-invert" style={{ marginTop: 10, width: '100%', padding: '10px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Tudo resolvido — Reenviar para aprovação</button>
+                            <button onClick={() => reenviarAprovacao(postPreview)} className="soma10-no-invert" style={{ marginTop: 10, width: '100%', padding: '10px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Tudo resolvido — Reenviar para aprovação</button>
                           )}
-                          {tudo && !podeReenviar && <div style={{ marginTop: 8, fontSize: 11.5, color: '#16a34a', fontWeight: 700 }}>Todas as alterações resolvidas ✓</div>}
+                          {tudo && !podeReenviar && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 700 }}>Todas as alterações resolvidas ✓</div>}
                         </div>
                       )
                     })()}
                     {postPreview.status === 'falha_publicacao' && postPreview.erroPublicacao && (
-                      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
                     )}
                     {postPreview.status === 'falha_publicacao' && (
-                      <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                      <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
                         {republicandoId === postPreview.id ? 'Publicando...' : 'Tentar publicar novamente'}
                       </button>
                     )}
                     {role !== 'cliente' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11.5, color: '#888', fontWeight: 600 }}>Reaproveitar como:</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 600 }}>Reaproveitar como:</span>
                         {(['feed', 'reel', 'story'] as const).map(f => (
-                          <button key={f} onClick={() => reaproveitar(postPreview, f)} style={{ padding: '6px 12px', background: '#eef2ff', color: '#1d4ed8', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'capitalize' }}>{f}</button>
+                          <button key={f} onClick={() => reaproveitar(postPreview, f)} style={{ padding: '6px 12px', background: 'var(--v2-info-bg)', color: 'var(--v2-info)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'capitalize' }}>{f}</button>
                         ))}
                       </div>
                     )}
@@ -2957,20 +2929,20 @@ function Dashboard() {
                         setPostPreview(null)
                         fetch('/api/posts').then(x => x.json()).then(setPosts)
                       }} title="Tira da aprovação do cliente sem excluir o material"
-                        style={{ width: '100%', marginTop: 12, padding: '10px 0', background: '#fff', color: '#b45309', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                        style={{ width: '100%', marginTop: 12, padding: '10px 0', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                         Voltar da aprovação (tirar do cliente)
                       </button>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                      <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      <button onClick={() => iniciarEdicaoPost(postPreview)} style={{ flex: 1, padding: '10px 0', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Editar
                       </button>
-                      <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      <button onClick={() => setPostPreview(null)} style={{ padding: '10px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Fechar
                       </button>
                       {role !== 'cliente' && (
                         <button onClick={() => { excluirPost(postPreview); setPostPreview(null) }} title="Excluir post" style={{
-                          padding: '10px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 10, color: '#b91c1c', cursor: 'pointer',
+                          padding: '10px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, color: 'var(--v2-hot)', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <IconTrash size={14} />
@@ -2986,49 +2958,49 @@ function Dashboard() {
         {aba === 'marca' && (
           <div style={{ maxWidth: 820 }}>
             <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--v2-ink)' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
-            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
 
             {/* BLOCO FECHADO */}
             {brandModo === 'card' && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ width: 46, height: 46, borderRadius: '50%', overflow: 'hidden', background: clienteEmVisualizacao?.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: clienteEmVisualizacao?.corSecundaria || '#111', flexShrink: 0 }}>
                   <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
-                  <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                     {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado' : ''}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: '#f5f5f5', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={excluirBrand} title="Excluir Brand Board" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
+                  <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={excluirBrand} title="Excluir Brand Board" style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
                 </div>
               </div>
             )}
 
             {/* Ativos da marca — SEMPRE visível (não fica escondido no modo editar) */}
             {verComoClienteId && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
                 <ReferenciasVisuais clienteId={verComoClienteId} />
               </div>
             )}
 
             {/* Tipografia e vibe da marca — alimenta o motor de criativos */}
             {verComoClienteId && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
                 <FontesMarca clienteId={verComoClienteId} />
               </div>
             )}
 
             {/* VISUALIZAÇÃO (somente leitura) */}
             {brandModo === 'ver' && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1 }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
-                  <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: '#ffc00f', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
                 </div>
                 {([
                   ['Segmento / Nicho', brandForm.segmento],
@@ -3039,33 +3011,33 @@ function Dashboard() {
                   ['Preferências / O que evitar', brandForm.preferencias],
                 ] as [string, string][]).map(([l, v]) => v ? (
                   <div key={l}>
-                    <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: '#888' }}>{l}</p>
-                    <p style={{ margin: 0, fontSize: 14, color: '#222', whiteSpace: 'pre-wrap' }}>{v}</p>
+                    <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{l}</p>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap' }}>{v}</p>
                   </div>
                 ) : null)}
                 {(brandForm.documentos || []).length > 0 && (
                   <div>
-                    <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#888' }}>Documentos</p>
+                    <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Documentos</p>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
-                      <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1d4ed8' }}><IconDoc size={14} /> {d.nome}</a>
+                      <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--v2-info)' }}><IconDoc size={14} /> {d.nome}</a>
                     ))}
                   </div>
                 )}
-                <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
+                <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
                     <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)', flex: 1, minWidth: 200 }}>Documento de marca (IA)</h3>
-                    <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
+                    <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
                       {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
                     </button>
                   </div>
-                  {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
+                  {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
                   {brandForm.documentoMarca ? (
                     <div>
-                      {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: '#999', margin: '0 0 8px' }}>Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
-                      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
+                      {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
+                      <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
                     </div>
                   ) : (
-                    <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>Ainda não há documento gerado. Clique em "Gerar documento completo" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
+                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)', margin: 0 }}>Ainda não há documento gerado. Clique em "Gerar documento completo" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
                   )}
                 </div>
               </div>
@@ -3073,60 +3045,60 @@ function Dashboard() {
 
             {/* FORMULÁRIO (edição) */}
             {brandModo === 'editar' && (
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Segmento / Nicho</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Segmento / Nicho</label>
                   <input value={brandForm.segmento || ''} onChange={e => setBrandForm((b: any) => ({ ...b, segmento: e.target.value }))} placeholder="Ex.: Cardiologia, Restaurante, Turismo..."
-                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Palavras-chave (vírgula)</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Palavras-chave (vírgula)</label>
                   <input value={brandForm.palavrasChave || ''} onChange={e => setBrandForm((b: any) => ({ ...b, palavrasChave: e.target.value }))} placeholder="saúde do coração, exames, prevenção..."
-                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Descrição da empresa</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Descrição da empresa</label>
                 <textarea lang="pt-BR" value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder="O que a empresa faz, diferenciais, serviços..."
-                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Público-alvo</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Público-alvo</label>
                   <textarea lang="pt-BR" value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder="Quem é o cliente ideal..."
-                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Tom de voz</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Tom de voz</label>
                   <textarea lang="pt-BR" value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder="Formal, acolhedor, descontraído..."
-                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Preferências / O que evitar</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Preferências / O que evitar</label>
                 <textarea lang="pt-BR" value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder="Hashtags padrão, temas a evitar, regras da marca..."
-                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
               {/* Documentos */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>Documentos (briefing, manual da marca, etc.)</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Documentos (briefing, manual da marca, etc.)</label>
                 {(brandForm.documentos || []).length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fafafa', borderRadius: 8, padding: '8px 12px' }}>
-                        <span style={{ display: 'flex', color: '#888' }}><IconDoc size={15} /></span>
-                        <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, color: '#1d4ed8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nome}</a>
-                        <button onClick={() => removerDocBrand(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}>×</button>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 12px' }}>
+                        <span style={{ display: 'flex', color: 'var(--v2-ink3)' }}><IconDoc size={15} /></span>
+                        <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, color: 'var(--v2-info)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nome}</a>
+                        <button onClick={() => removerDocBrand(i)} style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 15 }}>×</button>
                       </div>
                     ))}
                   </div>
                 )}
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)' }}>
                   {enviandoDoc ? 'Enviando...' : '+ Adicionar documento'}
                   <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,audio/*" style={{ display: 'none' }} disabled={enviandoDoc}
                     onChange={e => { if (e.target.files?.[0]) enviarDocBrand(e.target.files[0]); e.target.value = '' }} />
@@ -3135,22 +3107,22 @@ function Dashboard() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <button onClick={salvarBrand} disabled={salvandoBrand}
-                  style={{ padding: '12px 28px', background: '#ffc00f', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: salvandoBrand ? 0.6 : 1 }}>
+                  style={{ padding: '12px 28px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: salvandoBrand ? 0.6 : 1 }}>
                   {salvandoBrand ? 'Salvando...' : 'Salvar identidade'}
                 </button>
                 <button onClick={() => setBrandModo('card')}
-                  style={{ padding: '12px 22px', background: '#f5f5f5', color: 'var(--v2-ink2)', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  style={{ padding: '12px 22px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   Voltar
                 </button>
-                {brandMsg && <span style={{ fontSize: 13, color: brandMsg.toLowerCase().includes('erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{brandMsg}</span>}
+                {brandMsg && <span style={{ fontSize: 13, color: brandMsg.toLowerCase().includes('erro') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{brandMsg}</span>}
               </div>
 
               {/* Playbook da marca — regras operacionais curadas por humano (agentes de IA leem) */}
-              <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Playbook da marca</h3>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                       Regras de operação (o que funciona, do&apos;s &amp; don&apos;ts, restrições) que os agentes de IA seguem ao produzir para este cliente.
                     </p>
                   </div>
@@ -3160,28 +3132,28 @@ function Dashboard() {
 
 
               {/* Documento de marca gerado por IA */}
-              <div style={{ borderTop: '1px solid #eee', paddingTop: 18, marginTop: 4 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Documento de marca (IA)</h3>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                       A IA estuda todas as informações e pesquisa o nicho na internet para gerar uma referência editorial completa.
                     </p>
                   </div>
                   <button onClick={gerarDocumentoIA} disabled={gerandoDocIA}
-                    style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
+                    style={{ padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
                     {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
                   </button>
                 </div>
-                {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? '#dc2626' : '#16a34a', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}
+                {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}
                 {brandForm.documentoMarca && (
                   <div>
                     {brandForm.documentoMarcaGeradoEm && (
-                      <p style={{ fontSize: 12, color: '#999', margin: '0 0 8px' }}>
+                      <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>
                         Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}
                       </p>
                     )}
-                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
+                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
                   </div>
                 )}
               </div>
@@ -3196,35 +3168,35 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
               <button onClick={carregarListening} disabled={listeningLoading}
-                style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                style={{ background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {listeningLoading ? 'Buscando...' : (<><IconRefresh size={14} /> Atualizar</>)}
               </button>
             </div>
-            <p style={{ margin: '0 0 18px', fontSize: 13, color: '#999' }}>Tendências e conteúdos em alta sobre o nicho do cliente (definido no Brand Board).</p>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>Tendências e conteúdos em alta sobre o nicho do cliente (definido no Brand Board).</p>
 
-            {listeningLoading && <div style={{ padding: 50, textAlign: 'center', color: '#aaa' }}>Buscando tendências do nicho...</div>}
+            {listeningLoading && <div style={{ padding: 50, textAlign: 'center', color: 'var(--v2-ink3)' }}>Buscando tendências do nicho...</div>}
 
             {!listeningLoading && listeningData?.semNicho && (
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 20, color: '#92400e', fontSize: 14 }}>
-                {listeningData.mensagem} <button onClick={() => setAba('marca')} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#92400e', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Ir para o Brand Board</button>
+              <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 12, padding: 20, color: 'var(--v2-amber)', fontSize: 14 }}>
+                {listeningData.mensagem} <button onClick={() => setAba('marca')} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Ir para o Brand Board</button>
               </div>
             )}
 
             {!listeningLoading && listeningData && !listeningData.semNicho && (
               <>
-                <p style={{ margin: '0 0 16px', fontSize: 12, color: '#aaa' }}>Termos do nicho: <strong style={{ color: 'var(--v2-ink2)' }}>{(listeningData.termos || []).join(', ')}</strong></p>
+                <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Termos do nicho: <strong style={{ color: 'var(--v2-ink2)' }}>{(listeningData.termos || []).join(', ')}</strong></p>
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
                   {/* YouTube */}
-                  <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                       YouTube Shorts — mais vistos do nicho (5k+ views)
                     </h3>
                     {!listeningData.youtubeConfigurado && (
-                      <p style={{ fontSize: 13, color: '#b45309', background: '#fffbeb', borderRadius: 8, padding: 12 }}>A chave do YouTube (YOUTUBE_API_KEY) ainda não está ativa na Vercel.</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: 12 }}>A chave do YouTube (YOUTUBE_API_KEY) ainda não está ativa na Vercel.</p>
                     )}
                     {listeningData.youtubeConfigurado && (listeningData.youtube || []).length === 0 && (
-                      <p style={{ fontSize: 13, color: '#aaa' }}>Nenhum vídeo encontrado para esses termos.</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum vídeo encontrado para esses termos.</p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {(listeningData.youtube || []).map((v: any) => (
@@ -3232,8 +3204,8 @@ function Dashboard() {
                           <img src={v.thumb} alt="" style={{ width: 120, height: 68, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                           <div style={{ minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.titulo}</p>
-                            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#888' }}>{v.canal}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{v.views.toLocaleString('pt-BR')} views · {v.curtidas.toLocaleString('pt-BR')} curtidas</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{v.canal}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{v.views.toLocaleString('pt-BR')} views · {v.curtidas.toLocaleString('pt-BR')} curtidas</p>
                           </div>
                         </a>
                       ))}
@@ -3241,18 +3213,18 @@ function Dashboard() {
                   </div>
 
                   {/* Google Trends */}
-                  <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 800, color: '#4285f4' }}>G</span> Google Trends — em alta (BR, 7 dias)
                     </h3>
                     {(listeningData.trends || []).length === 0 ? (
-                      <p style={{ fontSize: 13, color: '#aaa' }}>Sem buscas relacionadas em alta no momento (o Google Trends pode limitar consultas automáticas).</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Sem buscas relacionadas em alta no momento (o Google Trends pode limitar consultas automáticas).</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {(listeningData.trends || []).map((t: any, i: number) => (
-                          <a key={i} href={t.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: '#fafafa', borderRadius: 8, textDecoration: 'none' }}>
+                          <a key={i} href={t.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', background: 'var(--v2-surface1)', borderRadius: 8, textDecoration: 'none' }}>
                             <span style={{ fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.termo}</span>
-                            <span style={{ display: 'flex', alignItems: 'center', color: '#16a34a', flexShrink: 0 }}>{typeof t.valor === 'number' ? <IconTrend size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{t.valor}</span>}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', color: 'var(--v2-ok)', flexShrink: 0 }}>{typeof t.valor === 'number' ? <IconTrend size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{t.valor}</span>}</span>
                           </a>
                         ))}
                       </div>
@@ -3261,23 +3233,23 @@ function Dashboard() {
                 </div>
 
                 {/* TikTok — Creative Center */}
-                <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 18 }}>
+                <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 18 }}>
                   <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#111"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--v2-ink)"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
                     TikTok — hashtags em alta (Brasil)
-                    <span style={{ fontSize: 11, color: '#aaa', fontWeight: 500 }}>· Creative Center</span>
+                    <span style={{ fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 500 }}>· Creative Center</span>
                   </h3>
-                  <p style={{ margin: '0 0 12px', fontSize: 12, color: '#aaa' }}>Tendências gerais do Brasil. Os <strong style={{ color: '#16a34a' }}>verdes</strong> casam com o nicho do cliente.</p>
+                  <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>Tendências gerais do Brasil. Os <strong style={{ color: 'var(--v2-ok)' }}>verdes</strong> casam com o nicho do cliente.</p>
                   {!listeningData.tiktokOk ? (
-                    <p style={{ fontSize: 13, color: '#aaa' }}>Não foi possível carregar as tendências do TikTok agora (a fonte não-oficial pode estar bloqueando consultas automáticas). O restante do Social Listening segue funcionando.</p>
+                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Não foi possível carregar as tendências do TikTok agora (a fonte não-oficial pode estar bloqueando consultas automáticas). O restante do Social Listening segue funcionando.</p>
                   ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {(listeningData.tiktok || []).map((h: any, i: number) => (
                         <a key={i} href={h.url} target="_blank" rel="noreferrer"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 20, textDecoration: 'none',
-                            background: h.relevante ? '#dcfce7' : '#f4f4f5', border: h.relevante ? '1px solid #86efac' : '1px solid #eee' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: h.relevante ? '#15803d' : '#333' }}>#{h.nome}</span>
-                          {h.posts > 0 && <span style={{ fontSize: 11, color: '#999' }}>{h.posts.toLocaleString('pt-BR')} posts</span>}
+                            background: h.relevante ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: h.relevante ? '1px solid var(--v2-ok-bg)' : '1px solid var(--v2-surface2)' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: h.relevante ? 'var(--v2-ok)' : 'var(--v2-ink)' }}>#{h.nome}</span>
+                          {h.posts > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{h.posts.toLocaleString('pt-BR')} posts</span>}
                         </a>
                       ))}
                     </div>
@@ -3297,36 +3269,36 @@ function Dashboard() {
             </div>
 
             {/* Filtros */}
-            <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
               {!clienteEmVisualizacao && role !== 'cliente' && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente</label>
                   <select value={analyticsClienteId} onChange={e => { setAnalyticsClienteId(e.target.value); setAnalyticsData(null); setAnalyticsErro('') }}
-                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}>
+                    style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}>
                     <option value="">Selecione...</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
               )}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>De</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>De</label>
                 <input type="date" value={analyticsDesde} onChange={e => setAnalyticsDesde(e.target.value)}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Até</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Até</label>
                 <input type="date" value={analyticsAte} onChange={e => setAnalyticsAte(e.target.value)}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               </div>
               <button onClick={buscarAnalytics} disabled={analyticsLoading || !analyticsClienteId} style={{
-                padding: '11px 22px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
+                padding: '11px 22px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
                 cursor: (analyticsLoading || !analyticsClienteId) ? 'not-allowed' : 'pointer', opacity: (analyticsLoading || !analyticsClienteId) ? 0.5 : 1,
               }}>
                 {analyticsLoading ? 'Carregando...' : 'Buscar dados'}
               </button>
               {analyticsData && (
                 <button onClick={exportarAnalyticsPdf} disabled={exportandoPdf} style={{
-                  padding: '11px 18px', background: '#fff', color: 'var(--v2-ink)', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                  padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13,
                   cursor: exportandoPdf ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
                   <IconDownload size={14} /> {exportandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
@@ -3334,7 +3306,7 @@ function Dashboard() {
               )}
               {analyticsData && (
                 <button onClick={gerarRelatorioMensalPdf} disabled={gerandoRelatorio} className="soma10-no-invert" style={{
-                  padding: '11px 18px', background: '#ffc00f', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
+                  padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
                   cursor: gerandoRelatorio ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
                   <IconDownload size={14} /> {gerandoRelatorio ? 'Gerando...' : 'Relatório mensal'}
@@ -3343,13 +3315,13 @@ function Dashboard() {
             </div>
 
             {analyticsErro && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '12px 16px', marginBottom: 18, color: '#b91c1c', fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 12, padding: '12px 16px', marginBottom: 18, color: 'var(--v2-hot)', fontSize: 13 }}>
                 <IconAlert size={16} /> {analyticsErro}
               </div>
             )}
 
             {!analyticsData && !analyticsErro && !analyticsLoading && (
-              <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>
                 <IconChart size={32} />
                 <p style={{ marginTop: 10 }}>Selecione um cliente e um período, depois clique em "Buscar dados" para ver o desempenho real do Instagram (via API do Meta).</p>
               </div>
@@ -3374,24 +3346,24 @@ function Dashboard() {
                       const a = card.anterior ?? 0
                       const diff = a > 0 ? Math.round(((v - a) / a) * 100) : (v > 0 ? 100 : 0)
                       return (
-                        <div key={card.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
+                        <div key={card.label} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                             <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{v.toLocaleString('pt-BR')}</p>
                             {a > 0 && (
-                              <span style={{ fontSize: 12, fontWeight: 700, color: diff > 0 ? '#16a34a' : diff < 0 ? '#b91c1c' : '#888' }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: diff > 0 ? 'var(--v2-ok)' : diff < 0 ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>
                                 {diff > 0 ? '+' : ''}{diff}%
                               </span>
                             )}
                           </div>
-                          {a > 0 && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#bbb' }}>Anterior: {a.toLocaleString('pt-BR')}</p>}
+                          {a > 0 && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>Anterior: {a.toLocaleString('pt-BR')}</p>}
                         </div>
                       )
                     })
                   })()}
                   {analyticsData.perfil?.followers_count != null && (
-                    <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
+                    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
                       <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{Number(analyticsData.perfil.followers_count).toLocaleString('pt-BR')}</p>
                     </div>
                   )}
@@ -3399,20 +3371,20 @@ function Dashboard() {
 
                 {/* Série de alcance/visitas ao perfil por dia */}
                 {Array.isArray(analyticsData.insightsConta) && analyticsData.insightsConta.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+                  <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
                     <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Evolução diária</p>
                     {analyticsData.insightsConta.map((serie: any) => {
                       const valores = (serie.values || []).map((v: any) => Number(v.value) || 0)
                       const max = Math.max(1, ...valores)
                       return (
                         <div key={serie.name} style={{ marginBottom: 16 }}>
-                          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'capitalize' }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'capitalize' }}>
                             {serie.name === 'reach' ? 'Alcance' : serie.name === 'profile_views' ? 'Visitas ao perfil' : serie.name}
                           </p>
                           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 70 }}>
                             {(serie.values || []).map((v: any, i: number) => (
                               <div key={i} title={`${new Date(v.end_time).toLocaleDateString('pt-BR')}: ${v.value}`} style={{
-                                flex: 1, minWidth: 4, borderRadius: '3px 3px 0 0', background: '#ffc00f',
+                                flex: 1, minWidth: 4, borderRadius: '3px 3px 0 0', background: 'var(--v2-amber-on)',
                                 height: `${Math.max(4, (Number(v.value) / max) * 100)}%`,
                               }} />
                             ))}
@@ -3423,14 +3395,14 @@ function Dashboard() {
                   </div>
                 )}
                 {analyticsData.erroInsightsConta && (
-                  <p style={{ fontSize: 12, color: '#bbb', margin: '-12px 0 16px' }}>Série diária indisponível: {analyticsData.erroInsightsConta}</p>
+                  <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '-12px 0 16px' }}>Série diária indisponível: {analyticsData.erroInsightsConta}</p>
                 )}
 
                 {/* Demografia */}
                 {(analyticsData.demografia?.genero || analyticsData.demografia?.idade) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
                     {analyticsData.demografia.genero && (
-                      <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <div style={{ flex: '1 1 260px', background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                         <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Gênero dos seguidores</p>
                         {analyticsData.demografia.genero.map((g: any) => {
                           const total = analyticsData.demografia.genero.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
@@ -3441,8 +3413,8 @@ function Dashboard() {
                                 <span style={{ textTransform: 'capitalize' }}>{g.dimension_values?.[0]}</span>
                                 <span style={{ fontWeight: 700 }}>{pct}%</span>
                               </div>
-                              <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999 }}>
-                                <div style={{ height: 8, width: `${pct}%`, background: '#ffc00f', borderRadius: 999 }} />
+                              <div style={{ height: 8, background: 'var(--v2-surface2)', borderRadius: 999 }}>
+                                <div style={{ height: 8, width: `${pct}%`, background: 'var(--v2-amber-on)', borderRadius: 999 }} />
                               </div>
                             </div>
                           )
@@ -3450,7 +3422,7 @@ function Dashboard() {
                       </div>
                     )}
                     {analyticsData.demografia.idade && (
-                      <div style={{ flex: '1 1 260px', background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <div style={{ flex: '1 1 260px', background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                         <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Faixa etária dos seguidores</p>
                         {analyticsData.demografia.idade.map((g: any) => {
                           const total = analyticsData.demografia.idade.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
@@ -3461,8 +3433,8 @@ function Dashboard() {
                                 <span>{g.dimension_values?.[0]}</span>
                                 <span style={{ fontWeight: 700 }}>{pct}%</span>
                               </div>
-                              <div style={{ height: 8, background: '#f0f0f0', borderRadius: 999 }}>
-                                <div style={{ height: 8, width: `${pct}%`, background: '#111', borderRadius: 999 }} />
+                              <div style={{ height: 8, background: 'var(--v2-surface2)', borderRadius: 999 }}>
+                                <div style={{ height: 8, width: `${pct}%`, background: 'var(--v2-ink)', borderRadius: 999 }} />
                               </div>
                             </div>
                           )
@@ -3473,22 +3445,22 @@ function Dashboard() {
                 )}
 
                 {/* Tabela de posts no período */}
-                <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', borderBottom: '1px solid #f0f0f0' }}>
+                <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', borderBottom: '1px solid var(--v2-rule)' }}>
                     Posts por relevancia — melhor desempenho no topo ({analyticsData.posts?.length || 0})
                   </p>
                   {(!analyticsData.posts || analyticsData.posts.length === 0) ? (
-                    <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhum post encontrado no período selecionado.</p>
+                    <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum post encontrado no período selecionado.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {analyticsData.posts.map((p: any) => (
                         <a key={p.id} href={p.link} target="_blank" rel="noreferrer" style={{
-                          display: 'flex', gap: 14, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #f5f5f5', textDecoration: 'none', color: 'inherit',
+                          display: 'flex', gap: 14, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--v2-surface1)', textDecoration: 'none', color: 'inherit',
                         }}>
                           <PostThumb src={p.midiaUrl} size={48} radius={8} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda || '(sem legenda)'}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : ''}</p>
+                            <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda || '(sem legenda)'}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : ''}</p>
                           </div>
                           <div style={{ display: 'flex', gap: 16, flexShrink: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>
                             <span><strong>{p.curtidas}</strong> curtidas</span>
@@ -3508,21 +3480,21 @@ function Dashboard() {
 
         {/* NOVO POST */}
         {aba === 'novo-post' && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={fecharComposer} title="Volta salvando o que já foi preenchido" style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <button onClick={fecharComposer} title="Volta salvando o que já foi preenchido" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={14} /> Voltar
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
               {editandoPostId && (
-                <button onClick={cancelarEdicaoPost} style={{ background: 'none', border: 'none', color: '#888', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                <button onClick={cancelarEdicaoPost} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
                   Cancelar edição
                 </button>
               )}
             </div>
 
             {rascunhoMsg && (
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#1d4ed8' }}>
+              <div style={{ background: 'var(--v2-info-bg)', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--v2-info)' }}>
                 {rascunhoMsg}
               </div>
             )}
@@ -3548,7 +3520,7 @@ function Dashboard() {
           // telefonia e cidadania seguem na Home atual até terem a sua — e a
           // antiga fica a uma linha de distância para voltar.
           (!perfilClinica && !perfilTurismo && !perfilTelefonia && !perfilCidadania)
-            ? <DashboardHomeV2 tema={tema} onIr={(a: string) => setAba(a as any)} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} />
+            ? <DashboardHomeV2 tema={tema} meuEmail={(session?.user as any)?.email || ''} onIr={(a: string) => setAba(a as any)} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} />
             : <DashboardHome clientes={clientes as any} posts={posts as any} perfilClinica={perfilClinica} perfilTurismo={perfilTurismo} perfilTelefonia={perfilTelefonia} lojaAtiva={verComoLojaId} onVerCliente={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} />
         )}
 
@@ -3629,36 +3601,36 @@ function Dashboard() {
         {aba === 'inbox' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Inbox</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Inbox</h2>
               {notificacoes.length > 0 && (
-                <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Limpar todas</button>
+                <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Limpar todas</button>
               )}
             </div>
             {notificacoes.length === 0 ? (
-              <div style={{ background: '#fff', borderRadius: 14, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
-                <p style={{ margin: 0, fontSize: 14, color: '#888', fontWeight: 500 }}>Nenhuma notificação por enquanto.</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#bbb' }}>Você será notificado sobre tarefas, aprovações, mensagens e prazos.</p>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--v2-rule2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)', fontWeight: 500 }}>Nenhuma notificação por enquanto.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Você será notificado sobre tarefas, aprovações, mensagens e prazos.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {notificacoes.map(n => {
                   const icones: Record<string, { cor: string; path: string }> = {
-                    tarefa_atribuida: { cor: '#2563eb', path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6' },
-                    tarefa_alterada: { cor: '#ca8a04', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
+                    tarefa_atribuida: { cor: 'var(--v2-info)', path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6' },
+                    tarefa_alterada: { cor: 'var(--v2-amber)', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
                     tarefa_mencao: { cor: '#7c3aed', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8z' },
                     tarefa_prazo_proximo: { cor: '#ea580c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
-                    tarefa_vencida: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
+                    tarefa_vencida: { cor: 'var(--v2-hot)', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
                     mensagem_privada: { cor: '#0891b2', path: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
                     post_aprovado: { cor: '#059669', path: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
-                    post_corrigir: { cor: '#ca8a04', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
+                    post_corrigir: { cor: 'var(--v2-amber)', path: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
                     post_publicado: { cor: '#059669', path: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z' },
-                    post_falha_publicacao: { cor: '#b91c1c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01' },
+                    post_falha_publicacao: { cor: 'var(--v2-hot)', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01' },
                     aprovacao_atrasada: { cor: '#ea580c', path: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4l3 3' },
                     contrato_renovacao: { cor: '#7c3aed', path: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
                     briefing_solicitado: { cor: '#0891b2', path: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6M9 13h6M9 17h4' },
                     candidatura: { cor: '#059669', path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
-                    geral: { cor: '#6b7280', path: 'M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0' },
+                    geral: { cor: 'var(--v2-ink3)', path: 'M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0' },
                   }
                   const ic = icones[n.tipo] || icones.geral
                   return (
@@ -3669,22 +3641,22 @@ function Dashboard() {
                       if (temDestino) abrirItemNotificacao(n)
                       else setNotifAberta(n)
                     }} style={{
-                      display: 'flex', gap: 14, padding: '14px 18px', background: n.lida ? '#fff' : '#fffbeb', borderRadius: 12,
+                      display: 'flex', gap: 14, padding: '14px 18px', background: n.lida ? 'var(--v2-surface)' : 'var(--v2-amber-bg)', borderRadius: 12,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', alignItems: 'flex-start',
-                      border: n.lida ? '1px solid #f0f0f0' : '1px solid #fde68a', transition: 'all 0.15s',
+                      border: n.lida ? '1px solid var(--v2-rule)' : '1px solid var(--v2-amber-bg)', transition: 'all 0.15s',
                     }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: `${ic.cor}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ic.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ic.path} /></svg>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{n.titulo}</span>
-                          {!n.lida && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</span>
+                          {!n.lida && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--v2-amber-on)', flexShrink: 0 }} />}
                         </div>
-                        <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#555', lineHeight: 1.4 }}>{n.mensagem}</p>
-                        <span style={{ fontSize: 11, color: '#bbb' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <p style={{ margin: '0 0 4px', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.4 }}>{n.mensagem}</p>
+                        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>x</button>
+                      <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>x</button>
                     </div>
                   )
                 })}
@@ -3696,16 +3668,16 @@ function Dashboard() {
         {/* Modal da notificacao aberta (abre dentro do Inbox, sem navegar) */}
         {notifAberta && (
           <div onClick={fecharFora(() => setNotifAberta(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-                <h3 style={{ margin: 0, fontSize: 17, color: '#111', lineHeight: 1.3 }}>{notifAberta.titulo}</h3>
-                <button onClick={() => setNotifAberta(null)} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+                <h3 style={{ margin: 0, fontSize: 17, color: 'var(--v2-ink)', lineHeight: 1.3 }}>{notifAberta.titulo}</h3>
+                <button onClick={() => setNotifAberta(null)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
               </div>
-              <p style={{ margin: '0 0 14px', fontSize: 14, color: '#444', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notifAberta.mensagem}</p>
-              <span style={{ fontSize: 12, color: '#aaa' }}>{new Date(notifAberta.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <p style={{ margin: '0 0 14px', fontSize: 14, color: 'var(--v2-ink2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notifAberta.mensagem}</p>
+              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(notifAberta.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               {(notifAberta.tarefaId || notifAberta.postId || notifAberta.tipo?.startsWith('tarefa_') || notifAberta.tipo === 'mensagem_privada') && (
                 <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => abrirItemNotificacao(notifAberta)} className="soma10-no-invert" style={{ padding: '10px 18px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+                  <button onClick={() => abrirItemNotificacao(notifAberta)} className="soma10-no-invert" style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
                     {notifAberta.tarefaId ? 'Abrir tarefa →' : 'Abrir item relacionado →'}
                   </button>
                 </div>
@@ -3717,7 +3689,7 @@ function Dashboard() {
         {/* Carregando a tarefa de uma notificação */}
         {carregandoTarefaNotif && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#fff', borderRadius: 12, padding: '16px 22px', fontSize: 13, fontWeight: 700, color: '#555', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Abrindo tarefa...</div>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 12, padding: '16px 22px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Abrindo tarefa...</div>
           </div>
         )}
 
@@ -3725,27 +3697,27 @@ function Dashboard() {
         {/* Modal de compartilhamento do link de aprovação (após "Enviar para aprovação") */}
         {linkAprovModal && (
           <div onClick={fecharFora(() => setLinkAprovModal(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--v2-ok-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ok)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                 </span>
-                <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Link de aprovação — {linkAprovModal.cliente}</h3>
+                <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Link de aprovação — {linkAprovModal.cliente}</h3>
               </div>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <input readOnly value={linkAprovModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, color: '#333', background: '#fafafa', fontFamily: 'inherit' }} />
+                <input readOnly value={linkAprovModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', fontFamily: 'inherit' }} />
                 <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkAprovModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
-                  style={{ padding: '10px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
+                  style={{ padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkAprovModal.url)}`, '_blank')}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.4c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.6 0a6.6 6.6 0 0 1-2-1.2 7.4 7.4 0 0 1-1.3-1.7c-.2-.3 0-.4.1-.5l.4-.5.3-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3 1 2.6 1.1 2.7s1.9 3 4.6 4.1c2.3 1 2.3.6 2.7.6.4 0 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1z" /></svg>
                   WhatsApp
                 </button>
-                <button onClick={() => window.open(linkAprovModal.url, '_blank')} style={{ padding: '11px 18px', background: '#fff', color: '#555', border: '1px solid #e6e6e6', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-                <button onClick={() => setLinkAprovModal(null)} style={{ padding: '11px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                <button onClick={() => window.open(linkAprovModal.url, '_blank')} style={{ padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
+                <button onClick={() => setLinkAprovModal(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
               </div>
             </div>
           </div>
@@ -3784,7 +3756,7 @@ function Dashboard() {
                 const nav: any = navigator
                 if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
                 else { navigator.clipboard?.writeText(url); toast('Link copiado para a área de transferência.', 'sucesso') }
-              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                 Compartilhar link da candidatura
               </button>
@@ -3808,9 +3780,9 @@ function Dashboard() {
         {aba === 'clientes' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Clientes</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Clientes</h2>
               {role === 'admin' && (
-                <button onClick={() => setConectarRedesCliente('')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                <button onClick={() => setConectarRedesCliente('')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                   <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
                   Conectar redes sociais
                 </button>
@@ -3819,55 +3791,55 @@ function Dashboard() {
 
             {/* Erro OAuth */}
             {metaErro && (
-              <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#dc2626' }}>
+              <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: 'var(--v2-hot)' }}>
                 {metaErro}
-                <button onClick={() => setMetaErro('')} style={{ marginLeft: 12, background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                <button onClick={() => setMetaErro('')} style={{ marginLeft: 12, background: 'none', border: 'none', color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
               </div>
             )}
 
             {/* Painel de páginas encontradas via OAuth */}
             {metaPages.length > 0 && (
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e0e0e0', marginBottom: 20, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+              <div style={{ background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', marginBottom: 20, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
                   {metaClienteAlvo ? (
                     <>
-                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>
                         Vincular ao cliente {clientes.find(c => c.id === metaClienteAlvo)?.nome || ''}
                       </p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Escolha qual Página do Facebook e conta do Instagram pertencem a este cliente.</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Escolha qual Página do Facebook e conta do Instagram pertencem a este cliente.</p>
                     </>
                   ) : (
                     <>
-                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: '#111' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#888' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
                     </>
                   )}
                 </div>
                 <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {metaPages.map(page => (
-                    <div key={page.pageId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div key={page.pageId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
                       {page.instagram?.profilePic && (
                         <img src={page.instagram.profilePic} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#111' }}>{page.pageName}</p>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>{page.pageName}</p>
                         {page.instagram ? (
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>@{page.instagram.username}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{page.instagram.username}</p>
                         ) : (
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#f59e0b' }}>Sem Instagram vinculado</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-amber-on)' }}>Sem Instagram vinculado</p>
                         )}
                       </div>
                       {page.instagram && (
                         metaClienteAlvo ? (
                           <button onClick={() => vincularPaginaACliente(page, metaClienteAlvo)} disabled={!!vinculandoPagina}
-                            style={{ padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: vinculandoPagina ? 0.6 : 1, flexShrink: 0 }}>
+                            style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: vinculandoPagina ? 0.6 : 1, flexShrink: 0 }}>
                             {vinculandoPagina === page.pageId ? 'Vinculando...' : 'Vincular'}
                           </button>
                         ) : (
                           <select
                             value={vinculos[page.pageId] || ''}
                             onChange={e => setVinculos(v => ({ ...v, [page.pageId]: e.target.value }))}
-                            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit', minWidth: 180 }}
+                            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit', minWidth: 180 }}
                           >
                             <option value="">Selecionar cliente...</option>
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -3877,14 +3849,14 @@ function Dashboard() {
                     </div>
                   ))}
                 </div>
-                <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <div style={{ padding: '14px 20px', borderTop: '1px solid var(--v2-rule)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   <button onClick={() => { setMetaPages([]); setVinculos({}); setMetaClienteAlvo('') }}
-                    style={{ padding: '9px 18px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>
+                    style={{ padding: '9px 18px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontSize: 13, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
                     Cancelar
                   </button>
                   {!metaClienteAlvo && (
                     <button onClick={salvarVinculos} disabled={vinculando || Object.values(vinculos).every(v => !v)}
-                      style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
+                      style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
                       {vinculando ? 'Salvando...' : 'Salvar vínculos'}
                     </button>
                   )}
@@ -3894,30 +3866,30 @@ function Dashboard() {
 
             {role === 'admin' && (
               <div style={{ marginBottom: 20 }}>
-                <button onClick={() => setMostrarFormCliente(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                <button onClick={() => setMostrarFormCliente(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                   {mostrarFormCliente ? 'Fechar' : '+ Cadastrar novo cliente'}
                 </button>
                 {mostrarFormCliente && (
-                <div style={{ background: '#fff', borderRadius: 14, padding: 20, marginTop: 12, border: '1px solid #e8e8e8' }}>
+                <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, marginTop: 12, border: '1px solid var(--v2-rule)' }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do cliente"
-                    style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
-                    style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                    style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   <select value={novoCliente.tipo || 'cliente'} onChange={e => setNovoCliente(p => ({ ...p, tipo: e.target.value }))}
-                    style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="cliente">Cliente</option>
                     <option value="interno">Projeto interno</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Entregaveis</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Entregaveis</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {ENTREGAVEIS_OPCOES.map(op => {
                       const ativo = (novoCliente.entregaveis || []).includes(op.key)
                       return (
                         <button key={op.key} type="button" onClick={() => setNovoCliente(p => ({ ...p, entregaveis: ativo ? (p.entregaveis || []).filter(e => e !== op.key) : [...(p.entregaveis || []), op.key] }))}
-                          style={{ padding: '6px 12px', borderRadius: 8, border: ativo ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: ativo ? '#fffbeb' : '#fff', fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? '#92400e' : '#666', cursor: 'pointer' }}>
+                          style={{ padding: '6px 12px', borderRadius: 8, border: ativo ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: ativo ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', cursor: 'pointer' }}>
                           {op.label}
                         </button>
                       )
@@ -3925,25 +3897,25 @@ function Dashboard() {
                   </div>
                   {(novoCliente.entregaveis || []).includes('social_media') && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Posts mensais:</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Posts mensais:</label>
                       <input type="number" min="0" value={novoCliente.postsMensais || 12} onChange={e => setNovoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
-                        style={{ width: 70, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                        style={{ width: 70, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                     </div>
                   )}
                   {/* Contrato */}
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Contrato (opcional)</label>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Contrato (opcional)</label>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <input type="number" min="0" placeholder="Valor (R$)" value={novoCliente.contratoValor ?? ''} onChange={e => setNovoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
-                        style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                      <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
+                        style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                      <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
                         <input type="date" value={novoCliente.contratoInicio || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoInicio: e.target.value }))}
-                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
-                      <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
+                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                      <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
                         <input type="date" value={novoCliente.contratoRenovacao || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoRenovacao: e.target.value }))}
-                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                       <select value={novoCliente.contratoCiclo || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoCiclo: e.target.value }))}
-                        style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                        style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                         <option value="">Ciclo...</option>
                         <option value="mensal">Mensal</option>
                         <option value="trimestral">Trimestral</option>
@@ -3953,21 +3925,21 @@ function Dashboard() {
                     </div>
                     {/* Cobranças avulsas / modulares */}
                     <div style={{ marginTop: 12, width: '100%' }}>
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
-                        <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                        <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                        <input placeholder="Descrição" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                        <button type="button" onClick={() => { if (!avMes || !(Number(avValor) > 0)) return; const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }; setNovoCliente(p => ({ ...p, receitasAvulsas: [...((p.receitasAvulsas) || []), nova] })); setAvValor(''); setAvDesc('') }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? '#111' : '#f0f0f0', color: (avMes && Number(avValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                        <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                        <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                        <input placeholder="Descrição" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                        <button type="button" onClick={() => { if (!avMes || !(Number(avValor) > 0)) return; const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }; setNovoCliente(p => ({ ...p, receitasAvulsas: [...((p.receitasAvulsas) || []), nova] })); setAvValor(''); setAvDesc('') }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
                       </div>
                       {((novoCliente.receitasAvulsas) || []).length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           {(novoCliente.receitasAvulsas || []).map((r) => (
-                            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
-                              <span style={{ fontWeight: 700, color: '#111' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                              <span style={{ color: '#aaa' }}>{r.mes}</span>
+                            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)', padding: '4px 8px', background: 'var(--v2-surface1)', borderRadius: 6 }}>
+                              <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              <span style={{ color: 'var(--v2-ink3)' }}>{r.mes}</span>
                               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.descricao}</span>
-                              <button type="button" onClick={() => setNovoCliente(p => ({ ...p, receitasAvulsas: (p.receitasAvulsas || []).filter(x => x.id !== r.id) }))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14 }}>×</button>
+                              <button type="button" onClick={() => setNovoCliente(p => ({ ...p, receitasAvulsas: (p.receitasAvulsas || []).filter(x => x.id !== r.id) }))} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                             </div>
                           ))}
                         </div>
@@ -3979,52 +3951,52 @@ function Dashboard() {
                 {/* Identidade visual do cliente */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {novoCliente.logo ? <img src={novoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {novoCliente.logo ? <img src={novoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
                     </div>
-                    <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoNovoCliente ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoNovoCliente ? 'Enviando...' : 'Enviar logomarca'}</span>
                     <input type="file" accept="image/*" style={{ display: 'none' }}
                       onChange={e => { if (e.target.files?.[0]) uploadLogoNovoCliente(e.target.files[0]); e.target.value = '' }} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Cor primária
                     <input type="color" value={novoCliente.corPrimaria || '#ffc00f'} onChange={e => setNovoCliente(p => ({ ...p, corPrimaria: e.target.value }))}
-                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                      style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Cor secundária
                     <input type="color" value={novoCliente.corSecundaria || '#111111'} onChange={e => setNovoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
-                      style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                      style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
                   <button onClick={criarCliente} disabled={!clienteFormValido} style={{
-                    marginLeft: 'auto', padding: '10px 18px', background: clienteFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 8,
-                    fontWeight: 700, fontSize: 13, cursor: clienteFormValido ? 'pointer' : 'not-allowed', color: clienteFormValido ? '#111' : '#bbb',
+                    marginLeft: 'auto', padding: '10px 18px', background: clienteFormValido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', border: 'none', borderRadius: 8,
+                    fontWeight: 700, fontSize: 13, cursor: clienteFormValido ? 'pointer' : 'not-allowed', color: clienteFormValido ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                   }}>Adicionar cliente</button>
                 </div>
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>
+                <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                   Informe o e-mail para gerar automaticamente um login e senha para o cliente acessar o portal de aprovação.
                 </p>
 
                 {erroCliente && (
-                  <div style={{ marginTop: 14, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#ef4444' }}>
+                  <div style={{ marginTop: 14, background: '#fff5f5', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--v2-hot)' }}>
                     {erroCliente}
                   </div>
                 )}
 
                 {credenciaisGeradas && (
-                  <div style={{ marginTop: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                  <div style={{ marginTop: 14, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, padding: '14px 16px' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--v2-amber)' }}>
                       Acesso criado para {credenciaisGeradas.nome} — copie e envie ao cliente:
                     </p>
                     <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
-                      <span style={{ color: '#555' }}>Portal: <strong>{typeof window !== 'undefined' ? window.location.origin : ''}/login</strong></span>
-                      <span style={{ color: '#555' }}>E-mail: <strong>{credenciaisGeradas.email}</strong></span>
-                      <span style={{ color: '#555' }}>Senha: <strong>{credenciaisGeradas.senha}</strong></span>
+                      <span style={{ color: 'var(--v2-ink2)' }}>Portal: <strong>{typeof window !== 'undefined' ? window.location.origin : ''}/login</strong></span>
+                      <span style={{ color: 'var(--v2-ink2)' }}>E-mail: <strong>{credenciaisGeradas.email}</strong></span>
+                      <span style={{ color: 'var(--v2-ink2)' }}>Senha: <strong>{credenciaisGeradas.senha}</strong></span>
                     </div>
                     <button onClick={() => {
                       const texto = `Acesso ao portal de aprovação:\n${typeof window !== 'undefined' ? window.location.origin : ''}/login\nE-mail: ${credenciaisGeradas.email}\nSenha: ${credenciaisGeradas.senha}`
                       navigator.clipboard?.writeText(texto)
-                    }} style={{ marginTop: 10, padding: '7px 14px', background: '#111', color: '#ffc00f', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                    }} style={{ marginTop: 10, padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                       Copiar dados de acesso
                     </button>
                   </div>
@@ -4036,20 +4008,20 @@ function Dashboard() {
             {/* Busca + filtros + toggle de visualização */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                <input value={clienteBusca} onChange={e => setClienteBusca(e.target.value)} placeholder="Buscar por nome, @ ou e-mail..." style={{ width: '100%', padding: '9px 34px 9px 36px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                <input value={clienteBusca} onChange={e => setClienteBusca(e.target.value)} placeholder="Buscar por nome, @ ou e-mail..." style={{ width: '100%', padding: '9px 34px 9px 36px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] as const).map(([k, label]) => (
                   <button key={k} onClick={() => setClienteFiltro(k)}
-                    style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid #111' : '1px solid #e5e7eb', background: clienteFiltro === k ? '#111' : '#fff', color: clienteFiltro === k ? '#fff' : '#6b7280', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
+                    style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: clienteFiltro === k ? 'var(--v2-ink)' : 'var(--v2-surface)', color: clienteFiltro === k ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
                 ))}
               </div>
-              <div style={{ display: 'inline-flex', background: '#f0f0f0', borderRadius: 9, padding: 3 }}>
+              <div style={{ display: 'inline-flex', background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
                 {(['lista', 'blocos'] as const).map(v => (
                   <button key={v} onClick={() => { setClientesView(v); try { localStorage.setItem('clientesView', v) } catch {} }}
-                    style={{ padding: '6px 16px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize', background: clientesView === v ? '#fff' : 'transparent', color: clientesView === v ? '#111' : '#888', boxShadow: clientesView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{v}</button>
+                    style={{ padding: '6px 16px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize', background: clientesView === v ? 'var(--v2-surface)' : 'transparent', color: clientesView === v ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: clientesView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{v}</button>
                 ))}
               </div>
             </div>
@@ -4067,23 +4039,23 @@ function Dashboard() {
               const fonteClientes = clienteFiltro === 'arquivado' ? clientesArquivados : clientes
               const grupos = [{ titulo: 'Clientes', lista: fonteClientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: 'Projetos internos', lista: fonteClientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
               if (grupos.every(g => g.lista.length === 0)) return (
-                <div style={{ textAlign: 'center', padding: '48px 20px', color: '#aaa', fontSize: 14, background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhum cliente encontrado{(clienteBusca || clienteFiltro !== 'todos') ? ' com esse filtro.' : '.'}</div>
+                <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--v2-ink3)', fontSize: 14, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhum cliente encontrado{(clienteBusca || clienteFiltro !== 'todos') ? ' com esse filtro.' : '.'}</div>
               )
               return grupos.map(g => g.lista.length === 0 ? null : (
               <div key={g.titulo} style={{ marginBottom: 24 }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{g.titulo} <span style={{ color: '#ccc' }}>({g.lista.length})</span></h3>
+                <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{g.titulo} <span style={{ color: 'var(--v2-ink3)' }}>({g.lista.length})</span></h3>
                 <div style={clientesView === 'blocos' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 12 } : { display: 'flex', flexDirection: 'column', gap: 10 }}>
               {g.lista.map(c => (
-                <div key={c.id} className="cliente-card" style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: 'fit-content' }}>
+                <div key={c.id} className="cliente-card" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: 'fit-content' }}>
                   <div onClick={() => iniciarEdicaoCliente(c)} style={{ padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14, cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {c.nome}
-                        <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? '#dbeafe' : '#f0fdf4', color: (c as any).tipo === 'interno' ? '#1d4ed8' : '#16a34a' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
-                        {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>Suspenso</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? 'var(--v2-info-bg)' : 'var(--v2-ok-bg)', color: (c as any).tipo === 'interno' ? 'var(--v2-info)' : 'var(--v2-ok)' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
+                        {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)' }}>Suspenso</span>}
                         {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>Arquivado</span>}
                         {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
@@ -4092,16 +4064,16 @@ function Dashboard() {
                       {/* Na visualizacao em BLOCO, o tile mostra so a previa (nome + tipo). O resto (contato, renovacao, status) fica na Lista e na ficha. */}
                       {clientesView !== 'blocos' && (
                         <>
-                          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>@{c.instagram?.replace(/^@/, '')}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>@{c.instagram?.replace(/^@/, '')}</p>
                           {c.loginEmail && (
-                            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#16a34a' }}>Acesso ao portal: {c.loginEmail}</p>
+                            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ok)' }}>Acesso ao portal: {c.loginEmail}</p>
                           )}
                           {(c as any).contratoRenovacao && (() => {
                             const dias = Math.ceil((new Date((c as any).contratoRenovacao).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
                             const venceu = dias < 0
                             const perto = dias >= 0 && dias <= 30
                             return (
-                              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? '#b91c1c' : perto ? '#ea580c' : '#888' }}>
+                              <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? 'var(--v2-hot)' : perto ? '#ea580c' : 'var(--v2-ink3)' }}>
                                 Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString('pt-BR')}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
                               </p>
                             )
@@ -4124,9 +4096,9 @@ function Dashboard() {
                                 {temFB && <span style={{ ...dotS, background: '#1877f2' }} />}
                               </span>
                             ) : (
-                              <span style={{ ...dotS, background: '#e5e7eb' }} title="Sem redes conectadas" />
+                              <span style={{ ...dotS, background: 'var(--v2-surface2)' }} title="Sem redes conectadas" />
                             )}
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                           </div>
                         </div>
                       )
@@ -4138,25 +4110,25 @@ function Dashboard() {
                     const temFB = !!c.facebookPageId
                     const temIG = !!(c.instagramConectado || c.instagramUserId)
                     const nPosts = posts.filter(p => p.clienteNome === c.nome).length
-                    const mbtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 9, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, color: '#374151', cursor: 'pointer', lineHeight: 1, whiteSpace: 'nowrap' }
+                    const mbtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', lineHeight: 1, whiteSpace: 'nowrap' }
                     const mchip: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 999, padding: '5px 11px', fontSize: 12, fontWeight: 600, lineHeight: 1 }
-                    const secLabel: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }
-                    const secDiv: React.CSSProperties = { marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb' }
+                    const secLabel: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }
+                    const secDiv: React.CSSProperties = { marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)' }
                     const igIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/></svg>
                     const fbIcon = <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     return (
                     <div onClick={fecharFora(() => setEditandoCliente(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1200, padding: '5vh 16px', overflowY: 'auto' }}>
-                      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 18, maxWidth: 800, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
+                      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 18, maxWidth: 800, width: '100%', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
                         {/* Cabeçalho do modal */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', borderBottom: '1px solid #eef0f2', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px', borderBottom: '1px solid var(--v2-rule)', flexShrink: 0 }}>
                           <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#f5f5f5', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: '#111' }}>{c.nome}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#94a3b8' }}>Ficha do cliente{c.loginEmail ? ' · ' + c.loginEmail : ''}</p>
+                            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--v2-ink)' }}>{c.nome}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Ficha do cliente{c.loginEmail ? ' · ' + c.loginEmail : ''}</p>
                           </div>
-                          <button onClick={() => setEditandoCliente(null)} aria-label="Fechar" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <button onClick={() => setEditandoCliente(null)} aria-label="Fechar" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                           </button>
                         </div>
@@ -4171,18 +4143,18 @@ function Dashboard() {
                                   Resumo semanal
                                 </button>
                                 <button onClick={() => statusPublico(c.id)} title="Copiar o link público de status (sem login)" style={mbtn}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
                                   Status público
                                 </button>
-                                <button onClick={() => revogarLinkStatus(c.id)} title="Revoga o link de status atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: '#b91c1c', borderColor: '#fecaca' }}>
+                                <button onClick={() => revogarLinkStatus(c.id)} title="Revoga o link de status atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
                                   Revogar status
                                 </button>
-                                <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: '#111', border: '1px solid #111', color: '#fff' }}>
+                                <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: 'var(--v2-ink)', border: '1px solid var(--v2-ink)', color: 'var(--v2-surface)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   Link de aprovação
                                 </button>
-                                <button onClick={() => revogarLinkAprovacao(c.id, c.nome)} title="Revoga o link atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: '#b91c1c', borderColor: '#fecaca' }}>
+                                <button onClick={() => revogarLinkAprovacao(c.id, c.nome)} title="Revoga o link atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
                                   Revogar link
                                 </button>
@@ -4198,32 +4170,32 @@ function Dashboard() {
                                 <>
                                   {!temIG && <a href={`/api/instagram/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#c2185b' }}>{igIcon} Conectar Instagram</a>}
                                   {!temFB && <a href={`/api/meta/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#1877f2' }}>{fbIcon} Conectar Facebook</a>}
-                                  {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: '#9ca3af' }}>Desconectar</button>}
+                                  {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: 'var(--v2-ink3)' }}>Desconectar</button>}
                                 </>
-                              ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: '#b45309' }}>Não conectado</span> : null}
-                              <span style={{ ...mchip, marginLeft: 'auto', background: '#f3f4f6', color: '#6b7280' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
+                              ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: 'var(--v2-amber)' }}>Não conectado</span> : null}
+                              <span style={{ ...mchip, marginLeft: 'auto', background: '#f3f4f6', color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                             </div>
                           </div>
-                          <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb' }}>Dados do cliente</span>
+                          <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)' }}>Dados do cliente</span>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
-                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input value={edicaoCliente.instagram || ''} onChange={e => setEdicaoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
-                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <select value={(edicaoCliente as any).tipo || 'cliente'} onChange={e => setEdicaoCliente(p => ({ ...p, tipo: e.target.value as 'cliente' | 'interno' }))}
-                          style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                          style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                           <option value="cliente">Cliente</option>
                           <option value="interno">Projeto interno</option>
                         </select>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Entregaveis</label>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Entregaveis</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {ENTREGAVEIS_OPCOES.map(op => {
                             const ativo = ((edicaoCliente as any).entregaveis || []).includes(op.key)
                             return (
                               <button key={op.key} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, entregaveis: ativo ? ((p as any).entregaveis || []).filter((e: string) => e !== op.key) : [...((p as any).entregaveis || []), op.key] }))}
-                                style={{ padding: '5px 10px', borderRadius: 8, border: ativo ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: ativo ? '#fffbeb' : '#fff', fontSize: 11, fontWeight: ativo ? 700 : 500, color: ativo ? '#92400e' : '#666', cursor: 'pointer' }}>
+                                style={{ padding: '5px 10px', borderRadius: 8, border: ativo ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: ativo ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', fontSize: 11, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', cursor: 'pointer' }}>
                                 {op.label}
                               </button>
                             )
@@ -4231,59 +4203,59 @@ function Dashboard() {
                         </div>
                         {((edicaoCliente as any).entregaveis || []).includes('social_media') && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                            <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Posts mensais:</label>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Posts mensais:</label>
                             <input type="number" min="0" value={(edicaoCliente as any).postsMensais || 0} onChange={e => setEdicaoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
-                              style={{ width: 70, padding: '5px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                              style={{ width: 70, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                           </div>
                         )}
                         {/* Contrato */}
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Contrato</label>
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Contrato</label>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <input type="number" min="0" placeholder="Valor (R$)" value={(edicaoCliente as any).contratoValor ?? ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
-                              style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
+                              style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                            <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Início
                               <input type="date" value={(edicaoCliente as any).contratoInicio || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoInicio: e.target.value }))}
-                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
-                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
+                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                            <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Renovação
                               <input type="date" value={(edicaoCliente as any).contratoRenovacao || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoRenovacao: e.target.value }))}
-                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                                style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                             <select value={(edicaoCliente as any).contratoCiclo || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoCiclo: e.target.value as any }))}
-                              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                              style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                               <option value="">Ciclo...</option>
                               <option value="mensal">Mensal</option>
                               <option value="trimestral">Trimestral</option>
                               <option value="semestral">Semestral</option>
                               <option value="anual">Anual</option>
                             </select>
-                            <label style={{ fontSize: 11, color: '#888', display: 'flex', flexDirection: 'column', gap: 2 }}>Dia de vencimento
+                            <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Dia de vencimento
                               <input type="number" min="1" max="31" value={(edicaoCliente as any).diaVencimento || ''} onChange={e => setEdicaoCliente(p => ({ ...p, diaVencimento: Number(e.target.value) || undefined } as any))} placeholder="ex.: 10"
-                                style={{ width: 90, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} /></label>
+                                style={{ width: 90, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                           </div>
-                          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>Valor mensal recorrente. Para projeto pontual ou valores diferentes mês a mês, use as cobranças abaixo.</p>
+                          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Valor mensal recorrente. Para projeto pontual ou valores diferentes mês a mês, use as cobranças abaixo.</p>
 
                           {/* Cobranças avulsas / modulares (pontual ou valor por mês) */}
                           <div style={{ marginTop: 12 }}>
-                            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
-                              <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                              <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                              <input placeholder="Descrição (ex.: Landing page)" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input placeholder="Descrição (ex.: Landing page)" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                               <button type="button" onClick={() => {
                                 if (!avMes || !(Number(avValor) > 0)) return
                                 const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }
                                 setEdicaoCliente(p => ({ ...p, receitasAvulsas: [...(((p as any).receitasAvulsas) || []), nova] } as any))
                                 setAvValor(''); setAvDesc('')
-                              }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? '#111' : '#f0f0f0', color: (avMes && Number(avValor) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                              }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
                             </div>
                             {(((edicaoCliente as any).receitasAvulsas) || []).length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                 {((edicaoCliente as any).receitasAvulsas as any[]).map((r) => (
-                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
-                                    <span style={{ fontWeight: 700, color: '#111' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                    <span style={{ color: '#aaa' }}>{r.mes}</span>
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)', padding: '4px 8px', background: 'var(--v2-surface1)', borderRadius: 6 }}>
+                                    <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    <span style={{ color: 'var(--v2-ink3)' }}>{r.mes}</span>
                                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.descricao}</span>
-                                    <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, receitasAvulsas: (((p as any).receitasAvulsas) || []).filter((x: any) => x.id !== r.id) } as any))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14 }}>×</button>
+                                    <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, receitasAvulsas: (((p as any).receitasAvulsas) || []).filter((x: any) => x.id !== r.id) } as any))} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                                   </div>
                                 ))}
                               </div>
@@ -4293,45 +4265,45 @@ function Dashboard() {
                       </div>
                       {/* Passagem de bastão (vendas → gestão) — vem da conversão do CRM */}
                       {'handoffVendas' in edicaoCliente && (
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Passagem de bastão (vendas → onboarding)</label>
-                          <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Contexto da venda transmitido pelo closer. Edite/complemente conforme o onboarding avança.</p>
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Passagem de bastão (vendas → onboarding)</label>
+                          <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Contexto da venda transmitido pelo closer. Edite/complemente conforme o onboarding avança.</p>
                           <textarea lang="pt-BR" value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder="Sem passagem de bastão registrada (clientes criados pela conversão do CRM trazem este resumo automaticamente)."
-                            style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', whiteSpace: 'pre-wrap' }} />
+                            style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', whiteSpace: 'pre-wrap' }} />
                         </div>
                       )}
 
                       {/* Papéis do squad — quem faz O QUÊ neste cliente */}
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Papéis do squad</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Quem ocupa cada função neste cliente. Quem entra aqui entra no squad automaticamente.</p>
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Papéis do squad</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Quem ocupa cada função neste cliente. Quem entra aqui entra no squad automaticamente.</p>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 14 }}>
                           {PAPEIS_SQUAD.map(p => (
                             <div key={p.chave}>
-                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#999', marginBottom: 4 }} title={p.descricao}>{p.label}</label>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }} title={p.descricao}>{p.label}</label>
                               <select value={((edicaoCliente as any).squadPapeis || {})[p.chave] || ''}
                                 onChange={e => setEdicaoCliente(prev => ({ ...prev, squadPapeis: { ...((prev as any).squadPapeis || {}), [p.chave]: e.target.value } } as any))}
-                                style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box' }}>
+                                style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box' }}>
                                 <option value="">A definir</option>
                                 {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
                               </select>
                             </div>
                           ))}
                         </div>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Squad do cliente</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Quem mais acompanha este cliente, além dos papéis acima. É esta lista que recebe as notificações.</p>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Squad do cliente</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Quem mais acompanha este cliente, além dos papéis acima. É esta lista que recebe as notificações.</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => {
                             const sel = ((edicaoCliente as any).squad || []).includes(u.email)
                             return (
                               <button key={u.email} type="button" onClick={() => setEdicaoCliente(p => { const cur = (((p as any).squad || []) as string[]); return { ...p, squad: sel ? cur.filter(e => e !== u.email) : [...cur, u.email] } as any })}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, border: sel ? '1.5px solid #1d4ed8' : '1.5px solid #e0e0e0', background: sel ? '#eff6ff' : '#fff', color: sel ? '#1d4ed8' : '#888', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: sel ? '#1d4ed8' : '#ccc' }} />
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, border: sel ? '1.5px solid var(--v2-info)' : '1.5px solid var(--v2-rule)', background: sel ? 'var(--v2-info-bg)' : 'var(--v2-surface)', color: sel ? 'var(--v2-info)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: sel ? 'var(--v2-info)' : 'var(--v2-rule2)' }} />
                                 {u.nome || u.email}
                               </button>
                             )
                           })}
-                          {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: '#bbb' }}>Nenhum colaborador cadastrado ainda.</span>}
+                          {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum colaborador cadastrado ainda.</span>}
                         </div>
                       </div>
 
@@ -4339,35 +4311,35 @@ function Dashboard() {
                       {edicaoCliente.id && (() => {
                         const contasCli = ((edicaoCliente as any).contas || []) as { id: string; nome: string; logo?: string; temInstagram?: boolean; temFacebook?: boolean }[]
                         return (
-                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                               <div>
-                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888' }}>Perfis conectados</label>
-                                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#bbb' }}>Cliente com mais de uma loja/perfil: adicione cada Instagram ou Facebook. No Novo Post você escolhe em quais publicar.</p>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Perfis conectados</label>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Cliente com mais de uma loja/perfil: adicione cada Instagram ou Facebook. No Novo Post você escolhe em quais publicar.</p>
                               </div>
                               <button type="button" onClick={() => { setConectarComoNova(true); setConectarRedesCliente(edicaoCliente.id!) }}
-                                style={{ flexShrink: 0, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Adicionar perfil</button>
+                                style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Adicionar perfil</button>
                             </div>
                             {contasCli.length === 0
-                              ? <p style={{ margin: 0, fontSize: 12.5, color: '#bbb' }}>Nenhum perfil conectado ainda. Use "Conectar redes" (conta principal) ou "Adicionar perfil".</p>
+                              ? <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum perfil conectado ainda. Use "Conectar redes" (conta principal) ou "Adicionar perfil".</p>
                               : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                   {contasCli.map(conta => (
-                                    <div key={conta.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, border: '1px solid #eee', background: '#fafafa' }}>
-                                      <span style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--marca,#ffc00f)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#111' }}>
+                                    <div key={conta.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
+                                      <span style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--marca,var(--v2-amber-on))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>
                                         <AvatarCliente logo={conta.logo} nome={conta.nome} />
                                       </span>
-                                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111' }}>{conta.nome}
-                                        {conta.id === 'principal' && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>principal</span>}
+                                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)' }}>{conta.nome}
+                                        {conta.id === 'principal' && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>principal</span>}
                                       </span>
-                                      <span style={{ fontSize: 11, color: '#999', whiteSpace: 'nowrap' }}>{[conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ') || 'sem rede'}</span>
+                                      <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{[conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ') || 'sem rede'}</span>
                                       {conta.id !== 'principal' && (
                                         <button type="button" onClick={async () => {
                                           if (!(await confirmar(`Desconectar o perfil "${conta.nome}"? Os posts já publicados não são afetados.`, { titulo: 'Desconectar perfil', okLabel: 'Desconectar', perigo: true }))) return
                                           const r = await fetch('/api/clientes/conectar', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: edicaoCliente.id, contaId: conta.id }) }).then(x => x.json()).catch(() => null)
                                           if (r?.ok) { setEdicaoCliente(p => ({ ...p, contas: r.contas } as any)); fetch('/api/clientes').then(x => x.json()).then(setClientes) }
                                           else toast('Não foi possível desconectar.', 'erro')
-                                        }} style={{ flexShrink: 0, background: 'none', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
+                                        }} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
                                       )}
                                     </div>
                                   ))}
@@ -4378,32 +4350,32 @@ function Dashboard() {
                       })()}
 
                       {/* Módulos & assinatura (plano modular) */}
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888' }}>Módulos & assinatura</label>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: '#16a34a' }}>{totalMensalModulos((edicaoCliente as any).modulos).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</span>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Módulos & assinatura</label>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ok)' }}>{totalMensalModulos((edicaoCliente as any).modulos).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</span>
                         </div>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O núcleo é grátis e vem incluído em todo cliente. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>O núcleo é grátis e vem incluído em todo cliente. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
 
                         {/* Núcleo — grátis, pré-definido (sempre incluído) */}
-                        <p style={{ margin: '4px 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Incluído no núcleo (grátis)</p>
+                        <p style={{ margin: '4px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Incluído no núcleo (grátis)</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                           {MODULOS.filter(m => m.gratuito).map(m => (
-                            <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', border: '1px solid #eef0f2', borderRadius: 10 }}>
-                              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
+                              <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: 'var(--v2-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                               </span>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{m.label}</p>
-                                <p style={{ margin: 0, fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{m.label}</p>
+                                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
                               </div>
-                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 999, padding: '3px 10px' }}>Incluído</span>
+                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px' }}>Incluído</span>
                             </div>
                           ))}
                         </div>
 
                         {/* Add-ons — pagos, a selecionar */}
-                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add-ons (opcionais)</p>
+                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add-ons (opcionais)</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {MODULOS_PAGOS.map(m => {
                             const mod = ((edicaoCliente as any).modulos || {})[m.key] || {}
@@ -4411,17 +4383,17 @@ function Dashboard() {
                             const valor = typeof mod.valor === 'number' ? mod.valor : m.valorPadrao
                             const set = (patch: any) => setEdicaoCliente(p => ({ ...p, modulos: { ...((p as any).modulos || {}), [m.key]: { ...(((p as any).modulos || {})[m.key] || {}), ...patch } } } as any))
                             return (
-                              <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: ativo ? '#f0fdf4' : '#fafafa', border: `1px solid ${ativo ? '#bbf7d0' : '#f0f0f0'}`, borderRadius: 10 }}>
-                                <button type="button" onClick={() => set({ ativo: !ativo, ...(!ativo && !mod.desde ? { desde: new Date().toISOString() } : {}) })} aria-label={ativo ? 'Desativar' : 'Ativar'} style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: ativo ? '#16a34a' : '#e0e0e0', position: 'relative' }}>
-                                  <span style={{ position: 'absolute', top: 3, left: ativo ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+                              <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: ativo ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: `1px solid ${ativo ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)'}`, borderRadius: 10 }}>
+                                <button type="button" onClick={() => set({ ativo: !ativo, ...(!ativo && !mod.desde ? { desde: new Date().toISOString() } : {}) })} aria-label={ativo ? 'Desativar' : 'Ativar'} style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: ativo ? 'var(--v2-ok)' : 'var(--v2-rule)', position: 'relative' }}>
+                                  <span style={{ position: 'absolute', top: 3, left: ativo ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: 'var(--v2-surface)', transition: 'left .15s' }} />
                                 </button>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{m.label}</p>
-                                  <p style={{ margin: 0, fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
+                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{m.label}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, opacity: ativo ? 1 : 0.5 }}>
-                                  <span style={{ fontSize: 12, color: '#888' }}>R$</span>
-                                  <input type="number" min="0" value={valor} disabled={!ativo} onChange={e => set({ valor: Number(e.target.value) || 0 })} style={{ width: 64, padding: '5px 7px', borderRadius: 7, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                                  <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>R$</span>
+                                  <input type="number" min="0" value={valor} disabled={!ativo} onChange={e => set({ valor: Number(e.target.value) || 0 })} style={{ width: 64, padding: '5px 7px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                                 </div>
                               </div>
                             )
@@ -4433,25 +4405,25 @@ function Dashboard() {
                       {(() => {
                         const suspenso = !!(edicaoCliente as any).inadimplente
                         return (
-                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Cobrança e acesso</label>
-                            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>Suspender por inadimplência bloqueia o acesso do cliente ao portal (a equipe continua vendo tudo). Reative ao regularizar o pagamento.</p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: suspenso ? '#fef2f2' : '#f8fafc', border: `1px solid ${suspenso ? '#fecaca' : '#eef0f2'}` }}>
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Cobrança e acesso</label>
+                            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Suspender por inadimplência bloqueia o acesso do cliente ao portal (a equipe continua vendo tudo). Reative ao regularizar o pagamento.</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: suspenso ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', border: `1px solid ${suspenso ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)'}` }}>
                               <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, inadimplente: !suspenso, suspensoDesde: !suspenso ? new Date().toISOString() : undefined } as any))} aria-label={suspenso ? 'Reativar acesso' : 'Suspender acesso'}
-                                style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: suspenso ? '#dc2626' : '#e0e0e0', position: 'relative' }}>
-                                <span style={{ position: 'absolute', top: 3, left: suspenso ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+                                style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: suspenso ? 'var(--v2-hot)' : 'var(--v2-rule)', position: 'relative' }}>
+                                <span style={{ position: 'absolute', top: 3, left: suspenso ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: 'var(--v2-surface)', transition: 'left .15s' }} />
                               </button>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: suspenso ? '#b91c1c' : '#111' }}>{suspenso ? 'Acesso suspenso (inadimplente)' : 'Acesso liberado'}</p>
-                                <p style={{ margin: 0, fontSize: 11, color: '#999' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString('pt-BR')}` : 'Cliente sem acesso ao portal.') : 'Cliente acessa o portal normalmente.'}</p>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: suspenso ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{suspenso ? 'Acesso suspenso (inadimplente)' : 'Acesso liberado'}</p>
+                                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString('pt-BR')}` : 'Cliente sem acesso ao portal.') : 'Cliente acessa o portal normalmente.'}</p>
                               </div>
                             </div>
                             {stripeOn && (
                               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                <button type="button" onClick={() => cobrarStripe(c.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', background: '#635bff', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                                <button type="button" onClick={() => cobrarStripe(c.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', background: '#635bff', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
                                   {(c as any).stripeCustomerId ? 'Nova cobrança (Stripe)' : 'Cobrar via Stripe (assinatura mensal)'}
                                 </button>
-                                {(c as any).stripeCustomerId && <span style={{ fontSize: 11.5, fontWeight: 700, color: (c as any).assinaturaStatus === 'active' ? '#16a34a' : '#b45309' }}>Assinatura vinculada{(c as any).assinaturaStatus ? ` · ${(c as any).assinaturaStatus}` : ''}</span>}
+                                {(c as any).stripeCustomerId && <span style={{ fontSize: 11.5, fontWeight: 700, color: (c as any).assinaturaStatus === 'active' ? 'var(--v2-ok)' : 'var(--v2-amber)' }}>Assinatura vinculada{(c as any).assinaturaStatus ? ` · ${(c as any).assinaturaStatus}` : ''}</span>}
                               </div>
                             )}
                           </div>
@@ -4459,16 +4431,16 @@ function Dashboard() {
                       })()}
 
                       {/* Permissoes do portal do cliente */}
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #eee' }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 2 }}>Permissões do portal</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Permissões do portal</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo']] as [string, string][]).map(([chave, rotulo]) => {
                             const ligado = (edicaoCliente as any).permissoes?.[chave] !== false
                             return (
                               <button key={chave} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, permissoes: { ...((p as any).permissoes || {}), [chave]: ((p as any).permissoes?.[chave] !== false) ? false : true } } as any))}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, border: ligado ? '1.5px solid #16a34a' : '1.5px solid #e0e0e0', background: ligado ? '#f0fdf4' : '#fff', color: ligado ? '#16a34a' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? '#16a34a' : '#ccc' }} />
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 999, border: ligado ? '1.5px solid var(--v2-ok)' : '1.5px solid var(--v2-rule)', background: ligado ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: ligado ? 'var(--v2-ok)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: ligado ? 'var(--v2-ok)' : 'var(--v2-rule2)' }} />
                                 {rotulo}
                               </button>
                             )
@@ -4476,43 +4448,43 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, paddingTop: 16, borderTop: '1px dashed #e5e7eb', marginBottom: 10 }}>Identidade visual</span>
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)', marginBottom: 10 }}>Identidade visual</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: '#f5f5f5', border: '1.5px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {edicaoCliente.logo ? <img src={edicaoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Logo</span>}
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {edicaoCliente.logo ? <img src={edicaoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
                           </div>
-                          <span style={{ fontSize: 12, color: '#666', textDecoration: 'underline' }}>{enviandoLogoCliente ? 'Enviando...' : 'Trocar logomarca'}</span>
+                          <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoCliente ? 'Enviando...' : 'Trocar logomarca'}</span>
                           <input type="file" accept="image/*" style={{ display: 'none' }}
                             onChange={e => { if (e.target.files?.[0]) uploadLogoCliente(e.target.files[0]); e.target.value = '' }} />
                         </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                           Cor primária
                           <input type="color" value={edicaoCliente.corPrimaria || '#ffc00f'} onChange={e => setEdicaoCliente(p => ({ ...p, corPrimaria: e.target.value }))}
-                            style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                            style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                         </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
                           Cor secundária
                           <input type="color" value={edicaoCliente.corSecundaria || '#111111'} onChange={e => setEdicaoCliente(p => ({ ...p, corSecundaria: e.target.value }))}
-                            style={{ width: 36, height: 32, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
+                            style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                         </label>
                       </div>
                         <LgpdCliente clienteId={c.id} clienteNome={c.nome} onApagado={() => { setEditandoCliente(null); setClientes(cs => cs.filter((x: any) => x.id !== c.id)) }} />
                         </div>
                         {/* Rodapé fixo do modal */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 22px', borderTop: '1px solid #eef0f2', flexShrink: 0, flexWrap: 'wrap', background: '#fff' }}>
-                          <button onClick={() => excluirCliente(c.id, c.nome)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #fecaca', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: '#ef4444', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 22px', borderTop: '1px solid var(--v2-rule)', flexShrink: 0, flexWrap: 'wrap', background: 'var(--v2-surface)' }}>
+                          <button onClick={() => excluirCliente(c.id, c.nome)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)', cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                             Excluir cliente
                           </button>
-                          <button onClick={() => arquivarCliente(c.id, c.nome, !(c as any).arquivado)} title={(c as any).arquivado ? 'Restaurar o cliente e o conteúdo dele' : 'Arquivar: some das telas e corta o acesso ao portal (reversível)'} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: (c as any).arquivado ? '#16a34a' : '#b45309', cursor: 'pointer' }}>
+                          <button onClick={() => arquivarCliente(c.id, c.nome, !(c as any).arquivado)} title={(c as any).arquivado ? 'Restaurar o cliente e o conteúdo dele' : 'Arquivar: some das telas e corta o acesso ao portal (reversível)'} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: (c as any).arquivado ? 'var(--v2-ok)' : 'var(--v2-amber)', cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>
                             {(c as any).arquivado ? 'Restaurar' : 'Arquivar'}
                           </button>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: '#fff', color: '#b45309', border: '1px solid #fde68a', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
+                            {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
                             <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f1f5f9', border: 'none', borderRadius: 9, fontSize: 13, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                            <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar alterações</button>
+                            <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar alterações</button>
                           </div>
                         </div>
                       </div>
@@ -4531,16 +4503,16 @@ function Dashboard() {
         {/* USUÁRIOS (admin only) */}
         {aba === 'usuarios' && role === 'admin' && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#111' }}>Colaboradores</h2>
+            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>Colaboradores</h2>
 
             {/* Permissões por papel — padrão do papel (Ver/Editar/Excluir por módulo) */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: 0, fontSize: 15 }}>Permissões por papel</h3>
-              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>Padrão de cada papel por módulo (Ver / Editar / Excluir). <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b>/<b>Cliente</b> têm acesso próprio. Cada usuário pode ter ajuste individual no cadastro.</p>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Padrão de cada papel por módulo (Ver / Editar / Excluir). <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b>/<b>Cliente</b> têm acesso próprio. Cada usuário pode ter ajuste individual no cadastro.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(['gerente', 'usuario'] as const).map(papel => (
                   <div key={papel}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
                     {matrizNiveis(papel, permPapel[papel] || {}, (novoPerm: any) => setPermPapelNivel(papel, novoPerm), 'papel', '')}
                   </div>
                 ))}
@@ -4549,43 +4521,43 @@ function Dashboard() {
 
             {/* Permissões detalhadas por papel — liga/desliga CADA tela e ação
                 para todo gerente/usuário (o cadastro individual sobrepõe). */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: 0, fontSize: 15 }}>Funcionalidades por papel (telas e ações)</h3>
-              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: '#999' }}>Controle fino de <b>cada tela</b> e das <b>ações críticas</b> (gerar com IA, enviar ao cliente, publicar, aprovar, excluir). Vale como padrão do papel — no cadastro de cada colaborador dá para ajustar individualmente. <b>Admin</b> sempre tem acesso total.</p>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Controle fino de <b>cada tela</b> e das <b>ações críticas</b> (gerar com IA, enviar ao cliente, publicar, aprovar, excluir). Vale como padrão do papel — no cadastro de cada colaborador dá para ajustar individualmente. <b>Admin</b> sempre tem acesso total.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(['gerente', 'usuario'] as const).map(papel => (
                   <div key={papel}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
                     {renderGranular(papel, permGranular?.[papel] || {}, (novoPerm: any) => setPermGranularPapel(papel, novoPerm), 'papel')}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 15 }}>Adicionar colaborador</h3>
                 <button onClick={() => { setMostrarFormUsuario(v => !v); setErroUsuario(''); setVerSenhaNovo(false) }} style={{
-                  padding: '9px 18px', background: mostrarFormUsuario ? '#f0f0f0' : '#ffc00f', border: 'none', borderRadius: 10,
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer', color: '#111',
+                  padding: '9px 18px', background: mostrarFormUsuario ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', border: 'none', borderRadius: 10,
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer', color: 'var(--v2-ink)',
                 }}>{mostrarFormUsuario ? 'Fechar' : '+ Cadastrar usuário'}</button>
               </div>
               {mostrarFormUsuario && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <input value={novoUsuario.nome} onChange={e => setNovoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                   </div>
                   <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : perfilCidadania ? 'Função / Cargo (ex.: Analista de processos, Genealogista, Comercial)' : perfilTurismo ? 'Função / Cargo (ex.: Atendimento, Motorista, Guia)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
-                    style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                    style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                   {perfilTurismo && (
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 12 }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Tipo no turismo</label>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Tipo no turismo</label>
                         <select value={(novoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setNovoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
-                          style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                          style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                           <option value="equipe">Equipe</option>
                           <option value="motorista">Motorista</option>
                           <option value="guia">Guia</option>
@@ -4593,29 +4565,29 @@ function Dashboard() {
                         </select>
                       </div>
                       <div style={{ flex: 1, minWidth: 160 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Telefone</label>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Telefone</label>
                         <input value={(novoUsuario as any).telefone || ''} onChange={e => setNovoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                       </div>
                       {(novoUsuario as any).tipoTurismo === 'motorista' && (
                         <div style={{ flex: 1, minWidth: 140 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>CNH</label>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>CNH</label>
                           <input value={(novoUsuario as any).cnh || ''} onChange={e => setNovoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
-                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                         </div>
                       )}
                     </div>
                   )}
                   {perfilClinica && novoUsuario.role !== 'vendas' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#555' }}>Disponibilidade de agenda</span>
-                        <div style={{ display: 'inline-flex', gap: 3, background: '#eee', borderRadius: 9, padding: 3 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>Disponibilidade de agenda</span>
+                        <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
                           {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
                             const ativo = ((novoUsuario as any).recebeAgenda ?? true) === v
                             return (
                               <button key={String(v)} type="button" onClick={() => setNovoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
-                                style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? '#fff' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? '#111' : '#888', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
+                                style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? 'var(--v2-surface)' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
                             )
                           })}
                         </div>
@@ -4623,8 +4595,8 @@ function Dashboard() {
                       {((novoUsuario as any).recebeAgenda ?? true) && (
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                           <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética, Dermato)"
-                            style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
-                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
+                            style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
+                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--v2-ink2)', fontWeight: 600 }}>
                             Cor na agenda
                             <input type="color" value={(novoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setNovoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 34, height: 30, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                           </label>
@@ -4634,41 +4606,41 @@ function Dashboard() {
                   )}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Custo/hora (R$)</label>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Custo/hora (R$)</label>
                       <input type="number" min="0" value={novoUsuario.custoHora || ''} onChange={e => setNovoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Ex.: 50"
-                        style={{ width: 130, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                        style={{ width: 130, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Salário fixo (R$/mês)</label>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Salário fixo (R$/mês)</label>
                       <input type="number" min="0" value={novoUsuario.salarioFixo || ''} onChange={e => setNovoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder="Ex.: 2500"
-                        style={{ width: 140, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                        style={{ width: 140, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Valor/projeto (R$)</label>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Valor/projeto (R$)</label>
                       <input type="number" min="0" value={novoUsuario.valorPorProjeto || ''} onChange={e => setNovoUsuario(p => ({ ...p, valorPorProjeto: Number(e.target.value) || 0 }))} placeholder="Ex.: 200"
-                        style={{ width: 120, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                        style={{ width: 120, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Nº de projetos</label>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Nº de projetos</label>
                       <input type="number" min="0" value={novoUsuario.qtdProjetos || ''} onChange={e => setNovoUsuario(p => ({ ...p, qtdProjetos: Number(e.target.value) || 0 }))} placeholder="Ex.: 10"
-                        style={{ width: 110, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit' }} />
+                        style={{ width: 110, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div style={{ alignSelf: 'flex-end', padding: '0 0 10px' }}>
-                      <span style={{ fontSize: 11, color: '#aaa' }}>Variável = </span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{((novoUsuario.valorPorProjeto || 0) * (novoUsuario.qtdProjetos || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Variável = </span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--v2-ok)' }}>{((novoUsuario.valorPorProjeto || 0) * (novoUsuario.qtdProjetos || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
-                        style={{ width: '100%', padding: '10px 42px 10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', padding: '10px 42px 10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                       <button type="button" onClick={() => setVerSenhaNovo(v => !v)} title={verSenhaNovo ? 'Ocultar senha' : 'Mostrar senha'}
-                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', padding: 0 }}>
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', padding: 0 }}>
                         {verSenhaNovo ? <IconEyeOff size={17} /> : <IconEye size={17} />}
                       </button>
                     </div>
                     <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                       {perfilTelefonia ? (<>
                         <option value="usuario">Estoquista</option>
                         <option value="vendas">Vendedor</option>
@@ -4684,7 +4656,7 @@ function Dashboard() {
                     </select>
                     {novoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                       <select value={(novoUsuario as any).funcaoVendas || ''} onChange={e => setNovoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                         <option value="">Função...</option>
                         <option value="sdr">SDR / BDR</option>
                         <option value="closer">Closer</option>
@@ -4692,30 +4664,30 @@ function Dashboard() {
                     )}
                     {novoUsuario.role === 'cliente' && (
                       <select value={(novoUsuario as any).clienteId || ''} onChange={e => setNovoUsuario(p => ({ ...p, clienteId: e.target.value }))}
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                         <option value="">Vincular a qual cliente?</option>
                         {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
                     )}
                     {perfilTelefonia && novoUsuario.role !== 'admin' && novoUsuario.role !== 'cliente' && (
                       <select value={(novoUsuario as any).lojaId || ''} onChange={e => setNovoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, background: '#fff', fontFamily: 'inherit' }}>
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                         <option value="">{novoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
                         {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                       </select>
                     )}
                     <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
-                      padding: '10px 20px', background: usuarioFormValido ? '#ffc00f' : '#f0f0f0', border: 'none', borderRadius: 10,
-                      fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? '#111' : '#bbb',
+                      padding: '10px 20px', background: usuarioFormValido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', border: 'none', borderRadius: 10,
+                      fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                     }}>Adicionar</button>
                   </div>
                   {renderPermissoes(novoUsuario.role, (novoUsuario as any).permissoes, (p: any) => setNovoUsuario(u => ({ ...u, permissoes: p } as any)))}
                   {renderGranular(novoUsuario.role, (novoUsuario as any).permissoesGranular, (p: any) => setNovoUsuario(u => ({ ...u, permissoesGranular: p } as any)))}
                   {erroUsuario && (
-                    <p style={{ margin: 0, fontSize: 12, color: '#ef4444' }}>{erroUsuario}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-hot)' }}>{erroUsuario}</p>
                   )}
                   {!erroUsuario && (novoUsuario.nome || novoUsuario.email || novoUsuario.senha) && !usuarioFormValido && (
-                    <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>
                       Preencha nome, e-mail válido, senha (mín. 6 caracteres) e nível de acesso para continuar.
                     </p>
                   )}
@@ -4727,32 +4699,32 @@ function Dashboard() {
                 const ordem: Record<string, number> = { admin: 0, gerente: 1, cliente: 2 }
                 return (ordem[a.role] ?? 9) - (ordem[b.role] ?? 9) || a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' })
               }).map(u => (
-                <div key={u.id} style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                <div key={u.id} style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#888', flexShrink: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: 'var(--v2-ink3)', flexShrink: 0 }}>
                       {(u as any).foto ? <img src={(u as any).foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : u.nome[0]?.toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#111' }}>{u.nome}{(u as any).cargo ? <span style={{ fontWeight: 500, fontSize: 13, color: '#888' }}> · {(u as any).cargo}</span> : null}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 13, color: '#888' }}>{u.email}</p>
-                      {u.role === 'cliente' && u.clienteId && (() => { const c = clientes.find(x => x.id === u.clienteId); return c ? <p style={{ margin: '2px 0 0', fontSize: 11, color: '#16a34a' }}>Vinculado a: {c.nome}</p> : null })()}
+                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--v2-ink)' }}>{u.nome}{(u as any).cargo ? <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--v2-ink3)' }}> · {(u as any).cargo}</span> : null}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>{u.email}</p>
+                      {u.role === 'cliente' && u.clienteId && (() => { const c = clientes.find(x => x.id === u.clienteId); return c ? <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ok)' }}>Vinculado a: {c.nome}</p> : null })()}
                     </div>
-                    <span style={{ background: u.role === 'admin' ? '#fef3c7' : u.role === 'cliente' ? '#dbeafe' : '#f0f0f0', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: u.role === 'cliente' ? '#1d4ed8' : '#333' }}>{u.role}</span>
+                    <span style={{ background: u.role === 'admin' ? 'var(--v2-amber-bg)' : u.role === 'cliente' ? 'var(--v2-info-bg)' : 'var(--v2-surface2)', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: u.role === 'cliente' ? 'var(--v2-info)' : 'var(--v2-ink)' }}>{u.role}</span>
                     <button onClick={() => editandoUsuario === u.email ? setEditandoUsuario(null) : iniciarEdicaoUsuario(u)}
-                      style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>
+                      style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
                       {editandoUsuario === u.email ? 'Fechar' : 'Editar'}
                     </button>
                     <button onClick={() => excluirUsuario(u.email, u.nome)}
-                      style={{ background: 'none', border: '1px solid #fecaca', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#ef4444', cursor: 'pointer' }}>
+                      style={{ background: 'none', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: 'var(--v2-hot)', cursor: 'pointer' }}>
                       Excluir
                     </button>
                   </div>
                   {editandoUsuario === u.email && (
-                    <div style={{ borderTop: '1px solid #f0f0f0', padding: '16px 18px', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '16px 18px', background: 'var(--v2-surface1)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                          <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #e0e0e0' }}>
-                            {edicaoUsuario.foto ? <img src={edicaoUsuario.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#bbb' }}>Foto</span>}
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--v2-rule)' }}>
+                            {edicaoUsuario.foto ? <img src={edicaoUsuario.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Foto</span>}
                           </div>
                           <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
                             if (!e.target.files?.[0]) return
@@ -4761,24 +4733,24 @@ function Dashboard() {
                             e.target.value = ''
                           }} />
                         </label>
-                        <span style={{ fontSize: 11, color: '#888' }}>Clique para alterar a foto</span>
+                        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Clique para alterar a foto</span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
-                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input value={edicaoUsuario.cargo} onChange={e => setEdicaoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo"
-                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input type="number" min="0" value={edicaoUsuario.custoHora || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Custo/hora R$"
-                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input type="number" min="0" value={edicaoUsuario.salarioFixo || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder="Salário fixo R$"
-                          style={{ width: 120, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ width: 120, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input type="number" min="0" value={edicaoUsuario.valorPorProjeto || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, valorPorProjeto: Number(e.target.value) || 0 }))} placeholder="Valor/projeto R$"
-                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
+                          style={{ width: 110, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input type="number" min="0" value={edicaoUsuario.qtdProjetos || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, qtdProjetos: Number(e.target.value) || 0 }))} placeholder="Nº projetos"
-                          style={{ width: 100, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                        <span style={{ alignSelf: 'center', fontSize: 12, color: '#888' }}>Variável: <strong style={{ color: '#16a34a' }}>{((edicaoUsuario.valorPorProjeto || 0) * (edicaoUsuario.qtdProjetos || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></span>
+                          style={{ width: 100, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                        <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--v2-ink3)' }}>Variável: <strong style={{ color: 'var(--v2-ok)' }}>{((edicaoUsuario.valorPorProjeto || 0) * (edicaoUsuario.qtdProjetos || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></span>
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
-                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                          style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                           {perfilTelefonia ? (<>
                             <option value="usuario">Estoquista</option>
                             <option value="vendas">Vendedor</option>
@@ -4794,7 +4766,7 @@ function Dashboard() {
                         </select>
                         {edicaoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                           <select value={(edicaoUsuario as any).funcaoVendas || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
-                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                             <option value="">Função...</option>
                             <option value="sdr">SDR / BDR</option>
                             <option value="closer">Closer</option>
@@ -4802,33 +4774,33 @@ function Dashboard() {
                         )}
                         {edicaoUsuario.role === 'cliente' && !perfilClinica && (
                           <select value={(edicaoUsuario as any).clienteId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, clienteId: e.target.value }))}
-                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                             <option value="">Vincular a qual cliente?</option>
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                           </select>
                         )}
                         {perfilTelefonia && edicaoUsuario.role !== 'admin' && edicaoUsuario.role !== 'cliente' && (
                           <select value={(edicaoUsuario as any).lojaId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
-                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                            style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                             <option value="">{edicaoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
                             {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                           </select>
                         )}
                         <div style={{ flex: 1, minWidth: 160, position: 'relative' }}>
                           <input type={verSenhaEdicao ? 'text' : 'password'} value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Redefinir senha (vazio = manter)"
-                            style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                           <button type="button" onClick={() => setVerSenhaEdicao(v => !v)} title={verSenhaEdicao ? 'Ocultar senha' : 'Mostrar senha'}
-                            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', display: 'flex', padding: 0 }}>
+                            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', padding: 0 }}>
                             {verSenhaEdicao ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                           </button>
                         </div>
                       </div>
                       {perfilTurismo && (
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: 12 }}>
                           <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Tipo no turismo</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Tipo no turismo</label>
                             <select value={(edicaoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setEdicaoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
-                              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                               <option value="equipe">Equipe</option>
                               <option value="motorista">Motorista</option>
                               <option value="guia">Guia</option>
@@ -4836,29 +4808,29 @@ function Dashboard() {
                             </select>
                           </div>
                           <div style={{ flex: 1, minWidth: 150 }}>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>Telefone</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Telefone</label>
                             <input value={(edicaoUsuario as any).telefone || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
-                              style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                              style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                           </div>
                           {(edicaoUsuario as any).tipoTurismo === 'motorista' && (
                             <div style={{ flex: 1, minWidth: 130 }}>
-                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 4 }}>CNH</label>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>CNH</label>
                               <input value={(edicaoUsuario as any).cnh || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
-                                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                                style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                             </div>
                           )}
                         </div>
                       )}
                       {perfilClinica && edicaoUsuario.role !== 'vendas' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#555' }}>Disponibilidade de agenda</span>
-                            <div style={{ display: 'inline-flex', gap: 3, background: '#eee', borderRadius: 9, padding: 3 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)' }}>Disponibilidade de agenda</span>
+                            <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
                               {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
                                 const ativo = ((edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude) === v
                                 return (
                                   <button key={String(v)} type="button" onClick={() => setEdicaoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
-                                    style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? '#fff' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? '#111' : '#888', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
+                                    style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: ativo ? 'var(--v2-surface)' : 'transparent', fontWeight: ativo ? 700 : 500, fontSize: 12, cursor: 'pointer', color: ativo ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{lab}</button>
                                 )
                               })}
                             </div>
@@ -4866,8 +4838,8 @@ function Dashboard() {
                           {((edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude) && (
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                               <input value={(edicaoUsuario as any).areaSaude || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética)"
-                                style={{ flex: 1, minWidth: 180, padding: '10px 14px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-                              <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#666', fontWeight: 600 }}>
+                                style={{ flex: 1, minWidth: 180, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                              <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>
                                 Cor
                                 <input type="color" value={(edicaoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setEdicaoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 32, height: 28, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                               </label>
@@ -4884,11 +4856,11 @@ function Dashboard() {
                           const r = await fetch('/api/usuarios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, resetar2FA: true }) }).then(x => x.json()).catch(() => null)
                           if (r && !r.error) toast('2FA resetado — o colaborador entra só com e-mail e senha.', 'sucesso')
                           else toast(r?.error || 'Falha ao resetar o 2FA.', 'erro')
-                        }} style={{ marginRight: 'auto', padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
+                        }} style={{ marginRight: 'auto', padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)', cursor: 'pointer' }}>
                           Resetar 2FA
                         </button>
-                        <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 13, color: '#666', cursor: 'pointer' }}>Cancelar</button>
-                        <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+                        <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 13, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
+                        <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
                       </div>
                     </div>
                   )}
@@ -4975,82 +4947,82 @@ function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 760 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Página Trabalhe Conosco</h2>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Personalize o formulário público de candidaturas e compartilhe o link.</p>
+                <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Página Trabalhe Conosco</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Personalize o formulário público de candidaturas e compartilhe o link.</p>
               </div>
               <button onClick={() => {
                 const url = `${window.location.origin}/trabalhe-conosco`
                 const nav: any = navigator
                 if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
                 else { navigator.clipboard?.writeText(url); setConfigMsg('Link copiado: ' + url); setTimeout(() => setConfigMsg(''), 4000) }
-              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+              }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                 Compartilhar
               </button>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <a href="/trabalhe-conosco" target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none' }}>Abrir página pública em nova aba →</a>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <a href="/trabalhe-conosco" target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--v2-info)', fontWeight: 700, textDecoration: 'none' }}>Abrir página pública em nova aba →</a>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Logomarca (use a oficial do 10+)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Logomarca (use a oficial do 10+)</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {configAgencia.recrutamentoLogo ? <img src={configAgencia.recrutamentoLogo} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', background: '#f7f7f7', borderRadius: 8, padding: 4 }} /> : <span style={{ fontSize: 12, color: '#bbb' }}>Sem logo (usará o nome da agência)</span>}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#444' }}>
+                  {configAgencia.recrutamentoLogo ? <img src={configAgencia.recrutamentoLogo} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', background: 'var(--v2-surface1)', borderRadius: 8, padding: 4 }} /> : <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Sem logo (usará o nome da agência)</span>}
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>
                     Enviar logo
                     <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { if (e.target.files?.[0]) { const url = await enviarImagem(e.target.files[0]); if (url) setConfigAgencia(c => ({ ...c, recrutamentoLogo: url })) } e.target.value = '' }} />
                   </label>
-                  {configAgencia.recrutamentoLogo && <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoLogo: '' }))} style={{ background: 'none', border: 'none', color: '#b91c1c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Remover</button>}
+                  {configAgencia.recrutamentoLogo && <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoLogo: '' }))} style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Remover</button>}
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Título</label>
-                  <input value={configAgencia.recrutamentoTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoTitulo: e.target.value }))} placeholder="Ex: Quer entrar para o time?" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Título</label>
+                  <input value={configAgencia.recrutamentoTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoTitulo: e.target.value }))} placeholder="Ex: Quer entrar para o time?" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Subtítulo</label>
-                  <input value={configAgencia.recrutamentoSubtitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoSubtitulo: e.target.value }))} placeholder="Frase curta abaixo do título" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Subtítulo</label>
+                  <input value={configAgencia.recrutamentoSubtitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoSubtitulo: e.target.value }))} placeholder="Frase curta abaixo do título" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição da empresa (aparece em destaque no formulário)</label>
-                <textarea lang="pt-BR" value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Descrição da empresa (aparece em destaque no formulário)</label>
+                <textarea lang="pt-BR" value={configAgencia.recrutamentoDescricao || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoDescricao: e.target.value }))} placeholder="Conte sobre a empresa, cultura, plano de carreira..." style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
               </div>
 
-              <div style={{ height: 1, background: '#f0f0f0' }} />
+              <div style={{ height: 1, background: 'var(--v2-surface2)' }} />
               <div>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Vagas / oportunidades</span>
-                <p style={{ margin: '4px 0 10px', fontSize: 12, color: '#999' }}>O candidato escolhe uma destas opções num menu. Se a lista ficar vazia, o formulário mostra um campo de texto livre.</p>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Vagas / oportunidades</span>
+                <p style={{ margin: '4px 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>O candidato escolhe uma destas opções num menu. Se a lista ficar vazia, o formulário mostra um campo de texto livre.</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(configAgencia.recrutamentoVagas || []).map((v, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input value={v} onChange={e => setConfigAgencia(c => { const arr = [...(c.recrutamentoVagas || [])]; arr[i] = e.target.value; return { ...c, recrutamentoVagas: arr } })} placeholder="Ex: Social Media" style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                      <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: (c.recrutamentoVagas || []).filter((_, j) => j !== i) }))} title="Remover" style={{ flexShrink: 0, padding: '8px 12px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Remover</button>
+                      <input value={v} onChange={e => setConfigAgencia(c => { const arr = [...(c.recrutamentoVagas || [])]; arr[i] = e.target.value; return { ...c, recrutamentoVagas: arr } })} placeholder="Ex: Social Media" style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: (c.recrutamentoVagas || []).filter((_, j) => j !== i) }))} title="Remover" style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Remover</button>
                     </div>
                   ))}
-                  <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: [...(c.recrutamentoVagas || []), ''] }))} style={{ alignSelf: 'flex-start', padding: '8px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar vaga</button>
+                  <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: [...(c.recrutamentoVagas || []), ''] }))} style={{ alignSelf: 'flex-start', padding: '8px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar vaga</button>
                 </div>
               </div>
 
-              <div style={{ height: 1, background: '#f0f0f0' }} />
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Mensagem final (após enviar)</span>
+              <div style={{ height: 1, background: 'var(--v2-surface2)' }} />
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Mensagem final (após enviar)</span>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Título da confirmação</label>
-                  <input value={configAgencia.recrutamentoMensagemFinalTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinalTitulo: e.target.value }))} placeholder="Ex: Candidatura enviada!" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Título da confirmação</label>
+                  <input value={configAgencia.recrutamentoMensagemFinalTitulo || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinalTitulo: e.target.value }))} placeholder="Ex: Candidatura enviada!" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Texto da confirmação</label>
-                  <textarea lang="pt-BR" value={configAgencia.recrutamentoMensagemFinal || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinal: e.target.value }))} placeholder="Mensagem que o candidato vê após enviar." style={{ width: '100%', minHeight: 70, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Texto da confirmação</label>
+                  <textarea lang="pt-BR" value={configAgencia.recrutamentoMensagemFinal || ''} onChange={e => setConfigAgencia(c => ({ ...c, recrutamentoMensagemFinal: e.target.value }))} placeholder="Mensagem que o candidato vê após enviar." style={{ width: '100%', minHeight: 70, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={salvarConfigAgencia} disabled={salvandoConfig} className="soma10-no-invert" style={{ padding: '11px 22px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: salvandoConfig ? 'not-allowed' : 'pointer' }}>{salvandoConfig ? 'Salvando...' : 'Salvar página'}</button>
-                {configMsg && <span style={{ fontSize: 13, color: configMsg.startsWith('Erro') ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>{configMsg}</span>}
+                <button onClick={salvarConfigAgencia} disabled={salvandoConfig} className="soma10-no-invert" style={{ padding: '11px 22px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: salvandoConfig ? 'not-allowed' : 'pointer' }}>{salvandoConfig ? 'Salvando...' : 'Salvar página'}</button>
+                {configMsg && <span style={{ fontSize: 13, color: configMsg.startsWith('Erro') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{configMsg}</span>}
               </div>
             </div>
           </div>
@@ -5064,12 +5036,12 @@ function Dashboard() {
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--v2-rule)' }}>
               {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema'], ['regras', 'Regras do mês']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
+                <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
               {([['clientes', 'Clientes'], ['usuarios', 'Colaboradores'], ['automacoes', 'Automações']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setAba(k as any)} title={`Abrir ${l}`} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--v2-ink3)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
-                  {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
+                  {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
                 </button>
               ))}
             </div>
@@ -5138,7 +5110,7 @@ function Dashboard() {
                   const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
                   if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null); toast(`Perfil da instância alterado para ${para}.`, 'sucesso') }
                   else toast(r?.error || 'Não foi possível trocar o perfil — nada foi alterado.', 'erro')
-                }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
+                }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
                   {/* Opções vindas do CATÁLOGO, nunca escritas à mão. Quando eram
                       fixas aqui, o perfil `cidadania` ficou de fora: o <select>
                       tinha value="cidadania" sem opção correspondente, o navegador
@@ -5159,9 +5131,9 @@ function Dashboard() {
                   <button key={opcao} onClick={() => { if (tema !== opcao) alternarTema() }} style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     padding: '14px 0', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                    border: tema === opcao ? '2px solid #111' : '1.5px solid var(--v2-rule2)',
-                    background: tema === opcao ? '#111' : '#fff',
-                    color: tema === opcao ? '#ffc00f' : '#888',
+                    border: tema === opcao ? '2px solid var(--v2-ink)' : '1.5px solid var(--v2-rule2)',
+                    background: tema === opcao ? 'var(--v2-ink)' : 'var(--v2-surface)',
+                    color: tema === opcao ? 'var(--v2-amber-on)' : 'var(--v2-ink3)',
                   }}>
                     {opcao === 'claro' ? <IconSun size={16} /> : <IconMoon size={16} />}
                     {opcao === 'claro' ? 'Modo claro' : 'Modo escuro'}
@@ -5204,12 +5176,12 @@ function Dashboard() {
                       style={{ width: 36, height: 32, border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                   </label>
                   <button onClick={salvarConfigAgencia} disabled={salvandoConfig}
-                    style={{ marginLeft: 'auto', padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoConfig ? 0.6 : 1 }}>
+                    style={{ marginLeft: 'auto', padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoConfig ? 0.6 : 1 }}>
                     {salvandoConfig ? 'Salvando...' : 'Salvar alterações'}
                   </button>
                 </div>
                 {configMsg && (
-                  <p style={{ margin: 0, fontSize: 12, color: configMsg.includes('sucesso') ? '#16a34a' : '#ef4444' }}>{configMsg}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: configMsg.includes('sucesso') ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{configMsg}</p>
                 )}
               </div>
             </div>
@@ -5221,7 +5193,7 @@ function Dashboard() {
                 Saldo estimado da API usada na geração de documentos. A Anthropic não informa o saldo real — cadastre aqui o valor atual (veja em console.anthropic.com) e o sistema desconta automaticamente a cada documento gerado, avisando só os ADMINs quando estiver acabando.
               </p>
               {saldoIA.saldo <= saldoIA.limite && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#b91c1c', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: 'var(--v2-hot)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <IconAlert size={16} /> Saldo estimado baixo (US$ {Number(saldoIA.saldo).toFixed(2)}). Adicione créditos e atualize o valor abaixo.
                 </div>
               )}
@@ -5239,10 +5211,10 @@ function Dashboard() {
                     style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule2)', fontSize: 13, width: 140, fontFamily: 'inherit' }} />
                 </div>
                 <button onClick={salvarSaldoIA} disabled={salvandoSaldoIA}
-                  style={{ padding: '10px 20px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoSaldoIA ? 0.6 : 1 }}>
+                  style={{ padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoSaldoIA ? 0.6 : 1 }}>
                   {salvandoSaldoIA ? 'Salvando...' : 'Salvar saldo'}
                 </button>
-                {saldoIAMsg && <span style={{ fontSize: 12, color: saldoIAMsg.includes('Erro') ? '#ef4444' : '#16a34a', fontWeight: 600 }}>{saldoIAMsg}</span>}
+                {saldoIAMsg && <span style={{ fontSize: 12, color: saldoIAMsg.includes('Erro') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{saldoIAMsg}</span>}
               </div>
             </div>
 
@@ -5254,7 +5226,7 @@ function Dashboard() {
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Um backup completo é gerado <strong>todo dia</strong> automaticamente (guardado de forma privada). Aqui você pode baixar uma cópia agora, quando quiser.</p>
                 </div>
                 <a href="/api/backup" title="Baixa um JSON com todos os dados (clientes, posts, tarefas, CRM, config...)"
-                  style={{ flexShrink: 0, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
                   Baixar backup agora
                 </a>
@@ -5269,7 +5241,7 @@ function Dashboard() {
                   <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
                 </div>
                 <button onClick={ressincronizarFotos} disabled={resyncFotos} title="Rebusca as fotos do Instagram e salva de forma permanente (corrige fotos quebradas)"
-                  style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-surface)', color: '#444', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
+                  style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
                   {resyncFotos ? 'Re-sincronizando...' : 'Re-sincronizar fotos do Instagram'}
                 </button>
               </div>
@@ -5286,7 +5258,7 @@ function Dashboard() {
                         <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
                         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{c.instagram?.replace(/^@/, '')}</p>
                       </div>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#111', color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0, opacity: fotoClienteId === c.id ? 0.6 : 1 }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0, opacity: fotoClienteId === c.id ? 0.6 : 1 }}>
                         {fotoClienteId === c.id ? 'Enviando...' : (c.logo ? 'Trocar imagem' : 'Enviar imagem')}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={fotoClienteId === c.id}
                           onChange={e => { if (e.target.files?.[0]) uploadFotoCliente(c.id, e.target.files[0]); e.target.value = '' }} />
@@ -5305,20 +5277,20 @@ function Dashboard() {
               <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{perfilTelefonia ? 'Cada loja pareia o seu próprio número (mesmo host, instâncias separadas). Defina a instância de cada loja em Produtos → Gerenciar lojas.' : 'Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.'}</p>
               {perfilTelefonia ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {lojasTel.length === 0 && <p style={{ fontSize: 12.5, color: '#a16207' }}>Cadastre as lojas em Produtos → Gerenciar lojas primeiro.</p>}
+                  {lojasTel.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--v2-amber)' }}>Cadastre as lojas em Produtos → Gerenciar lojas primeiro.</p>}
                   {lojasTel.map(l => {
                     const aberta = waLojaAberta === l.id
                     return (
                       <div key={l.id} style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden' }}>
-                        <button onClick={() => setWaLojaAberta(aberta ? '' : l.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: aberta ? '#f5f5f5' : '#fafafa', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        <button onClick={() => setWaLojaAberta(aberta ? '' : l.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: aberta ? 'var(--v2-surface1)' : 'var(--v2-surface1)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                           <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.nome}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: l.evolutionInstance ? '#1d4ed8' : '#a16207' }}>{l.evolutionInstance ? (aberta ? 'Fechar' : 'Abrir conexão') : 'defina a instância'}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: l.evolutionInstance ? 'var(--v2-info)' : 'var(--v2-amber)' }}>{l.evolutionInstance ? (aberta ? 'Fechar' : 'Abrir conexão') : 'defina a instância'}</span>
                         </button>
                         {aberta && (
                           <div style={{ padding: 14, borderTop: '1px solid var(--v2-rule)' }}>
                             {l.evolutionInstance
                               ? <WhatsAppConexao instancia={l.evolutionInstance} />
-                              : <p style={{ margin: 0, fontSize: 12, color: '#a16207' }}>Defina a “Instância WhatsApp” desta loja em Produtos → Gerenciar lojas para poder conectar.</p>}
+                              : <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-amber)' }}>Defina a “Instância WhatsApp” desta loja em Produtos → Gerenciar lojas para poder conectar.</p>}
                           </div>
                         )}
                       </div>
@@ -5339,7 +5311,7 @@ function Dashboard() {
                     </p>
                   </div>
                   <button onClick={() => setAba('clientes')}
-                    style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     Gerenciar conexões
                   </button>
                 </div>
@@ -5348,7 +5320,7 @@ function Dashboard() {
                     <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Armazenamento de mídia (Vercel Blob)</p>
                     <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Usado para upload direto de imagens e vídeos nos posts</p>
                   </div>
-                  <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Ativo</span>
+                  <span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Ativo</span>
                 </div>
               </div>
             </div>
@@ -5361,7 +5333,7 @@ function Dashboard() {
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Perfis de Facebook e Instagram vinculados aos clientes.</p>
                 </div>
                 <button onClick={() => setConectarRedesCliente('')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                   <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Conectar redes
                 </button>
               </div>
@@ -5381,8 +5353,8 @@ function Dashboard() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                         <span style={{ position: 'relative', width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--v2-ink3)', fontSize: 13 }}>
                           <AvatarCliente logo={row.c.logo} nome={row.c.nome} />
-                          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%', background: row.rede === 'facebook' ? '#1877f2' : '#dc2743', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
-                            <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff">{row.rede === 'facebook'
+                          <span style={{ position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%', background: row.rede === 'facebook' ? '#1877f2' : '#dc2743', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--v2-surface)' }}>
+                            <svg width="7" height="7" viewBox="0 0 24 24" fill="var(--v2-surface)">{row.rede === 'facebook'
                               ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                               : <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/>}</svg>
                           </span>
@@ -5392,11 +5364,11 @@ function Dashboard() {
                           <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{row.sub} · {row.c.nome}</p>
                         </div>
                       </div>
-                      <span><span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
+                      <span><span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
                       <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{row.tipo}</span>
                       {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
                         <button onClick={async () => { if (await confirmar(`Desconectar as contas de ${row.c.nome}?`, { titulo: 'Desconectar contas', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(row.c.id) }} title="Desconectar"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-hot)', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
                       ) : <span />}
                     </div>
                   ))}
@@ -5417,7 +5389,7 @@ function Dashboard() {
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Servidor SMTP</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Para alterar host, usuário ou senha, edite as variáveis SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS na Vercel</p>
                 </div>
-                <span style={{ background: '#dcfce7', color: '#16a34a', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
+                <span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
               </div>
             </div>
             )}
@@ -5429,56 +5401,56 @@ function Dashboard() {
       {/* Modal: resumo semanal do cliente */}
       {resumoCliente && (
         <div onClick={fecharFora(() => setResumoCliente(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Resumo da semana</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#888' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>
-            {resumoCarregando ? <p style={{ color: '#aaa' }}>Gerando...</p> : (
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Resumo da semana</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>
+            {resumoCarregando ? <p style={{ color: 'var(--v2-ink3)' }}>Gerando...</p> : (
               <>
-                {resumoInfo && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#666' }}>✅ {resumoInfo.publicados} publicados · ⏳ {resumoInfo.aguardando} aguardando · 📅 {resumoInfo.proximos} próximos</p>}
+                {resumoInfo && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink2)' }}>✅ {resumoInfo.publicados} publicados · ⏳ {resumoInfo.aguardando} aguardando · 📅 {resumoInfo.proximos} próximos</p>}
                 {/* Predefinicoes (templates): aplica saudacao/fechamento personalizados */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <select value={resumoTemplateId} onChange={e => aplicarTemplateResumo(e.target.value)} style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff' }}>
+                  <select value={resumoTemplateId} onChange={e => aplicarTemplateResumo(e.target.value)} style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">Texto padrão</option>
                     {resumoTemplates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
                   {(role === 'admin' || role === 'gerente') && (
-                    <button onClick={() => setGerirPresets(v => !v)} style={{ flexShrink: 0, padding: '9px 14px', background: gerirPresets ? '#111' : '#f5f5f5', color: gerirPresets ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Predefinições</button>
+                    <button onClick={() => setGerirPresets(v => !v)} style={{ flexShrink: 0, padding: '9px 14px', background: gerirPresets ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: gerirPresets ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Predefinições</button>
                   )}
                 </div>
                 {gerirPresets && (role === 'admin' || role === 'gerente') && (
-                  <div style={{ marginBottom: 12, padding: 14, background: '#fafafa', border: '1px solid #eee', borderRadius: 12 }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 11.5, color: '#888' }}>Saudação e fechamento personalizados. Use <b>{'{cliente}'}</b> e <b>{'{periodo}'}</b> — serão substituídos. O corpo (publicados/aguardando/próximos) é sempre automático.</p>
+                  <div style={{ marginBottom: 12, padding: 14, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12 }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Saudação e fechamento personalizados. Use <b>{'{cliente}'}</b> e <b>{'{periodo}'}</b> — serão substituídos. O corpo (publicados/aguardando/próximos) é sempre automático.</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {resumoTemplates.map((t, i) => (
-                        <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: '#fff', border: '1px solid #eee', borderRadius: 10 }}>
+                        <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da predefinição" style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                            <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ flexShrink: 0, padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Remover</button>
+                            <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da predefinição" style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ flexShrink: 0, padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Remover</button>
                           </div>
-                          <textarea lang="pt-BR" value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                          <textarea lang="pt-BR" value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea lang="pt-BR" value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea lang="pt-BR" value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                         </div>
                       ))}
                     </div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <button onClick={() => setResumoTemplates(arr => [...arr, { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), nome: 'Nova predefinição', intro: '', fechamento: '' }])} style={{ padding: '8px 14px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
-                      <button onClick={salvarPresetsResumo} disabled={salvandoPresets} style={{ padding: '8px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvandoPresets ? 'not-allowed' : 'pointer' }}>{salvandoPresets ? 'Salvando...' : 'Salvar predefinições'}</button>
+                      <button onClick={() => setResumoTemplates(arr => [...arr, { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), nome: 'Nova predefinição', intro: '', fechamento: '' }])} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                      <button onClick={salvarPresetsResumo} disabled={salvandoPresets} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvandoPresets ? 'not-allowed' : 'pointer' }}>{salvandoPresets ? 'Salvando...' : 'Salvar predefinições'}</button>
                     </div>
                   </div>
                 )}
-                <textarea lang="pt-BR" value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
+                <textarea lang="pt-BR" value={resumoTexto} onChange={e => setResumoTexto(e.target.value)} style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                  <a href={`https://wa.me/?text=${encodeURIComponent(resumoTexto)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#25D366', color: '#fff', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(resumoTexto)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#25D366', color: 'var(--v2-surface)', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2z" /></svg> Abrir no WhatsApp
                   </a>
                   {(resumoInfo?.aguardando || 0) > 0 && (
-                    <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Você tem ${resumoInfo!.aguardando} conteúdo(s) aguardando a sua aprovação. Acesse o portal para aprovar: ${typeof window !== 'undefined' ? window.location.origin : ''}/login`)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#0ea5e9', color: '#fff', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>Cobrar aprovação ({resumoInfo!.aguardando})</a>
+                    <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Você tem ${resumoInfo!.aguardando} conteúdo(s) aguardando a sua aprovação. Acesse o portal para aprovar: ${typeof window !== 'undefined' ? window.location.origin : ''}/login`)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#0ea5e9', color: 'var(--v2-surface)', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>Cobrar aprovação ({resumoInfo!.aguardando})</a>
                   )}
-                  <button onClick={() => { navigator.clipboard?.writeText(resumoTexto); setResumoMsg('Copiado!') }} style={{ padding: '10px 16px', background: '#f5f5f5', color: '#111', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Copiar</button>
-                  <button onClick={enviarResumoEmail} disabled={enviandoResumo || !resumoInfo?.emailCliente} title={resumoInfo?.emailCliente ? `Enviar para ${resumoInfo.emailCliente}` : 'Cliente sem e-mail cadastrado'} style={{ padding: '10px 16px', background: resumoInfo?.emailCliente ? '#111' : '#f0f0f0', color: resumoInfo?.emailCliente ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: resumoInfo?.emailCliente ? 'pointer' : 'not-allowed' }}>{enviandoResumo ? 'Enviando...' : 'Enviar por e-mail'}</button>
-                  <button onClick={() => setResumoCliente(null)} style={{ marginLeft: 'auto', padding: '10px 16px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                  <button onClick={() => { navigator.clipboard?.writeText(resumoTexto); setResumoMsg('Copiado!') }} style={{ padding: '10px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Copiar</button>
+                  <button onClick={enviarResumoEmail} disabled={enviandoResumo || !resumoInfo?.emailCliente} title={resumoInfo?.emailCliente ? `Enviar para ${resumoInfo.emailCliente}` : 'Cliente sem e-mail cadastrado'} style={{ padding: '10px 16px', background: resumoInfo?.emailCliente ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: resumoInfo?.emailCliente ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: resumoInfo?.emailCliente ? 'pointer' : 'not-allowed' }}>{enviandoResumo ? 'Enviando...' : 'Enviar por e-mail'}</button>
+                  <button onClick={() => setResumoCliente(null)} style={{ marginLeft: 'auto', padding: '10px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
                 </div>
-                {resumoMsg && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: resumoMsg.includes('Falha') || resumoMsg.includes('Não') ? '#dc2626' : '#16a34a', fontWeight: 600 }}>{resumoMsg}</p>}
+                {resumoMsg && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: resumoMsg.includes('Falha') || resumoMsg.includes('Não') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{resumoMsg}</p>}
               </>
             )}
           </div>
@@ -5489,7 +5461,7 @@ function Dashboard() {
 
       {/* Barra flutuante global de upload de imagem/logo/documento */}
       {progImagem !== null && (
-        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 280, background: '#fff', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 14, zIndex: 3000 }} className="soma10-no-invert">
+        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 280, background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 14, zIndex: 3000 }} className="soma10-no-invert">
           <UploadProgress valor={progImagem} rotulo="Enviando arquivo..." />
         </div>
       )}

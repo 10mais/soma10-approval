@@ -113,14 +113,14 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
     `@font-face{font-family:'fm-${f.id}';src:url('${f.url}');font-weight:${f.peso || 400};font-style:${f.italico ? 'italic' : 'normal'};font-display:swap}`
   ).join('\n')
 
-  if (carregando) return <p style={{ fontSize: 12.5, color: '#aaa' }}>Carregando...</p>
+  if (carregando) return <p style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>Carregando...</p>
 
   return (
     <div>
       <style>{cssPreview}</style>
 
       <div style={{ marginBottom: 18 }}>
-        <h3 style={{ margin: 0, fontSize: 16, color: '#111', letterSpacing: '-0.01em' }}>Tipografia e vibe da marca</h3>
+        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', letterSpacing: '-0.01em' }}>Tipografia e vibe da marca</h3>
         <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#8a8a8a', lineHeight: 1.5 }}>
           Suba as <strong>fontes oficiais</strong> do cliente e escolha a vibe visual — o motor de criativos desenha as artes com a tipografia real e o clima certo da marca.
         </p>
@@ -128,19 +128,19 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
 
       {/* Vibe da marca */}
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: '#333', marginBottom: 8 }}>Vibe visual</div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)', marginBottom: 8 }}>Vibe visual</div>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {ESTILOS.map(e => {
             const ativo = estilo === e.key
             return (
               <button key={e.key} title={e.dica} onClick={() => salvarEstilo(ativo ? '' : e.key)}
-                style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${ativo ? '#111' : '#e6e6e6'}`, background: ativo ? '#111' : '#fff', color: ativo ? '#fff' : '#555' }}>
+                style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${ativo ? 'var(--v2-ink)' : 'var(--v2-surface2)'}`, background: ativo ? 'var(--v2-ink)' : 'var(--v2-surface)', color: ativo ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>
                 {e.label}
               </button>
             )
           })}
         </div>
-        {estilo && <p style={{ margin: '7px 0 0', fontSize: 11.5, color: '#999' }}>{ESTILOS.find(e => e.key === estilo)?.dica}</p>}
+        {estilo && <p style={{ margin: '7px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{ESTILOS.find(e => e.key === estilo)?.dica}</p>}
       </div>
 
       {/* Upload de fontes */}
@@ -149,7 +149,7 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
         style={{ border: '1.5px dashed #dcdcdc', background: '#fbfbfc', borderRadius: 14, padding: '16px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 14 }}>
         <input ref={inputRef} type="file" accept=".ttf,.otf,.woff,.woff2" multiple style={{ display: 'none' }} disabled={enviando}
           onChange={e => { if (e.target.files?.length) enviarArquivos(e.target.files); e.target.value = '' }} />
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#333' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M12 4v16M8 20h8" /></svg>
           {enviando ? 'Enviando…' : 'Clique para enviar as fontes da marca (.ttf, .otf, .woff, .woff2)'}
         </span>
@@ -157,29 +157,29 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
 
       {/* Lista de fontes com prévia ao vivo */}
       {fontes.length === 0 ? (
-        <div style={{ borderRadius: 12, padding: '18px 16px', textAlign: 'center', color: '#bbb', fontSize: 12.5, background: '#fafafa', border: '1px solid #f0f0f0' }}>
+        <div style={{ borderRadius: 12, padding: '18px 16px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 12.5, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)' }}>
           Nenhuma fonte ainda. Sem fonte da marca, a IA usa uma tipografia compatível com a vibe.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {fontes.map(f => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, border: '1px solid #eee', background: '#fff', flexWrap: 'wrap' }}>
+            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 180 }}>
-                <div style={{ fontFamily: `'fm-${f.id}', sans-serif`, fontSize: 22, color: '#111', lineHeight: 1.2, fontWeight: f.peso || 400, fontStyle: f.italico ? 'italic' : 'normal' }}>
+                <div style={{ fontFamily: `'fm-${f.id}', sans-serif`, fontSize: 22, color: 'var(--v2-ink)', lineHeight: 1.2, fontWeight: f.peso || 400, fontStyle: f.italico ? 'italic' : 'normal' }}>
                   {f.nome || 'Fonte da marca'}
                 </div>
                 <input value={f.nome} onChange={e => setFontes(fontes.map(x => x.id === f.id ? { ...x, nome: e.target.value } : x))}
                   onBlur={e => mudar(f.id, { nome: e.target.value.trim() || 'Fonte' })}
                   placeholder="Nome da família (ex.: Montserrat)"
-                  style={{ marginTop: 4, width: '100%', maxWidth: 260, padding: '4px 8px', borderRadius: 7, border: '1px solid #eee', fontSize: 11.5, color: '#777', fontFamily: 'inherit' }} />
+                  style={{ marginTop: 4, width: '100%', maxWidth: 260, padding: '4px 8px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 11.5, color: 'var(--v2-ink3)', fontFamily: 'inherit' }} />
               </div>
               <select value={f.papel || 'texto'} onChange={e => mudar(f.id, { papel: e.target.value as 'titulo' | 'texto' })}
-                style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>
+                style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>
                 <option value="titulo">Títulos (destaque)</option>
                 <option value="texto">Texto (corpo)</option>
               </select>
               <select value={f.peso || 400} onChange={e => mudar(f.id, { peso: Number(e.target.value) })}
-                style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
+                style={{ padding: '6px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>
                 <option value={300}>Light</option>
                 <option value={400}>Regular</option>
                 <option value={600}>SemiBold</option>
@@ -187,7 +187,7 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
                 <option value={800}>ExtraBold</option>
               </select>
               <button onClick={() => remover(f.id)} title="Remover fonte"
-                style={{ width: 28, height: 28, borderRadius: 8, background: '#f6f6f6', color: '#888', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>

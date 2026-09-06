@@ -308,61 +308,61 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111', flexShrink: 0 }}>CRM</h2>
-        <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)', flexShrink: 0 }}>CRM</h2>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {((perfilClinica || perfilCidadania || perfilTelefonia
             ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
             : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
           ) as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
-            <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+            <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? 'var(--v2-surface)' : 'transparent', color: vista === v ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
         {vista === 'funil' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Discreto: só um contador. Vira alerta quando há atrasada/para hoje. */}
             <button onClick={() => setAbordagensAberto(true)} title="Lembretes registrados nas fichas dos contatos"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', background: '#fff', color: abordagens.urgentes ? '#b45309' : '#555', border: `1px solid ${abordagens.urgentes ? '#fde68a' : '#e0e0e0'}`, borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', background: 'var(--v2-surface)', color: abordagens.urgentes ? 'var(--v2-amber)' : 'var(--v2-ink2)', border: `1px solid ${abordagens.urgentes ? 'var(--v2-amber-bg)' : 'var(--v2-rule)'}`, borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               Próximas abordagens
               {abordagens.urgentes > 0 && (
-                <span style={{ background: '#b45309', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
+                <span style={{ background: 'var(--v2-amber)', color: 'var(--v2-surface)', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
               )}
             </button>
-            {podeEditar && <button onClick={() => setNovoModal(true)} disabled={bloquearCriarPorLoja} title={bloquearCriarPorLoja ? 'Escolha uma loja no seletor lateral para adicionar' : undefined} style={{ padding: '10px 18px', background: bloquearCriarPorLoja ? '#eee' : 'var(--marca, #ffc00f)', color: bloquearCriarPorLoja ? '#aaa' : 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: bloquearCriarPorLoja ? 'not-allowed' : 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania || perfilTelefonia ? 'Nova oportunidade' : 'Novo negócio'}</button>}
+            {podeEditar && <button onClick={() => setNovoModal(true)} disabled={bloquearCriarPorLoja} title={bloquearCriarPorLoja ? 'Escolha uma loja no seletor lateral para adicionar' : undefined} style={{ padding: '10px 18px', background: bloquearCriarPorLoja ? 'var(--v2-surface2)' : 'var(--marca, var(--v2-amber-on))', color: bloquearCriarPorLoja ? 'var(--v2-ink3)' : 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: bloquearCriarPorLoja ? 'not-allowed' : 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania || perfilTelefonia ? 'Nova oportunidade' : 'Novo negócio'}</button>}
           </div>
         )}
         {vista === 'contatos' && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={exportarCSV} style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
-            <label style={{ padding: '9px 14px', background: '#f5f5f5', color: '#444', border: '1px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            <button onClick={exportarCSV} style={{ padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
+            <label style={{ padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               Importar CSV
               <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0], perfilClinica ? 'lead' : undefined); e.target.value = '' }} />
             </label>
-            {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
-            {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
+            {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
+            {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
           </div>
         )}
         {vista === 'empresas' && podeEditar && (
-          <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
+          <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
         )}
       </div>
-      {subtitulo && <p style={{ margin: '0 0 16px', fontSize: 13, color: '#999' }}>{subtitulo}</p>}
+      {subtitulo && <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>{subtitulo}</p>}
 
       {/* Seletor de pipeline (funil e painel) */}
       {(vista === 'funil' || vista === 'painel') && pipelines.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline</span>
-          <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline</span>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, flexWrap: 'wrap' }}>
             {pipelines.map(p => (
-              <button key={p.id} onClick={() => setPipelineSel(p.id)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: pipelineSel === p.id ? '#111' : 'transparent', color: pipelineSel === p.id ? '#fff' : '#666' }}>{p.nome}</button>
+              <button key={p.id} onClick={() => setPipelineSel(p.id)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: pipelineSel === p.id ? 'var(--v2-ink)' : 'transparent', color: pipelineSel === p.id ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>{p.nome}</button>
             ))}
           </div>
-          {podeEditar && <button onClick={() => setEtapasModal(true)} style={{ padding: '6px 12px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar etapas</button>}
-          {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerenciar pipelines</button>}
+          {podeEditar && <button onClick={() => setEtapasModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar etapas</button>}
+          {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerenciar pipelines</button>}
         </div>
       )}
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : vista === 'painel' ? (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : vista === 'painel' ? (
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
       ) : vista === 'contatos' ? (
         // Lista ÚNICA: leads e pacientes convivem aqui (o tipo vira só um selo).
@@ -382,20 +382,20 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             pipeline vinculados àquela viagem; sem vínculo = "Outro". */}
         {perfilTurismo && chipsViagem.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
             {chipsViagem.map(c => {
               const on = filtroViagem === c.id
               return (
                 <button key={c.id || 'todas'} onClick={() => setFiltroViagem(on && c.id ? '' : c.id)} title={c.rotulo}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 999, border: on ? '1.5px solid #1d4ed8' : '1px solid #e6e6e6', background: on ? '#eff6ff' : '#fff', color: on ? '#1d4ed8' : '#777', fontSize: 10.5, fontWeight: 700, cursor: 'pointer', maxWidth: 240 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 999, border: on ? '1.5px solid var(--v2-info)' : '1px solid var(--v2-surface2)', background: on ? 'var(--v2-info-bg)' : 'var(--v2-surface)', color: on ? 'var(--v2-info)' : 'var(--v2-ink3)', fontSize: 10.5, fontWeight: 700, cursor: 'pointer', maxWidth: 240 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.rotulo}</span>
-                  <span style={{ background: on ? '#1d4ed8' : '#f0f0f0', color: on ? '#fff' : '#888', borderRadius: 999, fontSize: 9.5, fontWeight: 800, padding: '0 6px', flexShrink: 0 }}>{c.n}</span>
+                  <span style={{ background: on ? 'var(--v2-info)' : 'var(--v2-surface2)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', borderRadius: 999, fontSize: 9.5, fontWeight: 800, padding: '0 6px', flexShrink: 0 }}>{c.n}</span>
                 </button>
               )
             })}
           </div>
         )}
-        <style>{`.crm-barra-topo::-webkit-scrollbar{height:9px}.crm-barra-topo::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}.crm-barra-topo::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-barra-topo::-webkit-scrollbar-track{background:transparent}.crm-barra-topo{scrollbar-width:thin;scrollbar-color:#d1d5db transparent}`}</style>
+        <style>{`.crm-barra-topo::-webkit-scrollbar{height:9px}.crm-barra-topo::-webkit-scrollbar-thumb{background:var(--v2-rule);border-radius:999px}.crm-barra-topo::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-barra-topo::-webkit-scrollbar-track{background:transparent}.crm-barra-topo{scrollbar-width:thin;scrollbar-color:var(--v2-rule2) transparent}`}</style>
         <div ref={barraTopoRef} onScroll={aoRolarTopo} className="crm-barra-topo" title="Deslizar o funil" style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, marginBottom: 2 }}>
           <div style={{ width: larguraFunil, height: 1 }} />
         </div>
@@ -403,37 +403,37 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
-            const cor = est.ganho ? '#16a34a' : est.perdido ? '#b91c1c' : '#111'
+            const cor = est.ganho ? 'var(--v2-ok)' : est.perdido ? 'var(--v2-hot)' : 'var(--v2-ink)'
             return (
               <div key={est.id}
                 onDragOver={e => { e.preventDefault(); setOverCol(est.id) }}
                 onDrop={() => { const n = negocios.find(x => x.id === dragId); if (n) moverEstagio(n, est.id); setDragId(null); setOverCol(null); pararAutoScroll() }}
-                style={{ flex: '0 0 270px', width: 270, background: overCol === est.id ? '#fff8e1' : '#f6f6f6', borderRadius: 12, padding: 10, minHeight: 120, border: overCol === est.id ? '1.5px dashed #ffc00f' : '1.5px solid transparent' }}>
+                style={{ flex: '0 0 270px', width: 270, background: overCol === est.id ? '#fff8e1' : 'var(--v2-surface1)', borderRadius: 12, padding: 10, minHeight: 120, border: overCol === est.id ? '1.5px dashed var(--v2-amber-on)' : '1.5px solid transparent' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 10px' }}>
                   <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{est.nome}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>{cards.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cards.length}</span>
                 </div>
-                {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: '#999' }}>{fmtR$(totalPorEstagio(est.id))}</p>}
+                {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{fmtR$(totalPorEstagio(est.id))}</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {cards.map(n => {
                     const ct = contatoDe(n.contatoId)
                     return (
                       <div key={n.id} draggable onDragStart={() => setDragId(n.id)} onDragEnd={() => { setDragId(null); setOverCol(null); pararAutoScroll() }}
                         onClick={() => setAberto(n)}
-                        style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid #eee' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#111' }}>{n.titulo}</p>
+                        style={{ background: 'var(--v2-surface)', borderRadius: 10, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', cursor: 'pointer', border: '1px solid var(--v2-rule)' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</p>
                         {perfilTurismo && (
-                          <span style={{ display: 'inline-block', marginBottom: 4, fontSize: 10, fontWeight: 800, color: n.viagemId ? '#1d4ed8' : '#9ca3af', background: n.viagemId ? '#eff6ff' : '#f4f4f5', borderRadius: 999, padding: '2px 8px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'inline-block', marginBottom: 4, fontSize: 10, fontWeight: 800, color: n.viagemId ? 'var(--v2-info)' : 'var(--v2-ink3)', background: n.viagemId ? 'var(--v2-info-bg)' : 'var(--v2-surface1)', borderRadius: 999, padding: '2px 8px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {viagemDe(n.viagemId)?.titulo || n.destinoDesejado || 'Outro (não especificado)'}
                           </span>
                         )}
-                        {!!n.valor && <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>{fmtR$(n.valor)}</p>}
+                        {!!n.valor && <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)' }}>{fmtR$(n.valor)}</p>}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || 'Sem contato'}</span>
-                          {n.donoNome && <span style={{ fontSize: 10, color: '#aaa', flexShrink: 0 }}>{n.donoNome.split(' ')[0]}</span>}
+                          <span style={{ fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || 'Sem contato'}</span>
+                          {n.donoNome && <span style={{ fontSize: 10, color: 'var(--v2-ink3)', flexShrink: 0 }}>{n.donoNome.split(' ')[0]}</span>}
                         </div>
                         {n.proximoFollowUp && (() => { const atrasado = new Date(new Date(n.proximoFollowUp).setHours(23, 59, 59, 999)).getTime() < Date.now(); return (
-                          <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700, color: atrasado ? '#b91c1c' : '#888', background: atrasado ? '#fee2e2' : '#f0f0f0', borderRadius: 999, padding: '2px 8px' }}>
+                          <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700, color: atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>
                             {atrasado ? 'Follow-up atrasado' : 'Follow-up'} · {new Date(n.proximoFollowUp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           </span>
                         ) })()}
@@ -442,7 +442,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                           if (!prox) return null
                           const atrasado = new Date(prox.quando + 'T23:59:59').getTime() < Date.now()
                           return (
-                            <span style={{ display: 'inline-block', marginTop: 6, marginLeft: 6, fontSize: 10, fontWeight: 700, color: atrasado ? '#b91c1c' : '#1d4ed8', background: atrasado ? '#fee2e2' : '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>
+                            <span style={{ display: 'inline-block', marginTop: 6, marginLeft: 6, fontSize: 10, fontWeight: 700, color: atrasado ? 'var(--v2-hot)' : 'var(--v2-info)', background: atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>
                               {prox.canal} · {new Date(prox.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                             </span>
                           )
@@ -462,33 +462,33 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           dos lembretes das fichas. Nada a ver com o estágio do funil. */}
       {abordagensAberto && (
         <div onClick={fecharFora(() => setAbordagensAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: 22 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Próximas abordagens</h3>
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Próximas abordagens</h3>
               <span style={{ flex: 1 }} />
-              <button onClick={() => setAbordagensAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+              <button onClick={() => setAbordagensAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1 }}>×</button>
             </div>
-            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Lembretes registrados nas fichas dos contatos. Concluir aqui dá baixa na tarefa do responsável.</p>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Lembretes registrados nas fichas dos contatos. Concluir aqui dá baixa na tarefa do responsável.</p>
             {([
-              ['Atrasadas', abordagens.atrasadas, '#b91c1c'],
-              ['Hoje', abordagens.hoje, '#b45309'],
-              ['Próximos 7 dias', abordagens.semana, '#1d4ed8'],
+              ['Atrasadas', abordagens.atrasadas, 'var(--v2-hot)'],
+              ['Hoje', abordagens.hoje, 'var(--v2-amber)'],
+              ['Próximos 7 dias', abordagens.semana, 'var(--v2-info)'],
             ] as [string, { contato: Contato; passo: ProximoPasso }[], string][]).map(([titulo, itens, cor]) => (
               <div key={titulo} style={{ marginBottom: 14 }}>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 800, color: cor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo} · {itens.length}</p>
                 {itens.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Nada por aqui.</p>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nada por aqui.</p>
                 ) : itens.map(({ contato: c, passo: p }) => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f5f5f5' }}>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                     <button onClick={() => concluirAbordagem(c.id, p.id)} title="Marcar como feita"
-                      style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer', flexShrink: 0 }} />
+                      style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid #cbd5e1', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0 }} />
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: cor, flexShrink: 0 }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
-                      <p style={{ margin: 0, fontSize: 11.5, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
+                      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</p>
                     </div>
                     <button onClick={() => { setAbordagensAberto(false); setContatoModal(c) }} title="Abrir a ficha do contato"
-                      style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0, padding: 0 }}>Abrir ficha</button>
+                      style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0, padding: 0 }}>Abrir ficha</button>
                   </div>
                 ))}
               </div>
@@ -525,8 +525,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   )
 }
 
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }
+const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }
 
 function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: { negocios: Negocio[]; estagios: Estagio[]; usuarios: any[]; perfilClinica?: boolean }) {
   const agora = new Date(), m = agora.getMonth(), y = agora.getFullYear()
@@ -567,10 +567,10 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   }
 
   const Card = ({ titulo, valor, sub, cor }: { titulo: string; valor: string; sub?: string; cor?: string }) => (
-    <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <p style={{ margin: 0, fontSize: 12, color: '#999', fontWeight: 600 }}>{titulo}</p>
-      <p style={{ margin: '6px 0 0', fontSize: 24, fontWeight: 800, color: cor || '#111' }}>{valor}</p>
-      {sub && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#aaa' }}>{sub}</p>}
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{titulo}</p>
+      <p style={{ margin: '6px 0 0', fontSize: 24, fontWeight: 800, color: cor || 'var(--v2-ink)' }}>{valor}</p>
+      {sub && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{sub}</p>}
     </div>
   )
 
@@ -578,39 +578,39 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
     <div style={{ maxWidth: 920 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
         <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={`${abertos.length} negócio(s)`} />
-        <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="#16a34a" />
+        <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="var(--v2-ok)" />
         <Card titulo="Win rate" valor={`${winRate}%`} sub={`${ganhos.length} ganho / ${negocios.length} oportunidade(s)`} />
         <Card titulo="Conversão (R$)" valor={`${conversaoValor}%`} sub={`${fmtR$(valorConvertido)} de ${fmtR$(valorOportunidades)}`} />
         <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
-        <Card titulo="Perdidas" valor={fmtR$(valorPerdido)} sub={`${perdidos.length} oportunidade(s)`} cor="#b91c1c" />
+        <Card titulo="Perdidas" valor={fmtR$(valorPerdido)} sub={`${perdidos.length} oportunidade(s)`} cor="var(--v2-hot)" />
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Funil (em aberto por etapa)</span>
-      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Funil (em aberto por etapa)</span>
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
         {colsAbertas.map(e => {
           const ns = abertos.filter(n => n.estagioId === e.id)
           const val = ns.reduce((s, n) => s + (Number(n.valor) || 0), 0)
           const maxQtd = Math.max(1, ...colsAbertas.map(c => abertos.filter(n => n.estagioId === c.id).length))
           return (
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-              <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: '#444', flexShrink: 0 }}>{e.nome}</span>
-              <div style={{ flex: 1, height: 22, background: '#f4f4f4', borderRadius: 6, overflow: 'hidden' }}>
-                <div style={{ width: `${(ns.length / maxQtd) * 100}%`, height: '100%', background: '#ffc00f', minWidth: ns.length ? 6 : 0 }} />
+              <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)', flexShrink: 0 }}>{e.nome}</span>
+              <div style={{ flex: 1, height: 22, background: 'var(--v2-surface1)', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ width: `${(ns.length / maxQtd) * 100}%`, height: '100%', background: 'var(--v2-amber-on)', minWidth: ns.length ? 6 : 0 }} />
               </div>
-              <span style={{ width: 130, textAlign: 'right', fontSize: 12, color: '#888', flexShrink: 0 }}>{ns.length} · {fmtR$(val)}</span>
+              <span style={{ width: 130, textAlign: 'right', fontSize: 12, color: 'var(--v2-ink3)', flexShrink: 0 }}>{ns.length} · {fmtR$(val)}</span>
             </div>
           )
         })}
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Origem dos leads' : 'Origem dos negócios'}</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Origem dos leads' : 'Origem dos negócios'}</span>
       {perfilClinica ? (
         /* Pizza (rosca) da origem — a lista do dropdown é fechada (lib/origensLead),
            então cada fatia é um canal de verdade e a soma fecha o total de leads
            deste funil. Grafias antigas caem no balde certo; o que ninguém
            preencheu aparece como "Sem origem", em vez de sumir. */
-        <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
-          {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhuma oportunidade neste funil ainda.</p> : (
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+          {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma oportunidade neste funil ainda.</p> : (
             <div ref={pizzaBoxRef} onMouseLeave={() => setHoverFatia(null)}
               style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
               <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
@@ -624,7 +624,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                       // é o que diz "é desta que estou falando" sem escrever nada.
                       const [dx, dy] = ativa ? deslocamentoFatia(f.anguloInicio, f.anguloFim, 7) : [0, 0]
                       return (
-                        <path key={f.nome} d={fatiaPath(90, 90, 87, 45, f.anguloInicio, f.anguloFim)} fill={f.cor} stroke="#fff" strokeWidth="1.5"
+                        <path key={f.nome} d={fatiaPath(90, 90, 87, 45, f.anguloInicio, f.anguloFim)} fill={f.cor} stroke="var(--v2-surface)" strokeWidth="1.5"
                           onMouseMove={e => moverNaPizza(e, f.nome)} onClick={e => moverNaPizza(e, f.nome)}
                           style={{ cursor: 'pointer', transform: `translate(${dx}px, ${dy}px)`, opacity: hoverFatia && !ativa ? 0.32 : 1, transition: 'transform .15s ease, opacity .15s ease' }} />
                       )
@@ -635,12 +635,12 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                   {(() => {
                     const f = hoverFatia ? pizza.fatias.find(x => x.nome === hoverFatia.nome) : null
                     if (!f) return (<>
-                      <span style={{ fontSize: 26, fontWeight: 800, color: '#111', lineHeight: 1 }}>{pizza.total}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#999' }}>{pizza.total === 1 ? 'lead' : 'leads'}</span>
+                      <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--v2-ink)', lineHeight: 1 }}>{pizza.total}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{pizza.total === 1 ? 'lead' : 'leads'}</span>
                     </>)
                     return (<>
                       <span style={{ fontSize: 24, fontWeight: 800, color: f.cor, lineHeight: 1 }}>{Math.round(f.pct)}%</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: '#666', lineHeight: 1.25, marginTop: 3 }}>{f.nome}</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink2)', lineHeight: 1.25, marginTop: 3 }}>{f.nome}</span>
                     </>)
                   })()}
                 </div>
@@ -650,15 +650,15 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                   const ativa = hoverFatia?.nome === f.nome
                   return (
                     <div key={f.nome} onMouseMove={e => moverNaPizza(e, f.nome)} onClick={e => moverNaPizza(e, f.nome)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', margin: '0 -8px', borderBottom: '1px solid #f5f5f5', borderRadius: 8, cursor: 'pointer', background: ativa ? '#f7f7f7' : 'transparent', opacity: hoverFatia && !ativa ? 0.5 : 1, transition: 'background .15s, opacity .15s' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', margin: '0 -8px', borderBottom: '1px solid var(--v2-surface1)', borderRadius: 8, cursor: 'pointer', background: ativa ? 'var(--v2-surface1)' : 'transparent', opacity: hoverFatia && !ativa ? 0.5 : 1, transition: 'background .15s, opacity .15s' }}>
                       <span style={{ width: 10, height: 10, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 12.5, fontWeight: ativa ? 800 : 600, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</span>
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.qtd}</span>
-                      <span style={{ fontSize: 11.5, color: '#999', width: 42, textAlign: 'right' }}>{Math.round(f.pct)}%</span>
+                      <span style={{ flex: 1, fontSize: 12.5, fontWeight: ativa ? 800 : 600, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nome}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{f.qtd}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', width: 42, textAlign: 'right' }}>{Math.round(f.pct)}%</span>
                     </div>
                   )
                 })}
-                <p style={{ margin: '8px 0 0', fontSize: 11, color: '#bbb' }}>Passe o mouse por uma fatia para ver o que aquele canal virou.</p>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Passe o mouse por uma fatia para ver o que aquele canal virou.</p>
               </div>
 
               {/* Detalhe do canal — a pergunta seguinte à do gráfico: não só de onde
@@ -671,24 +671,24 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                 const paraEsquerda = largura > 0 && hoverFatia.x + 220 > largura
                 const linha = (rot: string, val: string, cor?: string) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11.5, padding: '2px 0' }}>
-                    <span style={{ color: '#9ca3af' }}>{rot}</span><span style={{ fontWeight: 700, color: cor || '#111' }}>{val}</span>
+                    <span style={{ color: 'var(--v2-ink3)' }}>{rot}</span><span style={{ fontWeight: 700, color: cor || 'var(--v2-ink)' }}>{val}</span>
                   </div>
                 )
                 return (
-                  <div style={{ position: 'absolute', left: hoverFatia.x, top: hoverFatia.y, transform: `translate(${paraEsquerda ? 'calc(-100% - 14px)' : '14px'}, -50%)`, pointerEvents: 'none', zIndex: 5, width: 196, background: '#fff', border: '1px solid #ececec', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '10px 12px' }}>
+                  <div style={{ position: 'absolute', left: hoverFatia.x, top: hoverFatia.y, transform: `translate(${paraEsquerda ? 'calc(-100% - 14px)' : '14px'}, -50%)`, pointerEvents: 'none', zIndex: 5, width: 196, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                       <span style={{ width: 9, height: 9, borderRadius: 3, background: f.cor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>{f.nome}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{f.nome}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
-                      <b style={{ color: '#111' }}>{f.qtd}</b> {f.qtd === 1 ? 'lead' : 'leads'} · {Math.round(f.pct)}% do funil
+                    <div style={{ fontSize: 12, color: 'var(--v2-ink2)', marginBottom: 8 }}>
+                      <b style={{ color: 'var(--v2-ink)' }}>{f.qtd}</b> {f.qtd === 1 ? 'lead' : 'leads'} · {Math.round(f.pct)}% do funil
                     </div>
                     {linha('Em aberto', String(f.abertos))}
-                    {linha('Ganhos', String(f.ganhos), '#16a34a')}
-                    {linha('Perdidos', String(f.perdidos), f.perdidos ? '#b91c1c' : undefined)}
+                    {linha('Ganhos', String(f.ganhos), 'var(--v2-ok)')}
+                    {linha('Perdidos', String(f.perdidos), f.perdidos ? 'var(--v2-hot)' : undefined)}
                     <div style={{ borderTop: '1px solid #f2f2f2', marginTop: 6, paddingTop: 6 }}>
                       {linha('Conversão', `${Math.round(f.conversao)}%`)}
-                      {linha('Valor ganho', fmtR$(f.valorGanho), f.valorGanho ? '#16a34a' : undefined)}
+                      {linha('Valor ganho', fmtR$(f.valorGanho), f.valorGanho ? 'var(--v2-ok)' : undefined)}
                     </div>
                   </div>
                 )
@@ -697,25 +697,25 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
           )}
         </div>
       ) : (
-      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
-        {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Nenhum negócio com origem preenchida ainda.</p> : porOrigem.map(o => (
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
+        {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum negócio com origem preenchida ainda.</p> : porOrigem.map(o => (
           <div key={o.nome} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: '#444', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
-            <div style={{ flex: 1, height: 18, background: '#f4f4f4', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ width: `${(o.qtd / porOrigem[0].qtd) * 100}%`, height: '100%', background: '#111', minWidth: 6, borderRadius: 6 }} />
+            <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
+            <div style={{ flex: 1, height: 18, background: 'var(--v2-surface1)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ width: `${(o.qtd / porOrigem[0].qtd) * 100}%`, height: '100%', background: 'var(--v2-ink)', minWidth: 6, borderRadius: 6 }} />
             </div>
-            <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, fontWeight: 800, color: '#111', flexShrink: 0 }}>{o.qtd}</span>
+            <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', flexShrink: 0 }}>{o.qtd}</span>
           </div>
         ))}
       </div>
       )}
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Pipeline por responsável' : 'Pipeline por vendedor'}</span>
-      <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: '#aaa' }}>Sem negócios em aberto.</p> : porVendedor.map((v: any) => (
-          <div key={v.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
-            <span style={{ fontSize: 13, color: '#333' }}>{v.nome}</span>
-            <span style={{ fontSize: 12.5, color: '#888' }}>{v.qtd} negócio(s) · <b style={{ color: '#111' }}>{fmtR$(v.valor)}</b></span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Pipeline por responsável' : 'Pipeline por vendedor'}</span>
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Sem negócios em aberto.</p> : porVendedor.map((v: any) => (
+          <div key={v.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
+            <span style={{ fontSize: 13, color: 'var(--v2-ink)' }}>{v.nome}</span>
+            <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{v.qtd} negócio(s) · <b style={{ color: 'var(--v2-ink)' }}>{fmtR$(v.valor)}</b></span>
           </div>
         ))}
       </div>
@@ -724,7 +724,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
 }
 
 const CANAL: Record<string, { label: string; cor: string }> = {
-  whatsapp: { label: 'WhatsApp', cor: '#16a34a' }, ligacao: { label: 'Ligação', cor: '#1d4ed8' }, email: { label: 'E-mail', cor: '#7c3aed' },
+  whatsapp: { label: 'WhatsApp', cor: 'var(--v2-ok)' }, ligacao: { label: 'Ligação', cor: 'var(--v2-info)' }, email: { label: 'E-mail', cor: '#7c3aed' },
 }
 type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
 
@@ -752,30 +752,30 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
   }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Importar contatos</h3>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--v2-ink)' }}>Importar contatos</h3>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: '#999', flex: 1, minWidth: 180 }}>Envie o <b>.csv do seu sistema</b> (reconhece Nome, CPF, DDD+Celular, E-mail, Nascimento) ou cole: <code style={{ background: '#f5f5f5', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#111', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', flex: 1, minWidth: 180 }}>Envie o <b>.csv do seu sistema</b> (reconhece Nome, CPF, DDD+Celular, E-mail, Nascimento) ou cole: <code style={{ background: 'var(--v2-surface1)', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Enviar arquivo
             <input type="file" accept=".csv,.txt,text/csv" onChange={onArquivo} style={{ display: 'none' }} />
           </label>
         </div>
         {perfilTelefonia && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Loja de destino</label>
-            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? '#e2e2e2' : '#fca5a5'}`, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Loja de destino</label>
+            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
               <option value="">Selecione a loja…</option>
               {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
             </select>
           </div>
         )}
         <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\nJoão Silva ; 5511999990000 ; joao@x.com ; Loja Y'}
-          style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
-        <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? '#16a34a' : '#b91c1c' }}>{linhas.length}</strong> contato(s) prontos{ignoradas > 0 && <span style={{ color: '#b45309' }}> · {ignoradas} sem nome ignorada(s)</span>}</> : <span style={{ color: '#aaa' }}>Cole ou envie o arquivo para ver a prévia.</span>}</div>
+          style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
+        <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{linhas.length}</strong> contato(s) prontos{ignoradas > 0 && <span style={{ color: 'var(--v2-amber)' }}> · {ignoradas} sem nome ignorada(s)</span>}</> : <span style={{ color: 'var(--v2-ink3)' }}>Cole ou envie o arquivo para ver a prévia.</span>}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? '#16a34a' : '#f0f0f0', color: linhas.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando...' : `Importar ${linhas.length || ''} contato(s)`}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: linhas.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando...' : `Importar ${linhas.length || ''} contato(s)`}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -791,20 +791,20 @@ function ligadosEmpresa(emp: Empresa, contatos: Contato[], negocios: Negocio[]) 
 }
 
 function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Empresa[]; contatos: Contato[]; negocios: Negocio[]; onAbrir: (e: Empresa) => void }) {
-  if (empresas.length === 0) return <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhuma empresa ainda.</p></div>
+  if (empresas.length === 0) return <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhuma empresa ainda.</p></div>
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
       {empresas.map(e => {
         const { cts, negs } = ligadosEmpresa(e, contatos, negocios)
         const aberto = negs.filter(n => n.status === 'aberto').reduce((s, n) => s + (Number(n.valor) || 0), 0)
         return (
-          <div key={e.id} onClick={() => onAbrir(e)} style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', cursor: 'pointer' }}>
-            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>{e.nome}</p>
-            {e.segmento && <p style={{ margin: '0 0 8px', fontSize: 12, color: '#888' }}>{e.segmento}</p>}
+          <div key={e.id} onClick={() => onAbrir(e)} style={{ background: 'var(--v2-surface)', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{e.nome}</p>
+            {e.segmento && <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>{e.segmento}</p>}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '2px 8px' }}>{cts.length} contato(s)</span>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{negs.length} negócio(s)</span>
-              {aberto > 0 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: 999, padding: '2px 8px' }}>{fmtR$(aberto)} em aberto</span>}
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>{cts.length} contato(s)</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{negs.length} negócio(s)</span>
+              {aberto > 0 && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '2px 8px' }}>{fmtR$(aberto)} em aberto</span>}
             </div>
           </div>
         )
@@ -860,8 +860,8 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
   }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{empresa ? 'Editar empresa' : 'Nova empresa'}</h3>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{empresa ? 'Editar empresa' : 'Nova empresa'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -871,7 +871,7 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
               {/* Opcional — mas se veio errado, avisa. CNPJ torto vai parar em
                   contrato e nota, e ninguém confere de novo. Não impede salvar. */}
               {f.cnpj.trim() && !cnpjValido(f.cnpj) && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#b91c1c', fontWeight: 600 }}>CNPJ incompleto ou inválido — confira antes de salvar.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-hot)', fontWeight: 600 }}>CNPJ incompleto ou inválido — confira antes de salvar.</p>
               )}
             </div>
             <div><label style={labelStyle}>Segmento</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} style={inputStyle} /></div>
@@ -882,49 +882,49 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
           <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
         </div>
         {/* Contatos da empresa: clicáveis (abrem a ficha) e vinculáveis daqui */}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--v2-rule)' }}>
           <label style={labelStyle}>Contatos desta empresa</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {naFicha.map(c => (
-              <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: vincularIds.includes(c.id) ? '#fef9c3' : '#f4f4f5', border: '1px solid #e5e7eb', borderRadius: 999, padding: '4px 6px 4px 10px', fontSize: 12, fontWeight: 600, color: '#333' }}>
+              <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: vincularIds.includes(c.id) ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '4px 6px 4px 10px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink)' }}>
                 <button onClick={() => onAbrirContato?.(c)} title="Abrir a ficha do contato"
-                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: onAbrirContato ? '#1d4ed8' : '#333', cursor: onAbrirContato ? 'pointer' : 'default' }}>{c.nome}</button>
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: onAbrirContato ? 'var(--v2-info)' : 'var(--v2-ink)', cursor: onAbrirContato ? 'pointer' : 'default' }}>{c.nome}</button>
                 <button onClick={() => {
                   if (vincularIds.includes(c.id)) setVincularIds(ids => ids.filter(x => x !== c.id))
                   else setDesvincularIds(ids => [...ids, c.id])
                 }} title="Desvincular da empresa"
-                  style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>×</button>
+                  style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>×</button>
               </span>
             ))}
-            {naFicha.length === 0 && <span style={{ fontSize: 12, color: '#aaa' }}>Nenhum contato vinculado.</span>}
+            {naFicha.length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato vinculado.</span>}
             <button onClick={() => setSeletorAberto(v => !v)}
-              style={{ padding: '4px 10px', background: '#fff', border: '1.5px dashed #d4d4d8', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#666', cursor: 'pointer' }}>+ Vincular</button>
+              style={{ padding: '4px 10px', background: 'var(--v2-surface)', border: '1.5px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Vincular</button>
           </div>
 
           {seletorAberto && (
-            <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, border: '1px solid var(--v2-rule)', borderRadius: 10, overflow: 'hidden' }}>
               <input value={buscaCt} onChange={e => setBuscaCt(e.target.value)} autoFocus placeholder="Buscar contato por nome..."
-                style={{ ...inputStyle, border: 'none', borderBottom: '1px solid #f0f0f0', borderRadius: 0 }} />
+                style={{ ...inputStyle, border: 'none', borderBottom: '1px solid var(--v2-rule)', borderRadius: 0 }} />
               <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                 {candidatos.map(c => (
                   <button key={c.id} onClick={() => { setVincularIds(ids => [...ids, c.id]); setBuscaCt('') }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid #f7f7f7', fontSize: 12.5, color: '#333', cursor: 'pointer' }}>
-                    {c.nome}{c.empresa ? <span style={{ color: '#aaa' }}> · hoje em {c.empresa}</span> : ''}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--v2-surface1)', fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer' }}>
+                    {c.nome}{c.empresa ? <span style={{ color: 'var(--v2-ink3)' }}> · hoje em {c.empresa}</span> : ''}
                   </button>
                 ))}
-                {candidatos.length === 0 && <p style={{ margin: 0, padding: '10px 12px', fontSize: 12, color: '#aaa' }}>Nenhum contato encontrado.</p>}
+                {candidatos.length === 0 && <p style={{ margin: 0, padding: '10px 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.</p>}
               </div>
             </div>
           )}
           {(vincularIds.length > 0 || desvincularIds.length > 0) && (
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: '#92400e' }}>As mudanças de vínculo são aplicadas ao salvar.</p>
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-amber)' }}>As mudanças de vínculo são aplicadas ao salvar.</p>
           )}
-          {lig.negs.length > 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#888' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
+          {lig.negs.length > 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
-          {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
+          {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -988,8 +988,8 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
     >
       {children}
       {arrastando && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,192,15,0.12)', border: '2px dashed #ffc00f', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#a16207' }}>Solte o arquivo .csv para importar em massa</span>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,192,15,0.12)', border: '2px dashed var(--v2-amber-on)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>Solte o arquivo .csv para importar em massa</span>
         </div>
       )}
     </div>
@@ -1034,43 +1034,43 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
 
   // Base vazia de verdade: nem mostra a busca (não há o que buscar).
   if (contatosTodos.length === 0) return dz(
-    <div style={{ background: '#fff', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <p style={{ margin: 0, fontSize: 14, color: '#888' }}>Nenhum contato ainda.</p>
-      {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: '#bbb' }}>Arraste um arquivo .csv aqui para importar em massa.</p>}
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum contato ainda.</p>
+      {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Arraste um arquivo .csv aqui para importar em massa.</p>}
     </div>
   )
 
   const barraSel = sel.size > 0 && (
     <>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#111', color: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{sel.size} selecionado(s)</span>
-      {podeExcluir && sel.size === 2 && <button onClick={abrirMesclar} style={{ padding: '7px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Mesclar duplicados</button>}
-      {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? 'Excluindo...' : 'Excluir selecionados'}</button>}
-      <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: '#ddd', border: '1px solid #555', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Limpar seleção</button>
+      {podeExcluir && sel.size === 2 && <button onClick={abrirMesclar} style={{ padding: '7px 14px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Mesclar duplicados</button>}
+      {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? 'Excluindo...' : 'Excluir selecionados'}</button>}
+      <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-rule2)', border: '1px solid var(--v2-ink2)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Limpar seleção</button>
     </div>
     {mesclarAberto && selecionados.length === 2 && (
       <div onClick={fecharFora(() => setMesclarAberto(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', padding: 22 }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: 16.5, color: '#111' }}>Mesclar contatos</h3>
-          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>Escolha qual registro fica como principal. O outro será removido e seus dados (telefone, histórico, negócios, agendamentos e conversas) vão para o principal.</p>
+        <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', padding: 22 }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Mesclar contatos</h3>
+          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Escolha qual registro fica como principal. O outro será removido e seus dados (telefone, histórico, negócios, agendamentos e conversas) vão para o principal.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {selecionados.map(c => {
               const marcado = principalId === c.id
               return (
-                <button key={c.id} onClick={() => setPrincipalId(c.id)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10, border: `1.5px solid ${marcado ? '#2563eb' : '#e6e6e6'}`, background: marcado ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
-                  <span style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${marcado ? '#2563eb' : '#ccc'}`, background: marcado ? '#2563eb' : '#fff', flexShrink: 0, boxShadow: marcado ? 'inset 0 0 0 2px #fff' : 'none' }} />
+                <button key={c.id} onClick={() => setPrincipalId(c.id)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10, border: `1.5px solid ${marcado ? 'var(--v2-info)' : 'var(--v2-surface2)'}`, background: marcado ? 'var(--v2-info-bg)' : 'var(--v2-surface)', cursor: 'pointer' }}>
+                  <span style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${marcado ? 'var(--v2-info)' : 'var(--v2-rule2)'}`, background: marcado ? 'var(--v2-info)' : 'var(--v2-surface)', flexShrink: 0, boxShadow: marcado ? 'inset 0 0 0 2px #fff' : 'none' }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#111' }}>{c.nome}</span>
-                    <span style={{ display: 'block', fontSize: 11.5, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[c.telefone, c.email, empresaLabel(c) !== '—' ? empresaLabel(c) : ''].filter(Boolean).join(' · ') || 'sem outros dados'}</span>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[c.telefone, c.email, empresaLabel(c) !== '—' ? empresaLabel(c) : ''].filter(Boolean).join(' · ') || 'sem outros dados'}</span>
                   </span>
-                  {marcado && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#2563eb', flexShrink: 0 }}>PRINCIPAL</span>}
+                  {marcado && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>PRINCIPAL</span>}
                 </button>
               )
             })}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button onClick={() => setMesclarAberto(false)} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-            <button onClick={mesclar} disabled={mesclando} style={{ padding: '10px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: mesclando ? 'wait' : 'pointer' }}>{mesclando ? 'Mesclando…' : 'Mesclar'}</button>
+            <button onClick={() => setMesclarAberto(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={mesclar} disabled={mesclando} style={{ padding: '10px 18px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: mesclando ? 'wait' : 'pointer' }}>{mesclando ? 'Mesclando…' : 'Mesclar'}</button>
           </div>
         </div>
       </div>
@@ -1080,27 +1080,27 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
 
   const toggleVista = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-      <div style={{ display: 'flex', gap: 4, background: '#f0f0f0', borderRadius: 9, padding: 3, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, width: 'fit-content' }}>
         {([['lista', 'Lista'], ['cards', 'Cards']] as const).map(([v, l]) => (
-          <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+          <button key={v} onClick={() => setVista(v)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: vista === v ? 'var(--v2-surface)' : 'transparent', color: vista === v ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
         ))}
       </div>
       {/* Busca — com a lista única (leads + pacientes) ela fica longa */}
       <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 380 }}>
-        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: '#bbb', pointerEvents: 'none' }}>
+        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--v2-ink3)', pointerEvents: 'none' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
         </span>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, telefone, e-mail…"
-          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 30px 8px 30px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
+          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 30px 8px 30px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
         {busca && (
           <button onClick={() => setBusca('')} title="Limpar busca"
-            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
         )}
       </div>
-      {busca && <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
+      {busca && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
       {podeExcluir && quebrados.length > 0 && (
         <button onClick={selecionarQuebrados} title="Seleciona os contatos com nome corrompido (importação de arquivo binário) para você conferir e excluir"
-          style={{ padding: '6px 13px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          style={{ padding: '6px 13px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
           Selecionar {quebrados.length} quebrado(s)
         </button>
       )}
@@ -1109,8 +1109,8 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
 
   // Busca sem resultado: mantém a caixa na tela para o usuário corrigir o termo.
   const nadaEncontrado = contatos.length === 0 && (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <p style={{ margin: 0, fontSize: 13.5, color: '#888' }}>Nenhum contato encontrado para “{busca}”.</p>
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado para “{busca}”.</p>
     </div>
   )
 
@@ -1125,16 +1125,16 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
             const nNeg = negocios.filter(n => n.contatoId === c.id).length
             const marcado = sel.has(c.id)
             return (
-              <div key={c.id} style={{ position: 'relative', background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: `1px solid ${marcado ? '#111' : '#eee'}`, cursor: 'pointer' }} onClick={() => onAbrir(c)}>
+              <div key={c.id} style={{ position: 'relative', background: 'var(--v2-surface)', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: `1px solid ${marcado ? 'var(--v2-ink)' : 'var(--v2-surface2)'}`, cursor: 'pointer' }} onClick={() => onAbrir(c)}>
                 <input type="checkbox" checked={marcado} onClick={e => e.stopPropagation()} onChange={() => toggle(c.id)} style={{ position: 'absolute', top: 12, right: 12, width: 16, height: 16, cursor: 'pointer' }} />
-                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111', paddingRight: 22 }}>{c.nome}</p>
-                <p style={{ margin: '0 0 4px', fontSize: 12, color: '#888' }}>{empresaLabel(c)}</p>
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', paddingRight: 22 }}>{c.nome}</p>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--v2-ink3)' }}>{empresaLabel(c)}</p>
                 {c.areaAtuacao && <p style={{ margin: '0 0 4px', fontSize: 11.5, color: '#7c3aed', fontWeight: 600 }}>{c.areaAtuacao}</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {c.telefone && <span style={{ fontSize: 12, color: '#555' }}>{c.telefone}</span>}
-                  {c.email && <span style={{ fontSize: 12, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
+                  {c.telefone && <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>{c.telefone}</span>}
+                  {c.email && <span style={{ fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
                 </div>
-                {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
+                {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
               </div>
             )
           })}
@@ -1144,15 +1144,15 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
   }
 
   // Vista LISTA (tabela) com seleção
-  const th: React.CSSProperties = { textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', whiteSpace: 'nowrap' }
-  const td: React.CSSProperties = { fontSize: 13, color: '#333', padding: '10px 12px', borderTop: '1px solid #f2f2f2' }
+  const th: React.CSSProperties = { textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { fontSize: 13, color: 'var(--v2-ink)', padding: '10px 12px', borderTop: '1px solid #f2f2f2' }
   return dz(
     <div>
       {toggleVista}
       {barraSel}
       {nadaEncontrado}
       {contatos.length > 0 && (
-      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #eee', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid var(--v2-rule)', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
@@ -1173,16 +1173,16 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
               const marcado = sel.has(c.id)
               const ult = haQuanto(c.ultimoContato)
               return (
-                <tr key={c.id} style={{ background: marcado ? '#fffbeb' : '#fff', cursor: 'pointer' }} onClick={() => onAbrir(c)}>
+                <tr key={c.id} style={{ background: marcado ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer' }} onClick={() => onAbrir(c)}>
                   <td style={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={marcado} onChange={() => toggle(c.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} /></td>
-                  <td style={{ ...td, fontWeight: 700, color: '#111' }}>{c.nome}</td>
+                  <td style={{ ...td, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</td>
                   <td style={td}>{empresaLabel(c)}</td>
-                  <td style={{ ...td, color: c.areaAtuacao ? '#7c3aed' : '#bbb' }}>{c.areaAtuacao || '—'}</td>
+                  <td style={{ ...td, color: c.areaAtuacao ? '#7c3aed' : 'var(--v2-ink3)' }}>{c.areaAtuacao || '—'}</td>
                   <td style={td}>{c.telefone || '—'}</td>
                   {!perfilClinica && <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</td>}
-                  {perfilClinica && <td style={td}>{ult ? <span style={{ fontSize: 12, fontWeight: 700, color: ult.frio ? '#b91c1c' : '#666' }}>{ult.txt}{ult.frio ? ' · reabordar' : ''}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>}
-                  {mostrarFrequencia && (() => { const fq = labelFreq(c.id); return <td style={td}><span style={{ fontSize: 12, fontWeight: fq.forte ? 700 : 500, color: fq.forte ? '#166534' : '#ccc' }}>{fq.txt}</span></td> })()}
-                  <td style={{ ...td, textAlign: 'center' }}>{nNeg > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '2px 8px' }}>{nNeg}</span> : <span style={{ color: '#ccc' }}>—</span>}</td>
+                  {perfilClinica && <td style={td}>{ult ? <span style={{ fontSize: 12, fontWeight: 700, color: ult.frio ? 'var(--v2-hot)' : 'var(--v2-ink2)' }}>{ult.txt}{ult.frio ? ' · reabordar' : ''}</span> : <span style={{ color: 'var(--v2-ink3)' }}>—</span>}</td>}
+                  {mostrarFrequencia && (() => { const fq = labelFreq(c.id); return <td style={td}><span style={{ fontSize: 12, fontWeight: fq.forte ? 700 : 500, color: fq.forte ? 'var(--v2-ok)' : 'var(--v2-rule2)' }}>{fq.txt}</span></td> })()}
+                  <td style={{ ...td, textAlign: 'center' }}>{nNeg > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{nNeg}</span> : <span style={{ color: 'var(--v2-ink3)' }}>—</span>}</td>
                 </tr>
               )
             })}
@@ -1195,15 +1195,15 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
 }
 
 const STATUS_AG: Record<string, { label: string; cor: string }> = {
-  agendado: { label: 'Agendado', cor: '#1d4ed8' }, confirmado: { label: 'Confirmado', cor: '#166534' },
-  atendido: { label: 'Atendido', cor: '#374151' }, faltou: { label: 'Faltou', cor: '#b91c1c' }, cancelado: { label: 'Cancelado', cor: '#9ca3af' },
+  agendado: { label: 'Agendado', cor: 'var(--v2-info)' }, confirmado: { label: 'Confirmado', cor: 'var(--v2-ok)' },
+  atendido: { label: 'Atendido', cor: 'var(--v2-ink2)' }, faltou: { label: 'Faltou', cor: 'var(--v2-hot)' }, cancelado: { label: 'Cancelado', cor: 'var(--v2-ink3)' },
 }
 // Tipos de toque de nutrição (linha do tempo do paciente/contato)
 const TIPOS_INTER: { key: string; label: string; cor: string }[] = [
-  { key: 'nota', label: 'Nota', cor: '#6b7280' }, { key: 'ligacao', label: 'Ligação', cor: '#1d4ed8' },
-  { key: 'whatsapp', label: 'WhatsApp', cor: '#16a34a' }, { key: 'email', label: 'E-mail', cor: '#7c3aed' },
-  { key: 'retorno', label: 'Retorno', cor: '#0891b2' }, { key: 'reabordagem', label: 'Reabordagem', cor: '#d97706' },
-  { key: 'campanha', label: 'Campanha', cor: '#c026d3' }, { key: 'outro', label: 'Outro', cor: '#9ca3af' },
+  { key: 'nota', label: 'Nota', cor: 'var(--v2-ink3)' }, { key: 'ligacao', label: 'Ligação', cor: 'var(--v2-info)' },
+  { key: 'whatsapp', label: 'WhatsApp', cor: 'var(--v2-ok)' }, { key: 'email', label: 'E-mail', cor: '#7c3aed' },
+  { key: 'retorno', label: 'Retorno', cor: '#0891b2' }, { key: 'reabordagem', label: 'Reabordagem', cor: 'var(--v2-amber)' },
+  { key: 'campanha', label: 'Campanha', cor: '#c026d3' }, { key: 'outro', label: 'Outro', cor: 'var(--v2-ink3)' },
 ]
 const interInfo = (k: string) => TIPOS_INTER.find(t => t.key === k) || TIPOS_INTER[0]
 // Detecta nome "quebrado": lixo de um arquivo binário (.xlsx/.zip) importado como
@@ -1301,28 +1301,28 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
   }
 
   const colOpts = Array.from({ length: nCols }, (_, i) => i)
-  const th: React.CSSProperties = { textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: '#888', textTransform: 'uppercase', padding: '6px 8px', whiteSpace: 'nowrap' }
-  const td: React.CSSProperties = { fontSize: 12, color: '#333', padding: '6px 8px', borderTop: '1px solid #f2f2f2', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }
+  const th: React.CSSProperties = { textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', padding: '6px 8px', whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { fontSize: 12, color: 'var(--v2-ink)', padding: '6px 8px', borderTop: '1px solid #f2f2f2', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#111' }}>Importar {perfilClinica ? 'pacientes/contatos' : 'contatos'} — confira antes</h3>
-        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#888' }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 720, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--v2-ink)' }}>Importar {perfilClinica ? 'pacientes/contatos' : 'contatos'} — confira antes</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>
           Formato sugerido (separado por ; ou vírgula): <b>{CAMPOS.map(c => c.label).join(' · ')}</b>. Se a ordem do seu arquivo for outra, ajuste o mapa abaixo — a prévia mostra como vai ficar.
         </p>
 
         {perfilTelefonia && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#888', marginBottom: 5 }}>Loja de destino dos contatos</label>
-            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 320, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? '#e2e2e2' : '#fca5a5'}`, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Loja de destino dos contatos</label>
+            <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 320, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
               <option value="">Selecione a loja…</option>
               {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
             </select>
           </div>
         )}
 
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: '#333', fontWeight: 600, marginBottom: 14 }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: 'var(--v2-ink)', fontWeight: 600, marginBottom: 14 }}>
           <input type="checkbox" checked={cab} onChange={e => setCab(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
           A primeira linha é cabeçalho (ignorar na importação)
         </label>
@@ -1331,8 +1331,8 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginBottom: 16 }}>
           {CAMPOS.map(c => (
             <div key={c.k}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: c.req ? '#b45309' : '#888', marginBottom: 4 }}>{c.label}{c.req ? ' *' : ''}</label>
-              <select value={map[c.k] ?? -1} onChange={e => setMap(m => ({ ...m, [c.k]: Number(e.target.value) }))} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px', borderRadius: 8, border: `1.5px solid ${c.req && (map[c.k] ?? -1) < 0 ? '#fca5a5' : '#e0e0e0'}`, fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: c.req ? 'var(--v2-amber)' : 'var(--v2-ink3)', marginBottom: 4 }}>{c.label}{c.req ? ' *' : ''}</label>
+              <select value={map[c.k] ?? -1} onChange={e => setMap(m => ({ ...m, [c.k]: Number(e.target.value) }))} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px', borderRadius: 8, border: `1.5px solid ${c.req && (map[c.k] ?? -1) < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-rule)'}`, fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 <option value={-1}>—</option>
                 {colOpts.map(i => <option key={i} value={i}>{cab && linhas[0]?.[i] ? linhas[0][i] : `Coluna ${i + 1}`}</option>)}
               </select>
@@ -1341,7 +1341,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
         </div>
 
         {/* Prévia */}
-        <div style={{ border: '1px solid #eee', borderRadius: 10, overflowX: 'auto', marginBottom: 8 }}>
+        <div style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, overflowX: 'auto', marginBottom: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>{CAMPOS.map(c => <th key={c.k} style={th}>{c.label}</th>)}</tr></thead>
             <tbody>
@@ -1350,21 +1350,21 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
                   {CAMPOS.map(c => {
                     const v = val(row, c.k)
                     const show = c.k === 'nascimento' ? (normData(v) || (v ? `? ${v}` : '')) : v
-                    return <td key={c.k} style={{ ...td, color: c.k === 'nome' && !v ? '#dc2626' : '#333' }}>{show || <span style={{ color: '#ccc' }}>—</span>}</td>
+                    return <td key={c.k} style={{ ...td, color: c.k === 'nome' && !v ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{show || <span style={{ color: 'var(--v2-ink3)' }}>—</span>}</td>
                   })}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: 12, color: '#888' }}>
+        <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
           {validos.length} de {dados.length} linha(s) serão importadas{dados.length > validos.length ? ` (${dados.length - validos.length} sem nome serão ignoradas)` : ''}
           {perfilClinica && tipo ? ` · entram como ${tipo === 'paciente' ? 'Paciente' : 'Lead'}` : ''}.
         </p>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 10, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={importar} disabled={salvando || !validos.length} style={{ padding: '10px 18px', background: validos.length ? '#111' : '#f0f0f0', color: validos.length ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: validos.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando…' : `Importar ${validos.length}`}</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 10, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={importar} disabled={salvando || !validos.length} style={{ padding: '10px 18px', background: validos.length ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: validos.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: validos.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando…' : `Importar ${validos.length}`}</button>
         </div>
       </div>
     </div>
@@ -1417,9 +1417,9 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
 
   return (
     <div onClick={fecharFora(onClose, { temAlteracoes: () => !!texto.trim() })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
-        <h3 style={{ margin: '0 0 2px', fontSize: 16, color: '#111' }}>Abordar {contato.nome}</h3>
-        <p style={{ margin: '0 0 14px', fontSize: 12, color: '#999' }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+        <h3 style={{ margin: '0 0 2px', fontSize: 16, color: 'var(--v2-ink)' }}>Abordar {contato.nome}</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>
           {tel ? `WhatsApp +${tel}` : 'Contato sem telefone válido — corrija o número na ficha (com DDD).'}
         </p>
 
@@ -1428,7 +1428,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
               {templates.slice(0, 6).map(t => (
                 <button key={t.id} onClick={() => setTexto(prev => (prev.trim() ? prev.replace(/\s*$/, '') + '\n' : '') + aplicar(t.texto))}
-                  style={{ padding: '5px 10px', background: '#f4f4f5', border: '1px solid #e5e7eb', borderRadius: 999, fontSize: 11.5, fontWeight: 700, color: '#444', cursor: 'pointer' }}>{t.titulo}</button>
+                  style={{ padding: '5px 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 999, fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{t.titulo}</button>
               ))}
             </div>
           )}
@@ -1438,16 +1438,16 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
         </>)}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14, flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={{ padding: '9px 14px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Fechar</button>
           {podeEditar && onAbrirOportunidade && (
             <button onClick={() => onAbrirOportunidade(contato.id)}
-              style={{ padding: '9px 14px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Nova oportunidade</button>
+              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Nova oportunidade</button>
           )}
           {tel && (<>
             <button onClick={() => onAbrirConversa(tel, contato.id)} title="Ver o histórico e conversar na aba Mensagens"
-              style={{ padding: '9px 14px', background: '#fff', color: '#166534', border: '1.5px solid #bbf7d0', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Abrir conversa</button>
+              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1.5px solid var(--v2-ok-bg)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Abrir conversa</button>
             <button onClick={enviar} disabled={!texto.trim() || enviando}
-              style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#25D366' : '#e5e7eb', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
+              style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#25D366' : 'var(--v2-surface2)', color: texto.trim() && !enviando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
               {enviando ? 'Enviando...' : 'Enviar'}
             </button>
           </>)}
@@ -1587,22 +1587,22 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   }
   return (
     <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#111', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
           {/* Atalhos só na ficha JÁ SALVA: a oportunidade precisa do id do contato,
               e a conversa precisa do telefone. Em contato novo eles não existem. */}
           {contato && String(f.telefone || '').trim() && onAbrirWhatsApp && (
             <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone, contato.id))} disabled={salvando} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
-              style={{ padding: '7px 14px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+              style={{ padding: '7px 14px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
           )}
           {contato && onAbrirOportunidade && (
             <button onClick={() => salvarEIr(() => onAbrirOportunidade(contato.id))} disabled={salvando} title="Abrir uma oportunidade no funil para este contato"
-              style={{ padding: '7px 14px', background: '#fff', color: '#111', border: '1.5px solid #111', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Oportunidade</button>
+              style={{ padding: '7px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Oportunidade</button>
           )}
           {perfilClinica && contato && onAgendar && (
             <button onClick={() => onAgendar({ pacienteNome: contato.nome, pacienteTelefone: contato.telefone, contatoId: contato.id })}
-              style={{ padding: '7px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+              style={{ padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1610,7 +1610,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           {perfilClinica && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div><label style={labelStyle}>Tipo</label>
-                <select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                <select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                   <option value="paciente">Paciente</option><option value="lead">Lead</option><option value="profissional">Profissional</option><option value="fornecedor">Fornecedor</option><option value="outro">Outro</option>
                 </select>
               </div>
@@ -1646,28 +1646,28 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           ) : perfilTelefonia ? (<>
             {/* Varejo: cliente PF (CPF) na maioria, PJ (CNPJ) numa venda para empresa.
                 Um só campo resolve os dois — a contagem de dígitos diz qual é. */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600 }}>
               <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               Pessoa física (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Pessoa física' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Pessoa física' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
               <div>
                 <label style={labelStyle}>CPF / CNPJ</label>
                 <input value={formatarDoc(f.cpfCnpj)} onChange={e => setF({ ...f, cpfCnpj: soDigitosDoc(e.target.value) })} inputMode="numeric" placeholder="Só números" style={inputStyle} />
-                {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: '#dc2626' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? 'Incompleto — CPF tem 11 dígitos, CNPJ 14.' : 'Dígitos não conferem — confira o número.'}</span>}
+                {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--v2-hot)' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? 'Incompleto — CPF tem 11 dígitos, CNPJ 14.' : 'Dígitos não conferem — confira o número.'}</span>}
               </div>
               <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
               <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
               <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
             </div>
           </>) : (<>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600 }}>
               <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               Profissional Autônomo (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
               <div><label style={labelStyle}>Área de atuação</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder="Ex: Odontologia, Advocacia..." style={inputStyle} /></div>
               <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
               <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
@@ -1678,7 +1678,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
               <div><label style={labelStyle}>Etiquetas (separadas por vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: botox, avaliação, VIP" style={inputStyle} /></div>
               {contato && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600, paddingBottom: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600, paddingBottom: 10 }}>
                   <input type="checkbox" checked={f.ativo} onChange={e => setF({ ...f, ativo: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                   Ativo
                 </label>
@@ -1696,7 +1696,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                 <input list="lista-procedimentos" value={f.ultimoProcedimento} disabled={f.nuncaVeio}
                   onChange={e => setF({ ...f, ultimoProcedimento: e.target.value })}
                   placeholder={f.nuncaVeio ? 'Nunca veio à clínica' : 'Ex.: Botox, Preenchimento labial...'}
-                  style={{ ...inputStyle, background: f.nuncaVeio ? '#f7f7f7' : '#fff', color: f.nuncaVeio ? '#aaa' : '#111' }} />
+                  style={{ ...inputStyle, background: f.nuncaVeio ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.nuncaVeio ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} />
                 <datalist id="lista-procedimentos">
                   {procedimentos.map(p => <option key={p} value={p} />)}
                 </datalist>
@@ -1704,7 +1704,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               {/* "Nunca veio" é a resposta honesta para lead que nunca sentou na
                   cadeira: sem ela, campo vazio é ambíguo — nunca veio, ou
                   ninguém anotou? Marcar limpa o campo (não pode dizer os dois). */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600, paddingBottom: 10, whiteSpace: 'nowrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600, paddingBottom: 10, whiteSpace: 'nowrap' }}>
                 <input type="checkbox" checked={!!f.nuncaVeio}
                   onChange={e => setF({ ...f, nuncaVeio: e.target.checked, ...(e.target.checked ? { ultimoProcedimento: '' } : {}) })}
                   style={{ width: 16, height: 16, cursor: 'pointer' }} />
@@ -1725,7 +1725,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Histórico e nutrição</label>
                 {freq.total > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '3px 10px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px' }}>
                     {freq.total} atendimento{freq.total > 1 ? 's' : ''}{freq.mediaDias != null ? ` · a cada ~${freq.mediaDias} dias` : ''}
                   </span>
                 )}
@@ -1738,10 +1738,10 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                     placeholder="O que fazer (ex.: Retorno de avaliação)" style={{ ...inputStyle, flex: 1, minWidth: 170 }} />
                   {/* Data exata — o comercial é avisado na semana e no dia */}
                   <input type="date" value={novoPasso.quando} min={hojeYmd} onChange={e => setNovoPasso(p => ({ ...p, quando: e.target.value }))}
-                    style={{ ...inputStyle, width: 150, flexShrink: 0, color: novoPasso.quando ? '#111' : '#999' }} />
+                    style={{ ...inputStyle, width: 150, flexShrink: 0, color: novoPasso.quando ? 'var(--v2-ink)' : 'var(--v2-ink3)' }} />
                   <button onClick={addPasso} disabled={addPassoBusy || !novoPasso.titulo.trim() || !novoPasso.quando}
                     title={!novoPasso.quando ? 'Escolha a data da abordagem' : 'Agendar abordagem'}
-                    style={{ padding: '9px 14px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() && novoPasso.quando ? 1 : 0.5, flexShrink: 0 }}>+</button>
+                    style={{ padding: '9px 14px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() && novoPasso.quando ? 1 : 0.5, flexShrink: 0 }}>+</button>
                 </div>
                 {/* Atalhos de data (o caso comum é "retorno em X") */}
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: passosOrdenados.length ? 8 : 0 }}>
@@ -1750,7 +1750,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                     const ativo = novoPasso.quando === d
                     return (
                       <button key={n} type="button" onClick={() => setNovoPasso(p => ({ ...p, quando: d }))}
-                        style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${ativo ? '#1d4ed8' : '#dbe3f0'}`, background: ativo ? '#dbeafe' : '#fff', color: ativo ? '#1d4ed8' : '#77839a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{lab}</button>
+                        style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${ativo ? 'var(--v2-info)' : '#dbe3f0'}`, background: ativo ? 'var(--v2-info-bg)' : 'var(--v2-surface)', color: ativo ? 'var(--v2-info)' : '#77839a', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{lab}</button>
                     )
                   })}
                 </div>
@@ -1762,13 +1762,13 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                       return (
                         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px' }}>
                           <button onClick={() => togglePasso(p.id)} title={p.feito ? 'Reabrir' : 'Concluir'}
-                            style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid #cbd5e1', background: p.feito ? '#16a34a' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
-                            {p.feito && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                            style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid #cbd5e1', background: p.feito ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
+                            {p.feito && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                           </button>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>{new Date(p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
-                          {prazoTxt && <span style={{ fontSize: 10.5, fontWeight: 700, color: n < 0 ? '#b91c1c' : '#94a3b8', flexShrink: 0 }}>{prazoTxt}</span>}
-                          <span style={{ flex: 1, fontSize: 12.5, color: p.feito ? '#9ca3af' : '#333', textDecoration: p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
-                          {podeExcluir && <button onClick={() => removerPasso(p.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-info)', flexShrink: 0 }}>{new Date(p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
+                          {prazoTxt && <span style={{ fontSize: 10.5, fontWeight: 700, color: n < 0 ? 'var(--v2-hot)' : 'var(--v2-ink3)', flexShrink: 0 }}>{prazoTxt}</span>}
+                          <span style={{ flex: 1, fontSize: 12.5, color: p.feito ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
+                          {podeExcluir && <button onClick={() => removerPasso(p.id)} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
                         </div>
                       )
                     })}
@@ -1778,53 +1778,53 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               {/* O histórico é AUTOMÁTICO (criação, atendimentos, WhatsApp, abordagens).
                   Registro manual de toque vive no CRM, não na ficha. */}
               {timeline.length === 0
-                ? <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Sem histórico ainda. Atendimentos, mensagens e abordagens aparecem aqui automaticamente.</p>
+                ? <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem histórico ainda. Atendimentos, mensagens e abordagens aparecem aqui automaticamente.</p>
                 : (
-                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 260, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 260, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                     {timeline.map(item => item.kind === 'criado' ? (
-                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#6b7280', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
-                        <span style={{ flex: 1, fontSize: 12, color: '#666' }}>Contato criado</span>
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>Contato criado</span>
                       </div>
                     ) : item.kind === 'whatsapp' ? (
-                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>WHATSAPP</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
-                        <span style={{ flex: 1, fontSize: 12, color: '#666' }}>
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>WHATSAPP</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>
                           {item.w.total} mensage{item.w.total > 1 ? 'ns' : 'm'} · {item.w.recebidas} recebida{item.w.recebidas === 1 ? '' : 's'}
                         </span>
                       </div>
                     ) : item.kind === 'passo' ? (
-                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: item.p.feito ? '#166534' : '#1d4ed8', background: item.p.feito ? '#dcfce7' : '#dbeafe', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{item.p.feito ? 'FEITO' : 'ABORDAGEM'}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
-                        <span style={{ flex: 1, fontSize: 12, color: item.p.feito ? '#9ca3af' : '#444', textDecoration: item.p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.p.titulo}</span>
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: item.p.feito ? 'var(--v2-ok)' : 'var(--v2-info)', background: item.p.feito ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{item.p.feito ? 'FEITO' : 'ABORDAGEM'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: item.p.feito ? 'var(--v2-ink3)' : 'var(--v2-ink2)', textDecoration: item.p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.p.titulo}</span>
                       </div>
                     ) : item.kind === 'agenda' ? (
-                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: '#374151', background: '#e5e7eb', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>AGENDA</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.h.dataInicio).toLocaleDateString('pt-BR')}</span>
-                          <span style={{ flex: 1, fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.h.servico || '—'} · {(item.h.profissionalNome || '').split(' ')[0]}</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>AGENDA</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.h.dataInicio).toLocaleDateString('pt-BR')}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.h.servico || '—'} · {(item.h.profissionalNome || '').split(' ')[0]}</span>
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{(STATUS_AG[item.h.status] || STATUS_AG.agendado).label}</span>
                         </div>
-                        {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#555', background: '#fafafa', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
+                        {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
                         {Array.isArray(item.h.procedimentosRealizados) && item.h.procedimentosRealizados.length > 0 && (
-                          <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: '#166534' }}>
+                          <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)' }}>
                             {item.h.procedimentosRealizados.join(' · ')}{item.h.valorInvestido ? ` — ${fmtBRL(item.h.valorInvestido)}` : ''}
                           </p>
                         )}
                       </div>
                     ) : (
-                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid #f6f6f6' }}>
+                      <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', background: interInfo(item.i.tipo).cor, borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{interInfo(item.i.tipo).label.toUpperCase()}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#111', flexShrink: 0 }}>{new Date(item.i.data).toLocaleDateString('pt-BR')}</span>
-                          <span style={{ flex: 1, fontSize: 12, color: '#444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.i.texto}</span>
-                          {podeExcluir && <button onClick={() => removerToque(item.i.id)} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-surface)', background: interInfo(item.i.tipo).cor, borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{interInfo(item.i.tipo).label.toUpperCase()}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.i.data).toLocaleDateString('pt-BR')}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.i.texto}</span>
+                          {podeExcluir && <button onClick={() => removerToque(item.i.id)} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
                         </div>
-                        {item.i.autor && <p style={{ margin: '2px 0 0 34px', fontSize: 10.5, color: '#aaa' }}>{item.i.autor}</p>}
+                        {item.i.autor && <p style={{ margin: '2px 0 0 34px', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{item.i.autor}</p>}
                       </div>
                     ))}
                   </div>
@@ -1833,9 +1833,9 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>
-          {contato && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>
+          {contato && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -1868,23 +1868,23 @@ function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { 
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Pipelines</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Crie funis separados (ex.: Marketing, +Clínicas, Mentoria). Cada um tem suas etapas.</p>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Pipelines</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Crie funis separados (ex.: Marketing, +Clínicas, Mentoria). Cada um tem suas etapas.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {pipelines.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f7f7f7', borderRadius: 10, padding: '8px 12px' }}>
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: '8px 12px' }}>
               {editId === p.id ? (
                 <>
                   <input value={editNome} onChange={e => setEditNome(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') renomear(p.id) }} style={{ ...inputStyle, flex: 1 }} />
-                  <button onClick={() => renomear(p.id)} style={{ padding: '7px 12px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
-                  <button onClick={() => setEditId('')} style={{ padding: '7px 10px', background: 'none', color: '#888', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={() => renomear(p.id)} style={{ padding: '7px 12px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+                  <button onClick={() => setEditId('')} style={{ padding: '7px 10px', background: 'none', color: 'var(--v2-ink3)', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                 </>
               ) : (
                 <>
-                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: '#111' }}>{p.nome}</span>
-                  <button onClick={() => { setEditId(p.id); setEditNome(p.nome) }} style={{ padding: '6px 10px', background: '#fff', color: '#444', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Renomear</button>
-                  {podeExcluir && pipelines.length > 1 && <button onClick={() => excluir(p.id, p.nome)} style={{ padding: '6px 10px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Excluir</button>}
+                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{p.nome}</span>
+                  <button onClick={() => { setEditId(p.id); setEditNome(p.nome) }} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Renomear</button>
+                  {podeExcluir && pipelines.length > 1 && <button onClick={() => excluir(p.id, p.nome)} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Excluir</button>}
                 </>
               )}
             </div>
@@ -1892,10 +1892,10 @@ function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { 
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} placeholder="Nome do novo pipeline (ex.: Marketing)" style={{ ...inputStyle, flex: 1 }} />
-          <button onClick={criar} disabled={!novo.trim() || salvando} style={{ padding: '10px 16px', background: novo.trim() ? 'var(--marca, #ffc00f)' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: novo.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvando ? '...' : '+ Criar'}</button>
+          <button onClick={criar} disabled={!novo.trim() || salvando} style={{ padding: '10px 16px', background: novo.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: novo.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvando ? '...' : '+ Criar'}</button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '10px 18px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
         </div>
       </div>
     </div>
@@ -1930,30 +1930,30 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
   const arrow = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111' }}>Etapas — {pipelineNome}</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Renomeie, adicione, reordene ou remova as fases deste pipeline. Ganho e Perdido são obrigatórios e não podem ser removidos.</p>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Etapas — {pipelineNome}</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Renomeie, adicione, reordene ou remova as fases deste pipeline. Ganho e Perdido são obrigatórios e não podem ser removidos.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
           {lista.map((e, i) => {
             const terminal = e.ganho || e.perdido
             return (
-              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f7f7f7', borderRadius: 10, padding: '6px 10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', color: '#999' }}>
-                  <button onClick={() => mover(i, -1)} disabled={i === 0} title="Subir" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#ddd' : '#888', padding: 0, lineHeight: 0 }}>{arrow('m18 15-6-6-6 6')}</button>
-                  <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} title="Descer" style={{ background: 'none', border: 'none', cursor: i === lista.length - 1 ? 'default' : 'pointer', color: i === lista.length - 1 ? '#ddd' : '#888', padding: 0, lineHeight: 0 }}>{arrow('m6 9 6 6 6-6')}</button>
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: '6px 10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--v2-ink3)' }}>
+                  <button onClick={() => mover(i, -1)} disabled={i === 0} title="Subir" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m18 15-6-6-6 6')}</button>
+                  <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} title="Descer" style={{ background: 'none', border: 'none', cursor: i === lista.length - 1 ? 'default' : 'pointer', color: i === lista.length - 1 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m6 9 6 6 6-6')}</button>
                 </div>
                 <input value={e.nome} onChange={ev => setNome(i, ev.target.value)} placeholder="Nome da etapa" style={{ ...inputStyle, flex: 1 }} />
                 {terminal
-                  ? <span style={{ fontSize: 10.5, fontWeight: 800, color: e.ganho ? '#16a34a' : '#b91c1c', background: e.ganho ? '#f0fdf4' : '#fef2f2', borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{e.ganho ? 'Ganho' : 'Perdido'}</span>
+                  ? <span style={{ fontSize: 10.5, fontWeight: 800, color: e.ganho ? 'var(--v2-ok)' : 'var(--v2-hot)', background: e.ganho ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)', borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{e.ganho ? 'Ganho' : 'Perdido'}</span>
                   : <button onClick={() => remover(i)} title="Remover etapa" style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0, padding: '0 4px' }}>×</button>}
               </div>
             )
           })}
         </div>
-        <button onClick={adicionar} style={{ padding: '9px 14px', background: '#f0f0f0', color: '#333', border: '1px dashed #ccc', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: '100%' }}>+ Adicionar etapa</button>
+        <button onClick={adicionar} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: '100%' }}>+ Adicionar etapa</button>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar etapas'}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar etapas'}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -2013,37 +2013,37 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: '#111' }}>{semEmpresa ? 'Nova oportunidade' : 'Novo negócio'}</h3>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{semEmpresa ? 'Nova oportunidade' : 'Novo negócio'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* #5 — contato obrigatorio: existente ou novo */}
           <div>
             <label style={labelStyle}>Contato da oportunidade *</label>
-            <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 9, padding: 3, marginBottom: 8 }}>
+            <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, marginBottom: 8 }}>
               {([['existente', 'Contato existente'], ['novo', 'Novo contato']] as const).map(([k, lab]) => (
                 <button key={k} type="button" onClick={() => setModoContato(k)} disabled={k === 'existente' && !(contatos || []).length}
-                  style={{ flex: 1, padding: '7px 10px', border: 'none', borderRadius: 7, cursor: (k === 'existente' && !(contatos || []).length) ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, background: modoContato === k ? '#fff' : 'transparent', color: modoContato === k ? '#111' : '#888', boxShadow: modoContato === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{lab}</button>
+                  style={{ flex: 1, padding: '7px 10px', border: 'none', borderRadius: 7, cursor: (k === 'existente' && !(contatos || []).length) ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, background: modoContato === k ? 'var(--v2-surface)' : 'transparent', color: modoContato === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: modoContato === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{lab}</button>
               ))}
             </div>
             {modoContato === 'existente' ? (
               contatoSel ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 9, padding: '9px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 9, padding: '9px 12px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{contatoSel.nome}</p>
-                    {(contatoSel.empresa || contatoSel.profissionalAutonomo) && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#888' }}>{contatoSel.empresa || 'Autônomo'}</p>}
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{contatoSel.nome}</p>
+                    {(contatoSel.empresa || contatoSel.profissionalAutonomo) && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{contatoSel.empresa || 'Autônomo'}</p>}
                   </div>
-                  <button type="button" onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Trocar</button>
+                  <button type="button" onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: 'var(--v2-ok)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Trocar</button>
                 </div>
               ) : (
                 <div>
                   <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} autoFocus placeholder="Pesquisar contato pelo nome..." style={inputStyle} />
-                  <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #eee', borderRadius: 9, marginTop: 6 }}>
+                  <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 9, marginTop: 6 }}>
                     {contatosFiltrados.length === 0 ? (
-                      <p style={{ margin: 0, padding: 12, fontSize: 12.5, color: '#888' }}>Nenhum contato encontrado.{buscaContato.trim() ? ' Use "Novo contato" para criar.' : ''}</p>
+                      <p style={{ margin: 0, padding: 12, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.{buscaContato.trim() ? ' Use "Novo contato" para criar.' : ''}</p>
                     ) : contatosFiltrados.slice(0, 50).map(c => (
                       <button key={c.id} type="button" onClick={() => { setContatoId(c.id); setF(prev => ({ ...prev, empresa: c.empresa || '', profissionalAutonomo: !!c.profissionalAutonomo })) }}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: '#fff', border: 'none', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', fontSize: 13 }}>
-                        <span style={{ fontWeight: 700, color: '#111' }}>{c.nome}</span>{c.empresa ? <span style={{ color: '#888' }}> — {c.empresa}</span> : c.profissionalAutonomo ? <span style={{ color: '#888' }}> — Autônomo</span> : ''}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'var(--v2-surface)', border: 'none', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', fontSize: 13 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>{c.empresa ? <span style={{ color: 'var(--v2-ink3)' }}> — {c.empresa}</span> : c.profissionalAutonomo ? <span style={{ color: 'var(--v2-ink3)' }}> — Autônomo</span> : ''}
                       </button>
                     ))}
                   </div>
@@ -2059,7 +2059,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelStyle}>Valor (R$)</label><input type="number" min="0" value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} placeholder="0" style={inputStyle} /></div>
             <div><label style={labelStyle}>Etapa</label>
-              <select value={f.estagioId} onChange={e => setF({ ...f, estagioId: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={f.estagioId} onChange={e => setF({ ...f, estagioId: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Primeira (Lead)</option>
                 {estagios.filter(e => !e.ganho && !e.perdido).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
               </select>
@@ -2067,7 +2067,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelStyle}>{perfilClinica ? 'Responsável' : 'Vendedor responsável'}</label>
-              <select value={f.dono} onChange={e => setF({ ...f, dono: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={f.dono} onChange={e => setF({ ...f, dono: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Eu</option>
                 {equipe.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
@@ -2079,7 +2079,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
                 "Instagram"/"insta"/"IG" e o gráfico de origem mediria grafia, não
                 canal. Os outros perfis seguem com o dropdown editável. */}
             {perfilClinica ? (
-              <select value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Selecione…</option>
                 {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -2094,18 +2094,18 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
             <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
             {/* Turismo: a qualificação é DA VIAGEM — destino, pessoas, época e desejos */}
-            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Sobre a viagem</span>
+            <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Sobre a viagem</span>
             {/* SELECIONA a viagem cadastrada (é o que agrupa os interessados por
                 viagem no funil). Sem viagem específica = "Outro (não especificado)",
                 aí sim o destino é digitado à mão. */}
             <div>
               <label style={labelStyle}>Viagem de interesse</label>
-              <select value={f.viagemId} onChange={e => setF({ ...f, viagemId: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={f.viagemId} onChange={e => setF({ ...f, viagemId: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Outro (não especificado)</option>
                 {viagensAbertas.map(v => <option key={v.id} value={v.id}>{v.titulo}{v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}</option>)}
               </select>
-              {viagensAbertas.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Nenhuma viagem aberta cadastrada — cadastre em Viagens para vincular interessados.</p>}
+              {viagensAbertas.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Nenhuma viagem aberta cadastrada — cadastre em Viagens para vincular interessados.</p>}
             </div>
             {!f.viagemId && (
               <div><label style={labelStyle}>Destino desejado (texto livre)</label><input value={f.destinoDesejado} onChange={e => setF({ ...f, destinoDesejado: e.target.value })} placeholder="Ex.: Gramado, praia no verão..." style={inputStyle} /></div>
@@ -2118,8 +2118,8 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
           </>) : perfilCidadania ? (<>
             {/* Cidadania: a qualificação é DA ELEGIBILIDADE — de qual país, por qual
                 ascendente e a que distância. Venda é sempre para CPF. */}
-            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Elegibilidade</span>
+            <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Elegibilidade</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div><label style={labelStyle}>País de interesse</label><input value={f.paisInteresse} onChange={e => setF({ ...f, paisInteresse: e.target.value })} placeholder="Luxemburgo" style={inputStyle} /></div>
               <div><label style={labelStyle}>Grau de parentesco</label><input value={f.grauParentesco} onChange={e => setF({ ...f, grauParentesco: e.target.value })} placeholder="Ex.: bisneto, trineto" style={inputStyle} /></div>
@@ -2128,17 +2128,17 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
             <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTelefonia ? (<>
             {/* Varejo: venda para PESSOA — nada de empresa/segmento/faturamento. */}
-            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
+            <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
             <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Produto de interesse, negociação, observações da venda..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
-            <div style={{ height: 1, background: '#f0f0f0', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Qualificação da oportunidade</span>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#333', fontWeight: 600 }}>
+            <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Qualificação da oportunidade</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600 }}>
               <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               Profissional Autônomo (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? '#f5f5f5' : '#fff', color: f.profissionalAutonomo ? '#aaa' : '#111' }} /></div>
+              <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
               <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -2150,8 +2150,8 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
           </>)}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : (semEmpresa ? 'Criar oportunidade' : 'Criar negócio')}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : (semEmpresa ? 'Criar oportunidade' : 'Criar negócio')}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -2278,29 +2278,29 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
 
   return (
     <div onClick={fecharFora(onClose, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
           <input value={neg.titulo} onChange={e => setNeg({ ...neg, titulo: e.target.value })} onBlur={() => patch({ titulo: neg.titulo })}
-            style={{ flex: 1, fontSize: 17, fontWeight: 800, color: '#111', border: 'none', outline: 'none', fontFamily: 'inherit' }} />
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>×</button>
+            style={{ flex: 1, fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)', border: 'none', outline: 'none', fontFamily: 'inherit' }} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: 999, padding: '4px 12px' }}>{fmtR$(neg.valor)}</span>
-          <select value={neg.estagioId} onChange={e => patch({ estagioId: e.target.value })} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #e0e0e0', background: '#fff', cursor: 'pointer' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '4px 12px' }}>{fmtR$(neg.valor)}</span>
+          <select value={neg.estagioId} onChange={e => patch({ estagioId: e.target.value })} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer' }}>
             {estagiosPipe.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
           {pipelines.length > 1 && (
-            <select value={pipeAtual} onChange={e => moverPipeline(e.target.value)} title="Mover para outro pipeline" style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #c7d2fe', background: '#eef2ff', color: '#3730a3', cursor: 'pointer' }}>
+            <select value={pipeAtual} onChange={e => moverPipeline(e.target.value)} title="Mover para outro pipeline" style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #c7d2fe', background: 'var(--v2-info-bg)', color: '#3730a3', cursor: 'pointer' }}>
               {pipelines.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </select>
           )}
-          {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#16a34a', borderRadius: 999, padding: '4px 12px' }}>GANHO</span>}
-          {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#b91c1c', borderRadius: 999, padding: '4px 12px' }}>PERDIDO</span>}
+          {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ok)', borderRadius: 999, padding: '4px 12px' }}>GANHO</span>}
+          {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-hot)', borderRadius: 999, padding: '4px 12px' }}>PERDIDO</span>}
           {perfilClinica && onAgendar && (
             <button onClick={() => onAgendar({ pacienteNome: contato?.nome || neg.titulo, pacienteTelefone: contato?.telefone, contatoId: contato?.id })}
               title="Criar um horário na Agenda para este paciente/lead"
-              style={{ fontSize: 12, fontWeight: 800, color: '#111', background: '#ffc00f', borderRadius: 999, padding: '4px 14px', border: 'none', cursor: 'pointer' }}>Agendar na agenda</button>
+              style={{ fontSize: 12, fontWeight: 800, color: '#17150E', background: 'var(--v2-amber-on)', borderRadius: 999, padding: '4px 14px', border: 'none', cursor: 'pointer' }}>Agendar na agenda</button>
           )}
         </div>
 
@@ -2311,7 +2311,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           </div>
           <div>
             <label style={labelStyle}>Responsável</label>
-            <select value={neg.dono || ''} onChange={e => { const u = (usuarios || []).find((x: any) => x.email === e.target.value); patch({ dono: e.target.value, donoNome: u?.nome || '' }) }} style={{ ...inputStyle, background: '#fff' }}>
+            <select value={neg.dono || ''} onChange={e => { const u = (usuarios || []).find((x: any) => x.email === e.target.value); patch({ dono: e.target.value, donoNome: u?.nome || '' }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
               <option value="">—</option>
               {(usuarios || []).filter(u => u.role === 'admin' || u.role === 'vendas').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
@@ -2321,7 +2321,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Próximo follow-up</label>
           <input type="date" value={(neg.proximoFollowUp || '').slice(0, 10)} onChange={e => setNeg({ ...neg, proximoFollowUp: e.target.value })} onBlur={() => patch({ proximoFollowUp: neg.proximoFollowUp })} style={inputStyle} />
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>No dia, o responsável recebe um lembrete (push + inbox).</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>No dia, o responsável recebe um lembrete (push + inbox).</p>
         </div>
 
         {/* Cadência / agendamentos */}
@@ -2329,58 +2329,58 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
             <label style={{ ...labelStyle, margin: 0 }}>Cadência / agendamentos</label>
             <button type="button" onClick={() => patch({ aplicarCadencia: true })} title="Gera os toques a partir da cadência do Playbook (a contar de hoje)"
-              style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Aplicar cadência do Playbook</button>
+              style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Aplicar cadência do Playbook</button>
           </div>
           {(neg.agendamentos || []).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {[...(neg.agendamentos || [])].sort((a, b) => a.quando.localeCompare(b.quando)).map(a => {
                 const venceu = !a.feito && new Date(a.quando + 'T23:59:59').getTime() < Date.now()
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: a.feito ? '#f5f5f5' : venceu ? '#fef2f2' : '#fafafa', borderRadius: 8, fontSize: 12.5 }}>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: a.feito ? 'var(--v2-surface1)' : venceu ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', borderRadius: 8, fontSize: 12.5 }}>
                     <input type="checkbox" checked={!!a.feito} onChange={() => patch({ toggleAgendamento: a.id })} style={{ cursor: 'pointer', flexShrink: 0 }} />
-                    <span style={{ fontWeight: 700, color: venceu ? '#b91c1c' : '#444', flexShrink: 0 }}>{new Date(a.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#888', background: '#fff', border: '1px solid #eee', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{a.canal}</span>
-                    <span style={{ flex: 1, color: '#333', textDecoration: a.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titulo}</span>
-                    <button type="button" onClick={() => patch({ removerAgendamento: a.id })} title="Remover" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>
+                    <span style={{ fontWeight: 700, color: venceu ? 'var(--v2-hot)' : 'var(--v2-ink2)', flexShrink: 0 }}>{new Date(a.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{a.canal}</span>
+                    <span style={{ flex: 1, color: 'var(--v2-ink)', textDecoration: a.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titulo}</span>
+                    <button type="button" onClick={() => patch({ removerAgendamento: a.id })} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>
                   </div>
                 )
               })}
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input type="date" value={agQuando} onChange={e => setAgQuando(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-            <select value={agCanal} onChange={e => setAgCanal(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', fontFamily: 'inherit' }}>
+            <input type="date" value={agQuando} onChange={e => setAgQuando(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+            <select value={agCanal} onChange={e => setAgCanal(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
               {(['whatsapp', 'ligacao', 'email', 'reuniao', 'outro'] as const).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input value={agTitulo} onChange={e => setAgTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAgendamento() }} placeholder="O que fazer (ex.: enviar proposta)" style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-            <button type="button" onClick={addAgendamento} disabled={!agQuando || !agTitulo.trim()} style={{ padding: '7px 12px', background: (agQuando && agTitulo.trim()) ? '#111' : '#f0f0f0', color: (agQuando && agTitulo.trim()) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+            <input value={agTitulo} onChange={e => setAgTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAgendamento() }} placeholder="O que fazer (ex.: enviar proposta)" style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+            <button type="button" onClick={addAgendamento} disabled={!agQuando || !agTitulo.trim()} style={{ padding: '7px 12px', background: (agQuando && agTitulo.trim()) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (agQuando && agTitulo.trim()) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Cada toque vira lembrete (push + inbox) para o responsável no dia agendado.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Cada toque vira lembrete (push + inbox) para o responsável no dia agendado.</p>
         </div>
 
         {contato && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fafafa', borderRadius: 10, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--v2-surface1)', borderRadius: 10, marginBottom: 14 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#111' }}>{contato.nome}</p>
-              {contato.telefone && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>{contato.telefone}</p>}
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{contato.nome}</p>
+              {contato.telefone && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{contato.telefone}</p>}
             </div>
             {/* Conversa SEMPRE no inbox (aba Mensagens), em toda instância: o
                 atendimento fica registrado e visível ao time. O wa.me abria o
                 WhatsApp Web e o histórico morria no celular de quem atendeu. */}
             {contato.telefone && (
-              <button onClick={() => onAbrirWhatsApp(contato.telefone!, contato.id)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+              <button onClick={() => onAbrirWhatsApp(contato.telefone!, contato.id)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
             )}
           </div>
         )}
 
         {/* Qualificação — clínica só tem Observações; turismo tem a ficha DA VIAGEM;
             agência tem a ficha B2B de marketing */}
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginBottom: 14 }}>
+        <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 12, marginBottom: 14 }}>
           {perfilClinica ? (<>
             {/* Origem editável também aqui: sem isto, lead cadastrado sem origem
                 (ou na grafia antiga) ficaria para sempre fora do gráfico. */}
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Origem do lead</label>
-              <select value={neg.origem || ''} onChange={e => { const origem = e.target.value; setNeg({ ...neg, origem }); patch({ origem }) }} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={neg.origem || ''} onChange={e => { const origem = e.target.value; setNeg({ ...neg, origem }); patch({ origem }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Sem origem</option>
                 {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
                 {/* grafia antiga (ex.: "Ex-paciente") continua selecionável até
@@ -2393,7 +2393,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               {!!(neg.procedimentos || []).length && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
                   {(neg.procedimentos || []).map(pr => (
-                    <span key={pr} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: '#eef2ff', padding: '4px 8px', borderRadius: 999 }}>
+                    <span key={pr} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', padding: '4px 8px', borderRadius: 999 }}>
                       {pr}
                       <button onClick={() => { const lista = (neg.procedimentos || []).filter(x => x !== pr); setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
                         title="Remover" style={{ background: 'none', border: 'none', color: '#8b8bd0', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
@@ -2402,7 +2402,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
                 </div>
               )}
               <select value="" onChange={e => { const v = e.target.value; if (!v) return; const lista = [...(neg.procedimentos || []), v]; setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
-                style={{ ...inputStyle, background: '#fff' }}>
+                style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">{catalogoProc.length ? 'Adicionar do catálogo…' : 'Cadastre procedimentos em Procedimentos e Métodos'}</option>
                 {catalogoProc.filter(c => !(neg.procedimentos || []).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -2410,10 +2410,10 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
             <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Sobre a viagem</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Sobre a viagem</span>
             <div style={{ marginBottom: 10 }}>
               <label style={labelStyle}>Viagem de interesse</label>
-              <select value={neg.viagemId || ''} onChange={e => { const viagemId = e.target.value; setNeg({ ...neg, viagemId }); patch({ viagemId, ...(viagemId ? { destinoDesejado: '' } : {}) }) }} style={{ ...inputStyle, background: '#fff' }}>
+              <select value={neg.viagemId || ''} onChange={e => { const viagemId = e.target.value; setNeg({ ...neg, viagemId }); patch({ viagemId, ...(viagemId ? { destinoDesejado: '' } : {}) }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                 <option value="">Outro (não especificado)</option>
                 {/* Viagens abertas + a já vinculada (mesmo fechada — o vínculo não some sozinho) */}
                 {viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') && (v.tipo || 'pacote') === 'pacote' || v.id === neg.viagemId)
@@ -2429,7 +2429,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             </div>
             <div><label style={labelStyle}>Preferências e desejos</label><textarea lang="pt-BR" value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilCidadania ? (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Elegibilidade</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Elegibilidade</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={labelStyle}>País de interesse</label><input value={neg.paisInteresse || ''} onChange={e => setNeg({ ...neg, paisInteresse: e.target.value })} onBlur={() => patch({ paisInteresse: neg.paisInteresse })} placeholder="Luxemburgo" style={inputStyle} /></div>
               <div><label style={labelStyle}>Grau de parentesco</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder="Ex.: bisneto" style={inputStyle} /></div>
@@ -2439,25 +2439,25 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
 
             {/* ANÁLISE DE NACIONALIDADE — é ela que diz se existe viabilidade.
                 Por isso mora aqui, na qualificação, e não só no processo. */}
-            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Análise de nacionalidade</span>
-                <span style={{ fontSize: 10.5, color: linhagemSalvando ? '#a16207' : '#9ca3af', fontWeight: 600 }}>{linhagemSalvando ? 'salvando…' : 'salva sozinho'}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Análise de nacionalidade</span>
+                <span style={{ fontSize: 10.5, color: linhagemSalvando ? 'var(--v2-amber)' : 'var(--v2-ink3)', fontWeight: 600 }}>{linhagemSalvando ? 'salvando…' : 'salva sozinho'}</span>
               </div>
               {(() => { const r = resumoLinhagem(linhagemLocal); return (
-                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9ca3af' }}>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>
                   {r.total === 0 ? 'Monte a árvore do lead até o ascendente estrangeiro para avaliar a viabilidade.' : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
                 </p>
               ) })()}
               <EditorLinhagem value={linhagemLocal} onChange={mudarLinhagem} />
               {!neg.processoId && linhagemLocal.length > 0 && (
-                <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9ca3af' }}>Ao concretizar a venda, esta árvore vai junto para o processo.</p>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Ao concretizar a venda, esta árvore vai junto para o processo.</p>
               )}
             </div>
           </>) : perfilTelefonia ? (<>
             <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a venda (produto de interesse, negociação...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', display: 'block', marginBottom: 10 }}>Qualificação</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Qualificação</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Segmento</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
@@ -2472,20 +2472,20 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
         {/* Timeline */}
         <label style={labelStyle}>Atividades</label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          <select value={tipoAtiv} onChange={e => setTipoAtiv(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff' }}>
+          <select value={tipoAtiv} onChange={e => setTipoAtiv(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
             {TIPOS_ATIV.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
-          <input value={textoAtiv} onChange={e => setTextoAtiv(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAtividade() }} placeholder="Registrar interação / nota..." style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
-          <button onClick={addAtividade} disabled={!textoAtiv.trim()} style={{ padding: '8px 14px', background: textoAtiv.trim() ? '#111' : '#f0f0f0', color: textoAtiv.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+          <input value={textoAtiv} onChange={e => setTextoAtiv(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAtividade() }} placeholder="Registrar interação / nota..." style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+          <button onClick={addAtividade} disabled={!textoAtiv.trim()} style={{ padding: '8px 14px', background: textoAtiv.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: textoAtiv.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto', marginBottom: 16 }}>
-          {tl.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma atividade ainda.</p>}
+          {tl.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma atividade ainda.</p>}
           {tl.map(a => (
             <div key={a.id} style={{ display: 'flex', gap: 8 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: a.tipo === 'ganho' ? '#16a34a' : a.tipo === 'perdido' ? '#b91c1c' : a.tipo === 'estagio' ? '#ffc00f' : '#1d4ed8', marginTop: 5, flexShrink: 0 }} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: a.tipo === 'ganho' ? 'var(--v2-ok)' : a.tipo === 'perdido' ? 'var(--v2-hot)' : a.tipo === 'estagio' ? 'var(--v2-amber-on)' : 'var(--v2-info)', marginTop: 5, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 12.5, color: '#333' }}>{a.texto}</p>
-                <p style={{ margin: '1px 0 0', fontSize: 10.5, color: '#aaa' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink)' }}>{a.texto}</p>
+                <p style={{ margin: '1px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             </div>
           ))}
@@ -2496,17 +2496,17 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             passagem de bastão -> cliente. */}
         {perfilClinica ? (
           <button onClick={() => onAgendar?.({ pacienteNome: contato?.nome || neg.titulo, pacienteTelefone: contato?.telefone, contatoId: contato?.id })}
-            style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+            style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
             Agendar consulta
           </button>
         ) : perfilTurismo ? (
           neg.status === 'ganho' ? (
-            <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>
+            <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>
               ✓ Venda concretizada — registre a reserva em <strong>Reservas</strong>: as parcelas e os pagamentos dela entram sozinhos no Financeiro.
             </div>
           ) : (
             <button onClick={() => { const g = estagiosPipe.find(e => e.ganho); patch(g ? { estagioId: g.id } : { status: 'ganho' }) }}
-              style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+              style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
               Venda concretizada (ganho)
             </button>
           )
@@ -2514,36 +2514,36 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           /* Cidadania: NÃO existe closer nem passagem de bastão. Concretizar a
              venda É abrir o processo da família na esteira. */
           neg.processoId ? (
-            <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <span>✓ Processo aberto na esteira.</span>
-              {onIrProcessos && <button onClick={onIrProcessos} style={{ padding: '6px 12px', background: '#166534', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver processo</button>}
+              {onIrProcessos && <button onClick={onIrProcessos} style={{ padding: '6px 12px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver processo</button>}
             </div>
           ) : (
             <button onClick={abrirProcesso} disabled={abrindoProc}
-              style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: abrindoProc ? 'default' : 'pointer', marginBottom: 12, opacity: abrindoProc ? 0.6 : 1 }}>
+              style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: abrindoProc ? 'default' : 'pointer', marginBottom: 12, opacity: abrindoProc ? 0.6 : 1 }}>
               {abrindoProc ? 'Abrindo processo...' : 'Concretizar venda → abrir processo'}
             </button>
           )
         ) : perfilTelefonia ? (
           neg.status === 'ganho' ? (
-            <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>✓ Venda concretizada (ganho).</div>
+            <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>✓ Venda concretizada (ganho).</div>
           ) : (
             <button onClick={() => { const g = estagiosPipe.find(e => e.ganho); patch(g ? { estagioId: g.id } : { status: 'ganho' }) }}
-              style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+              style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
               Venda concretizada (ganho)
             </button>
           )
         ) : neg.clienteId ? (
-          <div style={{ padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: '#166534', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
+          <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
         ) : (
-          <button onClick={() => setConverter(true)} style={{ width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
+          <button onClick={() => setConverter(true)} style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
             Concretizar venda → criar cliente
           </button>
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
-          {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
         </div>
       </div>
       {converter && !perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
@@ -2582,18 +2582,18 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
   if (resultado) {
     return (
       <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-        <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 440, width: '100%', padding: 24, textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+        <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 24, textAlign: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--v2-ok-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ok)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
           </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#111' }}>Venda concretizada! 🎉</h3>
-          <p style={{ margin: '0 0 6px', fontSize: 13.5, color: '#555' }}>Cliente <b>{c.nome}</b> criado, com <b>{resultado.marcos}</b> etapas e <b>{resultado.tarefas}</b> tarefas no Playbook.</p>
+          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--v2-ink)' }}>Venda concretizada! 🎉</h3>
+          <p style={{ margin: '0 0 6px', fontSize: 13.5, color: 'var(--v2-ink2)' }}>Cliente <b>{c.nome}</b> criado, com <b>{resultado.marcos}</b> etapas e <b>{resultado.tarefas}</b> tarefas no Playbook.</p>
           {resultado.loginSenha && (
-            <div style={{ margin: '10px 0', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 12.5, color: '#92400e' }}>
+            <div style={{ margin: '10px 0', padding: '10px 14px', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, fontSize: 12.5, color: 'var(--v2-amber)' }}>
               Acesso do cliente criado. Senha: <b style={{ userSelect: 'all' }}>{resultado.loginSenha}</b> — anote/envie ao cliente.
             </div>
           )}
-          <button onClick={() => onConvertido(resultado.clienteId)} style={{ marginTop: 10, width: '100%', padding: '12px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Concluir</button>
+          <button onClick={() => onConvertido(resultado.clienteId)} style={{ marginTop: 10, width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Concluir</button>
         </div>
       </div>
     )
@@ -2601,11 +2601,11 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#111' }}>Passagem de bastão → Onboarding</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Quanto mais detalhe o closer passar, melhor o onboarding do cliente pelo Gestor.</p>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--v2-ink)' }}>Passagem de bastão → Onboarding</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Quanto mais detalhe o closer passar, melhor o onboarding do cliente pelo Gestor.</p>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Cliente</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Cliente</span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '8px 0 16px' }}>
           <div><label style={labelStyle}>Nome *</label><input value={c.nome} onChange={e => setC({ ...c, nome: e.target.value })} style={inputStyle} /></div>
           <div><label style={labelStyle}>Instagram</label><input value={c.instagram} onChange={e => setC({ ...c, instagram: e.target.value })} placeholder="@cliente" style={inputStyle} /></div>
@@ -2613,7 +2613,7 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
           <div><label style={labelStyle}>Valor do contrato (R$)</label><input type="number" min="0" value={c.contratoValor} onChange={e => setC({ ...c, contratoValor: e.target.value })} style={inputStyle} /></div>
         </div>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Handoff (Closer → Gestor)</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Handoff (Closer → Gestor)</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 16px' }}>
           <div><label style={labelStyle}>Escopo vendido / entregáveis</label><textarea lang="pt-BR" value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
           <div><label style={labelStyle}>Expectativas e objetivos do cliente</label><textarea lang="pt-BR" value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
@@ -2621,20 +2621,20 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
           <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
         </div>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Entregas (onboarding)</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas (onboarding)</span>
         <div style={{ margin: '8px 0 16px' }}>
           <label style={labelStyle}>Modelo de projeto a aplicar (gera marcos + tarefas)</label>
-          <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+          <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
             <option value="">Não aplicar modelo agora</option>
             {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
           </select>
           {templates.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Nenhum modelo cadastrado. Crie em Modelos para montar o escopo automaticamente.</p>}
         </div>
 
-        {erro && <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#b91c1c', fontWeight: 700 }}>{erro}</p>}
+        {erro && <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-hot)', fontWeight: 700 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={concretizar} disabled={salvando || !c.nome.trim()} style={{ flex: 1, padding: '12px 0', background: c.nome.trim() ? '#16a34a' : '#f0f0f0', color: c.nome.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: c.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Concretizando...' : 'Concretizar venda'}</button>
-          <button onClick={onClose} style={{ padding: '12px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={concretizar} disabled={salvando || !c.nome.trim()} style={{ flex: 1, padding: '12px 0', background: c.nome.trim() ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: c.nome.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: c.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Concretizando...' : 'Concretizar venda'}</button>
+          <button onClick={onClose} style={{ padding: '12px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
         </div>
       </div>
     </div>
@@ -2649,7 +2649,7 @@ function AvatarConv({ foto, nome, cor, tam = 34 }: { foto?: string; nome: string
   const [erro, setErro] = useState(false)
   const inicial = (nome || '?').replace('@', '').charAt(0).toUpperCase()
   return (
-    <span style={{ width: tam, height: tam, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: tam < 30 ? 11 : 13 }}>
+    <span style={{ width: tam, height: tam, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-surface)', fontWeight: 800, fontSize: tam < 30 ? 11 : 13 }}>
       {foto && !erro ? <img src={foto} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : inicial}
     </span>
   )
@@ -2701,7 +2701,7 @@ const CANAL_CFG: Record<CanalMsg, {
   conectarUrl?: string
 }> = {
   whatsapp: {
-    cor: '#16a34a', bolha: '#dcf8c6',
+    cor: 'var(--v2-ok)', bolha: '#dcf8c6',
     aviso: 'WhatsApp ainda não conectado. Conecte pelo QR em Configurações → Integrações → WhatsApp (mantém o número atual). As conversas aparecem aqui assim que parear.',
     listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
@@ -3158,7 +3158,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       {CANAIS.length > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {CANAIS.map(c => (
-            <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : '#e5e5e5'}`, background: canal === c ? CANAL_CFG[c].cor : '#fff', color: canal === c ? '#fff' : '#666', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : 'var(--v2-surface2)'}`, background: canal === c ? CANAL_CFG[c].cor : 'var(--v2-surface)', color: canal === c ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               {c === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
             </button>
           ))}
@@ -3167,45 +3167,45 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       {cfg.conectarUrl && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {contas.length > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '5px 12px' }}>
               ✓ Conectada: {contas.map((c: any) => `@${c.username || c.userId}`).join(', ')}
             </span>
           )}
           <button onClick={() => { window.location.href = cfg.conectarUrl! }}
-            style={{ padding: '8px 16px', background: contas.length > 0 ? '#fff' : cfg.cor, color: contas.length > 0 ? cfg.cor : '#fff', border: contas.length > 0 ? `1.5px solid ${cfg.cor}` : 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+            style={{ padding: '8px 16px', background: contas.length > 0 ? 'var(--v2-surface)' : cfg.cor, color: contas.length > 0 ? cfg.cor : 'var(--v2-surface)', border: contas.length > 0 ? `1.5px solid ${cfg.cor}` : 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             {contas.length > 0 ? 'Reconectar / adicionar conta' : 'Conectar conta do Instagram (mensagens)'}
           </button>
-          <span style={{ fontSize: 11, color: '#888' }}>Conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
+          <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
         </div>
       )}
       {!configurado && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '11px 14px', marginBottom: 14, fontSize: 12.5, color: '#92400e' }}>
+        <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, padding: '11px 14px', marginBottom: 14, fontSize: 12.5, color: 'var(--v2-amber)' }}>
           {cfg.aviso}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden', background: 'var(--v2-surface)' }}>
         {/* Lista de conversas — no celular ocupa tudo e some quando uma conversa abre */}
-        <div style={{ width: inboxMovel ? '100%' : 280, borderRight: inboxMovel ? 'none' : '1px solid #f0f0f0', overflowY: 'auto', flexShrink: 0, display: inboxMovel && sel ? 'none' : 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou dentro da conversa..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-            {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: '#bbb' }}>Procurando no histórico das conversas…</p>}
+        <div style={{ width: inboxMovel ? '100%' : 280, borderRight: inboxMovel ? 'none' : '1px solid var(--v2-surface2)', overflowY: 'auto', flexShrink: 0, display: inboxMovel && sel ? 'none' : 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 8, borderBottom: '1px solid var(--v2-rule)', position: 'sticky', top: 0, background: 'var(--v2-surface)', zIndex: 1 }}>
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou dentro da conversa..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+            {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Procurando no histórico das conversas…</p>}
           </div>
-          {carregando ? <p style={{ padding: 16, color: '#aaa', fontSize: 13 }}>Carregando...</p>
-            : conversas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>Nenhuma conversa ainda.</p>
-            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: '#bbb', fontSize: 13 }}>{buscandoTexto ? 'Procurando…' : `Nada encontrado para “${busca}”.`}</p>
+          {carregando ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
+            : conversas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma conversa ainda.</p>
+            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>{buscandoTexto ? 'Procurando…' : `Nada encontrado para “${busca}”.`}</p>
             : conversasFiltradas.map(c => {
               const trecho = matchesTexto[c.id]
               return (
-              <button key={c.id} onClick={() => encaminhar ? encaminharPara(c.id) : abrir(c.id)} title={encaminhar ? 'Encaminhar para esta conversa' : undefined} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid #f5f5f5', background: sel === c.id ? '#f0f9ff' : encaminhar ? '#fffbeb' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button key={c.id} onClick={() => encaminhar ? encaminharPara(c.id) : abrir(c.id)} title={encaminhar ? 'Encaminhar para esta conversa' : undefined} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: sel === c.id ? '#f0f9ff' : encaminhar ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
-                    {!!c.naoLidas && <span style={{ background: cfg.cor, color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
+                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeDe(c)}</span>
+                    {!!c.naoLidas && <span style={{ background: cfg.cor, color: 'var(--v2-surface)', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 7px', flexShrink: 0 }}>{c.naoLidas}</span>}
                   </span>
                   {trecho
-                    ? <span style={{ fontSize: 11, color: '#a16207', background: '#fef9c3', borderRadius: 5, padding: '1px 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trecho}</span>
-                    : <span style={{ fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>}
+                    ? <span style={{ fontSize: 11, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 5, padding: '1px 5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trecho}</span>
+                    : <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.ultimaMsg || '—'}</span>}
                 </span>
               </button>
               )
@@ -3214,25 +3214,25 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         {/* Conversa — no celular só aparece com uma conversa aberta (voltar = lista) */}
         <div style={{ flex: 1, display: (inboxMovel && !sel) || (painelSobrepoe && painelAberto && sel) ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
           {!sel ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13 }}>Selecione uma conversa</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Selecione uma conversa</div>
           ) : (<>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {inboxMovel && (
-                <button onClick={() => setSel('')} title="Voltar para as conversas" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid #e8e8e8', background: '#fff', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                <button onClick={() => setSel('')} title="Voltar para as conversas" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                 </button>
               )}
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                 {conversaSel && <AvatarConv foto={conversaSel.foto} nome={nomeDe(conversaSel)} cor={cfg.cor} />}
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
-                  <p style={{ margin: 0, fontSize: 11.5, color: '#999' }}>{cfg.subId(conversaSel, sel)}</p>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
+                  <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{cfg.subId(conversaSel, sel)}</p>
                 </div>
               </div>
               {/* Com o contato vinculado, a conversa vira venda em 1 clique */}
               {conversaSel?.contatoId && onAbrirOportunidade && (
                 <button onClick={() => onAbrirOportunidade(conversaSel.contatoId!)} title="Criar uma oportunidade no funil para este contato"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
                   Abrir oportunidade
                 </button>
@@ -3240,7 +3240,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               {/* Vincular contato — seletor com BUSCA (a lista tem centenas) */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <button onClick={() => { setVincularAberto(v => !v); setBuscaVinculo('') }} title="Vincular a um contato do CRM"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 190, padding: '6px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, background: '#fff', cursor: 'pointer', color: conversaSel?.contatoId ? '#111' : '#888', fontWeight: conversaSel?.contatoId ? 700 : 400 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 190, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, background: 'var(--v2-surface)', cursor: 'pointer', color: conversaSel?.contatoId ? 'var(--v2-ink)' : 'var(--v2-ink3)', fontWeight: conversaSel?.contatoId ? 700 : 400 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {conversaSel?.contatoId ? (contatos.find(ct => ct.id === conversaSel.contatoId)?.nome || 'Contato vinculado') : 'Vincular contato...'}
                   </span>
@@ -3248,29 +3248,29 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 </button>
                 {vincularAberto && (<>
                   <div onClick={fecharFora(() => setVincularAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                  <div style={{ position: 'absolute', top: 'calc(100% + 5px)', right: 0, width: 260, background: '#fff', border: '1px solid #e6e6e6', borderRadius: 11, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', zIndex: 31, overflow: 'hidden' }}>
-                    <div style={{ padding: 8, borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ position: 'absolute', top: 'calc(100% + 5px)', right: 0, width: 260, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 11, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', zIndex: 31, overflow: 'hidden' }}>
+                    <div style={{ padding: 8, borderBottom: '1px solid var(--v2-rule)' }}>
                       <input autoFocus value={buscaVinculo} onChange={e => setBuscaVinculo(e.target.value)} placeholder="Buscar por nome ou telefone…"
-                        style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
                     </div>
                     <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                       <button onClick={() => { setVincularAberto(false); setContatoNovo({ nome: (conversaSel?.nome || '').trim(), telefone: canal === 'whatsapp' ? sel : '' }) }}
-                        style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid #f5f5f5', background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: '#1d4ed8' }}>＋ Criar contato novo</button>
+                        style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-info)' }}>＋ Criar contato novo</button>
                       {conversaSel?.contatoId && (
                         <button onClick={() => { vincular(''); setVincularAberto(false) }}
-                          style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid #f5f5f5', background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#b91c1c' }}>Desvincular</button>
+                          style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-hot)' }}>Desvincular</button>
                       )}
                       {contatosVinculo.length === 0 ? (
-                        <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: '#bbb' }}>Nenhum contato encontrado.</p>
+                        <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.</p>
                       ) : contatosVinculo.map(ct => (
                         <button key={ct.id} onClick={() => { vincular(ct.id); setVincularAberto(false) }}
-                          style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid #f8f8f8', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : '#fff', cursor: 'pointer' }}>
-                          <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct.nome}</span>
-                          {ct.telefone && <span style={{ display: 'block', fontSize: 11, color: '#999' }}>{ct.telefone}</span>}
+                          style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid #f8f8f8', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : 'var(--v2-surface)', cursor: 'pointer' }}>
+                          <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct.nome}</span>
+                          {ct.telefone && <span style={{ display: 'block', fontSize: 11, color: 'var(--v2-ink3)' }}>{ct.telefone}</span>}
                         </button>
                       ))}
                       {!buscaVinculo && contatos.length > 50 && (
-                        <p style={{ margin: 0, padding: '8px 11px', fontSize: 11, color: '#bbb', borderTop: '1px solid #f5f5f5' }}>Mostrando 50 de {contatos.length} — use a busca.</p>
+                        <p style={{ margin: 0, padding: '8px 11px', fontSize: 11, color: 'var(--v2-ink3)', borderTop: '1px solid var(--v2-surface1)' }}>Mostrando 50 de {contatos.length} — use a busca.</p>
                       )}
                     </div>
                   </div>
@@ -3280,20 +3280,20 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   mensagens que alimentam situação, temperatura e a Assistente. */}
               {canal === 'whatsapp' && (
                 <button onClick={() => setPainelAberto(v => !v)} title={painelAberto ? 'Fechar o painel do lead' : 'Abrir o raio-X do lead'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid ' + (painelAberto ? '#111' : '#e0e0e0'), background: painelAberto ? '#111' : '#fff', color: painelAberto ? '#fff' : '#555', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid ' + (painelAberto ? 'var(--v2-ink)' : 'var(--v2-rule)'), background: painelAberto ? 'var(--v2-ink)' : 'var(--v2-surface)', color: painelAberto ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
                   Raio-X
                 </button>
               )}
               {cfg.excluir && (
                 <button onClick={excluirConversa} title="Excluir conversa (remove todo o histórico)"
-                  style={{ background: 'transparent', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  style={{ background: 'transparent', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                   Excluir
                 </button>
               )}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: '#fafafa' }}>
-              {mensagens.length === 0 ? <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--v2-surface1)' }}>
+              {mensagens.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
                 : mensagens.map(m => {
                   const textoVisivel = m.midiaUrl && ehRotuloMidia(m.texto) ? '' : m.texto
                   // No grupo, mostra quem falou (avatar ao lado da bolha).
@@ -3301,7 +3301,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   return (
                   <div key={m.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', alignSelf: m.de === 'agente' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                   {comAutor && <AvatarConv foto={m.autorFoto} nome={m.autor || '?'} cor={cfg.cor} tam={26} />}
-                  <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : '#fff', border: m.de === 'agente' ? 'none' : '1px solid #ececec', color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
+                  <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : 'var(--v2-surface)', border: m.de === 'agente' ? 'none' : '1px solid var(--v2-surface2)', color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
                     {m.midiaUrl && m.tipo === 'imagem' && (
                       <button type="button" onClick={() => setLightbox({ url: midiaSrc(m.midiaUrl!), nome: m.fileName || nomeArquivoMidia(m) })} title="Ver imagem"
                         style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', display: 'block', width: '100%' }}>
@@ -3318,14 +3318,14 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                       <audio src={midiaSrc(m.midiaUrl)} controls preload="metadata" style={{ maxWidth: 240, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                     )}
                     {m.midiaUrl && m.tipo === 'documento' && (
-                      <a href={midiaSrc(m.midiaUrl)} download={m.fileName || nomeArquivoMidia(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1d4ed8', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
+                      <a href={midiaSrc(m.midiaUrl)} download={m.fileName || nomeArquivoMidia(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--v2-info)', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6" /></svg>
                         {m.fileName || 'Baixar documento'}
                       </a>
                     )}
-                    {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: '#999' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
+                    {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: 'var(--v2-ink3)' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
                     {textoVisivel && (!m.tipo || m.midiaUrl) && comLinks(textoVisivel)}
-                    <span style={{ display: 'block', fontSize: 9.5, color: '#999', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span style={{ display: 'block', fontSize: 9.5, color: 'var(--v2-ink3)', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     {(m.texto || m.midiaUrl) && (
                       <span style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
                         {canal === 'whatsapp' && (
@@ -3348,41 +3348,41 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 })}
             </div>
             {(encaminhar || editando) && (
-              <div style={{ borderTop: '1px solid #f0f0f0', padding: '7px 12px', background: '#fffbeb', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#92400e', fontWeight: 600 }}>
+              <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '7px 12px', background: 'var(--v2-amber-bg)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-amber)', fontWeight: 600 }}>
                 {encaminhar ? 'Encaminhando — clique numa conversa da lista à esquerda para enviar.' : 'Editando mensagem enviada — altere o texto e confirme (vale até ~15 min).'}
                 <span style={{ flex: 1 }} />
                 <button onClick={() => { setEncaminhar(null); if (editando) { setEditando(null); setTexto('') } }}
-                  style={{ background: 'none', border: 'none', color: '#92400e', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>Cancelar</button>
+                  style={{ background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>Cancelar</button>
               </div>
             )}
             {/* paddingRight reserva a folga do FAB do assistente (fixed right:20, ~56px):
                 sem isso o botao da ponta (Parar/Enviar audio/Enviar) fica atras dele. */}
-            <div style={{ borderTop: '1px solid #f0f0f0', padding: '10px 72px 10px 10px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '10px 72px 10px 10px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
               {/* Popover de modelos de mensagem */}
               {modelosAberto && (
-                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Modelos de mensagem</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Modelos de mensagem</span>
                     <span style={{ flex: 1 }} />
-                    {!templForm && <button onClick={() => setTemplForm({ titulo: '', texto: '' })} style={{ padding: '4px 10px', background: '#f4f4f5', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#333' }}>+ Novo</button>}
-                    <button onClick={() => { setModelosAberto(false); setTemplForm(null) }} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: '#999' }}>×</button>
+                    {!templForm && <button onClick={() => setTemplForm({ titulo: '', texto: '' })} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Novo</button>}
+                    <button onClick={() => { setModelosAberto(false); setTemplForm(null) }} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: 'var(--v2-ink3)' }}>×</button>
                   </div>
                   {templForm && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 9, padding: 9, marginBottom: 8 }}>
-                      <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Confirmar consulta)" style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
-                      <textarea lang="pt-BR" value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: 9, marginBottom: 8 }}>
+                      <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Confirmar consulta)" style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                      <textarea lang="pt-BR" value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: '#f0f0f0', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: '#666' }}>Cancelar</button>
-                        <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+                        <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>Cancelar</button>
+                        <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
                       </div>
                     </div>
                   )}
-                  {templates.length === 0 && !templForm && <p style={{ margin: '4px 2px', fontSize: 12, color: '#aaa' }}>Nenhum modelo ainda. Crie respostas rápidas para agilizar o atendimento.</p>}
+                  {templates.length === 0 && !templForm && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum modelo ainda. Crie respostas rápidas para agilizar o atendimento.</p>}
                   {templates.map(t => (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 4px', borderTop: '1px solid #f5f5f5' }}>
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 4px', borderTop: '1px solid var(--v2-surface1)' }}>
                       <button onClick={() => inserirModelo(t)} title="Inserir no compositor" style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#111' }}>{t.titulo}</span>
-                        <span style={{ display: 'block', fontSize: 11.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.texto}</span>
+                        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{t.titulo}</span>
+                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.texto}</span>
                       </button>
                       <button onClick={() => removerTemplate(t.id)} title="Remover" style={{ background: 'transparent', border: 'none', color: '#c0392b', fontSize: 13, cursor: 'pointer', padding: '2px 5px', flexShrink: 0 }}>✕</button>
                     </div>
@@ -3391,86 +3391,86 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               )}
               {/* Popover do assistente — perguntas sugeridas a partir do playbook */}
               {sugestoesAbertas && (
-                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
+                <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111' }}>Próximas perguntas</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Próximas perguntas</span>
                     <span style={{ flex: 1 }} />
-                    {!sugerindo && sugestoes.length > 0 && <button onClick={sugerirPerguntas} style={{ padding: '4px 10px', background: '#f4f4f5', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: '#333' }}>Gerar de novo</button>}
-                    <button onClick={() => setSugestoesAbertas(false)} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: '#999' }}>×</button>
+                    {!sugerindo && sugestoes.length > 0 && <button onClick={sugerirPerguntas} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>Gerar de novo</button>}
+                    <button onClick={() => setSugestoesAbertas(false)} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: 'var(--v2-ink3)' }}>×</button>
                   </div>
-                  {sugerindo && <p style={{ margin: '4px 2px', fontSize: 12, color: '#aaa' }}>Lendo a conversa e o playbook...</p>}
+                  {sugerindo && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>Lendo a conversa e o playbook...</p>}
                   {!sugerindo && sugestoes.map((s, i) => (
                     <button key={i} onClick={() => inserirPergunta(s.pergunta)} title="Inserir no compositor"
-                      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i ? '1px solid #f5f5f5' : 'none', cursor: 'pointer', padding: '8px 4px' }}>
-                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#111' }}>{s.pergunta}</span>
-                      <span style={{ display: 'block', fontSize: 11.5, color: '#999', marginTop: 2 }}>{[s.fase, s.porque].filter(Boolean).join(' · ')}</span>
+                      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--v2-surface1)' : 'none', cursor: 'pointer', padding: '8px 4px' }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{s.pergunta}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', marginTop: 2 }}>{[s.fase, s.porque].filter(Boolean).join(' · ')}</span>
                     </button>
                   ))}
-                  {!sugerindo && <p style={{ margin: '8px 2px 2px', fontSize: 11, color: '#bbb' }}>Sugestões da IA a partir do playbook. Revise antes de enviar.</p>}
+                  {!sugerindo && <p style={{ margin: '8px 2px 2px', fontSize: 11, color: 'var(--v2-ink3)' }}>Sugestões da IA a partir do playbook. Revise antes de enviar.</p>}
                 </div>
               )}
-              <button onClick={() => { setModelosAberto(v => !v); setSugestoesAbertas(false) }} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? '#111' : '#f4f4f5', color: modelosAberto ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
+              <button onClick={() => { setModelosAberto(v => !v); setSugestoesAbertas(false) }} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: modelosAberto ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
               {canal === 'whatsapp' && (
                 <button onClick={() => (sugestoesAbertas ? setSugestoesAbertas(false) : sugerirPerguntas())} disabled={sugerindo} title="Sugerir a próxima pergunta com base no playbook"
-                  style={{ padding: '9px 12px', background: sugestoesAbertas ? '#111' : '#f4f4f5', color: sugestoesAbertas ? '#fff' : '#444', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: sugerindo ? 'wait' : 'pointer', flexShrink: 0 }}>
+                  style={{ padding: '9px 12px', background: sugestoesAbertas ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: sugestoesAbertas ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: sugerindo ? 'wait' : 'pointer', flexShrink: 0 }}>
                   {sugerindo ? '...' : 'Sugerir'}
                 </button>
               )}
               {gravando ? (
                 /* GRAVANDO — onda reagindo ao sinal + cronômetro + parar/cancelar */
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #fecaca', background: '#fef2f2', borderRadius: 10, padding: '5px 8px 5px 12px', minWidth: 0 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#dc2626', animation: 'soma-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{mmss(segundos)}</span>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--v2-hot-bg)', background: 'var(--v2-hot-bg)', borderRadius: 10, padding: '5px 8px 5px 12px', minWidth: 0 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--v2-hot)', animation: 'soma-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{mmss(segundos)}</span>
                   <canvas ref={canvasRef} width={300} height={30} style={{ flex: 1, height: 30, minWidth: 0 }} />
-                  <button onClick={cancelarGravacao} title="Cancelar gravação" style={{ padding: '7px 12px', background: 'transparent', color: '#888', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Cancelar</button>
-                  <button onClick={pararGravacao} title="Parar (ouvir antes de enviar)" style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                  <button onClick={cancelarGravacao} title="Cancelar gravação" style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-ink3)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Cancelar</button>
+                  <button onClick={pararGravacao} title="Parar (ouvir antes de enviar)" style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 </div>
               ) : anexoPreview ? (
                 /* ANEXO NA FILA — valide antes de enviar; Descartar ou Enviar */
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #e2e2e2', borderRadius: 10, padding: '6px 10px', minWidth: 0 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '6px 10px', minWidth: 0 }}>
                   {anexoPreview.tipo === 'imagem' ? (
                     <img src={anexoPreview.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                   ) : anexoPreview.tipo === 'video' ? (
-                    <video src={anexoPreview.url} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: '#000' }} />
+                    <video src={anexoPreview.url} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: 'var(--v2-ink)' }} />
                   ) : anexoPreview.tipo === 'audio' ? (
                     <audio src={anexoPreview.url} controls style={{ height: 34, maxWidth: 200 }} />
                   ) : (
-                    <span style={{ width: 40, height: 40, borderRadius: 8, background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--v2-info-bg)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
                     </span>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexoPreview.file.name}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#999' }}>{(anexoPreview.file.size / 1024 / 1024).toFixed(anexoPreview.file.size > 1024 * 1024 ? 1 : 2)} MB · pronto para enviar</p>
+                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexoPreview.file.name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{(anexoPreview.file.size / 1024 / 1024).toFixed(anexoPreview.file.size > 1024 * 1024 ? 1 : 2)} MB · pronto para enviar</p>
                   </div>
                   <button onClick={descartarAnexoPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
-                  <button onClick={enviarAnexoPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar'}</button>
+                  <button onClick={enviarAnexoPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar'}</button>
                 </div>
               ) : audioPreview ? (
                 /* PRÉVIA — ouça antes de enviar; Descartar ou Enviar áudio */
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <audio src={audioPreview.url} controls style={{ flex: 1, height: 40, minWidth: 0 }} />
                   <button onClick={descartarAudioPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
-                  <button onClick={enviarAudioPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar áudio'}</button>
+                  <button onClick={enviarAudioPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar áudio'}</button>
                 </div>
               ) : (<>
                 {canal === 'whatsapp' && (<>
                   <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
                     onChange={e => { const f = e.target.files?.[0]; if (f) escolherAnexo(f); e.target.value = '' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={enviandoMidia} title="Anexar arquivo (PDF, imagem, vídeo...)"
-                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0, padding: 0 }}>
-                    {enviandoMidia ? <span style={{ width: 14, height: 14, border: '2px solid #ccc', borderTopColor: '#666', borderRadius: '50%', animation: 'soma-girar 0.8s linear infinite' }} /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>}
+                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0, padding: 0 }}>
+                    {enviandoMidia ? <span style={{ width: 14, height: 14, border: '2px solid var(--v2-rule2)', borderTopColor: 'var(--v2-ink2)', borderRadius: '50%', animation: 'soma-girar 0.8s linear infinite' }} /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>}
                   </button>
                   <button onClick={iniciarGravacao} disabled={enviandoMidia} title="Gravar áudio"
-                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f4f5', color: '#444', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                    style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>
                   </button>
                 </>)}
                 <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
-                  placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid #e2e2e2', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
-                <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#111' : '#eee', color: texto.trim() && !enviando ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
+                  placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
+                <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: texto.trim() && !enviando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
               </>)}
             </div>
           </>)}
@@ -3515,15 +3515,15 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         <div onClick={fecharFora(() => setLightbox(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 24, flexDirection: 'column', gap: 12 }}>
           <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'flex-end' }}>
             <a href={lightbox.url} download={lightbox.nome} title="Baixar no computador"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#111', borderRadius: 9, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 9, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
               Baixar
             </a>
             <button onClick={() => setLightbox(null)} title="Fechar (Esc)"
-              style={{ width: 34, height: 34, borderRadius: 9, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>×</button>
+              style={{ width: 34, height: 34, borderRadius: 9, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--v2-surface)', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>×</button>
           </div>
           <img onClick={e => e.stopPropagation()} src={lightbox.url} alt=""
-            style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', borderRadius: 10, background: '#fff' }} />
+            style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', borderRadius: 10, background: 'var(--v2-surface)' }} />
         </div>
       )}
     </div>

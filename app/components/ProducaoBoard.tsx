@@ -18,19 +18,19 @@ type Usuario = { nome: string; email: string }
 
 // Em que pé está a pauta — e de QUEM é a bola (equipe/cliente/ok).
 function travadoEmQue(p: Post): { label: string; cor: string; bg: string; bola: 'equipe' | 'cliente' | 'ok' } {
-  if (p.status === 'falha_publicacao') return { label: 'Falha na publicação', cor: '#b91c1c', bg: '#fee2e2', bola: 'equipe' }
+  if (p.status === 'falha_publicacao') return { label: 'Falha na publicação', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)', bola: 'equipe' }
   if (p.status === 'aguardando_aprovacao') {
     const d = p.aguardandoDesde ? Math.floor((Date.now() - new Date(p.aguardandoDesde).getTime()) / 86400000) : 0
-    return { label: d > 0 ? `No cliente há ${d}d` : 'No cliente', cor: '#92400e', bg: '#fef3c7', bola: 'cliente' }
+    return { label: d > 0 ? `No cliente há ${d}d` : 'No cliente', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)', bola: 'cliente' }
   }
-  if (p.status === 'corrigir') return { label: 'Ajuste pedido — refazer', cor: '#b45309', bg: '#fff3cd', bola: 'equipe' }
-  if (p.status === 'reprovado') return { label: 'Reprovado — refazer', cor: '#b91c1c', bg: '#fee2e2', bola: 'equipe' }
-  if (p.status === 'publicado') return { label: 'Publicado', cor: '#166534', bg: '#dcfce7', bola: 'ok' }
-  if (p.status === 'publicando') return { label: 'Publicando', cor: '#1d4ed8', bg: '#eff6ff', bola: 'ok' }
-  if (p.status === 'aprovado' || p.status === 'agendado') return { label: 'Agendado', cor: '#166534', bg: '#dcfce7', bola: 'ok' }
+  if (p.status === 'corrigir') return { label: 'Ajuste pedido — refazer', cor: 'var(--v2-amber)', bg: '#fff3cd', bola: 'equipe' }
+  if (p.status === 'reprovado') return { label: 'Reprovado — refazer', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)', bola: 'equipe' }
+  if (p.status === 'publicado') return { label: 'Publicado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)', bola: 'ok' }
+  if (p.status === 'publicando') return { label: 'Publicando', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)', bola: 'ok' }
+  if (p.status === 'aprovado' || p.status === 'agendado') return { label: 'Agendado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)', bola: 'ok' }
   // rascunho
-  if ((p.imagens || []).length === 0) return { label: 'Produzir criativo', cor: '#1d4ed8', bg: '#eff6ff', bola: 'equipe' }
-  return { label: 'Enviar ao cliente', cor: '#1d4ed8', bg: '#eff6ff', bola: 'equipe' }
+  if ((p.imagens || []).length === 0) return { label: 'Produzir criativo', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)', bola: 'equipe' }
+  return { label: 'Enviar ao cliente', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)', bola: 'equipe' }
 }
 
 type Filtro = 'todos' | 'atrasados' | 'risco' | 'cliente' | 'equipe'
@@ -94,8 +94,8 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
 
   const CHIPS: { key: Filtro; label: string; n?: number; cor?: string }[] = [
     { key: 'todos', label: 'Tudo em produção' },
-    { key: 'atrasados', label: 'Atrasados', n: nAtras, cor: '#b91c1c' },
-    { key: 'risco', label: 'Vencem em 2 dias', n: nRisco, cor: '#a16207' },
+    { key: 'atrasados', label: 'Atrasados', n: nAtras, cor: 'var(--v2-hot)' },
+    { key: 'risco', label: 'Vencem em 2 dias', n: nRisco, cor: 'var(--v2-amber)' },
     { key: 'equipe', label: 'Com a equipe', n: nEquipe },
     { key: 'cliente', label: 'No cliente', n: nCliente },
   ]
@@ -103,8 +103,8 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-        <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Hoje na produção</h3>
-        <span style={{ fontSize: 12.5, color: '#999' }}>todos os clientes — quem está com a bola e o que vence. Clique numa pauta para abrir.</span>
+        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Hoje na produção</h3>
+        <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>todos os clientes — quem está com a bola e o que vence. Clique numa pauta para abrir.</span>
       </div>
 
       {/* Resumo + filtros */}
@@ -113,21 +113,21 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
           const ativo = filtro === c.key
           return (
             <button key={c.key} onClick={() => setFiltro(c.key)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${ativo ? '#111' : '#e6e6e6'}`, background: ativo ? '#111' : '#fff', color: ativo ? '#fff' : '#555' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${ativo ? 'var(--v2-ink)' : 'var(--v2-surface2)'}`, background: ativo ? 'var(--v2-ink)' : 'var(--v2-surface)', color: ativo ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>
               {c.label}
-              {c.n !== undefined && <span style={{ fontSize: 10.5, fontWeight: 800, color: ativo ? '#ffc00f' : (c.n > 0 ? (c.cor || '#888') : '#bbb') }}>{c.n}</span>}
+              {c.n !== undefined && <span style={{ fontSize: 10.5, fontWeight: 800, color: ativo ? 'var(--v2-amber-on)' : (c.n > 0 ? (c.cor || 'var(--v2-ink3)') : 'var(--v2-ink3)') }}>{c.n}</span>}
             </button>
           )
         })}
         <span style={{ flex: 1 }} />
         {meuEmail && meusClientes.size > 0 && (
           <button onClick={() => setSoMeus(v => !v)}
-            style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${soMeus ? '#111' : '#e6e6e6'}`, background: soMeus ? '#111' : '#fff', color: soMeus ? '#fff' : '#555' }}>
+            style={{ padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: `1px solid ${soMeus ? 'var(--v2-ink)' : 'var(--v2-surface2)'}`, background: soMeus ? 'var(--v2-ink)' : 'var(--v2-surface)', color: soMeus ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>
             Meus clientes
           </button>
         )}
         <select value={clienteSel} onChange={e => setClienteSel(e.target.value)}
-          style={{ padding: '7px 11px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', background: '#fff' }}>
+          style={{ padding: '7px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer', background: 'var(--v2-surface)' }}>
           <option value="">Todos os clientes</option>
           {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
@@ -135,11 +135,11 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
 
       {/* Lista */}
       {filtradas.length === 0 ? (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '38px 20px', textAlign: 'center', color: '#aaa', fontSize: 13.5, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '38px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13.5, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           {filtro === 'atrasados' ? 'Nenhuma entrega atrasada. Tudo em dia.' : 'Nada por aqui com esses filtros.'}
         </div>
       ) : (
-        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
           {filtradas.map(p => {
             const t = travadoEmQue(p)
             const atras = atrasada(p)
@@ -147,26 +147,26 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
             const resp = responsavel(p)
             return (
               <div key={p.id} onClick={() => onAbrirPauta(p)}
-                style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: '11px 16px', borderBottom: '1px solid #f4f4f5', cursor: 'pointer', background: atras ? '#fffafa' : undefined }}>
+                style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: '11px 16px', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', background: atras ? '#fffafa' : undefined }}>
                 {capa
-                  ? <img src={capa} alt="" style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#f0f0f0' }} />
-                  : <div style={{ width: 40, height: 50, borderRadius: 8, flexShrink: 0, background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  ? <img src={capa} alt="" style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: 'var(--v2-surface2)' }} />
+                  : <div style={{ width: 40, height: 50, borderRadius: 8, flexShrink: 0, background: 'var(--v2-surface1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
                     </div>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, minWidth: 130, maxWidth: 170 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#999' }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: 'var(--v2-ink3)' }}>
                     <AvatarCliente clienteId={p.clienteId} nome={p.clienteNome} />
                   </span>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome}</span>
                 </div>
-                <span style={{ flex: '1 1 120px', minWidth: 0, fontSize: 12.5, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{excerto(p)}</span>
+                <span style={{ flex: '1 1 120px', minWidth: 0, fontSize: 12.5, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{excerto(p)}</span>
                 {/* Responsável + status + prazo AGRUPADOS: no celular o grupo desce
                     inteiro pra 2ª linha — antes a linha não quebrava e o status
                     ficava CORTADO fora da tela (medido em produção a 375px). */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
-                  {resp && <span style={{ flexShrink: 0, fontSize: 11.5, color: '#999', whiteSpace: 'nowrap' }}>{resp}</span>}
+                  {resp && <span style={{ flexShrink: 0, fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{resp}</span>}
                   <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 999, background: t.bg, color: t.cor, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
-                  <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: atras ? 800 : 600, color: atras ? '#b91c1c' : '#9a9a9a', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: atras ? 800 : 600, color: atras ? 'var(--v2-hot)' : '#9a9a9a', whiteSpace: 'nowrap', textAlign: 'right' }}>
                     {atras ? (diasDeAtraso(p) === 0 ? 'venceu hoje' : `atrasado ${diasDeAtraso(p)}d`) : dataCurta(p.dataAgendada)}
                   </span>
                 </div>
@@ -175,7 +175,7 @@ export default function ProducaoBoard({ clientes, posts, usuarios = [], meuEmail
           })}
         </div>
       )}
-      <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: '#bbb' }}>Posts publicados saem desta lista.</p>
+      <p style={{ margin: '10px 2px 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Posts publicados saem desta lista.</p>
     </div>
   )
 }

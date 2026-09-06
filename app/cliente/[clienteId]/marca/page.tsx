@@ -90,87 +90,87 @@ export default function MarcaPage() {
     setTimeout(() => setMsg(null), 4000)
   }
 
-  if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>Carregando...</div>
+  if (!cliente) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--v2-ink3)' }}>Carregando...</div>
 
   const temDados = CAMPOS.some(c => (cliente[c.key] || '').trim()) || (cliente.documentoMarca || '').trim()
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
   return (
     <div style={{ maxWidth: 820 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Marca — Brand Board</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Marca — Brand Board</h2>
         {ehEquipe && !editando && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setEditando(true)} style={{ padding: '9px 16px', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={() => setEditando(true)} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
               {temDados ? 'Editar' : 'Preencher Brand Board'}
             </button>
             {temDados && (
-              <button onClick={excluir} disabled={salvando} style={{ padding: '9px 14px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+              <button onClick={excluir} disabled={salvando} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
             )}
           </div>
         )}
       </div>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#999' }}>Identidade e DNA do projeto {cliente.nome}.</p>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>Identidade e DNA do projeto {cliente.nome}.</p>
 
       {msg && <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
-        background: msg.erro ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.erro ? '#fca5a5' : '#86efac'}`, color: msg.erro ? '#b91c1c' : '#166534' }}>{msg.texto}</div>}
+        background: msg.erro ? 'var(--v2-hot-bg)' : 'var(--v2-ok-bg)', border: `1px solid ${msg.erro ? 'var(--v2-hot-bg)' : 'var(--v2-ok-bg)'}`, color: msg.erro ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{msg.texto}</div>}
 
       {/* MODO EDIÇÃO (equipe) */}
       {ehEquipe && editando ? (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {CAMPOS.map(c => (
             <div key={c.key}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>{c.label}</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{c.label}</label>
               {c.area
                 ? <textarea lang="pt-BR" value={form[c.key] || ''} onChange={e => setForm((f: any) => ({ ...f, [c.key]: e.target.value }))} placeholder={c.placeholder} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
                 : <input value={form[c.key] || ''} onChange={e => setForm((f: any) => ({ ...f, [c.key]: e.target.value }))} placeholder={c.placeholder} style={inputStyle} />}
             </div>
           ))}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
-            <button onClick={() => { setEditando(false); carregar() }} style={{ padding: '11px 16px', background: '#f0f0f0', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+            <button onClick={() => { setEditando(false); carregar() }} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
           </div>
         </div>
       ) : (
         /* MODO LEITURA */
-        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {!temDados && <p style={{ margin: 0, fontSize: 13, color: '#aaa', textAlign: 'center', padding: 20 }}>{ehEquipe ? 'Brand Board ainda não preenchido. Clique em "Preencher Brand Board".' : 'Brand Board em construção.'}</p>}
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {!temDados && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)', textAlign: 'center', padding: 20 }}>{ehEquipe ? 'Brand Board ainda não preenchido. Clique em "Preencher Brand Board".' : 'Brand Board em construção.'}</p>}
           {CAMPOS.map(c => cliente[c.key] ? (
             <div key={c.key}>
-              <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: '#888' }}>{c.label}</p>
-              <p style={{ margin: 0, fontSize: 14, color: '#222', whiteSpace: 'pre-wrap' }}>{cliente[c.key]}</p>
+              <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{c.label}</p>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap' }}>{cliente[c.key]}</p>
             </div>
           ) : null)}
           {(cliente.documentos || []).length > 0 && (
             <div>
-              <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#888' }}>Documentos</p>
+              <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Documentos</p>
               {cliente.documentos.map((d: any, i: number) => (
-                <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: 13, color: '#1d4ed8' }}>{d.nome}</a>
+                <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: 13, color: 'var(--v2-info)' }}>{d.nome}</a>
               ))}
             </div>
           )}
           {/* Gerar documento com IA (equipe) — aparece quando ha Brand Board e ainda nao ha documento */}
           {ehEquipe && temDados && !cliente.documentoMarca && (
-            <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
-              <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ width: '100%', padding: '12px 0', background: 'var(--marca, #ffc00f)', color: 'var(--marca-texto, #111)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
+              <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ width: '100%', padding: '12px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
                 {gerandoDoc ? 'Gerando documento com IA... (pode levar 1-2 min)' : 'Criar documento com IA'}
               </button>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#aaa' }}>A IA pesquisa o nicho e gera uma referência editorial completa a partir do Brand Board.</p>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A IA pesquisa o nicho e gera uma referência editorial completa a partir do Brand Board.</p>
             </div>
           )}
 
           {cliente.documentoMarca && (
-            <div style={{ borderTop: '1px solid #eee', paddingTop: 14 }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Documento de marca (IA)</h3>
+                <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Documento de marca (IA)</h3>
                 {ehEquipe && (
-                  <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ padding: '7px 14px', background: '#f5f5f5', color: '#111', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
+                  <button onClick={gerarDocumento} disabled={gerandoDoc} style={{ padding: '7px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: gerandoDoc ? 'not-allowed' : 'pointer' }}>
                     {gerandoDoc ? 'Gerando...' : 'Regenerar com IA'}
                   </button>
                 )}
               </div>
-              {cliente.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: '#999', margin: '0 0 8px' }}>Gerado em {new Date(cliente.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: '#333', background: '#fafafa', border: '1px solid #eee', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{cliente.documentoMarca}</pre>
+              {cliente.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>Gerado em {new Date(cliente.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{cliente.documentoMarca}</pre>
             </div>
           )}
         </div>
@@ -178,14 +178,14 @@ export default function MarcaPage() {
 
       {/* Ativos da marca — logo, fotos, elementos, ícones, prints (alimentam a IA do Studio) */}
       {ehEquipe && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
           <ReferenciasVisuais clienteId={clienteId as string} />
         </div>
       )}
 
       {/* Tipografia e vibe da marca — alimenta o motor de criativos (só equipe) */}
       {ehEquipe && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
           <FontesMarca clienteId={clienteId as string} />
         </div>
       )}
@@ -195,13 +195,13 @@ export default function MarcaPage() {
         const assets = ((cliente.assetsMarca || []) as any[]).filter(a => ['logo', 'foto', 'elemento', 'icone'].includes(a?.categoria) && a?.url)
         if (assets.length === 0) return null
         return (
-          <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#111' }}>Identidade visual</h3>
-            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Logos, fotos e elementos da sua marca.</p>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Identidade visual</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Logos, fotos e elementos da sua marca.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
               {assets.map((a, i) => (
                 <a key={a.id || i} href={a.url} target="_blank" rel="noreferrer" title={a.nome || a.categoria}
-                  style={{ display: 'block', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid #f0f0f0', background: '#fafafa' }}>
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
                   <img src={a.url} alt={a.nome || a.categoria} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </a>
               ))}

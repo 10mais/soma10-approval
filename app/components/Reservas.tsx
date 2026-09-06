@@ -23,9 +23,9 @@ type FormReserva = { id?: string; contratanteNome: string; contatoId?: string; p
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('pt-BR') : ''
 const stReserva: Record<string, { label: string; cor: string; bg: string }> = {
-  'pre-reserva': { label: 'Pré-reserva', cor: '#a16207', bg: '#fef9c3' },
-  'confirmada': { label: 'Confirmada', cor: '#166534', bg: '#dcfce7' },
-  'cancelada': { label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
+  'pre-reserva': { label: 'Pré-reserva', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  'confirmada': { label: 'Confirmada', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  'cancelada': { label: 'Cancelada', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 }
 
 // Mapa visual de poltronas. O casco e a grade vêm de CroquiVeiculo — o mesmo
@@ -45,7 +45,7 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
             const numero = a[2]
             const ocupada = ocupadas.has(numero)
             const sel = selecionadas.has(numero)
-            const cor = ocupada ? { bg: '#e5e7eb', bd: '#d8dde3', tx: '#9ca3af' } : sel ? { bg: '#111', bd: '#111', tx: '#fff' } : { bg: '#fff', bd: '#c9cace', tx: '#475569' }
+            const cor = ocupada ? { bg: 'var(--v2-surface2)', bd: '#d8dde3', tx: 'var(--v2-ink3)' } : sel ? { bg: 'var(--v2-ink)', bd: 'var(--v2-ink)', tx: 'var(--v2-surface)' } : { bg: 'var(--v2-surface)', bd: '#c9cace', tx: '#475569' }
             return (
               <button type="button" title={`Poltrona ${rotuloPoltrona(numero)}${ocupada ? ' (ocupada)' : ''} · ${a[3] || 'leito'}`}
                 disabled={readOnly || ocupada}
@@ -189,65 +189,65 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
     if (x?.ok) { toast('Reserva excluída.', 'sucesso'); carregarReservas() } else toast('Falha ao excluir.', 'erro')
   }
 
-  const inputStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }
+  const inputStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Reservas</h2>
-        <select value={viagemSel} onChange={e => setViagemSel(e.target.value)} style={{ ...inputStyle, minWidth: 220, background: '#fff' }}>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Reservas</h2>
+        <select value={viagemSel} onChange={e => setViagemSel(e.target.value)} style={{ ...inputStyle, minWidth: 220, background: 'var(--v2-surface)' }}>
           <option value="">Selecione a viagem...</option>
           {viagens.map(e => <option key={e.id} value={e.id}>{e.titulo} · {fmtData(e.dataIda)}</option>)}
         </select>
         <span style={{ flex: 1 }} />
-        {podeEditar && viagem && <button onClick={novaReserva} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Reserva</button>}
+        {podeEditar && viagem && <button onClick={novaReserva} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Reserva</button>}
       </div>
 
-      {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
-        : !viagem ? <p style={{ color: '#aaa', fontSize: 13 }}>Selecione uma viagem para ver as reservas e o mapa de poltronas.</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
+        : !viagem ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Selecione uma viagem para ver as reservas e o mapa de poltronas.</p>
         : (
           <>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
               {!comPoltrona ? (
                 <>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '5px 12px' }}>Fretamento — veículo inteiro</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '5px 12px' }}>Fretamento — veículo inteiro</span>
                   {viagem.contratante && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>Contratante: {viagem.contratante}</span>}
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{fmtBRL(viagem.valorFechado || 0)} fechado</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '5px 12px' }}>{fmtBRL(viagem.valorFechado || 0)} fechado</span>
                 </>
               ) : (
                 <>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
                   {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
-                  {!layout && <span style={{ fontSize: 12.5, color: '#b45309', background: '#fef3c7', borderRadius: 999, padding: '5px 12px' }}>Viagem sem veículo/croqui — defina o veículo para o mapa de poltronas.</span>}
+                  {!layout && <span style={{ fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '5px 12px' }}>Viagem sem veículo/croqui — defina o veículo para o mapa de poltronas.</span>}
                 </>
               )}
             </div>
             {!comPoltrona && (
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: '#bbb' }}>No fretamento não se vende poltrona: registre o contrato e, se quiser, a lista de passageiros (manifesto).</p>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>No fretamento não se vende poltrona: registre o contrato e, se quiser, a lista de passageiros (manifesto).</p>
             )}
 
             {layout && !form && (
-              <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 16, marginBottom: 18 }}>
+              <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 16, marginBottom: 18 }}>
                 <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={new Set()} readOnly />
               </div>
             )}
 
             {/* Lista de reservas */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {reservas.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Nenhuma reserva nesta viagem.</p>
+              {reservas.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma reserva nesta viagem.</p>
                 : reservas.map(r => {
                   const st = stReserva[r.status] || stReserva['pre-reserva']
                   const poltronas = r.passageiros.map(p => p.poltrona).filter(Boolean).join(', ')
                   const valor = valorDaReserva(viagem, r.passageiros, r.desconto || 0)
                   return (
-                    <div key={r.id} onClick={() => podeEditar && editarReserva(r)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: '11px 14px', cursor: podeEditar ? 'pointer' : 'default', opacity: r.status === 'cancelada' ? 0.6 : 1 }}>
+                    <div key={r.id} onClick={() => podeEditar && editarReserva(r)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '11px 14px', cursor: podeEditar ? 'pointer' : 'default', opacity: r.status === 'cancelada' ? 0.6 : 1 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{r.contratanteNome}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{r.contratanteNome}</span>
                         <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>
                         <span style={{ flex: 1 }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>{fmtBRL(valor)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ok)' }}>{fmtBRL(valor)}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{r.passageiros.length} pax · poltronas {poltronas || '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--v2-ink2)', marginTop: 4 }}>{r.passageiros.length} pax · poltronas {poltronas || '—'}</div>
                     </div>
                   )
                 })}
@@ -258,38 +258,38 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
       {/* Modal criar/editar reserva */}
       {form && viagem && (
         <div onClick={fecharFora(() => setForm(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', margin: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar reserva' : 'Nova reserva'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: '#999' }}>{viagem.titulo} · {fmtData(viagem.dataIda)} · {fmtBRL(viagem.valorPacote)}/pessoa</p>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 640, width: '100%', margin: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{form.id ? 'Editar reserva' : 'Nova reserva'}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{viagem.titulo} · {fmtData(viagem.dataIda)} · {fmtBRL(viagem.valorPacote)}/pessoa</p>
             <input value={form.contratanteNome} onChange={e => setForm(f => f && ({ ...f, contratanteNome: e.target.value, passageiros: f.passageiros.map((p, i) => i === 0 && !p.nome ? { ...p, nome: e.target.value } : p) }))} placeholder="Contratante (nome) *" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', fontSize: 14, marginBottom: 12 }} />
 
             {/* Passageiros — a LISTA manda. O assento é opcional e vem depois. */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Passageiros ({form.passageiros.length})</label>
-                {semPoltrona > 0 && layout && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#a16207', background: '#fef9c3', borderRadius: 999, padding: '2px 8px' }}>{semPoltrona} sem poltrona</span>}
-                {incompletos > 0 && <span title="Faltam dados para a lista do DAER/ANTT" style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fff7ed', borderRadius: 999, padding: '2px 8px' }}>{incompletos} incompleto(s) para a lista</span>}
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Passageiros ({form.passageiros.length})</label>
+                {semPoltrona > 0 && layout && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '2px 8px' }}>{semPoltrona} sem poltrona</span>}
+                {incompletos > 0 && <span title="Faltam dados para a lista do DAER/ANTT" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-amber)', background: '#fff7ed', borderRadius: 999, padding: '2px 8px' }}>{incompletos} incompleto(s) para a lista</span>}
                 <span style={{ flex: 1 }} />
-                <button type="button" onClick={addPax} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Passageiro</button>
+                <button type="button" onClick={addPax} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Passageiro</button>
               </div>
-              <p style={{ margin: '0 0 8px', fontSize: 11, color: '#bbb' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>
                 Estes dados viram a lista {viagem.internacional ? 'internacional (passaporte)' : 'do DAER/ANTT'}. A poltrona pode ficar para depois.
               </p>
 
               {form.passageiros.length === 0 && (
-                <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#ccc' }}>Nenhum passageiro. Clique em &quot;+ Passageiro&quot; para começar.</p>
+                <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum passageiro. Clique em &quot;+ Passageiro&quot; para começar.</p>
               )}
 
               {form.passageiros.map((p, i) => {
                 const falta = pendenciasDoPassageiro(p, !!viagem.internacional)
                 return (
-                  <div key={i} style={{ border: '1px solid #eee', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                  <div key={i} style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#999', width: 16 }}>{i + 1}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', width: 16 }}>{i + 1}</span>
                       <input value={p.nome} onChange={e => setPax(i, { nome: e.target.value })} placeholder="Nome completo (como no documento)" style={{ ...inputStyle, flex: 2, minWidth: 180 }} />
                       {/* Faixa muda o PREÇO deste passageiro (adulto/criança/meia) */}
                       {comPoltrona && (
-                        <select value={p.faixa || 'adulto'} onChange={e => setPax(i, { faixa: e.target.value as any })} title="Faixa — muda o valor" style={{ ...inputStyle, width: 104, background: '#fff' }}>
+                        <select value={p.faixa || 'adulto'} onChange={e => setPax(i, { faixa: e.target.value as any })} title="Faixa — muda o valor" style={{ ...inputStyle, width: 104, background: 'var(--v2-surface)' }}>
                           <option value="adulto">Adulto</option>
                           <option value="crianca">Criança</option>
                           <option value="meia">Meia</option>
@@ -298,7 +298,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                       <input type="date" value={p.nascimento || ''} onChange={e => setPax(i, { nascimento: e.target.value })} title="Nascimento" style={{ ...inputStyle, width: 145 }} />
                       {/* Poltrona: só faz sentido com croqui, e é sempre opcional */}
                       {layout && (
-                        <select value={p.poltrona || ''} onChange={e => setPax(i, { poltrona: e.target.value || undefined })} title="Poltrona (opcional)" style={{ ...inputStyle, width: 92, background: '#fff' }}>
+                        <select value={p.poltrona || ''} onChange={e => setPax(i, { poltrona: e.target.value || undefined })} title="Poltrona (opcional)" style={{ ...inputStyle, width: 92, background: 'var(--v2-surface)' }}>
                           <option value="">Poltrona</option>
                           {numerosPoltronas(layout)
                             .filter(n => !ocupadas.has(n) && (!selecionadas.has(n) || p.poltrona === n))
@@ -306,7 +306,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                             .map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                       )}
-                      <button type="button" onClick={() => rmPax(i)} title="Remover passageiro" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                      <button type="button" onClick={() => rmPax(i)} title="Remover passageiro" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <input value={p.cpf || ''} onChange={e => setPax(i, { cpf: e.target.value })} placeholder="CPF" style={{ ...inputStyle, flex: 1, minWidth: 130 }} />
@@ -321,7 +321,7 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
                       </div>
                     )}
                     {falta.length > 0 && p.nome.trim() && (
-                      <p style={{ margin: '6px 0 0', fontSize: 10.5, color: '#b45309' }}>Falta para a lista: {falta.join(', ')}.</p>
+                      <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-amber)' }}>Falta para a lista: {falta.join(', ')}.</p>
                     )}
                   </div>
                 )
@@ -331,20 +331,20 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
             {/* Mapa: atalho para atribuir assento — não é o caminho único */}
             {comPoltrona && (layout ? (
               <>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 8 }}>Poltronas — clique para atribuir a quem ainda não tem</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Poltronas — clique para atribuir a quem ainda não tem</label>
                 <div style={{ marginBottom: 14, overflowX: 'auto' }}>
                   <MapaPoltronas layout={layout} ocupadas={ocupadas} selecionadas={selecionadas} onToggle={togglePoltrona} />
                 </div>
               </>
-            ) : <p style={{ fontSize: 12.5, color: '#b45309', marginBottom: 12 }}>Sem veículo definido na viagem — dá para cadastrar os passageiros agora e atribuir as poltronas depois.</p>)}
+            ) : <p style={{ fontSize: 12.5, color: 'var(--v2-amber)', marginBottom: 12 }}>Sem veículo definido na viagem — dá para cadastrar os passageiros agora e atribuir as poltronas depois.</p>)}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#666', fontWeight: 600 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--v2-ink2)', fontWeight: 600 }}>
                 Desconto (R$)
                 <input type="number" min={0} step="0.01" value={form.desconto} onChange={e => setForm(f => f && ({ ...f, desconto: e.target.value }))} placeholder="0" style={{ ...inputStyle, width: 100 }} />
               </label>
               <span style={{ flex: 1 }} />
-              <span style={{ fontSize: 15, fontWeight: 800, color: '#166534' }}>Total: {fmtBRL(valorForm)}</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--v2-ok)' }}>Total: {fmtBRL(valorForm)}</span>
             </div>
 
             {/* Financeiro (parcelas + pagamento parcial) — só na reserva já salva */}
@@ -353,51 +353,51 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
               const pago = fin ? totalPago(fin) : 0
               const saldo = Math.max(0, valorForm - pago)
               return (
-                <div style={{ marginTop: 16, borderTop: '1px solid #f0f0f0', paddingTop: 14 }}>
+                <div style={{ marginTop: 16, borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Financeiro</label>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Financeiro</label>
                     <span style={{ flex: 1 }} />
-                    <span style={{ fontSize: 12, color: '#666' }}>Pago {fmtBRL(pago)}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: saldo > 0 ? '#b45309' : '#166534' }}>Saldo {fmtBRL(saldo)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>Pago {fmtBRL(pago)}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: saldo > 0 ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>Saldo {fmtBRL(saldo)}</span>
                   </div>
                   {/* Gerar parcelas */}
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 9, padding: 9 }}>
-                    <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>Parcelar em</span>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: 9 }}>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>Parcelar em</span>
                     <input type="number" min={1} max={36} value={parcVezes} onChange={e => setParcVezes(Math.max(1, Number(e.target.value) || 1))} style={{ ...inputStyle, width: 56 }} />
-                    <span style={{ fontSize: 12, color: '#666' }}>×</span>
-                    <select value={parcMetodo} onChange={e => setParcMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: '#fff' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>×</span>
+                    <select value={parcMetodo} onChange={e => setParcMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
                     <input type="date" value={parcVenc} onChange={e => setParcVenc(e.target.value)} title="1º vencimento" style={{ ...inputStyle, width: 140 }} />
-                    <button type="button" onClick={gerarParc} style={{ padding: '8px 12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerar</button>
+                    <button type="button" onClick={gerarParc} style={{ padding: '8px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerar</button>
                   </div>
                   {fin && fin.parcelas.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
                       {fin.parcelas.map(p => (
-                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '5px 8px', background: p.status === 'pago' ? '#f0fdf4' : '#fff', border: '1px solid #f0f0f0', borderRadius: 8, cursor: 'pointer' }}>
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '5px 8px', background: p.status === 'pago' ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, cursor: 'pointer' }}>
                           <input type="checkbox" checked={p.status === 'pago'} onChange={() => toggleParcela(p.id)} style={{ width: 15, height: 15 }} />
-                          <span style={{ fontWeight: 700, color: '#333' }}>{p.numero}ª</span>
-                          <span style={{ color: '#666' }}>{fmtBRL(p.valor)}</span>
-                          <span style={{ color: '#999' }}>venc. {fmtData(p.vencimento)}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{p.numero}ª</span>
+                          <span style={{ color: 'var(--v2-ink2)' }}>{fmtBRL(p.valor)}</span>
+                          <span style={{ color: 'var(--v2-ink3)' }}>venc. {fmtData(p.vencimento)}</span>
                           <span style={{ flex: 1 }} />
-                          {p.status === 'pago' && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#166534' }}>PAGO</span>}
+                          {p.status === 'pago' && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ok)' }}>PAGO</span>}
                         </label>
                       ))}
                     </div>
                   )}
                   {/* Lançar pagamento avulso (o cliente vai pagando sem valor fixo) */}
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>Registrar pagamento</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>Registrar pagamento</span>
                     <input type="number" min={0} step="0.01" value={pagValor} onChange={e => setPagValor(e.target.value)} placeholder="R$" style={{ ...inputStyle, width: 100 }} />
-                    <select value={pagMetodo} onChange={e => setPagMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: '#fff' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
-                    <button type="button" onClick={lancarPagamento} style={{ padding: '8px 12px', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Lançar</button>
+                    <select value={pagMetodo} onChange={e => setPagMetodo(e.target.value as MetodoPagamento)} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>{METODOS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
+                    <button type="button" onClick={lancarPagamento} style={{ padding: '8px 12px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Lançar</button>
                   </div>
                   {fin && fin.pagamentos.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
                       {fin.pagamentos.map(pg => (
-                        <div key={pg.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555' }}>
-                          <span style={{ fontWeight: 700, color: '#166534' }}>{fmtBRL(pg.valor)}</span>
-                          <span style={{ color: '#999' }}>{fmtData(pg.data)}{pg.metodo ? ` · ${pg.metodo}` : ''}</span>
+                        <div key={pg.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-ink2)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--v2-ok)' }}>{fmtBRL(pg.valor)}</span>
+                          <span style={{ color: 'var(--v2-ink3)' }}>{fmtData(pg.data)}{pg.metodo ? ` · ${pg.metodo}` : ''}</span>
                           <span style={{ flex: 1 }} />
-                          <button type="button" onClick={() => removerPagamento(pg.id)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15 }}>×</button>
+                          <button type="button" onClick={() => removerPagamento(pg.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15 }}>×</button>
                         </div>
                       ))}
                     </div>
@@ -407,11 +407,11 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
             })()}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
-              {form.id && podeExcluir && <button onClick={() => { const r = reservas.find(x => x.id === form.id); if (r) { setForm(null); excluir(r) } }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
-              {form.id && layout && <button onClick={gerarLinkCliente} title="Gera um link para o cliente escolher a poltrona" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: 9, color: '#1d4ed8', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Link do cliente</button>}
+              {form.id && podeExcluir && <button onClick={() => { const r = reservas.find(x => x.id === form.id); if (r) { setForm(null); excluir(r) } }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
+              {form.id && layout && <button onClick={gerarLinkCliente} title="Gera um link para o cliente escolher a poltrona" style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid #bfdbfe', borderRadius: 9, color: 'var(--v2-info)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Link do cliente</button>}
               <span style={{ flex: form.id ? undefined : 1 }} />
-              <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar reserva'}</button>
+              <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar reserva'}</button>
             </div>
           </div>
         </div>

@@ -106,23 +106,23 @@ export default function PersonalList() {
     <div style={{ maxWidth: 900 }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Personal list</h2>
-          {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: '#aaa' }}>salvando…</span>}
-          {salvo === 'ok' && <span style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 600 }}>salvo</span>}
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Personal list</h2>
+          {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
+          {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
         </div>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#999' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
       </div>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* NOTEPADS */}
-          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid #f0f0f0' : 'none' }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Notepads</span>
-              <button onClick={novaNota} style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid var(--v2-rule)' : 'none' }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Notepads</span>
+              <button onClick={novaNota} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
             </div>
             {notepads.length === 0 ? (
-              <div onClick={novaNota} style={{ padding: '34px 16px', textAlign: 'center', color: '#bbb', fontSize: 13, cursor: 'pointer' }}>
+              <div onClick={novaNota} style={{ padding: '34px 16px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, cursor: 'pointer' }}>
                 Nenhuma nota ainda. Clique em <b>+ Nova nota</b> para criar a primeira.
               </div>
             ) : (
@@ -130,15 +130,15 @@ export default function PersonalList() {
                 {ordenadas.map(n => {
                   const previa = textoDe(n.conteudo)
                   return (
-                    <div key={n.id} onClick={() => setAbertoId(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderTop: '1px solid #f6f6f6', cursor: 'pointer', background: n.fixado ? '#fffdf5' : undefined }}>
+                    <div key={n.id} onClick={() => setAbertoId(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderTop: '1px solid var(--v2-surface1)', cursor: 'pointer', background: n.fixado ? '#fffdf5' : undefined }}>
                       <button onClick={e => { e.stopPropagation(); toggleFixar(n.id) }} title={n.fixado ? 'Desafixar' : 'Fixar no topo (até 3)'} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: n.fixado ? '#eab308' : '#cfcfcf', display: 'flex', alignItems: 'center', padding: 2 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill={n.fixado ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 10.76V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6.76a2 2 0 0 0 .59 1.42l1.7 1.7a1 1 0 0 1 .29.71V16a1 1 0 0 1-1 1H7.42a1 1 0 0 1-1-1v-.41a1 1 0 0 1 .29-.71l1.7-1.7A2 2 0 0 0 9 10.76Z" /></svg>
                       </button>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo.trim() || 'Sem título'}</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previa || 'Nota vazia'}</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.titulo.trim() || 'Sem título'}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previa || 'Nota vazia'}</p>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); excluirNota(n.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
+                      <button onClick={e => { e.stopPropagation(); excluirNota(n.id) }} title="Excluir" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
                     </div>
                   )
                 })}
@@ -147,23 +147,23 @@ export default function PersonalList() {
           </div>
 
           {/* Microtarefas */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Microtarefas</span>
-              {itens.length > 0 && <span style={{ fontSize: 11.5, color: '#999' }}>{itens.length} pendente{itens.length > 1 ? 's' : ''}</span>}
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Microtarefas</span>
+              {itens.length > 0 && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{itens.length} pendente{itens.length > 1 ? 's' : ''}</span>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: itens.length ? 12 : 0 }}>
               <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem() }} placeholder="Adicionar microtarefa e Enter..."
-                style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-              <button onClick={addItem} style={{ flexShrink: 0, padding: '10px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <button onClick={addItem} style={{ flexShrink: 0, padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {itens.map(it => (
-                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#fafafa', borderRadius: 10 }}>
+                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--v2-surface1)', borderRadius: 10 }}>
                   <input type="checkbox" checked={false} onChange={() => concluir(it.id)} title="Concluir e arquivar" style={{ width: 17, height: 17, cursor: 'pointer', flexShrink: 0 }} />
                   <input value={it.texto} onChange={e => setItens(arr => arr.map(x => x.id === it.id ? { ...x, texto: e.target.value } : x))}
-                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit', color: '#222', outline: 'none' }} />
-                  <button onClick={() => setItens(arr => arr.filter(x => x.id !== it.id))} title="Remover" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
+                    style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit', color: 'var(--v2-ink)', outline: 'none' }} />
+                  <button onClick={() => setItens(arr => arr.filter(x => x.id !== it.id))} title="Remover" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
                 </div>
               ))}
             </div>
@@ -171,18 +171,18 @@ export default function PersonalList() {
             {/* Concluídas (arquivadas) — some da lista ativa ao marcar; recuperável aqui */}
             {arquivadas.length > 0 && (
               <div style={{ marginTop: itens.length ? 14 : 4 }}>
-                <button onClick={() => setVerArquivadas(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#888', padding: 0 }}>
+                <button onClick={() => setVerArquivadas(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', padding: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: verArquivadas ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}><path d="M9 6l6 6-6 6" /></svg>
                   Concluídas ({arquivadas.length})
                 </button>
                 {verArquivadas && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                     {arquivadas.map(it => (
-                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f6f6f6', borderRadius: 10 }}>
+                      <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--v2-surface1)', borderRadius: 10 }}>
                         <input type="checkbox" checked readOnly onClick={() => restaurar(it.id)} title="Reabrir (voltar para pendentes)" style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }} />
-                        <span style={{ flex: 1, fontSize: 13, color: '#999', textDecoration: 'line-through', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.texto}</span>
-                        <button onClick={() => restaurar(it.id)} title="Reabrir" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, padding: '2px 6px' }}>Reabrir</button>
-                        <button onClick={() => removerArquivada(it.id)} title="Remover de vez" style={{ flexShrink: 0, background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: 2 }}>×</button>
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink3)', textDecoration: 'line-through', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.texto}</span>
+                        <button onClick={() => restaurar(it.id)} title="Reabrir" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, padding: '2px 6px' }}>Reabrir</button>
+                        <button onClick={() => removerArquivada(it.id)} title="Remover de vez" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: 2 }}>×</button>
                       </div>
                     ))}
                   </div>
@@ -196,16 +196,16 @@ export default function PersonalList() {
       {/* Editor do notepad em MODAL */}
       {aberto && (
         <div onClick={() => fecharNota(true)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid #f0f0f0' }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px', borderBottom: '1px solid var(--v2-rule)' }}>
               <input value={aberto.titulo} onChange={e => patchNota(aberto.id, { titulo: e.target.value })} placeholder="Título da nota" autoFocus
-                style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, fontWeight: 800, color: '#111', fontFamily: 'inherit', background: 'transparent' }} />
-              {salvo === 'salvando' && <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>salvando…</span>}
-              {salvo === 'ok' && <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
-              <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
+                style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)', fontFamily: 'inherit', background: 'transparent' }} />
+              {salvo === 'salvando' && <span style={{ fontSize: 11, color: 'var(--v2-ink3)', flexShrink: 0 }}>salvando…</span>}
+              {salvo === 'ok' && <span style={{ fontSize: 11, color: 'var(--v2-ok)', fontWeight: 600, flexShrink: 0 }}>salvo</span>}
+              <button onClick={() => excluirNota(aberto.id)} title="Excluir nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-hot)', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </button>
-              <button onClick={() => fecharNota()} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+              <button onClick={() => fecharNota()} title="Fechar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 22, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
             </div>
             <div style={{ padding: 16, overflowY: 'auto' }}>
               <RichText key={aberto.id} value={aberto.conteudo} onChange={html => patchNota(aberto.id, { conteudo: html })} completo placeholder="Escreva aqui… use a barra para tópicos, listas numeradas, títulos, cor e links." minHeight={320} />

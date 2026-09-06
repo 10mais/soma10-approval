@@ -31,12 +31,12 @@ function capaDoPost(post: any): string {
 
 function ImagemComFallback({ src }: { src: string }) {
   const [erro, setErro] = useState(false)
-  if (erro) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11 }}>Sem imagem</div>
+  if (erro) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 11 }}>Sem imagem</div>
   if (/\.(mp4|mov|m4v)(\?|$)/i.test(src || '')) return <video src={src} muted playsInline preload="metadata" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
-const STATUS_COLOR: Record<string, string> = { rascunho: '#f0f0f0', aguardando_aprovacao: '#fef3c7', corrigir: '#ffedd5', aprovado: '#dcfce7', reprovado: '#fee2e2', agendado: '#fef9c3', publicando: '#dbeafe', publicado: '#dcfce7', falha_publicacao: '#fee2e2' }
+const STATUS_COLOR: Record<string, string> = { rascunho: 'var(--v2-surface2)', aguardando_aprovacao: 'var(--v2-amber-bg)', corrigir: '#ffedd5', aprovado: 'var(--v2-ok-bg)', reprovado: 'var(--v2-hot-bg)', agendado: 'var(--v2-amber-bg)', publicando: 'var(--v2-info-bg)', publicado: 'var(--v2-ok-bg)', falha_publicacao: 'var(--v2-hot-bg)' }
 const STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', aguardando_aprovacao: 'Aguardando aprovação', corrigir: 'Ajuste solicitado', aprovado: 'Aprovado', reprovado: 'Reprovado', agendado: 'Agendado', publicando: 'Publicando...', publicado: 'Publicado', falha_publicacao: 'Falha' }
 
 function paraDatetimeLocal(iso?: string): string {
@@ -82,8 +82,8 @@ export default function PlannerPage() {
   }, [clienteId])
 
   // Layout padrao da agencia (sem cor por cliente): botoes primarios no amarelo Soma10.
-  const corCliente = 'var(--marca, #ffc00f)'
-  const corClienteTexto = 'var(--marca-texto, #111)'
+  const corCliente = 'var(--marca, var(--v2-amber-on))'
+  const corClienteTexto = 'var(--marca-texto, var(--v2-ink))'
 
   // Cria/agenda/publica respeitando a acao escolhida no compositor
   async function enviarPost(valor: any) {
@@ -188,13 +188,13 @@ export default function PlannerPage() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Planner</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Planner</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+          <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
             {(['lista', 'calendario'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
                 padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                background: view === v ? '#fff' : 'transparent', color: view === v ? '#111' : '#888',
+                background: view === v ? 'var(--v2-surface)' : 'transparent', color: view === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                 boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
               }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
             ))}
@@ -209,25 +209,25 @@ export default function PlannerPage() {
 
       {view === 'lista' && (
         <>
-          {filtrados.length === 0 && <p style={{ textAlign: 'center', padding: 60, color: '#aaa', background: '#fff', borderRadius: 14, border: '1px solid #eee' }}>Nenhum post ainda.</p>}
+          {filtrados.length === 0 && <p style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>Nenhum post ainda.</p>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
             {filtrados.map(post => {
               const capa = capaDoPost(post)
               const dataMostrar = post.status === 'agendado' ? (post.dataAgendada || post.criadoEm) : (post.atualizadoEm || post.criadoEm)
               return (
-                <div key={post.id} onClick={() => setPreview(post)} style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: '1px solid #eee' }}>
-                  <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: '#f4f4f4', position: 'relative', overflow: 'hidden' }}>
-                    {capa ? <ImagemComFallback src={capa} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 11 }}>Sem imagem</div>}
+                <div key={post.id} onClick={() => setPreview(post)} style={{ background: 'var(--v2-surface)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--v2-rule)' }}>
+                  <div style={{ width: '100%', aspectRatio: post.formato === 'story' || post.formato === 'reel' ? '9/16' : '4/5', background: 'var(--v2-surface1)', position: 'relative', overflow: 'hidden' }}>
+                    {capa ? <ImagemComFallback src={capa} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 11 }}>Sem imagem</div>}
                   </div>
                   <div style={{ padding: 9 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
-                      <span style={{ background: STATUS_COLOR[post.status] || '#eee', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
+                      <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
                         {STATUS_LABEL[post.status] || post.status}
                       </span>
                     </div>
-                    <p style={{ margin: '0 0 5px', fontSize: 10, color: '#aaa' }}>{dataMostrar ? new Date(dataMostrar).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: '#888', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.legenda}</p>
+                    <p style={{ margin: '0 0 5px', fontSize: 10, color: 'var(--v2-ink3)' }}>{dataMostrar ? new Date(dataMostrar).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.legenda}</p>
                   </div>
                 </div>
               )
@@ -239,10 +239,10 @@ export default function PlannerPage() {
       {/* Modal novo post / editar */}
       {(novoPost || editPost) && (
         <div onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>{editPost ? 'Editar postagem' : 'Nova postagem'}</h3>
-              <button onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{editPost ? 'Editar postagem' : 'Nova postagem'}</h3>
+              <button onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
             </div>
             <PostComposer
               clientes={clientes}
@@ -272,7 +272,7 @@ export default function PlannerPage() {
       {/* Modal de preview */}
       {preview && (
         <div onClick={fecharFora(() => setPreview(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 420, width: '100%', overflowY: 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             {preview.imagens?.[0] && (() => {
               const imgs: string[] = preview.imagens
               const idx = Math.min(previewSlide, imgs.length - 1)
@@ -280,7 +280,7 @@ export default function PlannerPage() {
               const ehVideo = /\.(mp4|mov|m4v)(\?|$)/i.test(m)
               const ratio = preview.formato === 'story' || preview.formato === 'reel' ? '9/16' : '4/5'
               return (
-                <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, maxHeight: '46vh', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: ratio, maxHeight: '46vh', background: 'var(--v2-ink)', overflow: 'hidden', flexShrink: 0 }}>
                   {ehVideo
                     ? <video src={m} poster={(preview.capasVideo || {})[m]} controls playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -288,20 +288,20 @@ export default function PlannerPage() {
                     <>
                       {idx > 0 && (
                         <button type="button" onClick={() => setPreviewSlide(idx - 1)} aria-label="Anterior"
-                          style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                          style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                         </button>
                       )}
                       {idx < imgs.length - 1 && (
                         <button type="button" onClick={() => setPreviewSlide(idx + 1)} aria-label="Próxima"
-                          style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                          style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                         </button>
                       )}
-                      <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{idx + 1}/{imgs.length}</div>
+                      <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{idx + 1}/{imgs.length}</div>
                       <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
                         {imgs.map((_, i) => (
-                          <span key={i} onClick={() => setPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === idx ? '#fff' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
+                          <span key={i} onClick={() => setPreviewSlide(i)} style={{ width: 6, height: 6, borderRadius: '50%', background: i === idx ? 'var(--v2-surface)' : 'rgba(255,255,255,0.5)', boxShadow: '0 0 2px rgba(0,0,0,0.4)', cursor: 'pointer' }} />
                         ))}
                       </div>
                     </>
@@ -334,13 +334,13 @@ export default function PlannerPage() {
                   </>
                 )}
               </div>
-              <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-              {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: '#aaa' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
+              <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--v2-rule)', paddingTop: 12 }}>
+              {preview.dataAgendada && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(preview.dataAgendada).toLocaleString('pt-BR')}</p>}
               {preview.status === 'falha_publicacao' && preview.erroPublicacao && (
-                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 8, padding: '8px 10px' }}>Erro: {preview.erroPublicacao}</p>
               )}
               {(preview.status === 'corrigir' || preview.status === 'reprovado') && (preview.motivoReprovacao || (Array.isArray(preview.anotacoes) && preview.anotacoes.length > 0)) && (
-                <div style={{ margin: '0 0 10px', fontSize: 12.5, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                <div style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
                   <strong>{preview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
                   {preview.motivoReprovacao && <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{preview.motivoReprovacao}</div>}
                   {Array.isArray(preview.anotacoes) && preview.anotacoes.length > 0 && (
@@ -358,10 +358,10 @@ export default function PlannerPage() {
               {(preview.status === 'rascunho' || preview.status === 'agendado' || preview.status === 'falha_publicacao' || preview.status === 'aguardando_aprovacao' || preview.status === 'corrigir' || preview.status === 'reprovado') && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <button onClick={() => abrirEdicao(preview)} style={{ flex: 1, padding: '10px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+                  <button onClick={() => excluirPost(preview.id)} style={{ flex: 1, padding: '10px 0', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
                 </div>
               )}
-              <button onClick={() => setPreview(null)} style={{ width: '100%', padding: '10px 0', background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+              <button onClick={() => setPreview(null)} style={{ width: '100%', padding: '10px 0', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
               </div>
             </div>
           </div>
@@ -370,30 +370,30 @@ export default function PlannerPage() {
 
       {/* Card flutuante de publicacao em segundo plano (com barra de progresso) */}
       {pubBg && (
-        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 320, background: '#fff', borderRadius: 14, boxShadow: '0 10px 36px rgba(0,0,0,0.20)', padding: 14, zIndex: 2000 }}>
+        <div style={{ position: 'fixed', right: 20, bottom: 20, width: 320, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 10px 36px rgba(0,0,0,0.20)', padding: 14, zIndex: 2000 }}>
           <style>{`@keyframes somaBarIndet { 0% { left: -40% } 100% { left: 100% } }`}</style>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {pubBg.capa
-              ? <div style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#f4f4f4' }}><ImagemComFallback src={pubBg.capa} /></div>
-              : <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f4f4f4', flexShrink: 0 }} />}
+              ? <div style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--v2-surface1)' }}><ImagemComFallback src={pubBg.capa} /></div>
+              : <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--v2-surface1)', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pubBg.titulo}</div>
-              <div style={{ fontSize: 11, color: pubBg.status === 'ok' ? '#16a34a' : pubBg.status === 'falha' ? '#dc2626' : '#666', marginTop: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pubBg.titulo}</div>
+              <div style={{ fontSize: 11, color: pubBg.status === 'ok' ? 'var(--v2-ok)' : pubBg.status === 'falha' ? 'var(--v2-hot)' : 'var(--v2-ink2)', marginTop: 1 }}>
                 {pubBg.status === 'publicando' ? 'Publicando nas redes...' : pubBg.status === 'ok' ? 'Publicado com sucesso!' : 'Falha ao publicar'}
               </div>
             </div>
             {pubBg.status !== 'publicando' && (
-              <button onClick={() => setPubBg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 16, padding: 2, lineHeight: 1 }}>×</button>
+              <button onClick={() => setPubBg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 16, padding: 2, lineHeight: 1 }}>×</button>
             )}
           </div>
           {pubBg.status === 'publicando' && (
-            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: '#eee', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', borderRadius: 999, background: corCliente, animation: 'somaBarIndet 1.2s infinite linear' }} />
             </div>
           )}
           {pubBg.status === 'falha' && (
             <>
-              <p style={{ margin: '8px 0', fontSize: 11, color: '#b91c1c', lineHeight: 1.4 }}>{pubBg.error}</p>
+              <p style={{ margin: '8px 0', fontSize: 11, color: 'var(--v2-hot)', lineHeight: 1.4 }}>{pubBg.error}</p>
               <button onClick={() => publicarEmBackground(pubBg.id, pubBg.titulo, pubBg.capa)} style={{ width: '100%', padding: '8px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Tentar de novo</button>
             </>
           )}

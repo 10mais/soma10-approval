@@ -306,7 +306,7 @@ export default function AssistenteIA() {
           style={{
             position: 'fixed', right: 20, bottom: fabBottom, zIndex: 3500,
             width: 56, height: 56, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: '#ffc00f', color: '#111',
+            background: 'var(--v2-amber-on)', color: '#17150E',
             boxShadow: '0 8px 24px rgba(0,0,0,0.28)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
@@ -324,54 +324,54 @@ export default function AssistenteIA() {
           style={{
             position: 'fixed', right: 20, bottom: 20, zIndex: 3500,
             width: 'min(400px, calc(100vw - 40px))', height: 'min(620px, calc(100vh - 40px))',
-            background: '#fff', borderRadius: 16, boxShadow: '0 16px 48px rgba(0,0,0,0.26)',
+            background: 'var(--v2-surface)', borderRadius: 16, boxShadow: '0 16px 48px rgba(0,0,0,0.26)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            border: '1px solid #ececec',
+            border: '1px solid var(--v2-rule)',
           }}
         >
           {/* Cabecalho */}
-          <div style={{ background: '#111', color: '#fff', padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,192,15,0.16)', color: '#ffc00f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ background: 'var(--v2-ink)', color: 'var(--v2-surface)', padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,192,15,0.16)', color: 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
               </svg>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? agenteAtivo.nome : (ehVendas ? 'Assistente de Vendas' : 'Assistente de IA')}</p>
-              <p style={{ margin: 0, fontSize: 11, color: '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? (agenteAtivo.funcao || 'Agente treinado') : (ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema')}</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agenteAtivo ? (agenteAtivo.funcao || 'Agente treinado') : (ehVendas ? 'Funil, prospecção e fechamento' : 'Copy, ideias e dados do sistema')}</p>
             </div>
-            <button onClick={() => setHistAberto(v => !v)} title="Conversas salvas" style={{ background: 'none', border: 'none', color: histAberto ? '#ffc00f' : '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
+            <button onClick={() => setHistAberto(v => !v)} title="Conversas salvas" style={{ background: 'none', border: 'none', color: histAberto ? 'var(--v2-amber-on)' : 'var(--v2-ink3)', cursor: 'pointer', padding: 4, display: 'flex' }}>
               <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 8v4l3 2" /><circle cx="12" cy="12" r="9" />
               </svg>
             </button>
             {msgs.length > 0 && (
-              <button onClick={limpar} title="Nova conversa (esta fica salva no histórico)" style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <button onClick={limpar} title="Nova conversa (esta fica salva no histórico)" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                 <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </button>
             )}
-            <button onClick={() => setAberto(false)} title="Fechar" aria-label="Fechar assistente" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 2px' }}>×</button>
+            <button onClick={() => setAberto(false)} title="Fechar" aria-label="Fechar assistente" style={{ background: 'none', border: 'none', color: 'var(--v2-surface)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 2px' }}>×</button>
           </div>
 
           {/* Conversas salvas — cada uma fica no servidor, não no navegador */}
           {histAberto && (
-            <div style={{ borderBottom: '1px solid #f0f0f0', background: '#fff', maxHeight: 240, overflowY: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f7f7f7' }}>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: '#888', flex: 1 }}>CONVERSAS SALVAS</span>
-                <button onClick={novaConversa} style={{ padding: '4px 10px', background: '#111', color: '#fff', border: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>+ Nova</button>
+            <div style={{ borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', maxHeight: 240, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--v2-surface1)' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)', flex: 1 }}>CONVERSAS SALVAS</span>
+                <button onClick={novaConversa} style={{ padding: '4px 10px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>+ Nova</button>
               </div>
-              {historico.length === 0 && <p style={{ margin: 0, padding: '12px', fontSize: 12, color: '#aaa' }}>Nenhuma conversa salva ainda.</p>}
+              {historico.length === 0 && <p style={{ margin: 0, padding: '12px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma conversa salva ainda.</p>}
               {historico.map(c => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid #f7f7f7', background: c.id === convId ? '#fffbeb' : 'transparent' }}>
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--v2-surface1)', background: c.id === convId ? 'var(--v2-amber-bg)' : 'transparent' }}>
                   <button onClick={() => abrirConversa(c.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    <span style={{ display: 'block', fontSize: 12.5, color: '#222', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.titulo}</span>
-                    <span style={{ display: 'block', fontSize: 10.5, color: '#aaa' }}>
+                    <span style={{ display: 'block', fontSize: 12.5, color: 'var(--v2-ink)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.titulo}</span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--v2-ink3)' }}>
                       {c.agenteNome ? `${c.agenteNome} · ` : ''}{new Date(c.atualizadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </button>
-                  <button onClick={() => excluirConversa(c.id)} title="Excluir esta conversa" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>×</button>
+                  <button onClick={() => excluirConversa(c.id)} title="Excluir esta conversa" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>×</button>
                 </div>
               ))}
             </div>
@@ -379,9 +379,9 @@ export default function AssistenteIA() {
 
           {/* Seletor de agente treinado */}
           {agentes.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#888', flexShrink: 0 }}>Falar com</span>
-              <select value={agenteId} onChange={e => trocarAgente(e.target.value)} style={{ flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', flexShrink: 0 }}>Falar com</span>
+              <select value={agenteId} onChange={e => trocarAgente(e.target.value)} style={{ flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
                 <option value="">Assistente padrão</option>
                 {agentes.map(a => <option key={a.id} value={a.id}>{a.nome}{a.funcao ? ` — ${a.funcao}` : ''}</option>)}
               </select>
@@ -389,10 +389,10 @@ export default function AssistenteIA() {
           )}
 
           {/* Mensagens */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#fafafa' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: 'var(--v2-surface1)' }}>
             {msgs.length === 0 && (
-              <div style={{ color: '#888', fontSize: 13, lineHeight: 1.6 }}>
-                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#555' }}>{agenteAtivo ? `Olá! Sou ${agenteAtivo.nome}.${agenteAtivo.descricao ? ` ${agenteAtivo.descricao}` : ''}` : 'Olá! Como posso ajudar?'}</p>
+              <div style={{ color: 'var(--v2-ink3)', fontSize: 13, lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 10px', fontWeight: 700, color: 'var(--v2-ink2)' }}>{agenteAtivo ? `Olá! Sou ${agenteAtivo.nome}.${agenteAtivo.descricao ? ` ${agenteAtivo.descricao}` : ''}` : 'Olá! Como posso ajudar?'}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                   {[
                     ...(ehVendas ? [
@@ -411,7 +411,7 @@ export default function AssistenteIA() {
                     ]),
                   ].map((s, i) => (
                     <button key={i} onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 30) }}
-                      style={{ textAlign: 'left', background: '#fff', border: '1px solid #eaeaea', borderRadius: 10, padding: '9px 12px', fontSize: 12.5, color: '#444', cursor: 'pointer' }}>
+                      style={{ textAlign: 'left', background: 'var(--v2-surface)', border: '1px solid #eaeaea', borderRadius: 10, padding: '9px 12px', fontSize: 12.5, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
                       {s}
                     </button>
                   ))}
@@ -423,9 +423,9 @@ export default function AssistenteIA() {
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12, gap: 8 }}>
                 <div style={{
                   maxWidth: '88%', padding: '9px 13px', borderRadius: 13, fontSize: 13, lineHeight: 1.55,
-                  background: m.role === 'user' ? '#111' : '#fff',
-                  color: m.role === 'user' ? '#fff' : '#222',
-                  border: m.role === 'user' ? 'none' : '1px solid #ececec',
+                  background: m.role === 'user' ? 'var(--v2-ink)' : 'var(--v2-surface)',
+                  color: m.role === 'user' ? 'var(--v2-surface)' : 'var(--v2-ink)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--v2-surface2)',
                   borderBottomRightRadius: m.role === 'user' ? 4 : 13,
                   borderBottomLeftRadius: m.role === 'user' ? 13 : 4,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -449,21 +449,21 @@ export default function AssistenteIA() {
                 {m.propostas && m.propostas.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '88%' }}>
                     {m.propostas.map(p => (
-                      <div key={p.id} style={{ border: `1.5px solid ${p.estado === 'feito' ? '#bbf7d0' : p.estado === 'erro' ? '#fecaca' : '#e5e7eb'}`, borderRadius: 12, padding: '10px 12px', background: '#fff' }}>
+                      <div key={p.id} style={{ border: `1.5px solid ${p.estado === 'feito' ? 'var(--v2-ok-bg)' : p.estado === 'erro' ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)'}`, borderRadius: 12, padding: '10px 12px', background: 'var(--v2-surface)' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: p.estado === 'pendente' ? 9 : 4 }}>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" /></svg>
-                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#111', lineHeight: 1.4 }}>{p.resumo}</span>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)', lineHeight: 1.4 }}>{p.resumo}</span>
                         </div>
                         {p.estado === 'pendente' && (
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => confirmarAcao(i, p.id)} style={{ padding: '7px 14px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Confirmar</button>
-                            <button onClick={() => descartarAcao(i, p.id)} style={{ padding: '7px 12px', background: '#fff', color: '#888', border: '1px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Descartar</button>
+                            <button onClick={() => confirmarAcao(i, p.id)} style={{ padding: '7px 14px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Confirmar</button>
+                            <button onClick={() => descartarAcao(i, p.id)} style={{ padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Descartar</button>
                           </div>
                         )}
-                        {p.estado === 'executando' && <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Executando…</span>}
-                        {p.estado === 'feito' && <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>✓ {p.msg || 'Feito.'}</span>}
-                        {p.estado === 'erro' && <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{p.msg || 'Falha.'}</span>}
-                        {p.estado === 'cancelado' && <span style={{ fontSize: 12, color: '#aaa', fontWeight: 600 }}>Descartado</span>}
+                        {p.estado === 'executando' && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>Executando…</span>}
+                        {p.estado === 'feito' && <span style={{ fontSize: 12, color: 'var(--v2-ok)', fontWeight: 700 }}>✓ {p.msg || 'Feito.'}</span>}
+                        {p.estado === 'erro' && <span style={{ fontSize: 12, color: 'var(--v2-hot)', fontWeight: 700 }}>{p.msg || 'Falha.'}</span>}
+                        {p.estado === 'cancelado' && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>Descartado</span>}
                       </div>
                     ))}
                   </div>
@@ -475,26 +475,26 @@ export default function AssistenteIA() {
 
           {/* Prints anexados aguardando envio */}
           {(pendImgs.length > 0 || subindoImg) && (
-            <div style={{ borderTop: '1px solid #eee', padding: '8px 10px 0', background: '#fff', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '8px 10px 0', background: 'var(--v2-surface)', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               {pendImgs.map((u, k) => (
                 <div key={k} style={{ position: 'relative' }}>
-                  <img src={u} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }} />
+                  <img src={u} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--v2-rule)' }} />
                   <button onClick={() => setPendImgs(p => p.filter((_, j) => j !== k))} title="Remover"
-                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#111', color: '#fff', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>×</button>
+                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: 'none', background: 'var(--v2-ink)', color: 'var(--v2-surface)', fontSize: 11, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>×</button>
                 </div>
               ))}
-              {subindoImg && <span style={{ fontSize: 11.5, color: '#888', fontWeight: 600 }}>Enviando print…</span>}
+              {subindoImg && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 600 }}>Enviando print…</span>}
             </div>
           )}
           {/* Entrada */}
-          <div style={{ borderTop: pendImgs.length || subindoImg ? 'none' : '1px solid #eee', padding: 10, background: '#fff', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div style={{ borderTop: pendImgs.length || subindoImg ? 'none' : '1px solid var(--v2-surface2)', padding: 10, background: 'var(--v2-surface)', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => anexarImagens(e.target.files)} />
             <button
               onClick={() => fileRef.current?.click()}
               disabled={subindoImg || pendImgs.length >= 4}
               title="Anexar print (a IA lê a imagem)"
               aria-label="Anexar imagem"
-              style={{ width: 40, height: 40, borderRadius: 11, border: '1px solid #e2e2e2', flexShrink: 0, background: '#fff', color: subindoImg || pendImgs.length >= 4 ? '#ccc' : '#666', cursor: subindoImg || pendImgs.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ width: 40, height: 40, borderRadius: 11, border: '1px solid var(--v2-rule)', flexShrink: 0, background: 'var(--v2-surface)', color: subindoImg || pendImgs.length >= 4 ? 'var(--v2-ink3)' : 'var(--v2-ink2)', cursor: subindoImg || pendImgs.length >= 4 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
               </svg>
@@ -506,7 +506,7 @@ export default function AssistenteIA() {
               onKeyDown={onKeyDown}
               placeholder="Escreva sua mensagem..."
               rows={1}
-              style={{ flex: 1, resize: 'none', maxHeight: 120, border: '1px solid #e2e2e2', borderRadius: 11, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', lineHeight: 1.4 }}
+              style={{ flex: 1, resize: 'none', maxHeight: 120, border: '1px solid var(--v2-rule)', borderRadius: 11, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none', lineHeight: 1.4 }}
             />
             <button
               onClick={enviar}
@@ -515,8 +515,8 @@ export default function AssistenteIA() {
               aria-label="Enviar mensagem"
               style={{
                 width: 40, height: 40, borderRadius: 11, border: 'none', flexShrink: 0,
-                background: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? '#eee' : '#111',
-                color: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? '#aaa' : '#ffc00f',
+                background: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? 'var(--v2-surface2)' : 'var(--v2-ink)',
+                color: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? 'var(--v2-ink3)' : 'var(--v2-amber-on)',
                 cursor: (!input.trim() && !pendImgs.length) || carregando || subindoImg ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -533,5 +533,5 @@ export default function AssistenteIA() {
 }
 
 function Dot({ d = 0 }: { d?: number }) {
-  return <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#bbb', display: 'inline-block', animation: 'shimmer 1s infinite', animationDelay: `${d}s` }} />
+  return <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--v2-rule2)', display: 'inline-block', animation: 'shimmer 1s infinite', animationDelay: `${d}s` }} />
 }

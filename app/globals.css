@@ -128,7 +128,10 @@ aside,
    Convivência: o container .soma10-v2 leva também .soma10-no-invert,
    que cancela o invert da raiz — dentro dele valem estes tokens.
    ============================================================ */
-.soma10-v2 {
+:root, .soma10-v2[data-theme="light"] {
+  --v2-surface1: #F9F8F4;
+  --v2-info:     #1D4ED8;
+  --v2-info-bg:  rgba(29,78,216,0.10);
   --v2-ground:   #F5F4EF;
   --v2-surface:  #FFFFFF;
   --v2-surface2: #ECEAE2;
@@ -147,7 +150,10 @@ aside,
   --v2-font:     var(--font-outfit, "Outfit"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
-.soma10-v2[data-theme="dark"] {
+:root[data-theme="dark"], .soma10-v2[data-theme="dark"] {
+  --v2-surface1: #1A1912;
+  --v2-info:     #7FA6F5;
+  --v2-info-bg:  rgba(127,166,245,0.14);
   --v2-ground:   #0F0E0A;
   --v2-surface:  #16150F;
   --v2-surface2: #1E1C15;

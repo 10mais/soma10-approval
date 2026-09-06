@@ -27,12 +27,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  rascunho: { bg: '#f0f0f0', color: '#888' },
-  aguardando_aprovacao: { bg: '#fef3c7', color: '#b45309' },
-  aprovado: { bg: '#dcfce7', color: '#15803d' },
+  rascunho: { bg: 'var(--v2-surface2)', color: 'var(--v2-ink3)' },
+  aguardando_aprovacao: { bg: 'var(--v2-amber-bg)', color: 'var(--v2-amber)' },
+  aprovado: { bg: 'var(--v2-ok-bg)', color: 'var(--v2-ok)' },
   corrigir: { bg: '#fff3cd', color: '#92660a' },
-  reprovado: { bg: '#fee2e2', color: '#b91c1c' },
-  publicado: { bg: '#dbeafe', color: '#1d4ed8' },
+  reprovado: { bg: 'var(--v2-hot-bg)', color: 'var(--v2-hot)' },
+  publicado: { bg: 'var(--v2-info-bg)', color: 'var(--v2-info)' },
 }
 
 export default function PortalPage() {
@@ -68,7 +68,7 @@ export default function PortalPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 14 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 14 }}>
         Carregando...
       </div>
     )
@@ -83,18 +83,18 @@ export default function PortalPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
       {/* Header */}
-      <header style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <header style={{ background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 12, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <img src="/logo.svg" alt="Soma10" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111' }}>Portal do Cliente</h1>
-            {clienteNome && <p style={{ margin: 0, fontSize: 12, color: '#999' }}>{clienteNome}</p>}
+            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)' }}>Portal do Cliente</h1>
+            {clienteNome && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{clienteNome}</p>}
           </div>
         </div>
         <button onClick={() => signOut({ callbackUrl: '/login' })}
-          style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #e0e0e0', background: '#fff', color: '#666', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           Sair
         </button>
       </header>
@@ -110,9 +110,9 @@ export default function PortalPage() {
             <button key={tab.key} onClick={() => setView(tab.key as any)}
               style={{
                 padding: '9px 18px', borderRadius: 10, border: '1px solid', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                borderColor: view === tab.key ? '#111' : '#e0e0e0',
-                background: view === tab.key ? '#111' : '#fff',
-                color: view === tab.key ? '#ffc00f' : '#666',
+                borderColor: view === tab.key ? 'var(--v2-ink)' : 'var(--v2-rule)',
+                background: view === tab.key ? 'var(--v2-ink)' : 'var(--v2-surface)',
+                color: view === tab.key ? 'var(--v2-amber-on)' : 'var(--v2-ink2)',
               }}>
               {tab.label}
             </button>
@@ -153,8 +153,8 @@ export default function PortalPage() {
 
 function EmptyState({ texto }: { texto: string }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', padding: '60px 20px', textAlign: 'center' }}>
-      <p style={{ margin: 0, color: '#aaa', fontSize: 14 }}>{texto}</p>
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', padding: '60px 20px', textAlign: 'center' }}>
+      <p style={{ margin: 0, color: 'var(--v2-ink3)', fontSize: 14 }}>{texto}</p>
     </div>
   )
 }
@@ -166,11 +166,11 @@ function PostCard({ post, destaque }: { post: Post; destaque?: boolean }) {
   return (
     <Link href={`/aprovar/${post.id}`} style={{ textDecoration: 'none' }}>
       <div style={{
-        background: '#fff', borderRadius: 14, border: destaque ? '1.5px solid #ffc00f' : '1px solid #eee',
+        background: 'var(--v2-surface)', borderRadius: 14, border: destaque ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-surface2)',
         overflow: 'hidden', transition: 'box-shadow .15s', cursor: 'pointer',
       }}>
         {post.imagens?.[0] && (
-          <div style={{ width: '100%', aspectRatio: '1', background: '#f4f4f4', overflow: 'hidden' }}>
+          <div style={{ width: '100%', aspectRatio: '1', background: 'var(--v2-surface1)', overflow: 'hidden' }}>
             <img src={post.imagens[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           </div>
         )}
@@ -179,15 +179,15 @@ function PostCard({ post, destaque }: { post: Post; destaque?: boolean }) {
             <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, background: st.bg, color: st.color }}>
               {STATUS_LABEL[post.status] || post.status}
             </span>
-            {post.imagens?.length > 1 && <span style={{ fontSize: 11, color: '#aaa' }}>{post.imagens.length} imagens</span>}
+            {post.imagens?.length > 1 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{post.imagens.length} imagens</span>}
           </div>
           <p style={{
-            margin: 0, fontSize: 13, color: '#444', lineHeight: 1.5,
+            margin: 0, fontSize: 13, color: 'var(--v2-ink2)', lineHeight: 1.5,
             display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}>
             {post.legenda}
           </p>
-          {data && <p style={{ margin: '10px 0 0', fontSize: 12, color: '#aaa' }}>Agendado para {data}</p>}
+          {data && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Agendado para {data}</p>}
         </div>
       </div>
     </Link>

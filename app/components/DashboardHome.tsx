@@ -20,20 +20,20 @@ const META_EXC = 18
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 function faixaStatus(qtd: number): { label: string; cor: string; bg: string } {
-  if (qtd >= META_EXC) return { label: 'Destaque', cor: '#92400e', bg: '#fef3c7' }
-  if (qtd >= META_BOA) return { label: 'Excelente', cor: '#166534', bg: '#dcfce7' }
-  if (qtd >= META_MIN) return { label: 'Saudável', cor: '#16a34a', bg: '#f0fdf4' }
-  if (qtd >= 8) return { label: 'Atenção', cor: '#a16207', bg: '#fffbeb' }
-  return { label: 'Crítico', cor: '#b91c1c', bg: '#fef2f2' }
+  if (qtd >= META_EXC) return { label: 'Destaque', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+  if (qtd >= META_BOA) return { label: 'Excelente', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (qtd >= META_MIN) return { label: 'Saudável', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (qtd >= 8) return { label: 'Atenção', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+  return { label: 'Crítico', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
 }
 
 function barPct(qtd: number): number { return Math.min(100, Math.round((qtd / META_EXC) * 100)) }
 function barCor(qtd: number): string {
-  if (qtd >= META_EXC) return '#ffc00f'
-  if (qtd >= META_BOA) return '#16a34a'
-  if (qtd >= META_MIN) return '#22c55e'
-  if (qtd >= 8) return '#f59e0b'
-  return '#ef4444'
+  if (qtd >= META_EXC) return 'var(--v2-amber-on)'
+  if (qtd >= META_BOA) return 'var(--v2-ok)'
+  if (qtd >= META_MIN) return 'var(--v2-ok)'
+  if (qtd >= 8) return 'var(--v2-amber-on)'
+  return 'var(--v2-hot)'
 }
 
 function temSocialMedia(c: Cliente): boolean {
@@ -48,7 +48,7 @@ type VeiculoLite = { id: string; nome?: string; layout?: LayoutVeiculo }
 
 // Ícone WhatsApp (SVG — sem emoji, regra do produto)
 const IconWhats = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2.1c0 .2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.3-.1.6.2.3.8 1.4 1.8 2.2 1.2 1.1 2.3 1.4 2.6 1.6.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.6.3 0 .2 0 .8-.2 1.4Z"/></svg>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--v2-ok)"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2.1c0 .2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.3-.1.6.2.3.8 1.4 1.8 2.2 1.2 1.1 2.3 1.4 2.6 1.6.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.6.3 0 .2 0 .8-.2 1.4Z"/></svg>
 )
 
 export default function DashboardHome({ clientes, posts, onVerCliente, onIr, perfilClinica = false, perfilTurismo = false, perfilTelefonia = false, lojaAtiva = '' }: {
@@ -248,49 +248,49 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Painel — Varejo</h1>
-          <p style={{ margin: '4px 0 0', color: '#888', fontSize: 14 }}>{lojaAtiva ? 'Loja selecionada' : 'Todas as lojas (rede)'} · {MESES[mesAtual]} de {anoAtual}</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>Painel — Varejo</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{lojaAtiva ? 'Loja selecionada' : 'Todas as lojas (rede)'} · {MESES[mesAtual]} de {anoAtual}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Vendas hoje', valor: String(vendasHojeTel.length), cor: '#111' },
-            { label: 'Faturamento hoje', valor: brl(totalHojeTel), cor: '#16a34a' },
-            { label: 'Ticket médio (hoje)', valor: brl(ticketTel), cor: '#111' },
-            { label: 'Estoque baixo', valor: String(baixoEstoqueTel.length), cor: baixoEstoqueTel.length ? '#b91c1c' : '#16a34a' },
+            { label: 'Vendas hoje', valor: String(vendasHojeTel.length), cor: 'var(--v2-ink)' },
+            { label: 'Faturamento hoje', valor: brl(totalHojeTel), cor: 'var(--v2-ok)' },
+            { label: 'Ticket médio (hoje)', valor: brl(ticketTel), cor: 'var(--v2-ink)' },
+            { label: 'Estoque baixo', valor: String(baixoEstoqueTel.length), cor: baixoEstoqueTel.length ? 'var(--v2-hot)' : 'var(--v2-ok)' },
           ].map(k => (
-            <div key={k.label} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 16 }}>
-              <div style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{k.label}</div>
+            <div key={k.label} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 800, color: k.cor, marginTop: 4 }}>{k.valor}</div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 13, color: '#999' }}>Faturamento no mês: <strong style={{ color: '#111' }}>{brl(receitaMesTel)}</strong> · {vendasMesTel.length} venda(s)</div>
+        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Faturamento no mês: <strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMesTel)}</strong> · {vendasMesTel.length} venda(s)</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 18 }}>
+          <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>Mais vendidos no mês</h2>
-              {onIr && <button onClick={() => onIr('vendas')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ir ao PDV</button>}
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>Mais vendidos no mês</h2>
+              {onIr && <button onClick={() => onIr('vendas')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ir ao PDV</button>}
             </div>
-            {topProdutosTel.length === 0 ? <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Nenhuma venda no mês ainda.</p> : (
+            {topProdutosTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Nenhuma venda no mês ainda.</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {topProdutosTel.map((p, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ width: 20, fontSize: 13, fontWeight: 800, color: '#bbb' }}>{i + 1}</span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#666' }}>{p.qtd} un.</span>
+                    <span style={{ width: 20, fontSize: 13, fontWeight: 800, color: 'var(--v2-ink3)' }}>{i + 1}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>{p.qtd} un.</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ background: baixoEstoqueTel.length ? '#fffbeb' : '#fff', border: `1px solid ${baixoEstoqueTel.length ? '#fde68a' : '#eee'}`, borderRadius: 14, padding: 18 }}>
+          <div style={{ background: baixoEstoqueTel.length ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', border: `1px solid ${baixoEstoqueTel.length ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)'}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: baixoEstoqueTel.length ? '#92400e' : '#111' }}>Estoque baixo</h2>
-              {onIr && <button onClick={() => onIr('produtos')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver estoque</button>}
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: baixoEstoqueTel.length ? 'var(--v2-amber)' : 'var(--v2-ink)' }}>Estoque baixo</h2>
+              {onIr && <button onClick={() => onIr('produtos')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver estoque</button>}
             </div>
-            {baixoEstoqueTel.length === 0 ? <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Tudo acima do mínimo.</p> : (
+            {baixoEstoqueTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Tudo acima do mínimo.</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {baixoEstoqueTel.slice(0, 6).map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7c2d12' }}>
@@ -305,7 +305,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {([['vendas', 'PDV / Vendas'], ['produtos', 'Produtos'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
-            onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer' }}>{label}</button> : null
+            onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>
       </div>
@@ -316,47 +316,47 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#111' }}>Painel — Operação</h1>
-          <p style={{ margin: '4px 0 0', color: '#888', fontSize: 14 }}>{MESES[mesAtual]} de {anoAtual}</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>Painel — Operação</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{MESES[mesAtual]} de {anoAtual}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Próximas saídas', valor: String(proximasSaidas.length), cor: '#111' },
-            { label: 'Reservas no mês', valor: String(reservasDoMes.length), cor: '#111' },
-            { label: 'Ocupação média', valor: `${ocupacaoMedia}%`, cor: ocupacaoMedia >= 60 ? '#16a34a' : ocupacaoMedia >= 35 ? '#a16207' : '#b91c1c' },
-            { label: 'A receber', valor: brl(aReceber), cor: '#16a34a' },
+            { label: 'Próximas saídas', valor: String(proximasSaidas.length), cor: 'var(--v2-ink)' },
+            { label: 'Reservas no mês', valor: String(reservasDoMes.length), cor: 'var(--v2-ink)' },
+            { label: 'Ocupação média', valor: `${ocupacaoMedia}%`, cor: ocupacaoMedia >= 60 ? 'var(--v2-ok)' : ocupacaoMedia >= 35 ? 'var(--v2-amber)' : 'var(--v2-hot)' },
+            { label: 'A receber', valor: brl(aReceber), cor: 'var(--v2-ok)' },
           ].map(k => (
-            <div key={k.label} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 16 }}>
-              <div style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{k.label}</div>
+            <div key={k.label} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 800, color: k.cor, marginTop: 4 }}>{k.valor}</div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 13, color: '#999' }}>Receita reservada no mês: <strong style={{ color: '#111' }}>{brl(receitaMes)}</strong></div>
+        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Receita reservada no mês: <strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMes)}</strong></div>
 
-        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 18 }}>
+        <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111' }}>Próximas saídas</h2>
-            {onIr && <button onClick={() => onIr('viagens')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver viagens</button>}
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>Próximas saídas</h2>
+            {onIr && <button onClick={() => onIr('viagens')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver viagens</button>}
           </div>
           {proximasSaidas.length === 0 ? (
-            <p style={{ color: '#aaa', fontSize: 13, margin: 0 }}>Nenhuma saída futura programada.</p>
+            <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Nenhuma saída futura programada.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {proximasSaidas.slice(0, 6).map(e => {
                 const cap = capacidadeDe(e.veiculoId); const pax = paxDaViagem(e.id); const pct = cap ? Math.round(pax / cap * 100) : 0
                 return (
                   <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ minWidth: 52, textAlign: 'center', background: '#f5f5f5', borderRadius: 8, padding: '6px 4px' }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>{dataCurta(e.dataIda)}</div>
+                    <div style={{ minWidth: 52, textAlign: 'center', background: 'var(--v2-surface1)', borderRadius: 8, padding: '6px 4px' }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{dataCurta(e.dataIda)}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.titulo}</div>
-                      <div style={{ height: 6, background: '#f0f0f0', borderRadius: 4, marginTop: 5, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: pct >= 60 ? '#16a34a' : pct >= 35 ? '#f59e0b' : '#ef4444' }} />
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.titulo}</div>
+                      <div style={{ height: 6, background: 'var(--v2-surface2)', borderRadius: 4, marginTop: 5, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: pct >= 60 ? 'var(--v2-ok)' : pct >= 35 ? 'var(--v2-amber-on)' : 'var(--v2-hot)' }} />
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: '#666', minWidth: 78, textAlign: 'right' }}>{cap ? `${pax}/${cap}` : `${pax} pax`} · {pct}%</div>
+                    <div style={{ fontSize: 12, color: 'var(--v2-ink2)', minWidth: 78, textAlign: 'right' }}>{cap ? `${pax}/${cap}` : `${pax} pax`} · {pct}%</div>
                   </div>
                 )
               })}
@@ -365,8 +365,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         </div>
 
         {saidasBaixaOcup.length > 0 && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: 16 }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#92400e' }}>Baixa ocupação — saídas em até 21 dias</h2>
+          <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 14, padding: 16 }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>Baixa ocupação — saídas em até 21 dias</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {saidasBaixaOcup.slice(0, 6).map(e => {
                 const cap = capacidadeDe(e.veiculoId); const pax = paxDaViagem(e.id)
@@ -378,7 +378,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {([['viagens', 'Viagens'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
-            onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer' }}>{label}</button> : null
+            onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>
       </div>
@@ -388,15 +388,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   if (perfilClinica) {
     return (
       <div>
-        <h2 style={{ margin: '0 0 16px', fontSize: 20, color: '#111' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
 
         {/* Atalhos */}
         {onIr && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
             {[{ aba: 'agenda', label: 'Agenda' }, { aba: 'crm', label: 'CRM' }, { aba: 'tarefas', label: 'Tarefas' }].map(a => (
-              <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#333', border: '1px solid #ececec', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {a.label}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
               </button>
             ))}
           </div>
@@ -405,9 +405,9 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         {/* KPIs da clínica */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
           {([
-            { label: 'Atendimentos hoje', valor: agsHoje.length, cor: '#111' },
-            { label: 'Aguardando confirmação', valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? '#a16207' : '#16a34a' },
-            { label: 'Pacientes ativos', valor: pacientesAtivos.length, cor: '#1d4ed8' },
+            { label: 'Atendimentos hoje', valor: agsHoje.length, cor: 'var(--v2-ink)' },
+            { label: 'Aguardando confirmação', valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? 'var(--v2-amber)' : 'var(--v2-ok)' },
+            { label: 'Pacientes ativos', valor: pacientesAtivos.length, cor: 'var(--v2-info)' },
             // Número que pede ação: abre a lista inteira do mês (o cartão ao lado
             // mostra só os primeiros), com ficha e WhatsApp de cada paciente.
             { label: 'Aniversariantes do mês', valor: aniversariantes.length, cor: '#7c3aed', acao: aniversariantes.length > 0 ? (() => setAnivAberto(true)) : undefined, dica: 'Ver todos os aniversariantes do mês' },
@@ -415,43 +415,43 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             <div key={kpi.label} onClick={kpi.acao} title={kpi.dica}
               role={kpi.acao ? 'button' : undefined} tabIndex={kpi.acao ? 0 : undefined}
               onKeyDown={kpi.acao ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kpi.acao!() } }) : undefined}
-              style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: kpi.acao ? 'pointer' : 'default' }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#888' }}>{kpi.label}</p>
+              style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: kpi.acao ? 'pointer' : 'default' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{kpi.label}</p>
               <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: kpi.cor }}>{kpi.valor}</p>
-              {kpi.acao && <p style={{ margin: '2px 0 0', fontSize: 11.5, fontWeight: 700, color: '#1d4ed8' }}>Ver lista</p>}
+              {kpi.acao && <p style={{ margin: '2px 0 0', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)' }}>Ver lista</p>}
             </div>
           ))}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 20 }}>
           {/* Próximas 24h */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Agendamentos das próximas 24h</h3>
-              {onIr && <button onClick={() => onIr('agenda')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir agenda</button>}
+              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Agendamentos das próximas 24h</h3>
+              {onIr && <button onClick={() => onIr('agenda')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir agenda</button>}
             </div>
-            {ags24.filter(a => a.status !== 'cancelado').length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum agendamento nas próximas 24 horas.</p>}
+            {ags24.filter(a => a.status !== 'cancelado').length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum agendamento nas próximas 24 horas.</p>}
             {ags24.filter(a => a.status !== 'cancelado').slice(0, 10).map(a => (
-              <div key={a.id} onClick={() => onIr?.('agenda')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#111', flexShrink: 0 }}>{ehHoje(a.dataInicio) ? '' : 'amanhã '}{new Date(a.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}{a.servico ? ` · ${a.servico}` : ''}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'confirmado' ? '#166534' : '#a16207', flexShrink: 0 }}>{a.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span>
+              <div key={a.id} onClick={() => onIr?.('agenda')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', flexShrink: 0 }}>{ehHoje(a.dataInicio) ? '' : 'amanhã '}{new Date(a.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}{a.servico ? ` · ${a.servico}` : ''}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'confirmado' ? 'var(--v2-ok)' : 'var(--v2-amber)', flexShrink: 0 }}>{a.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span>
               </div>
             ))}
           </div>
 
           {/* Aniversariantes do mês */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
-              {aniversariantes.length > 0 && <button onClick={() => setAnivAberto(true)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Ver todos ({aniversariantes.length})</button>}
+              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+              {aniversariantes.length > 0 && <button onClick={() => setAnivAberto(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Ver todos ({aniversariantes.length})</button>}
             </div>
-            {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum aniversariante este mês (preencha o nascimento no cadastro do paciente).</p>}
+            {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum aniversariante este mês (preencha o nascimento no cadastro do paciente).</p>}
             {aniversariantes.slice(0, 12).map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4' }}>
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
                 <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
-                  style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: '#333', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</button>
+                  style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</button>
                 {c.telefone && (
                   <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
                     style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><IconWhats /></button>
@@ -462,14 +462,14 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         </div>
 
         {/* Tarefas da semana */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Tarefas da semana</h3>
-          {tarefasSemana.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nada vencendo nos próximos 7 dias.</p>}
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>Tarefas da semana</h3>
+          {tarefasSemana.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nada vencendo nos próximos 7 dias.</p>}
           {tarefasSemana.map(t => { const atras = emDias(t.prazo) < 0; return (
-            <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? '#b91c1c' : '#a16207', flexShrink: 0 }}>{atras ? 'atrasada' : dataCurta(t.prazo)}</span>
+            <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? 'var(--v2-hot)' : 'var(--v2-amber-on)', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? 'var(--v2-hot)' : 'var(--v2-amber)', flexShrink: 0 }}>{atras ? 'atrasada' : dataCurta(t.prazo)}</span>
             </div>
           ) })}
         </div>
@@ -480,25 +480,25 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             a conversa de WhatsApp no CRM. */}
         {anivAberto && (
           <div onClick={fecharFora(() => setAnivAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }}>
+            <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 16, color: '#111' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Aniversariantes de {MESES[mesAtual]}</h3>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed' }}>{aniversariantes.length}</span>
                 <span style={{ flex: 1 }} />
-                <button onClick={() => setAnivAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+                <button onClick={() => setAnivAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1 }}>×</button>
               </div>
-              <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: '#999' }}>Clique no nome para abrir a ficha do paciente (dados e histórico de atendimentos). O ícone verde abre a conversa no WhatsApp.</p>
+              <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Clique no nome para abrir a ficha do paciente (dados e histórico de atendimentos). O ícone verde abre a conversa no WhatsApp.</p>
               <input value={buscaAniv} onChange={e => setBuscaAniv(e.target.value)} placeholder="Buscar por nome ou telefone"
-                style={{ width: '100%', padding: '9px 12px', border: '1px solid #e5e5e5', borderRadius: 10, fontSize: 13, outline: 'none' }} />
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 13, outline: 'none' }} />
               <div style={{ overflowY: 'auto', marginTop: 6 }}>
-                {anivFiltrados.length === 0 && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: '#aaa' }}>Nenhum aniversariante com esse nome ou telefone.</p>}
+                {anivFiltrados.length === 0 && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum aniversariante com esse nome ou telefone.</p>}
                 {anivFiltrados.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid #f4f4f4' }}>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0, minWidth: 38 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
                     <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
-                      <span style={{ display: 'block', fontSize: 11.5, color: '#888' }}>{c.telefone || 'sem telefone'}{c.tipo && c.tipo !== 'paciente' ? ` · ${c.tipo}` : ''}{c.ativo === false ? ' · inativo' : ''}</span>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{c.telefone || 'sem telefone'}{c.tipo && c.tipo !== 'paciente' ? ` · ${c.tipo}` : ''}{c.ativo === false ? ' · inativo' : ''}</span>
                     </button>
                     {c.telefone && (
                       <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
@@ -516,15 +516,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: '#111' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
+      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
 
       {/* Atalhos rápidos */}
       {onIr && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
           {atalhos.map(a => (
-            <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fff', color: '#333', border: '1px solid #ececec', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               {a.label}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
             </button>
           ))}
         </div>
@@ -533,13 +533,13 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Clientes ativos', valor: clientes.filter(c => c.tipo !== 'interno').length, cor: '#111' },
-          { label: 'Posts no mês', valor: postsMes.length, cor: '#16a34a' },
-          { label: 'Pautas na esteira', valor: pautasEsteira, cor: '#1d4ed8' },
-          { label: 'Falhas pendentes', valor: falhasPendentes, cor: falhasPendentes > 0 ? '#b91c1c' : '#16a34a' },
+          { label: 'Clientes ativos', valor: clientes.filter(c => c.tipo !== 'interno').length, cor: 'var(--v2-ink)' },
+          { label: 'Posts no mês', valor: postsMes.length, cor: 'var(--v2-ok)' },
+          { label: 'Pautas na esteira', valor: pautasEsteira, cor: 'var(--v2-info)' },
+          { label: 'Falhas pendentes', valor: falhasPendentes, cor: falhasPendentes > 0 ? 'var(--v2-hot)' : 'var(--v2-ok)' },
         ].map(kpi => (
-          <div key={kpi.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#888' }}>{kpi.label}</p>
+          <div key={kpi.label} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{kpi.label}</p>
             <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: kpi.cor }}>{kpi.valor}</p>
           </div>
         ))}
@@ -548,70 +548,70 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {/* Ações da semana + Andamento do Playbook */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 20 }}>
         {/* Ações da semana */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: '#111' }}>Ações da semana</h3>
-          {!temSemana && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nada vencendo nos próximos 7 dias. Tudo em dia.</p>}
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>Ações da semana</h3>
+          {!temSemana && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nada vencendo nos próximos 7 dias. Tudo em dia.</p>}
           {entregasAtrasadas.length > 0 && (
-            <button onClick={() => onIr?.('studio')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c' }}>{entregasAtrasadas.length} entrega(s) ATRASADA(s) — data venceu sem post entregue</span>
+            <button onClick={() => onIr?.('studio')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)' }}>{entregasAtrasadas.length} entrega(s) ATRASADA(s) — data venceu sem post entregue</span>
             </button>
           )}
           {postsNoCliente.length > 0 && (
-            <button onClick={() => onIr?.('planner')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>{postsNoCliente.length} post(s) aguardando aprovação do cliente</span>
+            <button onClick={() => onIr?.('planner')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-amber)' }}>{postsNoCliente.length} post(s) aguardando aprovação do cliente</span>
             </button>
           )}
           {entregasAtrasadas.map(p => (
-            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
-              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · post de {dataCurta(p.dataAgendada)}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c', flexShrink: 0 }}>{diasDeAtraso(p) === 0 ? 'venceu hoje' : `há ${diasDeAtraso(p)}d`}</span>
+            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · post de {dataCurta(p.dataAgendada)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)', flexShrink: 0 }}>{diasDeAtraso(p) === 0 ? 'venceu hoje' : `há ${diasDeAtraso(p)}d`}</span>
             </div>
           ))}
           {entregasEmRisco.map(p => (
-            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: '#92400e', background: '#fef3c7', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
-              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · vence {dataCurta(p.dataAgendada)} e ainda está &quot;{p.status === 'rascunho' ? 'rascunho' : 'em ajuste'}&quot;</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#a16207', flexShrink: 0 }}>{dataCurta(p.dataAgendada)}</span>
+            <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · vence {dataCurta(p.dataAgendada)} e ainda está &quot;{p.status === 'rascunho' ? 'rascunho' : 'em ajuste'}&quot;</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-amber)', flexShrink: 0 }}>{dataCurta(p.dataAgendada)}</span>
             </div>
           ))}
           {tarefasSemana.map(t => { const atras = emDias(t.prazo) < 0; return (
-            <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}{t.clienteNome ? ` · ${t.clienteNome}` : ''}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? '#b91c1c' : '#a16207', flexShrink: 0 }}>{atras ? 'atrasada' : dataCurta(t.prazo)}</span>
+            <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? 'var(--v2-hot)' : 'var(--v2-amber-on)', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}{t.clienteNome ? ` · ${t.clienteNome}` : ''}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? 'var(--v2-hot)' : 'var(--v2-amber)', flexShrink: 0 }}>{atras ? 'atrasada' : dataCurta(t.prazo)}</span>
             </div>
           ) })}
           {marcosSemana.map(m => { const atras = emDias(m.dataFim) < 0; return (
-            <div key={m.id} onClick={() => onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid #f4f4f4', cursor: onIr ? 'pointer' : 'default' }}>
+            <div key={m.id} onClick={() => onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: '#6d28d9', background: '#ede9fe', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>MARCO</span>
-              <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}{m.clienteNome ? ` · ${m.clienteNome}` : ''}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? '#b91c1c' : '#a16207', flexShrink: 0 }}>{atras ? 'atrasado' : dataCurta(m.dataFim)}</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}{m.clienteNome ? ` · ${m.clienteNome}` : ''}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: atras ? 'var(--v2-hot)' : 'var(--v2-amber)', flexShrink: 0 }}>{atras ? 'atrasado' : dataCurta(m.dataFim)}</span>
             </div>
           ) })}
         </div>
 
         {/* Andamento do Playbook */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Andamento do Playbook</h3>
-            {onIr && <button onClick={() => onIr('playbook')} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir</button>}
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Andamento do Playbook</h3>
+            {onIr && <button onClick={() => onIr('playbook')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir</button>}
           </div>
-          {pbTotal === 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Nenhum marco cadastrado ainda.</p>}
+          {pbTotal === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum marco cadastrado ainda.</p>}
           {pbTotal > 0 && <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: '#111' }}>{pbPct}%</span>
-              <span style={{ fontSize: 12, color: '#888' }}>{pbConcluidos} de {pbTotal} marcos concluídos{pbAtrasados > 0 ? ` · ${pbAtrasados} atrasado(s)` : ''}</span>
+              <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--v2-ink)' }}>{pbPct}%</span>
+              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{pbConcluidos} de {pbTotal} marcos concluídos{pbAtrasados > 0 ? ` · ${pbAtrasados} atrasado(s)` : ''}</span>
             </div>
-            <div style={{ height: 10, borderRadius: 999, background: '#f0f0f0', overflow: 'hidden', marginBottom: 14 }}>
-              <div style={{ height: '100%', width: `${pbPct}%`, background: '#16a34a', borderRadius: 999, transition: 'width .3s' }} />
+            <div style={{ height: 10, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', marginBottom: 14 }}>
+              <div style={{ height: '100%', width: `${pbPct}%`, background: 'var(--v2-ok)', borderRadius: 999, transition: 'width .3s' }} />
             </div>
             {pbAndamento.length > 0 && <>
-              <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Em andamento</p>
+              <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Em andamento</p>
               {pbAndamento.map(m => (
-                <div key={m.id} onClick={() => m.clienteId ? onVerCliente(m.clienteId) : onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid #f4f4f4', cursor: 'pointer' }}>
-                  <span style={{ flex: 1, fontSize: 12.5, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
-                  <span style={{ fontSize: 11, color: '#999', flexShrink: 0 }}>{m.clienteNome || ''}</span>
+                <div key={m.id} onClick={() => m.clienteId ? onVerCliente(m.clienteId) : onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)', cursor: 'pointer' }}>
+                  <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                  <span style={{ fontSize: 11, color: 'var(--v2-ink3)', flexShrink: 0 }}>{m.clienteNome || ''}</span>
                 </div>
               ))}
             </>}
@@ -621,10 +621,10 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
       {/* Grafico de metas — TOPO */}
       {clientesOrdenados.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#111' }}>Meta de postagens — {MESES[mesAtual]} <span style={{ fontSize: 11, fontWeight: 500, color: '#94a3b8' }}>(publicadas + programadas)</span></h3>
-            <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#888' }}>
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Meta de postagens — {MESES[mesAtual]} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--v2-ink3)' }}>(publicadas + programadas)</span></h3>
+            <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--v2-ink3)' }}>
               <span>Min: {META_MIN}</span><span>|</span><span>Bom: {META_BOA}</span><span>|</span><span>Exc: {META_EXC}+</span>
             </div>
           </div>
@@ -637,8 +637,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
                   <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: c.corSecundaria || '#111', flexShrink: 0 }}>
                     <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                   </div>
-                  <span style={{ width: 110, fontSize: 12, fontWeight: 600, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.nome}</span>
-                  <div style={{ flex: 1, position: 'relative', height: 18, borderRadius: 999, background: '#f0f0f0', overflow: 'hidden' }}>
+                  <span style={{ width: 110, fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{c.nome}</span>
+                  <div style={{ flex: 1, position: 'relative', height: 18, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${barPct(qtd)}%`, background: barCor(qtd), borderRadius: 999, transition: 'width .3s' }} />
                     <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(META_MIN / META_EXC) * 100}%`, width: 1.5, background: 'rgba(0,0,0,0.15)' }} />
                     <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(META_BOA / META_EXC) * 100}%`, width: 1.5, background: 'rgba(0,0,0,0.12)' }} />
@@ -654,22 +654,22 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
       {/* Alertas — colapsivel */}
       {temAlertas && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, marginBottom: 20, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 14, marginBottom: 20, overflow: 'hidden' }}>
           <button onClick={() => setAlertasAberto(v => !v)} style={{ width: '100%', padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#991b1b' }}>Precisa de atenção</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: alertasAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>Precisa de atenção</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: alertasAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {alertasAberto && (
             <div style={{ padding: '0 18px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {falhasPendentes > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#b91c1c' }}>{falhasPendentes} post(s) com falha de publicacao pendente.</p>}
+              {falhasPendentes > 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-hot)' }}>{falhasPendentes} post(s) com falha de publicacao pendente.</p>}
               {clientesOrdenados.filter(c => (contagemPorCliente[c.id] || 0) < 8).map(c => (
-                <p key={c.id} style={{ margin: 0, fontSize: 12.5, color: '#b91c1c' }}><strong>{c.nome}</strong> esta em nivel critico ({contagemPorCliente[c.id] || 0} posts no mes).</p>
+                <p key={c.id} style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-hot)' }}><strong>{c.nome}</strong> esta em nivel critico ({contagemPorCliente[c.id] || 0} posts no mes).</p>
               ))}
               {clientesEmRisco.map(c => { const meta = Number(c.postsMensais) || META_MIN; return (
-                <p key={'r' + c.id} style={{ margin: 0, fontSize: 12.5, color: '#a16207' }}>⚠ <strong>{c.nome}</strong> abaixo da meta do mês: {contagemPorCliente[c.id] || 0} de {meta} (publicadas + programadas). Faltam {meta - (contagemPorCliente[c.id] || 0)} a planejar.</p>
+                <p key={'r' + c.id} style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-amber)' }}>⚠ <strong>{c.nome}</strong> abaixo da meta do mês: {contagemPorCliente[c.id] || 0} de {meta} (publicadas + programadas). Faltam {meta - (contagemPorCliente[c.id] || 0)} a planejar.</p>
               ) })}
-              {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido: {clientesSemBrandLista.map(c => c.nome).join(', ')}.</p>}
-              {clientesSemEntregaveis > 0 && <p style={{ margin: 0, fontSize: 12.5, color: '#92400e' }}>{clientesSemEntregaveis} cliente(s) sem entregaveis definidos (configure em Clientes).</p>}
+              {clientesSemBrand > 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-amber)' }}>{clientesSemBrand} cliente(s) sem Brand Board preenchido: {clientesSemBrandLista.map(c => c.nome).join(', ')}.</p>}
+              {clientesSemEntregaveis > 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-amber)' }}>{clientesSemEntregaveis} cliente(s) sem entregaveis definidos (configure em Clientes).</p>}
             </div>
           )}
         </div>

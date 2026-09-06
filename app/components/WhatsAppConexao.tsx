@@ -8,15 +8,15 @@ import { toast } from '@/lib/toast'
 type Estado = 'open' | 'connecting' | 'close' | 'nao_configurado' | 'erro' | 'sem_instancia' | 'desconhecido'
 
 const INFO: Record<string, { label: string; cor: string; bg: string }> = {
-  open: { label: 'Conectado', cor: '#166534', bg: '#dcfce7' },
-  connecting: { label: 'Conectando…', cor: '#a16207', bg: '#fef3c7' },
-  close: { label: 'Desconectado', cor: '#b91c1c', bg: '#fee2e2' },
-  nao_configurado: { label: 'Não configurado', cor: '#6b7280', bg: '#f4f4f5' },
-  erro: { label: 'Erro ao consultar', cor: '#b91c1c', bg: '#fee2e2' },
+  open: { label: 'Conectado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  connecting: { label: 'Conectando…', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  close: { label: 'Desconectado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' },
+  nao_configurado: { label: 'Não configurado', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
+  erro: { label: 'Erro ao consultar', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' },
   // Instância ainda não existe no host: estado NORMAL antes do 1º pareamento,
   // não erro. Pintar de vermelho aqui manda a pessoa caçar um problema que não há.
-  sem_instancia: { label: 'Aguardando pareamento', cor: '#a16207', bg: '#fef3c7' },
-  desconhecido: { label: 'Desconhecido', cor: '#6b7280', bg: '#f4f4f5' },
+  sem_instancia: { label: 'Aguardando pareamento', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  desconhecido: { label: 'Desconhecido', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 }
 
 export default function WhatsAppConexao({ instancia }: { instancia?: string } = {}) {
@@ -81,11 +81,11 @@ export default function WhatsAppConexao({ instancia }: { instancia?: string } = 
 
   const info = INFO[estado] || INFO.desconhecido
 
-  if (carregando) return <p style={{ fontSize: 13, color: '#aaa' }}>Verificando conexão…</p>
+  if (carregando) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Verificando conexão…</p>
 
   if (!configurado) {
     return (
-      <p style={{ margin: 0, fontSize: 12.5, color: '#888', lineHeight: 1.6 }}>
+      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.6 }}>
         Conector não configurado. Suba um host do Evolution e adicione as variáveis
         <b> EVOLUTION_API_URL</b>, <b>EVOLUTION_INSTANCE</b> e <b>EVOLUTION_API_KEY</b> na Vercel <b>desta</b> instância. O número atual é mantido — pareia por QR.
         <br />
@@ -98,55 +98,55 @@ export default function WhatsAppConexao({ instancia }: { instancia?: string } = 
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 800, color: info.cor, background: info.bg, borderRadius: 999, padding: '5px 12px' }}>{info.label}</span>
-        <button onClick={carregar} style={{ padding: '6px 12px', background: '#f2f2f2', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#444', cursor: 'pointer' }}>Atualizar</button>
+        <button onClick={carregar} style={{ padding: '6px 12px', background: '#f2f2f2', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Atualizar</button>
         <span style={{ flex: 1 }} />
         {estado === 'open'
-          ? <button onClick={desconectar} disabled={ocupado} style={{ padding: '8px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
-          : <button onClick={() => conectar()} disabled={ocupado} style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Conectar / gerar QR'}</button>}
+          ? <button onClick={desconectar} disabled={ocupado} style={{ padding: '8px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
+          : <button onClick={() => conectar()} disabled={ocupado} style={{ padding: '8px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Conectar / gerar QR'}</button>}
       </div>
 
       {/* O MOTIVO da falha, na tela. Sem isto o diagnóstico era impossível: as
           envs EVOLUTION_* salvas como Sensitive na Vercel não podem ser relidas,
           então URL errada virava um erro mudo sem lugar nenhum para conferir. */}
       {erro && (
-        <div style={{ marginBottom: 12, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 9, fontSize: 12, color: '#b91c1c', lineHeight: 1.55 }}>
+        <div style={{ marginBottom: 12, padding: '10px 12px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, fontSize: 12, color: 'var(--v2-hot)', lineHeight: 1.55 }}>
           {erro}
         </div>
       )}
       {estado === 'sem_instancia' && (
-        <div style={{ marginBottom: 12, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, fontSize: 12, color: '#92400e', lineHeight: 1.55 }}>
+        <div style={{ marginBottom: 12, padding: '10px 12px', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, fontSize: 12, color: 'var(--v2-amber)', lineHeight: 1.55 }}>
           A instância ainda não existe no host — é o normal antes do primeiro pareamento. Clique em <b>Conectar / gerar QR</b> que ela é criada automaticamente.
         </div>
       )}
       {host && (
-        <p style={{ margin: '0 0 12px', fontSize: 11, color: '#9ca3af' }}>Host: {host}</p>
+        <p style={{ margin: '0 0 12px', fontSize: 11, color: 'var(--v2-ink3)' }}>Host: {host}</p>
       )}
 
       {/* Pareamento por CÓDIGO — a saída quando o celular recusa o QR com "Não
           foi possível conectar o dispositivo". Precisa do número porque o
           Evolution só gera o código sabendo para quem é. */}
       {estado !== 'open' && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', background: '#f8fafc', border: '1px solid #eee', borderRadius: 10 }}>
-          <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>QR deu &quot;Não foi possível conectar&quot;? Pareie por código:</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
+          <span style={{ fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>QR deu &quot;Não foi possível conectar&quot;? Pareie por código:</span>
           <input value={numero} onChange={e => setNumero(e.target.value)} placeholder="Número com DDI (ex.: 5555999999999)" inputMode="tel"
-            style={{ flex: 1, minWidth: 200, padding: '8px 11px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 12.5, fontFamily: 'inherit' }} />
+            style={{ flex: 1, minWidth: 200, padding: '8px 11px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
           <button onClick={() => conectar(true)} disabled={ocupado}
-            style={{ padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Gerar código'}</button>
+            style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>{ocupado ? 'Gerando…' : 'Gerar código'}</button>
         </div>
       )}
 
       {estado === 'open' && !qr && (
-        <p style={{ margin: 0, fontSize: 12.5, color: '#166534' }}>WhatsApp conectado e recebendo mensagens no CRM (aba Mensagens). Para trocar de número, clique em Desconectar e conecte o novo pelo QR.</p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ok)' }}>WhatsApp conectado e recebendo mensagens no CRM (aba Mensagens). Para trocar de número, clique em Desconectar e conecte o novo pelo QR.</p>
       )}
 
       {(qr || codigo) && (
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
-          {qr && <img src={qr} alt="QR Code do WhatsApp" style={{ width: 220, height: 220, borderRadius: 12, border: '1px solid #eee' }} />}
-          <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.7, maxWidth: 320 }}>
+          {qr && <img src={qr} alt="QR Code do WhatsApp" style={{ width: 220, height: 220, borderRadius: 12, border: '1px solid var(--v2-rule)' }} />}
+          <div style={{ fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.7, maxWidth: 320 }}>
             <b>Como parear:</b><br />
             No celular: WhatsApp → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b>{qr ? <> → escaneie o QR.</> : <>.</>}
             {codigo && <><br /><br />Por <b>código</b>: na mesma tela, toque em <b>&quot;Conectar com número de telefone&quot;</b> e digite: <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, letterSpacing: 1 }}>{codigo}</span></>}
-            <br /><br /><span style={{ color: '#999' }}>O status atualiza sozinho quando conectar. O número segue normal no celular. O código expira rápido — se passar de ~1 min, gere outro.</span>
+            <br /><br /><span style={{ color: 'var(--v2-ink3)' }}>O status atualiza sozinho quando conectar. O número segue normal no celular. O código expira rápido — se passar de ~1 min, gere outro.</span>
           </div>
         </div>
       )}

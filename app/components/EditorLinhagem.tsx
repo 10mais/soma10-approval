@@ -29,8 +29,8 @@ export default function EditorLinhagem({ value, onChange }: { value: PessoaLinha
     onChange(lista.filter(p => p.id !== id))
   }
 
-  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 600, color: '#6b7280', margin: '0 0 3px' }
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 600, color: 'var(--v2-ink3)', margin: '0 0 3px' }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '6px 8px', border: '1px solid var(--v2-rule2)', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }
 
   // Mostra na ordem da cadeia (base → topo) para a edição fazer sentido.
   const ordenada = ordenarLinhagem(lista)
@@ -38,22 +38,22 @@ export default function EditorLinhagem({ value, onChange }: { value: PessoaLinha
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <p style={{ margin: 0, fontSize: 11.5, color: '#6b7280' }}>Do requerente (geração 0) ao ascendente estrangeiro. Marque quem é o ascendente.</p>
+        <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>Do requerente (geração 0) ao ascendente estrangeiro. Marque quem é o ascendente.</p>
         {lista.length > 0 && (
-          <button type="button" onClick={() => setVerArvore(v => !v)} style={{ padding: '4px 10px', background: verArvore ? '#eef2ff' : '#fff', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <button type="button" onClick={() => setVerArvore(v => !v)} style={{ padding: '4px 10px', background: verArvore ? 'var(--v2-info-bg)' : 'var(--v2-surface)', border: '1px solid var(--v2-rule2)', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {verArvore ? 'Editar' : 'Ver árvore'}
           </button>
         )}
       </div>
 
       {verArvore ? (
-        <div style={{ padding: 12, background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 10 }}>
+        <div style={{ padding: 12, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
           <ArvoreLinhagem pessoas={lista} />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ordenada.map(p => (
-            <div key={p.id} style={{ border: '1px solid ' + (p.ascendente ? '#c7d2fe' : '#eef0f2'), background: p.ascendente ? '#eef2ff' : '#fff', borderRadius: 10, padding: 10 }}>
+            <div key={p.id} style={{ border: '1px solid ' + (p.ascendente ? '#c7d2fe' : 'var(--v2-surface2)'), background: p.ascendente ? 'var(--v2-info-bg)' : 'var(--v2-surface)', borderRadius: 10, padding: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px', gap: 8 }}>
                 <div>
                   <label style={labelStyle}>Nome</label>
@@ -97,15 +97,15 @@ export default function EditorLinhagem({ value, onChange }: { value: PessoaLinha
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!!p.ascendente} onChange={() => marcarAscendente(p.id)} />
                   Ascendente estrangeiro
                 </label>
-                <button type="button" onClick={() => remover(p.id)} style={{ padding: '4px 10px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Remover</button>
+                <button type="button" onClick={() => remover(p.id)} style={{ padding: '4px 10px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Remover</button>
               </div>
             </div>
           ))}
-          <button type="button" onClick={add} style={{ padding: '8px 0', background: '#fff', border: '1px dashed #d1d5db', borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>+ Adicionar pessoa à linhagem</button>
+          <button type="button" onClick={add} style={{ padding: '8px 0', background: 'var(--v2-surface)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Adicionar pessoa à linhagem</button>
         </div>
       )}
     </div>

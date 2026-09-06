@@ -44,10 +44,10 @@ const TIPOS: { key: TipoViagem; label: string; ajuda: string }[] = [
 ]
 
 const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
-  { key: 'planejada', label: 'Planejada', cor: '#a16207', bg: '#fef9c3' },
-  { key: 'aberta', label: 'Aberta (vendas)', cor: '#166534', bg: '#dcfce7' },
-  { key: 'realizada', label: 'Realizada', cor: '#374151', bg: '#e5e7eb' },
-  { key: 'cancelada', label: 'Cancelada', cor: '#9ca3af', bg: '#f4f4f5' },
+  { key: 'planejada', label: 'Planejada', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  { key: 'aberta', label: 'Aberta (vendas)', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  { key: 'realizada', label: 'Realizada', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
+  { key: 'cancelada', label: 'Cancelada', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 ]
 const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[1]
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -229,40 +229,40 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
     if (r?.ok) { toast('Viagem excluída.', 'sucesso'); carregar() } else toast(r?.error || 'Falha ao excluir.', 'erro')
   }
 
-  const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit' }
-  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }
+  const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#111' }}>Viagens</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Viagens</h2>
         <span style={{ flex: 1 }} />
         {aba === 'pacote' && podeEditar && (
-          <button onClick={() => setModelosAberto(true)} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #e6e6e6', borderRadius: 10, color: '#555', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+          <button onClick={() => setModelosAberto(true)} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             Modelos de pacote{pacotes.length ? ` (${pacotes.length})` : ''}
           </button>
         )}
-        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ {aba === 'fretamento' ? 'Fretamento' : 'Viagem'}</button>}
+        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ {aba === 'fretamento' ? 'Fretamento' : 'Viagem'}</button>}
       </div>
 
       {/* Os dois negócios da operadora, lado a lado */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6, background: '#f6f6f6', borderRadius: 10, padding: 3, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6, background: 'var(--v2-surface1)', borderRadius: 10, padding: 3, width: 'fit-content' }}>
         {TIPOS.map(t => {
           const on = aba === t.key
           const n = lista.filter(v => (v.tipo || 'pacote') === t.key).length
           return (
             <button key={t.key} type="button" onClick={() => setAba(t.key)}
-              style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: on ? '#111' : 'transparent', color: on ? '#fff' : '#777', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: on ? 'var(--v2-ink)' : 'transparent', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
               {t.label}{n ? ` (${n})` : ''}
             </button>
           )
         })}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#bbb' }}>{TIPOS.find(t => t.key === aba)?.ajuda}</p>
+      <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{TIPOS.find(t => t.key === aba)?.ajuda}</p>
 
-      {carregando ? <p style={{ color: '#aaa', fontSize: 13 }}>Carregando...</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
         : visiveis.length === 0 ? (
-          <p style={{ color: '#aaa', fontSize: 13 }}>
+          <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>
             {aba === 'fretamento' ? 'Nenhum fretamento cadastrado.' : 'Nenhuma viagem de pacote cadastrada.'}
           </p>
         )
@@ -271,28 +271,28 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
             {visiveis.map(e => {
               const st = stInfo(e.status); const vagas = vagasDe(e.veiculoId); const o = veiculos.find(x => x.id === e.veiculoId)
               return (
-                <div key={e.id} onClick={() => podeEditar && abrirEditar(e)} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', cursor: podeEditar ? 'pointer' : 'default' }}>
+                <div key={e.id} onClick={() => podeEditar && abrirEditar(e)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', cursor: podeEditar ? 'pointer' : 'default' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{e.titulo}</span>
-                    {e.tipo === 'fretamento' && <span style={{ fontSize: 10, fontWeight: 800, color: '#1d4ed8', background: '#eff6ff', borderRadius: 999, padding: '2px 8px' }}>Fretamento</span>}
+                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--v2-ink)' }}>{e.titulo}</span>
+                    {e.tipo === 'fretamento' && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>Fretamento</span>}
                     <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>
                     <span style={{ flex: 1 }} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ok)' }}>
                       {e.tipo === 'fretamento' ? `${fmtBRL(e.valorFechado || 0)} fechado` : `${fmtBRL(e.valorPacote)}/pessoa`}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#666', marginTop: 5, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--v2-ink2)', marginTop: 5, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <span>{fmtData(e.dataIda)}{e.horaSaida ? ` ${e.horaSaida}` : ''}{e.dataVolta ? ` → ${fmtData(e.dataVolta)}` : ''}</span>
                     {o && <span>· {o.nome}{vagas ? ` (${vagas} lug.)` : ''}</span>}
                     {e.tipo === 'fretamento' && e.contratante && <span>· {e.contratante}</span>}
                     {e.motoristas && e.motoristas.length > 0 && <span>· {e.motoristas.length} motorista(s)</span>}
                   </div>
-                  {e.inclusos && e.inclusos.length > 0 && <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>Inclusos: {e.inclusos.join(' · ')}</div>}
+                  {e.inclusos && e.inclusos.length > 0 && <div style={{ fontSize: 11.5, color: 'var(--v2-ink3)', marginTop: 6 }}>Inclusos: {e.inclusos.join(' · ')}</div>}
                   <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {(podeEditar || (e.paradas && e.paradas.length > 0)) && (
-                      <button type="button" onClick={ev => { ev.stopPropagation(); setRoteiroDe(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Roteiro{e.paradas && e.paradas.length ? ` (${e.paradas.length})` : ''}</button>
+                      <button type="button" onClick={ev => { ev.stopPropagation(); setRoteiroDe(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>Roteiro{e.paradas && e.paradas.length ? ` (${e.paradas.length})` : ''}</button>
                     )}
-                    <button type="button" onClick={ev => { ev.stopPropagation(); exportarLista(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: '#166534', background: '#dcfce7', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
+                    <button type="button" onClick={ev => { ev.stopPropagation(); exportarLista(e) }} style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
                       Exportar lista{e.internacional ? ' (internacional)' : ' (DAER/ANTT)'}
                     </button>
                   </div>
@@ -304,8 +304,8 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
 
       {form && (
         <div onClick={fecharFora(fecharForm, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={ev => ev.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 540, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: '#111' }}>{form.id ? 'Editar viagem' : 'Nova viagem'}</h3>
+          <div onClick={ev => ev.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 540, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{form.id ? 'Editar viagem' : 'Nova viagem'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Tipo de viagem — muda o modelo de cobrança e a venda de poltrona */}
               <div>
@@ -315,29 +315,29 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                     const on = form.tipo === t.key
                     return (
                       <button key={t.key} type="button" onClick={() => setForm(f => f && ({ ...f, tipo: t.key, ...(t.key === 'fretamento' ? { pacoteId: '' } : {}) }))}
-                        style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: on ? '1.5px solid #111' : '1px solid #e6e6e6', background: on ? '#111' : '#fff', color: on ? '#fff' : '#666', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t.label}</button>
+                        style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: on ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: on ? 'var(--v2-ink)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t.label}</button>
                     )
                   })}
                 </div>
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>{TIPOS.find(t => t.key === form.tipo)?.ajuda}</p>
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{TIPOS.find(t => t.key === form.tipo)?.ajuda}</p>
               </div>
 
               {/* Internacional muda o que a LISTA de passageiros exige */}
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#333', cursor: 'pointer' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--v2-ink)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={!!form.internacional} onChange={e => setForm(f => f && ({ ...f, internacional: e.target.checked }))} style={{ width: 16, height: 16 }} />
                 Viagem internacional
-                <span style={{ fontSize: 11, color: '#bbb' }}>— a ficha do passageiro passa a pedir passaporte, validade e nacionalidade</span>
+                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>— a ficha do passageiro passa a pedir passaporte, validade e nacionalidade</span>
               </label>
 
               {/* Pacote: escolher um modelo pronto OU cadastrar um novo na aba Pacotes */}
               {form.tipo === 'pacote' && (
                 <div>
                   <label style={labelStyle}>Pacote</label>
-                  <select value={form.pacoteId || ''} onChange={e => aplicarPacote(e.target.value)} style={{ ...inputStyle, width: '100%', background: '#fff' }}>
+                  <select value={form.pacoteId || ''} onChange={e => aplicarPacote(e.target.value)} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
                     <option value="">Sem pacote (montar do zero)</option>
                     {pacotes.map(p => <option key={p.id} value={p.id}>{p.nome}{p.dias ? ` · ${p.dias} dia(s)` : ''}{p.valorBase ? ` · ${fmtBRL(p.valorBase)}` : ''}</option>)}
                   </select>
-                  <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
                     {pacotes.length === 0
                       ? 'Nenhum pacote cadastrado ainda — cadastre em Pacotes para reaproveitar roteiro, inclusos e valor.'
                       : 'Escolher um pacote COPIA roteiro, inclusos e valor para esta viagem. Depois disso os dois seguem independentes.'}
@@ -365,7 +365,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               </div>
               <div>
                 <label style={labelStyle}>Veículo</label>
-                <select value={form.veiculoId} onChange={e => setForm(f => f && ({ ...f, veiculoId: e.target.value }))} style={{ ...inputStyle, width: '100%', background: '#fff' }}>
+                <select value={form.veiculoId} onChange={e => setForm(f => f && ({ ...f, veiculoId: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
                   <option value="">Sem veículo definido</option>
                   {veiculos.filter(o => o.condicao === 'disponivel').map(o => {
                     const conf = conflitoDoVeiculo(o.id)
@@ -376,9 +376,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                     )
                   })}
                 </select>
-                {!form.dataIda && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#bbb' }}>Preencha a data de ida para o sistema conferir a agenda de cada veículo.</p>}
+                {!form.dataIda && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Preencha a data de ida para o sistema conferir a agenda de cada veículo.</p>}
                 {conflitoDoForm.length > 0 && (
-                  <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>
+                  <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 700, color: 'var(--v2-hot)' }}>
                     Este veículo já está na viagem &quot;{conflitoDoForm[0].titulo}&quot; nessas datas — escolha outro ou ajuste as datas.
                   </p>
                 )}
@@ -388,18 +388,18 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                   <div style={{ flex: 1, minWidth: 130 }}>
                     <label style={labelStyle}>Valor fechado (R$)</label>
                     <input type="number" min={0} step="0.01" value={form.valorFechado} onChange={e => setForm(f => f && ({ ...f, valorFechado: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#bbb' }}>Valor da viagem inteira — não multiplica por passageiro.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Valor da viagem inteira — não multiplica por passageiro.</p>
                   </div>
                 ) : (
                   <div style={{ flex: 1, minWidth: 130 }}>
                     <label style={labelStyle}>Valor por cliente (R$)</label>
                     <input type="number" min={0} step="0.01" value={form.valorPacote} onChange={e => setForm(f => f && ({ ...f, valorPacote: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#bbb' }}>Multiplicado pelo nº de passageiros da reserva.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Multiplicado pelo nº de passageiros da reserva.</p>
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 130 }}>
                   <label style={labelStyle}>Situação</label>
-                  <select value={form.status} onChange={e => setForm(f => f && ({ ...f, status: e.target.value }))} style={{ ...inputStyle, width: '100%', background: '#fff' }}>
+                  <select value={form.status} onChange={e => setForm(f => f && ({ ...f, status: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
                     {STATUS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
                 </div>
@@ -409,19 +409,19 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>Motoristas</label>
                   {motoristasCad.length > 0 && (
-                    <select value="" onChange={e => { const u = motoristasCad.find(m => m.email === e.target.value); if (u) addMotCad(u) }} style={{ ...inputStyle, padding: '6px 10px', fontSize: 12, background: '#fff' }}>
+                    <select value="" onChange={e => { const u = motoristasCad.find(m => m.email === e.target.value); if (u) addMotCad(u) }} style={{ ...inputStyle, padding: '6px 10px', fontSize: 12, background: 'var(--v2-surface)' }}>
                       <option value="">+ Do cadastro…</option>
                       {motoristasCad.filter(m => !(form.motoristas || []).some(x => x.email === m.email)).map(m => <option key={m.email} value={m.email}>{m.nome}{m.cnh ? ` (CNH ${m.cnh})` : ''}</option>)}
                     </select>
                   )}
-                  <button type="button" onClick={addMot} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Manual</button>
+                  <button type="button" onClick={addMot} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Manual</button>
                 </div>
-                {motoristasCad.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 11, color: '#bbb' }}>Cadastre motoristas em Colaboradores (Tipo = Motorista) para escolhê-los aqui.</p>}
+                {motoristasCad.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--v2-ink3)' }}>Cadastre motoristas em Colaboradores (Tipo = Motorista) para escolhê-los aqui.</p>}
                 {(form.motoristas || []).map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                     <input value={m.nome} onChange={e => setMot(i, { nome: e.target.value })} placeholder="Nome" style={{ ...inputStyle, flex: 2 }} />
                     <input value={m.cnh || ''} onChange={e => setMot(i, { cnh: e.target.value })} placeholder="CNH" style={{ ...inputStyle, flex: 1, minWidth: 80 }} />
-                    <button type="button" onClick={() => rmMot(i)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                    <button type="button" onClick={() => rmMot(i)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
               </div>
@@ -430,16 +430,16 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>Inclusos no pacote</label>
                   <span style={{ flex: 1 }} />
-                  <button type="button" onClick={addIncluso} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Item</button>
+                  <button type="button" onClick={addIncluso} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Item</button>
                 </div>
-                {(form.inclusos || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Nenhum item. Cada linha é um tópico do que está incluso.</p>}
+                {(form.inclusos || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum item. Cada linha é um tópico do que está incluso.</p>}
                 {(form.inclusos || []).map((inc, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
                     <span style={{ color: '#cbd5e1', fontSize: 16, lineHeight: 1 }}>•</span>
                     <input value={inc} onChange={e => setIncluso(i, e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addIncluso() } }}
                       placeholder="Ex.: Hospedagem 2 diárias com café da manhã" style={{ ...inputStyle, flex: 1 }} />
-                    <button type="button" onClick={() => rmIncluso(i)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                    <button type="button" onClick={() => rmIncluso(i)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
               </div>
@@ -448,27 +448,27 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>Despesas da viagem</label>
                   <span style={{ flex: 1 }} />
-                  <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Despesa</button>
+                  <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Despesa</button>
                 </div>
-                {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#ccc' }}>Opcional: lance combustível, pedágio, hotel do motorista… para ver o break-even desta viagem.</p>}
+                {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Opcional: lance combustível, pedágio, hotel do motorista… para ver o break-even desta viagem.</p>}
                 {form.despesas.map(d => (
                   <div key={d.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                     <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder="Ex.: Combustível" style={{ ...inputStyle, flex: 1, minWidth: 120 }} />
                     <input type="number" min={0} step="0.01" value={d.valor} onChange={e => setDespesa(d.id, { valor: e.target.value })} placeholder="R$ 0,00" style={{ ...inputStyle, width: 110 }} />
-                    <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18 }}>×</button>
+                    <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
                 {financeiro && financeiro.custo > 0 && (
-                  <div style={{ marginTop: 6, padding: 10, background: '#f8fafc', borderRadius: 10, border: '1px solid #eee', fontSize: 12, color: '#555' }}>
+                  <div style={{ marginTop: 6, padding: 10, background: 'var(--v2-surface1)', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Custo total: <strong>{fmtBRL(financeiro.custo)}</strong>
                     {form.tipo === 'fretamento' ? (
                       <> · valor fechado {fmtBRL(Number(form.valorFechado) || 0)} → resultado{' '}
-                        <strong style={{ color: financeiro.resultado >= 0 ? '#166534' : '#b91c1c' }}>{fmtBRL(financeiro.resultado)}</strong></>
+                        <strong style={{ color: financeiro.resultado >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{fmtBRL(financeiro.resultado)}</strong></>
                     ) : financeiro.be !== undefined ? (
                       <> · Break-even: <strong>{fmtBRL(financeiro.be)}</strong>/passageiro (ônibus cheio: {financeiro.lugares} lug.)
                         {Number(form.valorPacote) > 0 && (
                           <> · com {fmtBRL(Number(form.valorPacote))}/pessoa e lotação cheia, resultado{' '}
-                            <strong style={{ color: financeiro.resultado >= 0 ? '#166534' : '#b91c1c' }}>{fmtBRL(financeiro.resultado)}</strong></>
+                            <strong style={{ color: financeiro.resultado >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{fmtBRL(financeiro.resultado)}</strong></>
                         )}</>
                     ) : (
                       <> · escolha o veículo para calcular o break-even por passageiro.</>
@@ -479,10 +479,10 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
-              {form.id && podeExcluir && <button onClick={() => { const e = lista.find(x => x.id === form.id); if (e) excluir(e) }} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #fca5a5', borderRadius: 9, color: '#b91c1c', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
+              {form.id && podeExcluir && <button onClick={() => { const e = lista.find(x => x.id === form.id); if (e) excluir(e) }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
               <span style={{ flex: form.id ? undefined : 1 }} />
-              <button onClick={fecharForm} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+              <button onClick={fecharForm} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
             </div>
           </div>
         </div>
@@ -497,11 +497,11 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
       {modelosAberto && (
         <div onClick={fecharFora(() => { setModelosAberto(false); carregar() }, { perguntar: false })}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 900, padding: 20, overflowY: 'auto' }}>
-          <div onClick={ev => ev.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 1000, width: '100%', padding: 22, marginTop: 20 }}>
+          <div onClick={ev => ev.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 1000, width: '100%', padding: 22, marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ flex: 1 }} />
               <button onClick={() => { setModelosAberto(false); carregar() }}
-                style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Fechar</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Fechar</button>
             </div>
             <PacotesViagem podeEditar={podeEditar} podeExcluir={podeExcluir} />
           </div>

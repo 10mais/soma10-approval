@@ -29,40 +29,40 @@ export default function CargaEquipe({ usuarios }: { usuarios: Usuario[] }) {
   // Sobrecarga: muitas tarefas abertas OU atrasadas acumuladas
   const sobrecarregado = (l: { abertas: number; atrasadas: number }) => l.abertas >= 10 || l.atrasadas >= 3
 
-  const card: React.CSSProperties = { background: '#fff', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
+  const card: React.CSSProperties = { background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Carga da equipe</h2>
-      <p style={{ margin: '4px 0 18px', fontSize: 13, color: '#999' }}>Tarefas abertas, atrasadas e horas dos últimos 7 dias por pessoa. Quem está sobrecarregado aparece destacado.</p>
+      <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Carga da equipe</h2>
+      <p style={{ margin: '4px 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>Tarefas abertas, atrasadas e horas dos últimos 7 dias por pessoa. Quem está sobrecarregado aparece destacado.</p>
 
-      {carregando ? <p style={{ color: '#aaa' }}>Carregando...</p> : (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {linhas.map(l => {
             const alerta = sobrecarregado(l)
             return (
-              <div key={l.u.email} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, border: alerta ? '1.5px solid #fecaca' : '1px solid transparent' }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#aaa' }}>
+              <div key={l.u.email} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, border: alerta ? '1.5px solid var(--v2-hot-bg)' : '1px solid transparent' }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--v2-ink3)' }}>
                   {l.u.foto ? <img src={l.u.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (l.u.nome?.[0]?.toUpperCase() || '?')}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111' }}>{l.u.nome}</p>
-                    {alerta && <span style={{ fontSize: 9.5, fontWeight: 800, color: '#b91c1c', background: '#fee2e2', borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase' }}>Sobrecarregado</span>}
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{l.u.nome}</p>
+                    {alerta && <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase' }}>Sobrecarregado</span>}
                   </div>
-                  <div style={{ height: 6, borderRadius: 999, background: '#eee', overflow: 'hidden', margin: '6px 0 0', maxWidth: 320 }}>
-                    <div style={{ width: `${Math.round((l.abertas / maxAbertas) * 100)}%`, height: '100%', background: alerta ? '#dc2626' : '#1d4ed8', borderRadius: 999 }} />
+                  <div style={{ height: 6, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', margin: '6px 0 0', maxWidth: 320 }}>
+                    <div style={{ width: `${Math.round((l.abertas / maxAbertas) * 100)}%`, height: '100%', background: alerta ? 'var(--v2-hot)' : 'var(--v2-info)', borderRadius: 999 }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 18, flexShrink: 0, textAlign: 'center' }}>
-                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111' }}>{l.abertas}</p><p style={{ margin: 0, fontSize: 10.5, color: '#999' }}>abertas</p></div>
-                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: l.atrasadas > 0 ? '#dc2626' : '#111' }}>{l.atrasadas}</p><p style={{ margin: 0, fontSize: 10.5, color: '#999' }}>atrasadas</p></div>
-                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111' }}>{fmtH(l.minSemana)}</p><p style={{ margin: 0, fontSize: 10.5, color: '#999' }}>na semana</p></div>
+                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.abertas}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>abertas</p></div>
+                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: l.atrasadas > 0 ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{l.atrasadas}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>atrasadas</p></div>
+                  <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtH(l.minSemana)}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>na semana</p></div>
                 </div>
               </div>
             )
           })}
-          {linhas.length === 0 && <p style={{ color: '#bbb', fontSize: 13 }}>Sem colaboradores.</p>}
+          {linhas.length === 0 && <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Sem colaboradores.</p>}
         </div>
       )}
     </div>

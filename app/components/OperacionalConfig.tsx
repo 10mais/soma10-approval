@@ -21,17 +21,17 @@ export default function OperacionalConfig() {
 
   const num = (k: keyof Op, label: string, sufixo: string, dica: string) => (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{label}</label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input type="number" min="1" value={op[k] as number} onChange={e => setOp(o => ({ ...o, [k]: Number(e.target.value) || 0 }))}
-          style={{ width: 90, padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit' }} />
-        <span style={{ fontSize: 12.5, color: '#888' }}>{sufixo}</span>
+          style={{ width: 90, padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+        <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{sufixo}</span>
       </div>
-      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>{dica}</p>
+      <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{dica}</p>
     </div>
   )
 
-  if (!carregado) return <p style={{ fontSize: 13, color: '#aaa' }}>Carregando...</p>
+  if (!carregado) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando...</p>
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
@@ -39,15 +39,15 @@ export default function OperacionalConfig() {
         {num('lixeiraDias', 'Prazo da lixeira', 'dias', 'Quanto tempo itens excluídos ficam disponíveis para restaurar.')}
         {num('saudeDias', 'Meta da Saúde do Caixa', 'dias', 'Reserva-alvo em dias de operação (o termômetro usa isto como 100%).')}
         <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 5 }}>Prioridade padrão de tarefa</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Prioridade padrão de tarefa</label>
           <select value={op.prioridadePadrao} onChange={e => setOp(o => ({ ...o, prioridadePadrao: e.target.value as any }))}
-            style={{ width: '100%', maxWidth: 160, padding: '9px 11px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+            style={{ width: '100%', maxWidth: 160, padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
             <option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option>
           </select>
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Aplicada a tarefas criadas sem prioridade (quick-add, automações).</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Aplicada a tarefas criadas sem prioridade (quick-add, automações).</p>
         </div>
       </div>
-      <button onClick={salvar} disabled={salvando} style={{ marginTop: 16, padding: '10px 20px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar operacional'}</button>
+      <button onClick={salvar} disabled={salvando} style={{ marginTop: 16, padding: '10px 20px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar operacional'}</button>
     </div>
   )
 }

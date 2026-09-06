@@ -13,11 +13,11 @@ type Anot = { x: number; y: number; text: string; id?: number; img?: number }
 type PostDet = { id: string; imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string }
 
 const ESTILO: Record<string, { cor: string; bg: string; label: string }> = {
-  aprovacao: { cor: '#16a34a', bg: '#f0fdf4', label: 'Aprovação' },
+  aprovacao: { cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)', label: 'Aprovação' },
   ajuste_layout: { cor: '#ea580c', bg: '#fff7ed', label: 'Ajuste de layout' },
-  ajuste_copy: { cor: '#ca8a04', bg: '#fefce8', label: 'Ajuste de copy' },
-  reprovacao: { cor: '#dc2626', bg: '#fef2f2', label: 'Reprovação' },
-  corrigir_legenda: { cor: '#1d4ed8', bg: '#eff6ff', label: 'Correção de legenda' },
+  ajuste_copy: { cor: 'var(--v2-amber)', bg: '#fefce8', label: 'Ajuste de copy' },
+  reprovacao: { cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)', label: 'Reprovação' },
+  corrigir_legenda: { cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)', label: 'Correção de legenda' },
   // Verde: o cliente mexeu só em legenda/data, o sistema aplicou e reprogramou —
   // não é pendência da equipe, é aviso do que já aconteceu.
   ajuste_aplicado: { cor: '#0f766e', bg: '#f0fdfa', label: 'Ajuste aplicado' },
@@ -39,15 +39,15 @@ function haQuanto(ts: number): string {
 // pendência aberta.
 function chipStatusPost(l: Log): { label: string; cor: string; bg: string } | null {
   if (!l.postId) return null
-  if (l.postExiste === false) return { label: 'Excluído', cor: '#6b7280', bg: '#f3f4f6' }
+  if (l.postExiste === false) return { label: 'Excluído', cor: 'var(--v2-ink3)', bg: '#f3f4f6' }
   const st = l.postStatus || '', et = l.postEtapa || ''
-  if (st === 'excluido') return { label: 'Na lixeira', cor: '#6b7280', bg: '#f3f4f6' }
-  if (st === 'aguardando_aprovacao' || et === 'aprovacao_copy' || et === 'aprovacao_criativo') return { label: 'Em revisão', cor: '#1d4ed8', bg: '#eff6ff' }
-  if (st === 'corrigir') return { label: 'A refazer', cor: '#b45309', bg: '#fff7ed' }
-  if (st === 'reprovado') return { label: 'Reprovado', cor: '#b91c1c', bg: '#fef2f2' }
-  if (st === 'agendado' || st === 'aprovado') return { label: 'Agendado', cor: '#16a34a', bg: '#f0fdf4' }
-  if (st === 'publicado' || st === 'publicando') return { label: 'Publicado', cor: '#166534', bg: '#dcfce7' }
-  if (st === 'rascunho') return { label: 'Em produção', cor: '#1d4ed8', bg: '#eff6ff' }
+  if (st === 'excluido') return { label: 'Na lixeira', cor: 'var(--v2-ink3)', bg: '#f3f4f6' }
+  if (st === 'aguardando_aprovacao' || et === 'aprovacao_copy' || et === 'aprovacao_criativo') return { label: 'Em revisão', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
+  if (st === 'corrigir') return { label: 'A refazer', cor: 'var(--v2-amber)', bg: '#fff7ed' }
+  if (st === 'reprovado') return { label: 'Reprovado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
+  if (st === 'agendado' || st === 'aprovado') return { label: 'Agendado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (st === 'publicado' || st === 'publicando') return { label: 'Publicado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (st === 'rascunho') return { label: 'Em produção', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
   return null
 }
 
@@ -86,14 +86,14 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
     return logs.filter(l => (!tipo || l.tipo === tipo) && (!q || `${l.clienteNome} ${l.acao} ${l.resumo || ''} ${l.motivo || ''}`.toLowerCase().includes(q)))
   }, [logs, tipo, busca])
 
-  const inputS: React.CSSProperties = { padding: '9px 12px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit', background: '#fff' }
-  const rotuloExp: React.CSSProperties = { margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const inputS: React.CSSProperties = { padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }
+  const rotuloExp: React.CSSProperties = { margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
 
   return (
     <div style={{ maxWidth: 860 }}>
       <div style={{ marginBottom: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Solicitações do cliente</h2>
-        <p style={{ margin: '2px 0 0', fontSize: 13, color: '#999' }}>Histórico de tudo que o cliente aprovou, pediu ajuste, reprovou ou solicitou. Fica registrado por 30 dias — não some quando você edita.</p>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Solicitações do cliente</h2>
+        <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Histórico de tudo que o cliente aprovou, pediu ajuste, reprovou ou solicitou. Fica registrado por 30 dias — não some quando você edita.</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '16px 0 18px' }}>
@@ -108,17 +108,17 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           <option value="">Todos os tipos</option>
           {Object.entries(ESTILO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-        <button onClick={carregar} disabled={carregando} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{carregando ? 'Atualizando...' : 'Atualizar'}</button>
+        <button onClick={carregar} disabled={carregando} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{carregando ? 'Atualizando...' : 'Atualizar'}</button>
       </div>
 
-      {carregando && logs.length === 0 && <p style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Carregando...</p>}
+      {carregando && logs.length === 0 && <p style={{ textAlign: 'center', padding: 40, color: 'var(--v2-ink3)' }}>Carregando...</p>}
       {!carregando && filtrados.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px 20px', color: '#aaa', fontSize: 14, background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhuma solicitação registrada{(busca || tipo || cliente) ? ' com esse filtro.' : ' nos últimos 30 dias.'}</div>
+        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--v2-ink3)', fontSize: 14, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhuma solicitação registrada{(busca || tipo || cliente) ? ' com esse filtro.' : ' nos últimos 30 dias.'}</div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtrados.map(l => {
-          const e = ESTILO[l.tipo] || { cor: '#6b7280', bg: '#f3f4f6', label: l.tipo }
+          const e = ESTILO[l.tipo] || { cor: 'var(--v2-ink3)', bg: '#f3f4f6', label: l.tipo }
           // O que o cliente já RESOLVEU não pede correção — pede só ser encontrado.
           // Aprovação é óbvia; correção de legenda entra aqui porque o servidor
           // (api/decision) troca o texto e SEGUE a programação: o post já está no
@@ -157,21 +157,21 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           const imgsComPins = Array.from(new Set(anot.map(a => a.img ?? 0)))
           return (
             <div key={l.id} onClick={() => expansivel && toggleExpand(l)} title={aberto ? undefined : 'Clique para ler o pedido do cliente'}
-              style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: aberto ? '1px solid #dbeafe' : '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: expansivel ? 'pointer' : 'default' }}>
+              style={{ background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: aberto ? '1px solid var(--v2-info-bg)' : '1px solid var(--v2-surface2)', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: expansivel ? 'pointer' : 'default' }}>
               <span style={{ flexShrink: 0, marginTop: 2, fontSize: 10.5, fontWeight: 800, color: e.cor, background: e.bg, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{e.label}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13.5, color: '#111' }}><strong>{l.clienteNome}</strong> · {l.acao}</p>
-                {l.resumo && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#666', ...(aberto ? { whiteSpace: 'pre-wrap' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>“{l.resumo}”</p>}
-                {l.motivo && !aberto && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.motivo}</p>}
+                <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink)' }}><strong>{l.clienteNome}</strong> · {l.acao}</p>
+                {l.resumo && <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--v2-ink2)', ...(aberto ? { whiteSpace: 'pre-wrap' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>“{l.resumo}”</p>}
+                {l.motivo && !aberto && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '6px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.motivo}</p>}
 
                 {aberto && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {p === 'loading' && <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>Carregando o material…</p>}
+                    {p === 'loading' && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Carregando o material…</p>}
 
                     {obs && (
                       <div>
                         <p style={rotuloExp}>O que o cliente pediu</p>
-                        <p style={{ margin: 0, fontSize: 13, color: '#111', whiteSpace: 'pre-wrap', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px' }}>{obs}</p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '8px 10px' }}>{obs}</p>
                       </div>
                     )}
 
@@ -186,15 +186,15 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                         <p style={rotuloExp}>O que o cliente alterou ({mudancas.length})</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {mudancas.map((m, i) => (
-                            <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
-                              <p style={{ margin: 0, padding: '5px 10px', fontSize: 11, fontWeight: 800, color: '#475569', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.campo}</p>
+                            <div key={i} style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, overflow: 'hidden' }}>
+                              <p style={{ margin: 0, padding: '5px 10px', fontSize: 11, fontWeight: 800, color: '#475569', background: 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.campo}</p>
                               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: '#fef2f2', borderRight: '1px solid #fee2e2' }}>
-                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: '#b91c1c' }}>ANTES</p>
+                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: 'var(--v2-hot-bg)', borderRight: '1px solid var(--v2-hot-bg)' }}>
+                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-hot)' }}>ANTES</p>
                                   <p style={{ margin: 0, fontSize: 12.5, color: '#7f1d1d', whiteSpace: 'pre-wrap' }}>{m.antes || <span style={{ color: '#c4b5b5' }}>(vazio)</span>}</p>
                                 </div>
-                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: '#f0fdf4' }}>
-                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: '#15803d' }}>DEPOIS (pedido do cliente)</p>
+                                <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: 'var(--v2-ok-bg)' }}>
+                                  <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ok)' }}>DEPOIS (pedido do cliente)</p>
                                   <p style={{ margin: 0, fontSize: 12.5, color: '#14532d', whiteSpace: 'pre-wrap' }}>{m.depois || <span style={{ color: '#a7c4b0' }}>(vazio)</span>}</p>
                                 </div>
                               </div>
@@ -212,17 +212,17 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                             const src = post?.imagens?.[imgIdx]
                             if (!src) return null
                             return (
-                              <div key={imgIdx} style={{ position: 'relative', width: 220, maxWidth: '100%', flexShrink: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid #eee', lineHeight: 0 }}>
+                              <div key={imgIdx} style={{ position: 'relative', width: 220, maxWidth: '100%', flexShrink: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--v2-rule)', lineHeight: 0 }}>
                                 <img src={src} alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
                                 {anot.filter(a => (a.img ?? 0) === imgIdx).map(a => (
-                                  <span key={a.id ?? `${a.x}-${a.y}`} title={a.text} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%, -50%)', width: 22, height: 22, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid #fff' }}>{anot.indexOf(a) + 1}</span>
+                                  <span key={a.id ?? `${a.x}-${a.y}`} title={a.text} style={{ position: 'absolute', left: `${a.x}%`, top: `${a.y}%`, transform: 'translate(-50%, -50%)', width: 22, height: 22, borderRadius: '50%', background: 'var(--v2-amber-on)', color: '#17150E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', border: '2px solid var(--v2-surface)' }}>{anot.indexOf(a) + 1}</span>
                                 ))}
                               </div>
                             )
                           })}
                         </div>
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {anot.map((a, i) => <li key={a.id ?? i} style={{ fontSize: 12.5, color: '#333' }}>{a.text || <span style={{ color: '#aaa' }}>(sem texto — marca visual)</span>}</li>)}
+                          {anot.map((a, i) => <li key={a.id ?? i} style={{ fontSize: 12.5, color: 'var(--v2-ink)' }}>{a.text || <span style={{ color: 'var(--v2-ink3)' }}>(sem texto — marca visual)</span>}</li>)}
                         </ol>
                       </div>
                     )}
@@ -230,9 +230,9 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                     {legenda && !mudouLegenda && (
                       <div>
                         <p style={rotuloExp}>Legenda atual do material</p>
-                        <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}>{legenda}</p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap' }}>{legenda}</p>
                         {semHistorico && (
-                          <p style={{ margin: '5px 0 0', fontSize: 11.5, color: '#94a3b8' }}>
+                          <p style={{ margin: '5px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
                             Esta solicitação é anterior ao registro de alterações — o sistema não guardou como a legenda estava antes do pedido.
                           </p>
                         )}
@@ -240,13 +240,13 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                     )}
 
                     {p !== 'loading' && !obs && !mostrarPins && !legenda && !mudancas.length && (
-                      <p style={{ margin: 0, fontSize: 12.5, color: '#aaa' }}>{p === 'erro' ? 'Não foi possível carregar o material.' : 'Sem detalhes de texto — abra no editor para ver o material.'}</p>
+                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{p === 'erro' ? 'Não foi possível carregar o material.' : 'Sem detalhes de texto — abra no editor para ver o material.'}</p>
                     )}
 
                     {abrivel && (
                       <div>
                         <button onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: resolvido ? '#f0fdf4' : '#eff6ff', color: resolvido ? e.cor : '#1d4ed8', border: `1px solid ${resolvido ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: resolvido ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', color: resolvido ? e.cor : 'var(--v2-info)', border: `1px solid ${resolvido ? 'var(--v2-ok-bg)' : '#bfdbfe'}`, borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                           {rotuloAcao}
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                         </button>
@@ -257,10 +257,10 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
               </div>
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                 {(() => { const chip = chipStatusPost(l); return chip ? <span title="Onde o criativo está agora" style={{ fontSize: 10.5, fontWeight: 800, color: chip.cor, background: chip.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{chip.label}</span> : null })()}
-                <span style={{ fontSize: 11.5, color: '#aaa', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
                 {abrivel && (
                   <span onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
-                    style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : '#1d4ed8', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                    style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : 'var(--v2-info)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                     {rotuloAcao}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </span>

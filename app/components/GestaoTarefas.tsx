@@ -24,42 +24,42 @@ type Tarefa = {
 
 const TIPOS: { key: string; label: string; cor: string; icone: string }[] = [
   { key: 'briefing', label: 'Briefing', cor: '#0891b2', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6M9 13h6M9 17h4' },
-  { key: 'copy', label: 'Copy', cor: '#d97706', icone: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
+  { key: 'copy', label: 'Copy', cor: 'var(--v2-amber)', icone: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' },
   { key: 'campanha', label: 'Campanha', cor: '#7c3aed', icone: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6' },
   { key: 'carrossel', label: 'Carrossel', cor: '#7c3aed', icone: 'M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5zm10 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5z' },
   { key: 'criativo', label: 'Criativo', cor: '#ea580c', icone: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
   { key: 'ecommerce', label: 'E-commerce', cor: '#0891b2', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
   { key: 'estrategia', label: 'Estrategia', cor: '#0d9488', icone: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
-  { key: 'landing_page', label: 'Landing Page', cor: '#2563eb', icone: 'M3 3h18v18H3zM3 9h18M9 21V9' },
+  { key: 'landing_page', label: 'Landing Page', cor: 'var(--v2-info)', icone: 'M3 3h18v18H3zM3 9h18M9 21V9' },
   { key: 'planejamento', label: 'Planejamento', cor: '#4f46e5', icone: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
   { key: 'post', label: 'Post', cor: '#059669', icone: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
-  { key: 'reel', label: 'Reel', cor: '#dc2626', icone: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z' },
+  { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)', icone: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z' },
   { key: 'story', label: 'Story', cor: '#c026d3', icone: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z' },
-  { key: 'tarefa', label: 'Tarefa', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
-  { key: 'video', label: 'Video', cor: '#b91c1c', icone: 'M5 3l14 9-14 9V3z' },
+  { key: 'tarefa', label: 'Tarefa', cor: 'var(--v2-ink3)', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'video', label: 'Video', cor: 'var(--v2-hot)', icone: 'M5 3l14 9-14 9V3z' },
 ]
 
 // Tipos do dia a dia de uma CLÍNICA (perfil clinica troca o catálogo de agência por este)
 const TIPOS_CLINICA: { key: string; label: string; cor: string; icone: string }[] = [
-  { key: 'confirmacao_agenda', label: 'Confirmação de agenda', cor: '#1d4ed8', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+  { key: 'confirmacao_agenda', label: 'Confirmação de agenda', cor: 'var(--v2-info)', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
   { key: 'retorno_paciente', label: 'Retorno pós-atendimento', cor: '#059669', icone: 'M3 12a9 9 0 1 0 9-9M3 12l4-4M3 12l4 4' },
-  { key: 'followup_orcamento', label: 'Follow-up de orçamento', cor: '#d97706', icone: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
+  { key: 'followup_orcamento', label: 'Follow-up de orçamento', cor: 'var(--v2-amber)', icone: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
   { key: 'compras_estoque', label: 'Compras / Estoque', cor: '#7c3aed', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
   { key: 'administrativo', label: 'Administrativo', cor: '#0d9488', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
   { key: 'financeiro_clinica', label: 'Financeiro', cor: '#0891b2', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
   { key: 'reuniao_interna', label: 'Reunião', cor: '#4f46e5', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
-  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: 'var(--v2-ink3)', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
 ]
 
 // Tipos do dia a dia de uma OPERADORA DE TURISMO (perfil turismo troca o catálogo)
 const TIPOS_TURISMO: { key: string; label: string; cor: string; icone: string }[] = [
-  { key: 'reserva', label: 'Reserva', cor: '#1d4ed8', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+  { key: 'reserva', label: 'Reserva', cor: 'var(--v2-info)', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
   { key: 'emissao', label: 'Emissão de voucher', cor: '#059669', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
   { key: 'cobranca', label: 'Cobrança', cor: '#0891b2', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
   { key: 'onibus_manutencao', label: 'Ônibus / manutenção', cor: '#7c3aed', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
   { key: 'roteiro_logistica', label: 'Roteiro / logística', cor: '#4f46e5', icone: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
-  { key: 'atendimento', label: 'Atendimento', cor: '#d97706', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
-  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'atendimento', label: 'Atendimento', cor: 'var(--v2-amber)', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: 'var(--v2-ink3)', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
 ]
 
 // Tipos do dia a dia de uma ASSESSORIA DE CIDADANIA (perfil cidadania). O
@@ -67,26 +67,26 @@ const TIPOS_TURISMO: { key: string; label: string; cor: string; icone: string }[
 // traduzir e protocolar — nada disso cabia no catálogo de agência.
 const TIPOS_CIDADANIA: { key: string; label: string; cor: string; icone: string }[] = [
   { key: 'pesquisa_genealogica', label: 'Pesquisa genealógica', cor: '#4f46e5', icone: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z' },
-  { key: 'solicitar_certidao', label: 'Solicitar certidão', cor: '#1d4ed8', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
+  { key: 'solicitar_certidao', label: 'Solicitar certidão', cor: 'var(--v2-info)', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
   { key: 'apostilamento', label: 'Apostilamento', cor: '#7c3aed', icone: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1' },
   { key: 'traducao', label: 'Tradução juramentada', cor: '#0891b2', icone: 'M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6' },
   { key: 'protocolo', label: 'Protocolo / consulado', cor: '#059669', icone: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-4' },
-  { key: 'acompanhamento', label: 'Acompanhamento', cor: '#d97706', icone: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2' },
-  { key: 'atendimento', label: 'Atendimento ao cliente', cor: '#b45309', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { key: 'acompanhamento', label: 'Acompanhamento', cor: 'var(--v2-amber)', icone: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2' },
+  { key: 'atendimento', label: 'Atendimento ao cliente', cor: 'var(--v2-amber)', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
   { key: 'financeiro_cidadania', label: 'Financeiro / cobrança', cor: '#0d9488', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
-  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: 'var(--v2-ink3)', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
 ]
 
 // Tipos do dia a dia de uma LOJA DE VAREJO (perfil telefonia — eletrônicos e acessórios)
 const TIPOS_TELEFONIA: { key: string; label: string; cor: string; icone: string }[] = [
   { key: 'venda', label: 'Venda (PDV)', cor: '#059669', icone: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
-  { key: 'orcamento', label: 'Orçamento', cor: '#1d4ed8', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
-  { key: 'pos_venda', label: 'Pós-venda / troca / garantia', cor: '#d97706', icone: 'M3 12a9 9 0 1 0 9-9M3 12l4-4M3 12l4 4' },
+  { key: 'orcamento', label: 'Orçamento', cor: 'var(--v2-info)', icone: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6' },
+  { key: 'pos_venda', label: 'Pós-venda / troca / garantia', cor: 'var(--v2-amber)', icone: 'M3 12a9 9 0 1 0 9-9M3 12l4-4M3 12l4 4' },
   { key: 'compras_estoque', label: 'Compras / Estoque', cor: '#7c3aed', icone: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' },
   { key: 'financeiro', label: 'Financeiro', cor: '#0891b2', icone: 'M2 7h20v10H2zM6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2' },
-  { key: 'atendimento', label: 'Atendimento', cor: '#b45309', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+  { key: 'atendimento', label: 'Atendimento', cor: 'var(--v2-amber)', icone: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
   { key: 'reuniao_interna', label: 'Reunião', cor: '#4f46e5', icone: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
-  { key: 'tarefa', label: 'Tarefa geral', cor: '#6b7280', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { key: 'tarefa', label: 'Tarefa geral', cor: 'var(--v2-ink3)', icone: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
 ]
 
 // Tipos personalizados criados pela equipe (persistidos no servidor). Mantidos em
@@ -131,13 +131,13 @@ function TextoComMencoes({ texto }: { texto: string }) {
   const renderMencoes = (t: string, base: string) => {
     const partes = t.split(/(@[a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g)
     return partes.map((p, i) => p.startsWith('@')
-      ? <span key={`${base}-m${i}`} style={{ color: '#2563eb', fontWeight: 600 }}>{p}</span>
+      ? <span key={`${base}-m${i}`} style={{ color: 'var(--v2-info)', fontWeight: 600 }}>{p}</span>
       : <span key={`${base}-t${i}`}>{p}</span>)
   }
   // Quebra em URLs (viram links) e trata @mencoes no restante
   const segmentos = String(texto || '').split(/(https?:\/\/[^\s]+)/gi)
   return <>{segmentos.map((seg, i) => ehUrl(seg)
-    ? <a key={`u${i}`} href={seg} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>{seg}</a>
+    ? <a key={`u${i}`} href={seg} target="_blank" rel="noreferrer" style={{ color: 'var(--v2-info)', textDecoration: 'underline', wordBreak: 'break-all' }}>{seg}</a>
     : <span key={`s${i}`}>{renderMencoes(seg, `s${i}`)}</span>
   )}</>
 }
@@ -145,17 +145,17 @@ function TextoComMencoes({ texto }: { texto: string }) {
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div onClick={fecharFora(onCancel)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '24px 28px', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--v2-hot-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{mensagem}</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--v2-ink)', lineHeight: 1.4 }}>{mensagem}</p>
         </div>
-        <p style={{ margin: '0 0 20px', fontSize: 12, color: '#888' }}>A tarefa será movida para a lixeira e poderá ser restaurada em até 30 dias.</p>
+        <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--v2-ink3)' }}>A tarefa será movida para a lixeira e poderá ser restaurada em até 30 dias.</p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '9px 20px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={onConfirm} style={{ padding: '9px 20px', background: '#b91c1c', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Excluir</button>
+          <button onClick={onCancel} style={{ padding: '9px 20px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onConfirm} style={{ padding: '9px 20px', background: 'var(--v2-hot)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>Excluir</button>
         </div>
       </div>
     </div>
@@ -195,15 +195,15 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 0, maxWidth: 1200, width: '100%', maxHeight: '92vh', background: '#1a1a1a', borderRadius: 16, overflow: 'hidden' }}>
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 0, maxWidth: 1200, width: '100%', maxHeight: '92vh', background: 'var(--v2-ink)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Lado esquerdo — midia */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', minWidth: 0, background: '#111' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', minWidth: 0, background: 'var(--v2-ink)' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
           <button onClick={() => forcarDownload(anexo.url, anexo.nome)} style={{ position: 'absolute', top: 12, right: 52, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}
             title="Baixar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
           {ehImagem && (
             <div onClick={handleClickImagem} style={{ position: 'relative', cursor: 'crosshair', maxWidth: '100%', maxHeight: '92vh' }}>
@@ -213,29 +213,29 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
                   onMouseEnter={() => setAnotacaoHover(an.id)}
                   onMouseLeave={() => setAnotacaoHover(null)}
                   style={{ position: 'absolute', left: `${an.x}%`, top: `${an.y}%`, transform: 'translate(-50%, -50%)', zIndex: 5 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', cursor: 'pointer' }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--v2-hot)', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid var(--v2-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', cursor: 'pointer' }}>
                     {idx + 1}
                   </div>
                   {anotacaoHover === an.id && (
-                    <div style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 160, maxWidth: 260, zIndex: 10 }}>
-                      <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: '#111' }}>{an.texto}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>{an.autorNome} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                    <div style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: 'var(--v2-surface)', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 160, maxWidth: 260, zIndex: 10 }}>
+                      <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink)' }}>{an.texto}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: 'var(--v2-ink3)' }}>{an.autorNome} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                       <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }}
-                        style={{ marginTop: 6, padding: '3px 8px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, fontSize: 10, color: '#b91c1c', cursor: 'pointer', fontWeight: 600 }}>Remover</button>
+                        style={{ marginTop: 6, padding: '3px 8px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 4, fontSize: 10, color: 'var(--v2-hot)', cursor: 'pointer', fontWeight: 600 }}>Remover</button>
                     </div>
                   )}
                 </div>
               ))}
               {pendente && (
                 <div style={{ position: 'absolute', left: `${pendente.x}%`, top: `${pendente.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#ffc00f', color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'soma-pulse 1.2s ease-in-out infinite' }}>?</div>
-                  <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: '#fff', borderRadius: 10, padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 220, zIndex: 10 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--v2-amber-on)', color: '#17150E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid var(--v2-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'soma-pulse 1.2s ease-in-out infinite' }}>?</div>
+                  <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: 'var(--v2-surface)', borderRadius: 10, padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 220, zIndex: 10 }}>
                     <textarea lang="pt-BR" value={textoAnotacao} onChange={e => setTextoAnotacao(e.target.value)} placeholder="Descreva a correcao..."
-                      autoFocus style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
+                      autoFocus style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarAnotacao() } }} />
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setPendente(null)} style={{ flex: 1, padding: '6px 0', background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={confirmarAnotacao} disabled={!textoAnotacao.trim()} style={{ flex: 1, padding: '6px 0', background: textoAnotacao.trim() ? '#b91c1c' : '#f0f0f0', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: textoAnotacao.trim() ? '#fff' : '#aaa', cursor: textoAnotacao.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
+                      <button onClick={() => setPendente(null)} style={{ flex: 1, padding: '6px 0', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={confirmarAnotacao} disabled={!textoAnotacao.trim()} style={{ flex: 1, padding: '6px 0', background: textoAnotacao.trim() ? 'var(--v2-hot)' : 'var(--v2-surface2)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: textoAnotacao.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', cursor: textoAnotacao.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
                     </div>
                   </div>
                 </div>
@@ -245,29 +245,29 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
           {ehVideo && <video src={anexo.url} controls style={{ maxWidth: '100%', maxHeight: '85vh' }} />}
           {!ehImagem && !ehVideo && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40 }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <p style={{ margin: 0, fontSize: 14, color: '#ccc', fontWeight: 600 }}>{anexo.nome}</p>
-              <a href={anexo.url} target="_blank" rel="noreferrer" style={{ padding: '8px 20px', background: '#ffc00f', color: '#111', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Abrir arquivo</a>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)', fontWeight: 600 }}>{anexo.nome}</p>
+              <a href={anexo.url} target="_blank" rel="noreferrer" style={{ padding: '8px 20px', background: 'var(--v2-amber-on)', color: '#17150E', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Abrir arquivo</a>
             </div>
           )}
-          {ehImagem && <p style={{ margin: '8px 0 0', fontSize: 11, color: '#888', textAlign: 'center' }}>Clique na imagem para marcar uma correcao</p>}
+          {ehImagem && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center' }}>Clique na imagem para marcar uma correcao</p>}
         </div>
 
         {/* Lado direito — lista de anotacoes */}
         {ehImagem && (
-          <div style={{ width: 280, background: '#1e1e1e', borderLeft: '1px solid #333', padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-            <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: '#fff' }}>Correcoes ({anotacoes.length})</h4>
-            {anotacoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#666' }}>Nenhuma correcao marcada. Clique na imagem para adicionar.</p>}
+          <div style={{ width: 280, background: '#1e1e1e', borderLeft: '1px solid var(--v2-ink)', padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: 'var(--v2-surface)' }}>Correcoes ({anotacoes.length})</h4>
+            {anotacoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>Nenhuma correcao marcada. Clique na imagem para adicionar.</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
               {anotacoes.map((an, idx) => (
                 <div key={an.id}
                   onMouseEnter={() => setAnotacaoHover(an.id)}
                   onMouseLeave={() => setAnotacaoHover(null)}
-                  style={{ display: 'flex', gap: 10, padding: '10px 12px', background: anotacaoHover === an.id ? '#2a2a2a' : '#252525', borderRadius: 8, border: anotacaoHover === an.id ? '1px solid #555' : '1px solid #333', cursor: 'pointer', transition: 'all 0.15s' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
+                  style={{ display: 'flex', gap: 10, padding: '10px 12px', background: anotacaoHover === an.id ? '#2a2a2a' : '#252525', borderRadius: 8, border: anotacaoHover === an.id ? '1px solid var(--v2-ink2)' : '1px solid var(--v2-ink)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--v2-hot)', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: '0 0 2px', fontSize: 12, color: '#eee', lineHeight: 1.4 }}>{an.texto}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: '#777' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p style={{ margin: '0 0 2px', fontSize: 12, color: 'var(--v2-rule2)', lineHeight: 1.4 }}>{an.texto}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: 'var(--v2-ink3)' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                   <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }} title="Remover"
                     style={{ width: 20, height: 20, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: 0.5 }}>
@@ -292,13 +292,13 @@ const COLUNAS: { key: string; label: string }[] = [
 ]
 
 const PRIORIDADES: { key: string; label: string; cor: string }[] = [
-  { key: 'urgente', label: 'Urgente', cor: '#b91c1c' },
+  { key: 'urgente', label: 'Urgente', cor: 'var(--v2-hot)' },
   { key: 'alta', label: 'Alta', cor: '#ea580c' },
-  { key: 'media', label: 'Media', cor: '#ca8a04' },
-  { key: 'baixa', label: 'Baixa', cor: '#6b7280' },
+  { key: 'media', label: 'Media', cor: 'var(--v2-amber)' },
+  { key: 'baixa', label: 'Baixa', cor: 'var(--v2-ink3)' },
 ]
 
-function corPrioridade(p: string) { return PRIORIDADES.find(x => x.key === p)?.cor || '#888' }
+function corPrioridade(p: string) { return PRIORIDADES.find(x => x.key === p)?.cor || 'var(--v2-ink3)' }
 
 function prazoFormatado(iso?: string) {
   if (!iso) return ''
@@ -464,13 +464,13 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
       {confirmPopup && <ConfirmPopup mensagem={confirmPopup.mensagem} onConfirm={confirmPopup.onConfirm} onCancel={() => setConfirmPopup(null)} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: '#111' }}>Tarefas</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Tarefas</h2>
         {!mostrarLixeira && (
-          <div style={{ display: 'flex', background: '#f0f0f0', borderRadius: 10, padding: 3 }}>
+          <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
             {(['kanban', 'lista'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
                 padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                background: view === v ? '#fff' : 'transparent', color: view === v ? '#111' : '#888',
+                background: view === v ? 'var(--v2-surface)' : 'transparent', color: view === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                 boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
               }}>{v === 'kanban' ? 'Kanban' : 'Lista'}</button>
             ))}
@@ -479,35 +479,35 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
         {!mostrarLixeira && (
           <>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <span style={{ position: 'absolute', left: 10, color: '#bbb', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
-              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
+              <span style={{ position: 'absolute', left: 10, color: 'var(--v2-ink3)', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
+              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
             </div>
             {!perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && (
-              <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
+              <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
                 <option value="">Todos os clientes</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             )}
-            <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
+            <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os responsáveis</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
-            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }}>
+            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os tipos</option>
               {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
             </select>
             <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} title="Filtrar por urgência"
-              style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', fontWeight: filtroPrioridade ? 700 : 400, color: filtroPrioridade ? corPrioridade(filtroPrioridade) : '#111', border: `1px solid ${filtroPrioridade ? corPrioridade(filtroPrioridade) : '#e0e0e0'}` }}>
+              style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', fontWeight: filtroPrioridade ? 700 : 400, color: filtroPrioridade ? corPrioridade(filtroPrioridade) : 'var(--v2-ink)', border: `1px solid ${filtroPrioridade ? corPrioridade(filtroPrioridade) : 'var(--v2-rule)'}` }}>
               <option value="">Todas as urgências</option>
               {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
             {(filtroCliente || filtroResponsavel || filtroTipo || filtroPrioridade || busca) && (
-              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setFiltroPrioridade(''); setBusca('') }} style={{ padding: '8px 14px', background: '#f0f0f0', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Limpar filtros</button>
+              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setFiltroPrioridade(''); setBusca('') }} style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar filtros</button>
             )}
             {/* Mostrar/ocultar concluídas */}
             <button onClick={() => setMostrarConcluidas(v => !v)} title={mostrarConcluidas ? 'Ocultar concluídas' : 'Mostrar concluídas'} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-              background: mostrarConcluidas ? '#16a34a' : '#f5f5f5', color: mostrarConcluidas ? '#fff' : '#666', border: mostrarConcluidas ? 'none' : '1px solid #e0e0e0',
+              background: mostrarConcluidas ? 'var(--v2-ok)' : 'var(--v2-surface1)', color: mostrarConcluidas ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: mostrarConcluidas ? 'none' : '1px solid var(--v2-rule)',
             }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
               Concluídas{qtdConcluidas > 0 ? ` (${qtdConcluidas})` : ''}
@@ -520,7 +520,7 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
               return (
                 <button onClick={() => setSubsRecolhidas(todasRecolhidas ? {} : Object.fromEntries(maesComSubs.map(id => [id, true])))}
                   title={todasRecolhidas ? 'Expandir todas as subtarefas' : 'Recolher todas as subtarefas'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: '#f5f5f5', color: '#666', border: '1px solid #e0e0e0' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: todasRecolhidas ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
                   {todasRecolhidas ? 'Expandir subtarefas' : 'Recolher subtarefas'}
                 </button>
@@ -530,28 +530,28 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => setMostrarLixeira(!mostrarLixeira)} style={{
-            padding: '9px 14px', background: mostrarLixeira ? '#fef2f2' : '#f5f5f5', border: mostrarLixeira ? '1px solid #fca5a5' : '1px solid #e0e0e0',
-            borderRadius: 10, fontSize: 12, fontWeight: 600, color: mostrarLixeira ? '#b91c1c' : '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            padding: '9px 14px', background: mostrarLixeira ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', border: mostrarLixeira ? '1px solid var(--v2-hot-bg)' : '1px solid var(--v2-rule)',
+            borderRadius: 10, fontSize: 12, fontWeight: 600, color: mostrarLixeira ? 'var(--v2-hot)' : 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
             {mostrarLixeira ? 'Voltar' : 'Lixeira'}
-            {!mostrarLixeira && excluidas.length > 0 && <span style={{ background: '#b91c1c', color: '#fff', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{excluidas.length}</span>}
+            {!mostrarLixeira && excluidas.length > 0 && <span style={{ background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{excluidas.length}</span>}
           </button>
           {!mostrarLixeira && podeEditar && (
-            <button onClick={() => setNovaModal(true)} className="soma10-no-invert" style={{ padding: '9px 16px', background: '#ffc00f', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
+            <button onClick={() => setNovaModal(true)} className="soma10-no-invert" style={{ padding: '9px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
           )}
         </div>
       </div>
 
       {selecionadas.length > 0 && !mostrarLixeira && (() => {
-        const selEstilo: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit', background: '#fff', color: '#111', cursor: aplicandoMassa ? 'wait' : 'pointer', maxWidth: 190 }
+        const selEstilo: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)', cursor: aplicandoMassa ? 'wait' : 'pointer', maxWidth: 190 }
         return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '10px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{selecionadas.length} selecionada(s)</span>
-          <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#666', cursor: 'pointer' }}>Limpar</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '10px 16px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{selecionadas.length} selecionada(s)</span>
+          <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
 
           {podeEditar && <>
-            <span style={{ width: 1, height: 22, background: '#eee' }} />
+            <span style={{ width: 1, height: 22, background: 'var(--v2-surface2)' }} />
             {/* Cada select volta para o placeholder depois de aplicar (value fixo):
                 ele é um COMANDO, não o estado atual das tarefas — que podem ter
                 seis status diferentes entre si. */}
@@ -573,8 +573,8 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
             <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, `prazo ${new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}`) }} title="Definir o prazo das selecionadas" style={{ ...selEstilo, maxWidth: 150 }} />
           </>}
 
-          {aplicandoMassa && <span style={{ fontSize: 12, color: '#888' }}>aplicando...</span>}
-          {podeExcluir && <button onClick={excluirSelecionadas} disabled={aplicandoMassa} style={{ marginLeft: 'auto', background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>}
+          {aplicandoMassa && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>aplicando...</span>}
+          {podeExcluir && <button onClick={excluirSelecionadas} disabled={aplicandoMassa} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>}
         </div>
         )
       })()}
@@ -590,50 +590,50 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                 onDragLeave={() => setOverCol(o => o === col.key ? null : o)}
                 onDrop={() => { if (dragId) moverStatus(dragId, col.key); setDragId(null); setOverCol(null) }}
                 style={{
-                  flex: '0 0 240px', width: 240, background: overCol === col.key ? '#fffbeb' : '#f6f6f7', borderRadius: 12, padding: 10,
-                  outline: overCol === col.key ? '2px dashed #ffc00f' : 'none', outlineOffset: -2,
+                  flex: '0 0 240px', width: 240, background: overCol === col.key ? 'var(--v2-amber-bg)' : '#f6f6f7', borderRadius: 12, padding: 10,
+                  outline: overCol === col.key ? '2px dashed var(--v2-amber-on)' : 'none', outlineOffset: -2,
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#444' }}>{col.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#aaa', background: '#fff', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink2)' }}>{col.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 999, padding: '1px 8px' }}>{cards.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(t => (
                     <div key={t.id} draggable={quickSubId !== t.id} onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setOverCol(null) }}
                       onClick={() => setEditModal(t)}
-                      style={{ background: '#fff', borderRadius: 10, padding: '26px 10px 10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}`, position: 'relative' }}>
+                      style={{ background: 'var(--v2-surface)', borderRadius: 10, padding: '26px 10px 10px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'grab', opacity: dragId === t.id ? 0.4 : 1, borderLeft: `3px solid ${corPrioridade(t.prioridade)}`, position: 'relative' }}>
                       {(() => { const tp = tipoInfo(t.tipo); return (
                         <span style={{ position: 'absolute', top: 6, left: 8, display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
                           {tp.label}
                         </span>
                       )})()}
-                      <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: '#111', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
-                      {(() => { const ns = tarefas.filter((s: any) => s.tarefaPaiId === t.id).length; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
+                      <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
+                      {(() => { const ns = tarefas.filter((s: any) => s.tarefaPaiId === t.id).length; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#555', background: '#f0f0f0', borderRadius: 999, padding: '1px 6px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '1px 6px' }}>
                             {u?.foto ? <OptImg src={u.foto} size={14} /> : null}
                             {t.responsavelNome}
                           </span>
                         )})()}
                         {t.clienteNome && (() => { const c = (clientes || []).find(x => x.id === t.clienteId); return (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#888' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--v2-ink3)' }}>
                             {c?.logo ? <OptImg src={c.logo} size={14} /> : null}
                             {t.clienteNome}
                           </span>
                         )})()}
-                        {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
-                        {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
+                        {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
+                        {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                         <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === t.id ? null : t.id) }} title="Adicionar subtarefa"
-                          style={{ width: 18, height: 18, borderRadius: 5, border: '1px solid #e0e0e0', background: '#fff', color: '#888', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
+                          style={{ width: 18, height: 18, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
                         <span onClick={e => { e.stopPropagation(); alternarSelecao(t.id) }}
-                          style={{ width: 16, height: 16, borderRadius: 4, border: selecionadas.includes(t.id) ? '1.5px solid #1877f2' : '1px solid #ccc',
-                            background: selecionadas.includes(t.id) ? '#1877f2' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {selecionadas.includes(t.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                          style={{ width: 16, height: 16, borderRadius: 4, border: selecionadas.includes(t.id) ? '1.5px solid #1877f2' : '1px solid var(--v2-rule2)',
+                            background: selecionadas.includes(t.id) ? '#1877f2' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {selecionadas.includes(t.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
                         </span>
                       </div>
                       {/* Input rápido de subtarefa — mesmo atalho da Lista; o card sai do
@@ -643,14 +643,14 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                           <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) criarSubtarefa(t, quickSubTexto); if (e.key === 'Escape') setQuickSubId(null) }}
                             placeholder="Subtarefa — Enter adiciona"
-                            style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 11.5, fontFamily: 'inherit' }} />
+                            style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--v2-rule)', fontSize: 11.5, fontFamily: 'inherit' }} />
                           <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()}
-                            style={{ padding: '6px 9px', background: quickSubTexto.trim() ? '#111' : '#f0f0f0', color: quickSubTexto.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Ok</button>
+                            style={{ padding: '6px 9px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Ok</button>
                         </div>
                       )}
                     </div>
                   ))}
-                  {cards.length === 0 && <p style={{ margin: 0, fontSize: 11, color: '#bbb', textAlign: 'center', padding: '14px 0' }}>--</p>}
+                  {cards.length === 0 && <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center', padding: '14px 0' }}>--</p>}
                 </div>
               </div>
             )
@@ -660,42 +660,42 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
 
       {/* LISTA */}
       {view === 'lista' && (
-        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontSize: 11, fontWeight: 700, color: '#888' }}>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>
             <span>Tipo</span><span>Tarefa</span><span>Responsável</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
           </div>
-          {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
+          {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
           {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
             const tp = tipoInfo(t.tipo)
             const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || (s.status !== 'concluido' && s.status !== 'descartado')))
             const linha = (x: any, ehSub: boolean) => {
               const xp = tipoInfo(x.tipo)
               return (
-                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : '#fff' }}>
+                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : 'var(--v2-surface)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={xp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={xp.icone} /></svg>
                     {xp.label}
                   </span>
-                  <span style={{ fontWeight: ehSub ? 500 : 600, color: ehSub ? '#444' : '#111', display: 'flex', alignItems: 'center', gap: 8, paddingLeft: ehSub ? 22 : 0, minWidth: 0 }}>
-                    {ehSub && <span style={{ color: '#ccc', flexShrink: 0 }}>↳</span>}
+                  <span style={{ fontWeight: ehSub ? 500 : 600, color: ehSub ? 'var(--v2-ink2)' : 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8, paddingLeft: ehSub ? 22 : 0, minWidth: 0 }}>
+                    {ehSub && <span style={{ color: 'var(--v2-ink3)', flexShrink: 0 }}>↳</span>}
                     {!ehSub && subs.length > 0 && (
-                      <button onClick={e => { e.stopPropagation(); setSubsRecolhidas(r => ({ ...r, [x.id]: !r[x.id] })) }} title={subsRecolhidas[x.id] ? 'Expandir subtarefas' : 'Recolher subtarefas'} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', display: 'flex' }}>
+                      <button onClick={e => { e.stopPropagation(); setSubsRecolhidas(r => ({ ...r, [x.id]: !r[x.id] })) }} title={subsRecolhidas[x.id] ? 'Expandir subtarefas' : 'Recolher subtarefas'} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--v2-ink3)', display: 'flex' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: subsRecolhidas[x.id] ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
                       </button>
                     )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
-                    {!ehSub && subs.length > 0 && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '1px 7px' }}>{subs.length}</span>}
-                    {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid #e0e0e0', background: '#fff', color: '#888', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
+                    {!ehSub && subs.length > 0 && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px' }}>{subs.length}</span>}
+                    {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
                   </span>
-                  <span style={{ color: '#555' }}>{x.responsavelNome || '--'}</span>
-                  <span style={{ color: '#888' }}>{x.clienteNome || '--'}</span>
-                  <span style={{ color: ehAtrasado(x.prazo, x.status) ? '#b91c1c' : '#888', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
+                  <span style={{ color: 'var(--v2-ink2)' }}>{x.responsavelNome || '--'}</span>
+                  <span style={{ color: 'var(--v2-ink3)' }}>{x.clienteNome || '--'}</span>
+                  <span style={{ color: ehAtrasado(x.prazo, x.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
                   <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade}</span>
                   <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === x.status)?.label || x.status}</span>
                   {podeExcluir && <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
-                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', color: '#ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1, padding: 0 }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#dc2626'; (e.currentTarget as HTMLButtonElement).style.background = '#fef2f2' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ccc'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}>×</button>}
+                    style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1, padding: 0 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--v2-hot)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--v2-hot-bg)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--v2-rule2)'; (e.currentTarget as HTMLButtonElement).style.background = 'none' }}>×</button>}
                 </div>
               )
             }
@@ -704,12 +704,12 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
                 {linha(t, false)}
                 {!subsRecolhidas[t.id] && subs.map(s => linha(s, true))}
                 {quickSubId === t.id && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid #f8f8f8', background: '#fff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid #f8f8f8', background: 'var(--v2-surface)' }}>
                     <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) { criarSubtarefa(t, quickSubTexto) } if (e.key === 'Escape') setQuickSubId(null) }}
                       placeholder="Nome da subtarefa — Enter para adicionar, Esc para fechar"
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
-                    <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()} style={{ padding: '7px 12px', background: quickSubTexto.trim() ? '#111' : '#f0f0f0', color: quickSubTexto.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                    <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()} style={{ padding: '7px 12px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
                   </div>
                 )}
               </div>
@@ -720,26 +720,26 @@ export default function GestaoTarefas({ clientes, usuarios, abrirTarefaId, onAbr
 
       {/* LIXEIRA */}
       {mostrarLixeira && (
-        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Tarefas excluidas</span>
-            <span style={{ fontSize: 11, color: '#888' }}>Removidas automaticamente apos 30 dias</span>
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Tarefas excluidas</span>
+            <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Removidas automaticamente apos 30 dias</span>
           </div>
-          {excluidas.length === 0 && <p style={{ margin: 0, padding: 40, textAlign: 'center', color: '#bbb', fontSize: 13 }}>Nenhuma tarefa na lixeira.</p>}
+          {excluidas.length === 0 && <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma tarefa na lixeira.</p>}
           {excluidas.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f8f8f8' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: '#555', textDecoration: 'line-through' }}>{t.titulo}</p>
-                <div style={{ display: 'flex', gap: 8, fontSize: 11, color: '#aaa' }}>
+                <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', textDecoration: 'line-through' }}>{t.titulo}</p>
+                <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--v2-ink3)' }}>
                   {t.clienteNome && <span>{t.clienteNome}</span>}
                   {t.excluidoPor && <span>Excluida por {t.excluidoPor}</span>}
                   <span>{diasRestantes(t.excluidoEm)} dia(s) restante(s)</span>
                 </div>
               </div>
-              <button onClick={() => restaurarTarefa(t.id)} style={{ padding: '6px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#166534', cursor: 'pointer' }}>Restaurar</button>
+              <button onClick={() => restaurarTarefa(t.id)} style={{ padding: '6px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ok)', cursor: 'pointer' }}>Restaurar</button>
               {podeExcluir && <button onClick={() => setConfirmPopup({ mensagem: `Excluir "${t.titulo}" permanentemente? Esta acao nao pode ser desfeita.`, onConfirm: () => { excluirPermanente(t.id); setConfirmPopup(null) } })}
-                style={{ padding: '6px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#b91c1c', cursor: 'pointer' }}>Excluir</button>}
+                style={{ padding: '6px 14px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Excluir</button>}
             </div>
           ))}
         </div>
@@ -827,7 +827,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   // Criar novo tipo de tarefa (padrao) direto daqui — fica fixo no dropdown e vale para tudo
   const [criandoTipo, setCriandoTipo] = useState(false)
   const [novoTipoLabel, setNovoTipoLabel] = useState('')
-  const [novoTipoCor, setNovoTipoCor] = useState('#6b7280')
+  const [novoTipoCor, setNovoTipoCor] = useState('var(--v2-ink3)')
   const [salvandoTipo, setSalvandoTipo] = useState(false)
   async function criarTipo() {
     const label = novoTipoLabel.trim()
@@ -839,7 +839,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
       if (r.ok && d?.tipo?.key) {
         onTiposCustom?.(d.tipos)
         setForm(f => ({ ...f, tipo: d.tipo.key }))
-        setNovoTipoLabel(''); setNovoTipoCor('#6b7280'); setCriandoTipo(false)
+        setNovoTipoLabel(''); setNovoTipoCor('var(--v2-ink3)'); setCriandoTipo(false)
       } else {
         toast('Não foi possível criar o tipo: ' + (d?.error || 'erro desconhecido'), 'erro')
       }
@@ -1068,11 +1068,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
   const wrapperStyle: Record<string, any> = {
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
     fullscreen: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-    sidebar: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, background: '#fff', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'auto' },
+    sidebar: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, background: 'var(--v2-surface)', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'auto' },
   }
   const outerPanelStyle: Record<string, any> = {
-    modal: { background: '#fff', borderRadius: 16, maxWidth: showActivitySide ? 960 : 640, width: '100%', maxHeight: '90vh', display: 'flex', overflow: 'hidden' },
-    fullscreen: { background: '#fff', borderRadius: 16, maxWidth: 1100, width: '100%', maxHeight: '94vh', display: 'flex', overflow: 'hidden' },
+    modal: { background: 'var(--v2-surface)', borderRadius: 16, maxWidth: showActivitySide ? 960 : 640, width: '100%', maxHeight: '90vh', display: 'flex', overflow: 'hidden' },
+    fullscreen: { background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 1100, width: '100%', maxHeight: '94vh', display: 'flex', overflow: 'hidden' },
     sidebar: { display: 'flex', flexDirection: 'column' as const },
   }
 
@@ -1080,27 +1080,27 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
   const activityPanel = tarefa && (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: '#111' }}>Activity</h4>
+      <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Activity</h4>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
         {/* Anexos com miniatura clicavel */}
         {anexos.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Anexos</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Anexos</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {anexos.map((a, i) => (
-                <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', border: '1px solid #e0e0e0', cursor: 'pointer' }}>
+                <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
                   {a.tipo.startsWith('image') ? (
                     <img src={a.url} alt={a.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : a.tipo.startsWith('video') ? (
                     <video src={a.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted preload="metadata" />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                    <div style={{ width: '100%', height: '100%', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
                     </div>
                   )}
                   {(a.anotacoes || []).length > 0 && (
-                    <span style={{ position: 'absolute', top: 1, left: 1, background: '#b91c1c', color: '#fff', borderRadius: 999, minWidth: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, padding: '0 3px' }}>{a.anotacoes!.length}</span>
+                    <span style={{ position: 'absolute', top: 1, left: 1, background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, minWidth: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, padding: '0 3px' }}>{a.anotacoes!.length}</span>
                   )}
                 </div>
               ))}
@@ -1111,18 +1111,18 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         {/* Correcoes marcadas */}
         {anexosComAnotacoes.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Correcoes marcadas</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Correcoes marcadas</div>
             {anexosComAnotacoes.map((a, ai) => {
               const realIdx = anexos.indexOf(a)
               return (
               <div key={ai} style={{ marginBottom: 12 }}>
-                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: '#555' }}>{a.nome}</p>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)' }}>{a.nome}</p>
                 {(a.anotacoes || []).map((an, idx) => (
-                  <div key={an.id} onClick={() => setViewerIndex(realIdx)} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', cursor: 'pointer' }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#b91c1c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
+                  <div key={an.id} onClick={() => setViewerIndex(realIdx)} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--v2-hot)', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>{idx + 1}</div>
                     <div>
-                      <p style={{ margin: 0, fontSize: 11, color: '#555', lineHeight: 1.3 }}>{an.texto}</p>
-                      <p style={{ margin: '1px 0 0', fontSize: 9, color: '#bbb' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink2)', lineHeight: 1.3 }}>{an.texto}</p>
+                      <p style={{ margin: '1px 0 0', fontSize: 9, color: 'var(--v2-ink3)' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                   </div>
                 ))}
@@ -1133,48 +1133,48 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
         {/* Historico */}
         {(tarefa.atividades || []).length > 0 && (
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Histórico</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Histórico</div>
         )}
         {(tarefa.atividades || []).map((a: any) => (
-          <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? '#1d4ed8' : a.tipo === 'status' ? '#ffc00f' : '#ccc', marginTop: 5, flexShrink: 0 }} />
+          <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.tipo === 'comentario' ? 'var(--v2-info)' : a.tipo === 'status' ? 'var(--v2-amber-on)' : 'var(--v2-rule2)', marginTop: 5, flexShrink: 0 }} />
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={a.descricao || ''} /></p>
-              <p style={{ margin: '2px 0 0', fontSize: 10, color: '#aaa' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink2)', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={a.descricao || ''} /></p>
+              <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>{a.autor} · {new Date(a.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
             </div>
           </div>
         ))}
-        {anexos.length === 0 && (tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma atividade ainda.</p>}
+        {anexos.length === 0 && (tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma atividade ainda.</p>}
 
         {(tarefa.comentarios || []).length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#888', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Comentários</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Comentários</div>
             {(tarefa.comentarios || []).map((c: any) => (
-              <div key={c.id} style={{ background: '#fafafa', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
+              <div key={c.id} style={{ background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 12, color: '#111' }}>{c.autorNome}</span>
-                  <span style={{ fontSize: 10, color: '#aaa' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                  <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)' }}>{c.autorNome}</span>
+                  <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                     <button onClick={() => { setEditandoComentarioId(c.id); setEditandoComentarioTexto(c.texto) }} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink2)" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                     <button onClick={() => excluirComentario(c.id)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                     </button>
                   </div>
                 </div>
                 {editandoComentarioId === c.id ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <textarea lang="pt-BR" value={editandoComentarioTexto} onChange={e => setEditandoComentarioTexto(e.target.value)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button onClick={() => setEditandoComentarioId(null)} style={{ padding: '4px 10px', background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#666', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={() => setEditandoComentarioId(null)} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
                       <button onClick={() => { editarComentario(c.id, editandoComentarioTexto); setEditandoComentarioId(null) }} disabled={!editandoComentarioTexto.trim()}
-                        style={{ padding: '4px 10px', background: '#111', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Salvar</button>
+                        style={{ padding: '4px 10px', background: 'var(--v2-ink)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>Salvar</button>
                     </div>
                   </div>
                 ) : (
-                  <p style={{ margin: 0, fontSize: 13, color: '#333', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={c.texto} /></p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap' }}><TextoComMencoes texto={c.texto} /></p>
                 )}
               </div>
             ))}
@@ -1182,11 +1182,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         )}
       </div>
 
-      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, position: 'relative' }}>
+      <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 12, position: 'relative' }}>
         {mencaoAberta && (() => {
           const filtrados = (usuarios || []).filter(u => u.role !== 'cliente' && u.nome.toLowerCase().includes(mencaoQuery.toLowerCase()))
           return filtrados.length > 0 ? (
-            <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: 160, overflowY: 'auto', zIndex: 10, marginBottom: 4 }}>
+            <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: 160, overflowY: 'auto', zIndex: 10, marginBottom: 4 }}>
               {filtrados.map(u => (
                 <button key={u.email} onClick={() => {
                   const antes = novoComentario.slice(0, mencaoPos)
@@ -1194,9 +1194,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                   setNovoComentario(antes + '@' + u.nome + ' ' + depois)
                   setMencaoAberta(false)
                 }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12 }}>
-                  {u.foto ? <img src={u.foto} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f0f0f0' }} />}
-                  <span style={{ fontWeight: 600, color: '#111' }}>{u.nome}</span>
-                  <span style={{ color: '#aaa', fontSize: 10 }}>{u.role}</span>
+                  {u.foto ? <img src={u.foto} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--v2-surface2)' }} />}
+                  <span style={{ fontWeight: 600, color: 'var(--v2-ink)' }}>{u.nome}</span>
+                  <span style={{ color: 'var(--v2-ink3)', fontSize: 10 }}>{u.role}</span>
                 </button>
               ))}
             </div>
@@ -1214,10 +1214,10 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             else setMencaoAberta(false)
           } else setMencaoAberta(false)
         }} placeholder="Escreva um comentário... Use @ para mencionar"
-          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
+          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mencaoAberta) { e.preventDefault(); enviarComentario() } }} />
         <button onClick={enviarComentario} disabled={enviandoComentario || !novoComentario.trim()}
-          style={{ width: '100%', padding: '8px 0', background: novoComentario.trim() ? '#111' : '#f0f0f0', color: novoComentario.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoComentario.trim() ? 'pointer' : 'not-allowed' }}>
+          style={{ width: '100%', padding: '8px 0', background: novoComentario.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoComentario.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoComentario.trim() ? 'pointer' : 'not-allowed' }}>
           Enviar
         </button>
       </div>
@@ -1231,7 +1231,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
         <div style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'sidebar' ? 22 : 24, display: 'flex', flexDirection: 'column' }}>
           {/* Cabecalho com titulo + botoes de modo */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#111', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {tarefa ? (<>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={tipoInfo(form.tipo).icone} /></svg>
                 Editar {tipoInfo(form.tipo).label.toLowerCase()}
@@ -1240,13 +1240,13 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {tarefa && onChangeViewMode && (['modal', 'fullscreen', 'sidebar'] as const).map(m => (
                 <button key={m} onClick={() => onChangeViewMode(m)} title={m === 'modal' ? 'Modal' : m === 'fullscreen' ? 'Tela cheia' : 'Sidebar'}
-                  style={{ width: 28, height: 28, borderRadius: 6, border: viewMode === m ? '1.5px solid #ffc00f' : '1px solid #e0e0e0', background: viewMode === m ? '#fffbeb' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {m === 'modal' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /></svg>}
-                  {m === 'fullscreen' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /></svg>}
-                  {m === 'sidebar' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? '#111' : '#aaa'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M14 2v20" /></svg>}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: viewMode === m ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: viewMode === m ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {m === 'modal' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? 'var(--v2-ink)' : 'var(--v2-ink3)'} strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /></svg>}
+                  {m === 'fullscreen' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? 'var(--v2-ink)' : 'var(--v2-ink3)'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /></svg>}
+                  {m === 'sidebar' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? 'var(--v2-ink)' : 'var(--v2-ink3)'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M14 2v20" /></svg>}
                 </button>
               ))}
-              <button onClick={fechar} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>x</button>
+              <button onClick={fechar} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
             </div>
           </div>
 
@@ -1254,11 +1254,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           {tarefa?.tarefaPaiId && (() => {
             const mae = todasTarefas.find(t => t.id === tarefa.tarefaPaiId)
             return (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', margin: '-6px 0 16px', padding: '6px 12px', background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 8, fontSize: 12, color: '#1d4ed8' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', margin: '-6px 0 16px', padding: '6px 12px', background: 'var(--v2-info-bg)', border: '1px solid var(--v2-info-bg)', borderRadius: 8, fontSize: 12, color: 'var(--v2-info)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7" /><path d="M16 10l4 4-4 4" /></svg>
                 <span style={{ color: '#60a5fa', fontWeight: 600 }}>Subtarefa de</span>
                 <button type="button" onClick={() => mae && onRecarregar?.(mae)} disabled={!mae}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 800, color: '#1d4ed8', cursor: mae ? 'pointer' : 'default', textDecoration: mae ? 'underline' : 'none', fontFamily: 'inherit' }}>
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', cursor: mae ? 'pointer' : 'default', textDecoration: mae ? 'underline' : 'none', fontFamily: 'inherit' }}>
                   {mae?.titulo || 'tarefa-mãe'}
                 </button>
               </div>
@@ -1267,11 +1267,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
           {/* Abas internas — so no sidebar (sem espaco lateral pra activity) */}
           {tarefa && viewMode === 'sidebar' && (
-            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid var(--v2-rule)' }}>
               {(['detalhes', 'activity'] as const).map(a => (
                 <button key={a} onClick={() => setAbaInterna(a)} style={{
-                  padding: '8px 18px', border: 'none', borderBottom: abaInterna === a ? '2px solid #ffc00f' : '2px solid transparent',
-                  background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: abaInterna === a ? 700 : 500, color: abaInterna === a ? '#111' : '#888',
+                  padding: '8px 18px', border: 'none', borderBottom: abaInterna === a ? '2px solid var(--v2-amber-on)' : '2px solid transparent',
+                  background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: abaInterna === a ? 700 : 500, color: abaInterna === a ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                 }}>{a === 'detalhes' ? 'Detalhes' : 'Activity'}</button>
               ))}
             </div>
@@ -1282,15 +1282,15 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Titulo *</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>
                 <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="O que precisa ser feito?"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div style={{ width: 160 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Tipo</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Tipo</label>
                 <div style={{ position: 'relative' }}>
                   <select value={form.tipo} onChange={e => { if (e.target.value === '__novo__') { setCriandoTipo(true) } else { setForm(f => ({ ...f, tipo: e.target.value })) } }}
-                    style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff', appearance: 'none', boxSizing: 'border-box' }}>
+                    style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', appearance: 'none', boxSizing: 'border-box' }}>
                     {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     <option value="__novo__">+ Criar novo tipo...</option>
                   </select>
@@ -1299,23 +1299,23 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                     <path d={tipoInfo(form.tipo).icone} />
                   </svg>
                   {criandoTipo && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#111', marginBottom: 8 }}>Novo tipo de tarefa</div>
+                    <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, background: 'var(--v2-surface)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 8 }}>Novo tipo de tarefa</div>
                       <input autoFocus value={novoTipoLabel} onChange={e => setNovoTipoLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarTipo() } }} placeholder="Ex: Newsletter, Podcast..."
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Cor</span>
+                        <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>Cor</span>
                         <input type="color" value={novoTipoCor} onChange={e => setNovoTipoCor(e.target.value)}
-                          style={{ width: 34, height: 28, border: '1px solid #e0e0e0', borderRadius: 6, padding: 0, cursor: 'pointer', background: '#fff' }} />
-                        <span style={{ fontSize: 11, color: '#aaa' }}>{novoTipoCor}</span>
+                          style={{ width: 34, height: 28, border: '1px solid var(--v2-rule)', borderRadius: 6, padding: 0, cursor: 'pointer', background: 'var(--v2-surface)' }} />
+                        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{novoTipoCor}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button type="button" onClick={criarTipo} disabled={!novoTipoLabel.trim() || salvandoTipo}
-                          style={{ flex: 1, padding: '8px 0', background: novoTipoLabel.trim() ? '#111' : '#f0f0f0', color: novoTipoLabel.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoTipoLabel.trim() && !salvandoTipo ? 'pointer' : 'not-allowed' }}>{salvandoTipo ? 'Criando...' : 'Criar tipo'}</button>
+                          style={{ flex: 1, padding: '8px 0', background: novoTipoLabel.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoTipoLabel.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoTipoLabel.trim() && !salvandoTipo ? 'pointer' : 'not-allowed' }}>{salvandoTipo ? 'Criando...' : 'Criar tipo'}</button>
                         <button type="button" onClick={() => { setCriandoTipo(false); setNovoTipoLabel('') }}
-                          style={{ padding: '8px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                          style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                       </div>
-                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#aaa', lineHeight: 1.4 }}>Fica fixo no dropdown e disponível em todas as tarefas.</p>
+                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>Fica fixo no dropdown e disponível em todas as tarefas.</p>
                     </div>
                   )}
                 </div>
@@ -1323,11 +1323,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS ? '1fr' : '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Responsável</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Responsável</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <OptImg src={u.foto} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">Sem responsável</option>
                     {(() => {
                       const squadEmails = ((clientes || []).find(c => c.id === form.clienteId)?.squad || [])
@@ -1345,7 +1345,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               </div>
               {!PERFIL_CLINICA_TAREFAS && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Cliente vinculado</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente vinculado</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <OptImg src={c.logo} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.clienteId} onChange={e => {
@@ -1354,7 +1354,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                     // Ao escolher o cliente, sugere o 1º membro do squad como responsável (só se ainda vazio).
                     setForm(f => ({ ...f, clienteId: cid, marcoId: '', responsavelEmail: (!f.responsavelEmail && sq.length) ? sq[0] : f.responsavelEmail }))
                   }}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">Nenhum</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
@@ -1364,31 +1364,31 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
             </div>
             {!PERFIL_CLINICA_TAREFAS && !tarefa?.id && form.clienteId && pautasCliente.length > 0 && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Vincular pauta do Studio <span style={{ fontWeight: 400, color: '#aaa' }}>(traz briefing, copy e anexos)</span></label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Vincular pauta do Studio <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>(traz briefing, copy e anexos)</span></label>
                 <select value={form.origemPostId} onChange={e => vincularPauta(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.origemPostId ? '#1d4ed8' : '#e0e0e0'}`, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.origemPostId ? 'var(--v2-info)' : 'var(--v2-rule)'}`, fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   <option value="">Nenhuma — tarefa avulsa</option>
                   {pautasCliente.map((p: any) => (
                     <option key={p.id} value={p.id}>{(p.briefing || p.headline || p.legenda || 'Pauta sem título').slice(0, 60)} · {ROTULO_ETAPA[p.etapa] || p.etapa}{p.tarefaId ? ' (já tem tarefa)' : ''}</option>
                   ))}
                 </select>
-                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#1d4ed8' }}>Pauta vinculada — ao concluir esta tarefa, a pauta vai ao Planner como rascunho.</p>}
+                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — ao concluir esta tarefa, a pauta vai ao Planner como rascunho.</p>}
               </div>
             )}
             {!PERFIL_CLINICA_TAREFAS && (
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Etapa do Playbook {form.origemPostId ? '' : '*'}</label>
-                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Etapa do Playbook {form.origemPostId ? '' : '*'}</label>
+                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
                 </div>
                 {!form.clienteId && (
-                  <select disabled value="" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#f7f7f7', color: '#aaa' }}>
+                  <select disabled value="" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface1)', color: 'var(--v2-ink3)' }}>
                     <option value="">Selecione um &quot;Cliente vinculado&quot; primeiro...</option>
                   </select>
                 )}
                 {form.clienteId && !criandoEtapa && (<>
                   <select value={form.marcoId} onChange={e => { if (e.target.value === '__nova__') { setCriandoEtapa(true) } else { setForm(f => ({ ...f, marcoId: e.target.value })) } }}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie uma abaixo' : 'Selecione a etapa...'}</option>
                     {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
                     <option value="__nova__">+ Criar nova etapa...</option>
@@ -1398,59 +1398,59 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 {form.clienteId && criandoEtapa && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input autoFocus value={novaEtapaTitulo} onChange={e => setNovaEtapaTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarEtapaRapida() } }} placeholder="Nome da etapa (ex: Conteudos Julho)"
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                     <button type="button" onClick={criarEtapaRapida} disabled={!novaEtapaTitulo.trim() || salvandoEtapa}
-                      style={{ padding: '10px 14px', background: novaEtapaTitulo.trim() ? '#111' : '#f0f0f0', color: novaEtapaTitulo.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: novaEtapaTitulo.trim() && !salvandoEtapa ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvandoEtapa ? '...' : 'Criar'}</button>
+                      style={{ padding: '10px 14px', background: novaEtapaTitulo.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novaEtapaTitulo.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: novaEtapaTitulo.trim() && !salvandoEtapa ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvandoEtapa ? '...' : 'Criar'}</button>
                     <button type="button" onClick={() => { setCriandoEtapa(false); setNovaEtapaTitulo('') }}
-                      style={{ padding: '10px 12px', background: '#fff', color: '#666', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                      style={{ padding: '10px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                   </div>
                 )}
             </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Prazo</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Prazo</label>
                 <input type="date" value={form.prazo} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Prioridade</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Prioridade</label>
                 <select value={form.prioridade} onChange={e => setForm(f => ({ ...f, prioridade: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Status</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Status</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Recorrência</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Recorrência</label>
               <select value={(form as any).recorrencia} onChange={e => setForm(f => ({ ...f, recorrencia: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}>
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 <option value="">Não repete</option>
                 <option value="diaria">Diária</option>
                 <option value="semanal">Semanal</option>
                 <option value="quinzenal">Quinzenal</option>
                 <option value="mensal">Mensal</option>
               </select>
-              {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#bbb' }}>Ao concluir, uma nova ocorrência é criada com o prazo avançado.</p>}
+              {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Ao concluir, uma nova ocorrência é criada com o prazo avançado.</p>}
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Descrição</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Descrição</label>
               <RichText value={form.descricao} onChange={d => setForm(f => ({ ...f, descricao: d }))} placeholder="Detalhes, contexto, links..." minHeight={80} />
             </div>
           </div>
           {/* Checklist (Definition of Done) */}
           <div style={{ marginTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Checklist {checklist.length > 0 && <span style={{ color: '#16a34a' }}>({checklist.filter(c => c.feito).length}/{checklist.length})</span>}</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Checklist {checklist.length > 0 && <span style={{ color: 'var(--v2-ok)' }}>({checklist.filter(c => c.feito).length}/{checklist.length})</span>}</label>
               {checklist.length === 0 && (DOD_POR_TIPO[form.tipo] || []).length > 0 && (
-                <button type="button" onClick={() => salvarChecklist((DOD_POR_TIPO[form.tipo] || []).map(t => ({ id: slug(), texto: t, feito: false })))} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Usar checklist de {tipoInfo(form.tipo).label}</button>
+                <button type="button" onClick={() => salvarChecklist((DOD_POR_TIPO[form.tipo] || []).map(t => ({ id: slug(), texto: t, feito: false })))} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Usar checklist de {tipoInfo(form.tipo).label}</button>
               )}
             </div>
             {checklist.length > 0 && (
@@ -1458,44 +1458,44 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                 {checklist.map(item => (
                   <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button type="button" onClick={() => salvarChecklist(checklist.map(c => c.id === item.id ? { ...c, feito: !c.feito } : c))}
-                      style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${item.feito ? '#16a34a' : '#ccc'}`, background: item.feito ? '#16a34a' : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                      {item.feito && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                      style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${item.feito ? 'var(--v2-ok)' : 'var(--v2-rule2)'}`, background: item.feito ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      {item.feito && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                     </button>
-                    <span style={{ flex: 1, fontSize: 13, color: item.feito ? '#aaa' : '#333', textDecoration: item.feito ? 'line-through' : 'none' }}>{item.texto}</span>
-                    <button type="button" onClick={() => salvarChecklist(checklist.filter(c => c.id !== item.id))} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
+                    <span style={{ flex: 1, fontSize: 13, color: item.feito ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: item.feito ? 'line-through' : 'none' }}>{item.texto}</span>
+                    <button type="button" onClick={() => salvarChecklist(checklist.filter(c => c.id !== item.id))} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
                   </div>
                 ))}
               </div>
             )}
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={novoItemCheck} onChange={e => setNovoItemCheck(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && novoItemCheck.trim()) { e.preventDefault(); salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') } }} placeholder="+ item do checklist"
-                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? '#111' : '#f0f0f0', color: novoItemCheck.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoItemCheck.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
             </div>
           </div>
 
           {/* Subtarefas */}
           {tarefa?.id && (
             <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#888', display: 'block', marginBottom: 6 }}>Subtarefas {subtarefas.length > 0 && <span style={{ color: '#1d4ed8' }}>({subtarefas.filter(s => s.status === 'concluido').length}/{subtarefas.length})</span>}</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', display: 'block', marginBottom: 6 }}>Subtarefas {subtarefas.length > 0 && <span style={{ color: 'var(--v2-info)' }}>({subtarefas.filter(s => s.status === 'concluido').length}/{subtarefas.length})</span>}</label>
               {subtarefas.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
                   {subtarefas.map(s => (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafafa', borderRadius: 8 }}>
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--v2-surface1)', borderRadius: 8 }}>
                       <button type="button" onClick={() => toggleSubtarefa(s)} title={s.status === 'concluido' ? 'Reabrir' : 'Concluir'}
-                        style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${s.status === 'concluido' ? '#16a34a' : '#ccc'}`, background: s.status === 'concluido' ? '#16a34a' : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                        {s.status === 'concluido' && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                        style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${s.status === 'concluido' ? 'var(--v2-ok)' : 'var(--v2-rule2)'}`, background: s.status === 'concluido' ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        {s.status === 'concluido' && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                       </button>
-                      <span style={{ flex: 1, fontSize: 13, color: s.status === 'concluido' ? '#aaa' : '#222', textDecoration: s.status === 'concluido' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
-                      {onRecarregar && <button type="button" onClick={() => onRecarregar(s)} title="Abrir subtarefa" style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>abrir</button>}
+                      <span style={{ flex: 1, fontSize: 13, color: s.status === 'concluido' ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: s.status === 'concluido' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
+                      {onRecarregar && <button type="button" onClick={() => onRecarregar(s)} title="Abrir subtarefa" style={{ background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>abrir</button>}
                     </div>
                   ))}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 6 }}>
                 <input value={novoSub} onChange={e => setNovoSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtarefa() } }} placeholder="+ Nova subtarefa"
-                  style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit' }} />
-                <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? '#111' : '#f0f0f0', color: novoSub.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+                  style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoSub.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
               </div>
             </div>
           )}
@@ -1504,22 +1504,22 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           {tarefa?.id && (
             <div style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Relacionadas {relacionadas.length > 0 && <span style={{ color: '#1d4ed8' }}>({relacionadas.length})</span>}</label>
-                <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Relacionadas {relacionadas.length > 0 && <span style={{ color: 'var(--v2-info)' }}>({relacionadas.length})</span>}</label>
+                <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
               </div>
               {(() => {
-                const COR_STATUS: Record<string, string> = { a_fazer: '#9ca3af', em_andamento: '#2563eb', em_revisao: '#ca8a04', concluido: '#16a34a', descartado: '#71717a' }
+                const COR_STATUS: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-info)', em_revisao: 'var(--v2-amber)', concluido: 'var(--v2-ok)', descartado: '#71717a' }
                 const relTarefas = relacionadas.map(rid => todasTarefas.find(t => t.id === rid)).filter(Boolean)
                 return (
                   <>
                     {relTarefas.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: pickerRel ? 8 : 0 }}>
                         {relTarefas.map((t: any) => (
-                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafafa', borderRadius: 8, border: '1px solid #f0f0f0' }}>
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_STATUS[t.status] || '#ccc', flexShrink: 0 }} title={t.status} />
-                            <span style={{ flex: 1, fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
-                            {t.clienteNome && <span style={{ fontSize: 10.5, color: '#aaa', flexShrink: 0 }}>{t.clienteNome}</span>}
-                            <button type="button" onClick={() => desrelacionarTarefa(t.id)} title="Desvincular" style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>×</button>
+                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--v2-surface1)', borderRadius: 8, border: '1px solid var(--v2-rule)' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_STATUS[t.status] || 'var(--v2-rule)', flexShrink: 0 }} title={t.status} />
+                            <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
+                            {t.clienteNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', flexShrink: 0 }}>{t.clienteNome}</span>}
+                            <button type="button" onClick={() => desrelacionarTarefa(t.id)} title="Desvincular" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>×</button>
                           </div>
                         ))}
                       </div>
@@ -1527,24 +1527,24 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
                     {pickerRel && (
                       <div>
                         <input autoFocus value={buscaRel} onChange={e => setBuscaRel(e.target.value)} placeholder="Buscar tarefa pelo título..."
-                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 4 }} />
-                        <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 4 }} />
+                        <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 8 }}>
                           {todasTarefas
                             .filter(t => t.id !== tarefa.id && !relacionadas.includes(t.id) && (!buscaRel.trim() || (t.titulo || '').toLowerCase().includes(buscaRel.toLowerCase())))
                             .slice(0, 30)
                             .map(t => (
-                              <button key={t.id} type="button" onClick={() => relacionarTarefa(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', borderBottom: '1px solid #f5f5f5', cursor: 'pointer' }}>
-                                <span style={{ fontSize: 12.5, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.titulo}</span>
-                                {t.clienteNome && <span style={{ fontSize: 10.5, color: '#aaa' }}>{t.clienteNome}</span>}
+                              <button key={t.id} type="button" onClick={() => relacionarTarefa(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 10px', background: 'none', border: 'none', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer' }}>
+                                <span style={{ fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.titulo}</span>
+                                {t.clienteNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)' }}>{t.clienteNome}</span>}
                               </button>
                             ))}
                           {todasTarefas.filter(t => t.id !== tarefa.id && !relacionadas.includes(t.id) && (!buscaRel.trim() || (t.titulo || '').toLowerCase().includes(buscaRel.toLowerCase()))).length === 0 && (
-                            <p style={{ margin: 0, padding: '10px', fontSize: 12, color: '#bbb', textAlign: 'center' }}>Nenhuma tarefa encontrada.</p>
+                            <p style={{ margin: 0, padding: '10px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>Nenhuma tarefa encontrada.</p>
                           )}
                         </div>
                       </div>
                     )}
-                    {relTarefas.length === 0 && !pickerRel && <p style={{ margin: 0, fontSize: 12, color: '#aaa' }}>Nenhuma tarefa relacionada.</p>}
+                    {relTarefas.length === 0 && !pickerRel && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma tarefa relacionada.</p>}
                   </>
                 )
               })()}
@@ -1555,15 +1555,15 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           {tarefa?.id && (
             <div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Documento vinculado</label>
-                <select value={documentoId} onChange={e => vincularDoc(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box', color: documentoId ? '#111' : '#888' }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Documento vinculado</label>
+                <select value={documentoId} onChange={e => vincularDoc(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box', color: documentoId ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
                   <option value="">Nenhum</option>
                   {docsList.map(d => <option key={d.id} value={d.id}>{d.titulo?.trim() || 'Sem título'}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Mapa mental vinculado</label>
-                <select value={mapaId} onChange={e => vincularMapa(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12.5, fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box', color: mapaId ? '#111' : '#888' }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Mapa mental vinculado</label>
+                <select value={mapaId} onChange={e => vincularMapa(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box', color: mapaId ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
                   <option value="">Nenhum</option>
                   {mapasList.map(m => <option key={m.id} value={m.id}>{m.titulo?.trim() || 'Sem título'}</option>)}
                 </select>
@@ -1573,32 +1573,32 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
           {/* Anexos */}
           <div style={{ marginTop: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>Anexos</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Anexos</label>
             {anexos.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                 {anexos.map((a, i) => (
-                  <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0', cursor: 'pointer' }}>
+                  <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
                     {a.tipo.startsWith('video') ? (
                       <video src={a.url} style={{ width: 80, height: 80, objectFit: 'cover' }} muted preload="metadata" />
                     ) : a.tipo.startsWith('image') ? (
                       <img src={a.url} alt={a.nome} style={{ width: 80, height: 80, objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: '#f5f5f5', fontSize: 10, color: '#666', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: 'var(--v2-surface1)', fontSize: 10, color: 'var(--v2-ink2)', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>
                     )}
                     {(a.anotacoes || []).length > 0 && (
-                      <span style={{ position: 'absolute', top: 2, left: 2, background: '#b91c1c', color: '#fff', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, padding: '0 4px' }}>{a.anotacoes!.length}</span>
+                      <span style={{ position: 'absolute', top: 2, left: 2, background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, padding: '0 4px' }}>{a.anotacoes!.length}</span>
                     )}
-                    <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+                    <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
                     <button onClick={e => { e.stopPropagation(); forcarDownload(a.url, a.nome) }}
-                      style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', border: 'none', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                       title={`Baixar ${a.nome}`}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#f5f5f5', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: '#444' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>
               {enviandoAnexo ? 'Enviando...' : '+ Adicionar anexo(s)'}
               <input type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={enviandoAnexo}
                 onChange={e => { enviarAnexos(Array.from(e.target.files || [])); e.target.value = '' }} />
@@ -1609,15 +1609,15 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
               const anexosSubs = subtarefas.flatMap((s: any) => (s.anexos || []).map((a: any) => ({ ...a, subNome: s.titulo })))
               if (anexosSubs.length === 0) return null
               return (
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed #eee' }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#888' }}>Anexos das subtarefas ({anexosSubs.length})</p>
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--v2-rule)' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>Anexos das subtarefas ({anexosSubs.length})</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {anexosSubs.map((a: any, i: number) => (
-                      <a key={i} href={a.url} target="_blank" rel="noreferrer" title={`${a.nome} — subtarefa: ${a.subNome}`} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0', display: 'block', textDecoration: 'none' }}>
+                      <a key={i} href={a.url} target="_blank" rel="noreferrer" title={`${a.nome} — subtarefa: ${a.subNome}`} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', display: 'block', textDecoration: 'none' }}>
                         {(a.tipo || '').startsWith('video') ? <video src={a.url} style={{ width: 72, height: 72, objectFit: 'cover' }} muted preload="metadata" />
                           : (a.tipo || '').startsWith('image') ? <img src={a.url} alt={a.nome} style={{ width: 72, height: 72, objectFit: 'cover' }} />
-                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, background: '#f5f5f5', fontSize: 9, color: '#666', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>}
-                        <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 8, padding: '1px 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.subNome}</span>
+                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, background: 'var(--v2-surface1)', fontSize: 9, color: 'var(--v2-ink2)', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>}
+                        <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', fontSize: 8, padding: '1px 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.subNome}</span>
                       </a>
                     ))}
                   </div>
@@ -1630,35 +1630,35 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           {tarefa?.id && (
             <div style={{ marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#888' }}>Tempo trabalhado</label>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{fmtMin(totalMin)}</span>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Tempo trabalhado</label>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtMin(totalMin)}</span>
               </div>
               {/* Timer + lançamento manual */}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
                 {timerInicio === null ? (
-                  <button type="button" onClick={iniciarTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                  <button type="button" onClick={iniciarTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg> Iniciar timer
                   </button>
                 ) : (
-                  <button type="button" onClick={pararTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                  <button type="button" onClick={pararTimer} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar ({fmtRelogio(Date.now() - timerInicio)})
                   </button>
                 )}
-                <span style={{ fontSize: 11, color: '#bbb' }}>ou lançar manual:</span>
-                <input type="number" min="0" value={apontH} onChange={e => setApontH(e.target.value)} placeholder="h" style={{ width: 48, padding: '7px 8px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                <input type="number" min="0" max="59" value={apontM} onChange={e => setApontM(e.target.value)} placeholder="min" style={{ width: 54, padding: '7px 8px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
-                <input value={apontDesc} onChange={e => setApontDesc(e.target.value)} placeholder="o que foi feito (opcional)" style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 12, fontFamily: 'inherit' }} />
+                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>ou lançar manual:</span>
+                <input type="number" min="0" value={apontH} onChange={e => setApontH(e.target.value)} placeholder="h" style={{ width: 48, padding: '7px 8px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                <input type="number" min="0" max="59" value={apontM} onChange={e => setApontM(e.target.value)} placeholder="min" style={{ width: 54, padding: '7px 8px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                <input value={apontDesc} onChange={e => setApontDesc(e.target.value)} placeholder="o que foi feito (opcional)" style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                 <button type="button" disabled={salvandoApont || (Number(apontH) || 0) * 60 + (Number(apontM) || 0) <= 0} onClick={() => registrarApont((Number(apontH) || 0) * 60 + (Number(apontM) || 0), apontDesc)}
-                  style={{ padding: '8px 14px', background: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? '#16a34a' : '#f0f0f0', color: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? '#fff' : '#aaa', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Registrar</button>
+                  style={{ padding: '8px 14px', background: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Registrar</button>
               </div>
               {apontamentos.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {[...apontamentos].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map((a: any) => (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#666', padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
-                      <span style={{ fontWeight: 700, color: '#111', width: 52 }}>{fmtMin(a.minutos)}</span>
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--v2-ink2)', padding: '4px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--v2-ink)', width: 52 }}>{fmtMin(a.minutos)}</span>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.usuarioNome}{a.descricao ? ` · ${a.descricao}` : ''}</span>
-                      <span style={{ color: '#aaa' }}>{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                      <button onClick={() => removerApont(a.id)} title="Remover" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                      <span style={{ color: 'var(--v2-ink3)' }}>{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                      <button onClick={() => removerApont(a.id)} title="Remover" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -1667,11 +1667,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
           )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-            <button onClick={salvar} disabled={salvando || !form.titulo.trim()} className="soma10-no-invert" style={{ flex: 1, padding: '11px 0', background: form.titulo.trim() ? '#ffc00f' : '#f0f0f0', color: '#111', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.titulo.trim() ? 'pointer' : 'not-allowed' }}>
+            <button onClick={salvar} disabled={salvando || !form.titulo.trim()} className="soma10-no-invert" style={{ flex: 1, padding: '11px 0', background: form.titulo.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: form.titulo.trim() ? 'pointer' : 'not-allowed' }}>
               {salvando ? 'Salvando...' : (tarefa ? 'Salvar' : 'Criar tarefa')}
             </button>
             {onExcluir && (
-              <button onClick={onExcluir} style={{ padding: '11px 16px', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+              <button onClick={onExcluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
             )}
           </div>
           </>)}
@@ -1684,7 +1684,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
 
         {/* Lado direito — Activity (modal e fullscreen) */}
         {showActivitySide && (
-          <div style={{ width: 320, borderLeft: '1px solid #f0f0f0', background: '#fafafa', padding: 20, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ width: 320, borderLeft: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)', padding: 20, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             {activityPanel}
           </div>
         )}
@@ -1703,17 +1703,17 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
       {confirmarFechar && (
         <div onClick={e => { e.stopPropagation(); setConfirmarFechar(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 380, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 380, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--v2-amber-bg)', color: 'var(--v2-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
               </div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#111' }}>Alterações não salvas</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)' }}>Alterações não salvas</h3>
             </div>
-            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: '#555', lineHeight: 1.5 }}>Você fez alterações nesta tarefa que ainda não foram salvas. Se sair agora, elas serão perdidas.</p>
+            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>Você fez alterações nesta tarefa que ainda não foram salvas. Se sair agora, elas serão perdidas.</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmarFechar(false)} style={{ flex: 1, padding: '11px 0', background: '#fff', color: '#111', border: '1.5px solid #e0e0e0', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Continuar editando</button>
-              <button onClick={() => { setConfirmarFechar(false); onClose() }} style={{ flex: 1, padding: '11px 0', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Sair sem salvar</button>
+              <button onClick={() => setConfirmarFechar(false)} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Continuar editando</button>
+              <button onClick={() => { setConfirmarFechar(false); onClose() }} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Sair sem salvar</button>
             </div>
           </div>
         </div>

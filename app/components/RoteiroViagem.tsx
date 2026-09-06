@@ -64,42 +64,42 @@ export default function RoteiroViagem({ viagem, podeEditar = true, onClose, onSa
     if (r?.ok) { toast('Roteiro salvo.', 'sucesso'); onSaved(); onClose() } else toast(r?.error || 'Falha ao salvar o roteiro.', 'erro')
   }
 
-  const inputStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1px solid #e6e6e6', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+  const inputStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 
   return (
     <div onClick={fecharFora(fechar)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 680, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 680, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: 16.5, color: '#111' }}>Roteiro</h3>
-          <span style={{ fontSize: 13, color: '#888' }}>{viagem.titulo}</span>
+          <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Roteiro</h3>
+          <span style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{viagem.titulo}</span>
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#999' }}>Monte a linha do tempo do período. Cada parada entra no dia e horário.</p>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Monte a linha do tempo do período. Cada parada entra no dia e horário.</p>
 
         {dias.length === 0 ? (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 16, fontSize: 13, color: '#92400e' }}>Defina a <strong>data de ida</strong> (e volta) da viagem para montar o roteiro.</div>
+          <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 12, padding: 16, fontSize: 13, color: 'var(--v2-amber)' }}>Defina a <strong>data de ida</strong> (e volta) da viagem para montar o roteiro.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {dias.map((dia, i) => {
               const doDia = paradasDoDia(dia)
               return (
-                <div key={dia} style={{ borderLeft: '2px solid #eee', paddingLeft: 14 }}>
+                <div key={dia} style={{ borderLeft: '2px solid var(--v2-rule)', paddingLeft: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>Dia {i + 1}</span>
-                    <span style={{ fontSize: 12, color: '#888' }}>{rotuloDia(dia)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Dia {i + 1}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{rotuloDia(dia)}</span>
                     <span style={{ flex: 1 }} />
-                    {podeEditar && <button type="button" onClick={() => addParada(dia)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Parada</button>}
+                    {podeEditar && <button type="button" onClick={() => addParada(dia)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Parada</button>}
                   </div>
-                  {doDia.length === 0 ? <p style={{ margin: '0 0 4px', fontSize: 12, color: '#ccc' }}>Sem paradas.</p> : (
+                  {doDia.length === 0 ? <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--v2-ink3)' }}>Sem paradas.</p> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {doDia.map(p => (
-                        <div key={p.id} style={{ background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 10, padding: 10 }}>
+                        <div key={p.id} style={{ background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10 }}>
                           <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                             <input type="time" value={p.hora || ''} onChange={e => setP(p.id, { hora: e.target.value })} disabled={!podeEditar} style={{ ...inputStyle, width: 96 }} />
                             <input value={p.titulo} onChange={e => setP(p.id, { titulo: e.target.value })} disabled={!podeEditar} placeholder="O que acontece (ex.: City tour)" style={{ ...inputStyle, flex: 2, minWidth: 160 }} />
-                            <select value={p.tipo || ''} onChange={e => setP(p.id, { tipo: e.target.value })} disabled={!podeEditar} style={{ ...inputStyle, background: '#fff' }}>
+                            <select value={p.tipo || ''} onChange={e => setP(p.id, { tipo: e.target.value })} disabled={!podeEditar} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
                               {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                             </select>
-                            {podeEditar && <button type="button" onClick={() => rmP(p.id)} style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>}
+                            {podeEditar && <button type="button" onClick={() => rmP(p.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>}
                           </div>
                           <input value={p.local || ''} onChange={e => setP(p.id, { local: e.target.value })} disabled={!podeEditar} placeholder="Local (opcional)" style={{ ...inputStyle, width: '100%' }} />
                         </div>
@@ -114,8 +114,8 @@ export default function RoteiroViagem({ viagem, podeEditar = true, onClose, onSa
 
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <span style={{ flex: 1 }} />
-          <button onClick={fechar} style={{ padding: '10px 16px', background: '#f0f0f0', border: 'none', borderRadius: 9, color: '#666', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
-          {podeEditar && <button onClick={salvar} disabled={salvando || !sujo} style={{ padding: '10px 18px', background: sujo ? '#111' : '#ccc', color: '#fff', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando || !sujo ? 'default' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar roteiro'}</button>}
+          <button onClick={fechar} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
+          {podeEditar && <button onClick={salvar} disabled={salvando || !sujo} style={{ padding: '10px 18px', background: sujo ? 'var(--v2-ink)' : 'var(--v2-rule2)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando || !sujo ? 'default' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar roteiro'}</button>}
         </div>
       </div>
     </div>
