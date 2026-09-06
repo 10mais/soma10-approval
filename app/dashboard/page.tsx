@@ -26,6 +26,8 @@ const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: fa
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const RegrasDoMes = dynamic(() => import('../components/RegrasDoMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const SplashRegra = dynamic(() => import('../components/SplashRegra'), { ssr: false })
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MinhaConta = dynamic(() => import('../components/MinhaConta'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -463,6 +465,11 @@ function Dashboard() {
     }
     return 'claro'
   })
+  // Tela de abertura com a regra do mês: uma vez por sessão do navegador.
+  const [splash, setSplash] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try { return sessionStorage.getItem('soma10_splash') !== '1' } catch { return false }
+  })
   function alternarTema() {
     setTema(t => {
       const novo = t === 'claro' ? 'escuro' : 'claro'
@@ -488,7 +495,7 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
-  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema'>('geral')
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras'>('geral')
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
     if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
@@ -1902,7 +1909,9 @@ function Dashboard() {
   const usuarioRoleValido = !!novoUsuario.role
   const usuarioFormValido = usuarioNomeValido && usuarioEmailValido && usuarioSenhaValida && usuarioRoleValido
 
-  if (status === 'loading') return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
+  if (status === 'loading') return splash
+    ? <SplashRegra pronto={false} onFim={() => setSplash(false)} tema={tema} />
+    : <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
 
   return (
     <div className={tema === 'escuro' ? 'soma10-tema-escuro' : ''} style={{ minHeight: '100vh', background: '#F5F4EF', fontFamily: 'Inter, sans-serif', ...(tema === 'escuro' ? { filter: 'invert(1) hue-rotate(180deg)' } : {}) }}>
@@ -1937,6 +1946,7 @@ function Dashboard() {
           100% { opacity: 1; }
         }
       `}</style>
+      {splash && <SplashRegra pronto={true} onFim={() => setSplash(false)} tema={tema} />}
       {/* Controles flutuantes (topo-direito) — substitui a antiga barra preta */}
       <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -5053,7 +5063,7 @@ function Dashboard() {
 
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--v2-rule)' }}>
-              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema']] as const).map(([k, l]) => (
+              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema'], ['regras', 'Regras do mês']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? '#111' : '#888', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
@@ -5087,6 +5097,11 @@ function Dashboard() {
             </div>
             )}
 
+            {abaConfig === 'regras' && (
+              <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 20 }}>
+                <RegrasDoMes />
+              </div>
+            )}
             {abaConfig === 'sistema' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Saúde do sistema</h3>

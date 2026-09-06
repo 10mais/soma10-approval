@@ -17,6 +17,7 @@ type Cartao = { id: string; nome: string; logo?: string; cor?: string; lado: 'cl
 type ItemFila = { id: string; titulo: string; tipo?: string; status: string; prazo?: string; clienteNome?: string; anexos: number }
 type Chegou = { id: string; ts: number; clienteId: string; clienteNome: string; tipo: string; acao: string; resumo?: string; postId?: string }
 type Dados = {
+  eu?: { nome: string; email: string }
   pessoa: { nome: string; email: string }; vendoComo: { nome: string; email: string } | null; ehAdmin: boolean
   equipe: { nome: string; email: string }[]
   manchete: { partes: Parte[]; subtitulo: string; tom: 'urgente' | 'normal' | 'tranquilo' }
@@ -240,8 +241,9 @@ export default function DashboardHomeV2({ tema, onIr, onVerCliente }: { tema: 'c
           {dados?.ehAdmin && dados.equipe.length > 0 && (
             <label className="v2-como">Ver como
               <select value={como} onChange={e => setComo(e.target.value)}>
-                <option value="">{dados.pessoa.email === (dados.vendoComo?.email || dados.pessoa.email) && !como ? 'eu mesmo' : 'eu mesmo'}</option>
-                {dados.equipe.filter(u => u.email.toLowerCase() !== (dados.vendoComo ? '' : dados.pessoa.email.toLowerCase())).map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+                {/* Quem está logado é a primeira opção, com o próprio nome — e NÃO se repete na lista. */}
+                <option value="">{(dados.eu?.nome || 'Eu').split(' ')[0]} (você)</option>
+                {dados.equipe.filter(u => u.email.toLowerCase() !== (dados.eu?.email || '').toLowerCase()).map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
             </label>
           )}

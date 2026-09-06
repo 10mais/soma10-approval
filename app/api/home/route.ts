@@ -120,6 +120,8 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = {
+    // `eu` = quem está logado; `pessoa` = de quem é a Home (igual a `eu`, salvo no "Ver como").
+    eu: { nome: String(su.name || ''), email: String(su.email || '') },
     pessoa, vendoComo, ehAdmin, equipe,
     manchete, regra,
     regua, agenda: { configurada: agendaConfigurada(), erro: agenda.erro },
