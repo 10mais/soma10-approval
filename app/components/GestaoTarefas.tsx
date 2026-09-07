@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast, confirmar } from '@/lib/toast'
@@ -729,7 +730,8 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
           .filter(t => !q || (t.titulo || '').toLowerCase().includes(q) || (t.clienteNome || '').toLowerCase().includes(q))
           .sort((a, b) => Number(clientesOrigem.has(b.clienteId || '')) - Number(clientesOrigem.has(a.clienteId || '')) || (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'))
           .slice(0, 40)
-        return (
+        if (typeof document === 'undefined') return null
+        return createPortal(
           <div onClick={fecharFora(() => setEscolherMae(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ padding: '16px 18px 10px' }}>
@@ -757,11 +759,11 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
               </div>
             </div>
           </div>
-        )
+        , document.body)
       })()}
 
       {/* Concluir a mãe com filhas abertas */}
-      {perguntaMae && (
+      {perguntaMae && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
           <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 460, padding: '20px 22px' }}>
             <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-amber)' }}>Subtarefas em aberto</p>
@@ -777,7 +779,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {view === 'lista' && (
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
@@ -806,7 +808,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                   onDragLeave={() => { if (overRow === x.id) setOverRow(null) }}
                   onDrop={e => { e.preventDefault(); const id = dragId; setDragId(null); setOverRow(null); if (!id || id === x.id) return; vincular([id], ehSub ? (x.tarefaPaiId as string) : x.id) }}
                   title={podeEditar ? 'Arraste sobre outra tarefa para torná-la subtarefa' : undefined}
-                  style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: overRow === x.id ? 'var(--v2-amber-bg)' : ehSub ? 'var(--v2-surface1)' : 'var(--v2-surface)', boxShadow: overRow === x.id ? 'inset 0 0 0 2px var(--v2-amber-on)' : 'none', opacity: dragId === x.id ? 0.5 : 1, transition: 'background 100ms' }}>
+                  style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: overRow === x.id || editModal?.id === x.id ? 'var(--v2-amber-bg)' : ehSub ? 'var(--v2-surface1)' : 'var(--v2-surface)', boxShadow: overRow === x.id ? 'inset 0 0 0 2px var(--v2-amber-on)' : editModal?.id === x.id ? 'inset 3px 0 0 var(--v2-amber-on)' : 'none', opacity: dragId === x.id ? 0.5 : 1, transition: 'background 100ms' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
                     <span onClick={e => { e.stopPropagation(); alternarSelecao(x.id) }} title="Selecionar" style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'}`, background: selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
                       {selecionadas.includes(x.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#17150E" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
@@ -1408,7 +1410,10 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
     </div>
   )
 
-  return (
+  // Portal: fora do painel, acima dos controles flutuantes (fixed z=120) e de qualquer
+  // contexto de empilhamento das telas animadas. Tokens vivem em :root, então o tema vale.
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <div onClick={viewMode !== 'sidebar' ? fechar : undefined} style={wrapperStyle[viewMode]}>
       <div onClick={e => e.stopPropagation()} style={outerPanelStyle[viewMode]}>
         {/* Lado esquerdo — Detalhes */}
@@ -1938,5 +1943,5 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
         </div>
       )}
     </div>
-  )
+  , document.body)
 }
