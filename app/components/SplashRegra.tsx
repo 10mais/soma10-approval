@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { podeSair, tempoRestante, tetoRestante, SPLASH_SAIDA_MS } from '@/lib/splashTempo'
+import { podeSair, tempoRestante, SPLASH_SAIDA_MS } from '@/lib/splashTempo'
 
 // TELA DE ABERTURA: "carregando" com a regra inegociável do mês e a frase do
 // dia (pedido do dono, 06/09: "sempre que abrir o sistema, mostre carregando e
@@ -40,23 +40,34 @@ function buscarRegra(): Promise<Regra> {
 export default function SplashRegra({ pronto, onFim, tema }: { pronto: boolean; onFim: () => void; tema: 'claro' | 'escuro' }) {
   const [regra, setRegra] = useState<Regra | undefined>(undefined) // undefined = ainda não sei
   const [saindo, setSaindo] = useState(false)
-  const [, forcar] = useState(0) // re-render quando um timer vence
+  // Refs: o relógio lê SEMPRE o valor atual, sem depender de re-render nem de
+  // lista de dependências de efeito (segundo incidente de 07/09: o efeito não
+  // reexecutava quando o timer vencia e a splash ficava parada com a barra cheia).
+  const regraRef = useRef<Regra | undefined>(undefined)
+  const prontoRef = useRef(pronto)
+  prontoRef.current = pronto
   const onFimRef = useRef(onFim)
   onFimRef.current = onFim
   if (!relogioInicio) relogioInicio = Date.now()
 
-  useEffect(() => { let vivo = true; buscarRegra().then(r => { if (vivo) setRegra(r) }); return () => { vivo = false } }, [])
-
-  // Decide se pode sair. Reavalia quando regra/pronto mudam e quando o timer
-  // (tempo mínimo ou teto) vence. Nunca cancela o fechamento já iniciado.
   useEffect(() => {
-    if (saindo) return
-    const agora = Date.now()
-    if (podeSair({ inicio: relogioInicio, agora, temRegra: regra === undefined ? undefined : !!regra, pronto })) { setSaindo(true); return }
-    const espera = regra === undefined ? tetoRestante(relogioInicio, agora) : Math.min(tempoRestante(relogioInicio, agora, !!regra), tetoRestante(relogioInicio, agora))
-    const t = setTimeout(() => forcar(n => n + 1), Math.max(16, espera))
-    return () => clearTimeout(t)
-  }, [regra, pronto, saindo])
+    let vivo = true
+    buscarRegra().then(r => { regraRef.current = r; if (vivo) setRegra(r) })
+    return () => { vivo = false }
+  }, [])
+
+  // Relógio: a cada 100ms pergunta "pode sair?" (tempo mínimo + pai pronto, ou
+  // teto de 12s). Sem dependências: monta uma vez, roda até sair ou desmontar.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const r = regraRef.current
+      if (podeSair({ inicio: relogioInicio, agora: Date.now(), temRegra: r === undefined ? undefined : !!r, pronto: prontoRef.current })) {
+        clearInterval(id)
+        setSaindo(true)
+      }
+    }, 100)
+    return () => clearInterval(id)
+  }, [])
 
   // Fechamento: depende SÓ de `saindo`, então nada o cancela.
   useEffect(() => {
