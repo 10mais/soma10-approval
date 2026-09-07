@@ -98,7 +98,7 @@ export default function WhatsAppConexao({ instancia }: { instancia?: string } = 
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 800, color: info.cor, background: info.bg, borderRadius: 999, padding: '5px 12px' }}>{info.label}</span>
-        <button onClick={carregar} style={{ padding: '6px 12px', background: '#f2f2f2', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Atualizar</button>
+        <button onClick={carregar} style={{ padding: '6px 12px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Atualizar</button>
         <span style={{ flex: 1 }} />
         {estado === 'open'
           ? <button onClick={desconectar} disabled={ocupado} style={{ padding: '8px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>

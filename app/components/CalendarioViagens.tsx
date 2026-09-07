@@ -123,7 +123,7 @@ export default function CalendarioViagens({ onAbrirViagem }: { onAbrirViagem?: (
                             const doMes = Number(d.slice(5, 7)) - 1 === ref.mes
                             const ehHoje = d === hoje
                             return (
-                              <div key={d} style={{ borderRight: '1px solid var(--v2-surface1)', padding: '5px 6px', background: ehHoje ? 'var(--v2-amber-bg)' : doMes ? 'var(--v2-surface)' : '#fcfcfc' }}>
+                              <div key={d} style={{ borderRight: '1px solid var(--v2-surface1)', padding: '5px 6px', background: ehHoje ? 'var(--v2-amber-bg)' : doMes ? 'var(--v2-surface)' : 'var(--v2-surface2)' }}>
                                 <span style={{
                                   fontSize: 11, fontWeight: ehHoje ? 800 : 600,
                                   color: ehHoje ? 'var(--v2-amber)' : doMes ? 'var(--v2-ink2)' : 'var(--v2-rule2)',

@@ -146,7 +146,7 @@ export default function FontesMarca({ clienteId }: { clienteId: string }) {
       {/* Upload de fontes */}
       <div
         onClick={() => !enviando && inputRef.current?.click()}
-        style={{ border: '1.5px dashed #dcdcdc', background: '#fbfbfc', borderRadius: 14, padding: '16px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 14 }}>
+        style={{ border: '1.5px dashed var(--v2-rule2)', background: '#fbfbfc', borderRadius: 14, padding: '16px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 14 }}>
         <input ref={inputRef} type="file" accept=".ttf,.otf,.woff,.woff2" multiple style={{ display: 'none' }} disabled={enviando}
           onChange={e => { if (e.target.files?.length) enviarArquivos(e.target.files); e.target.value = '' }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>

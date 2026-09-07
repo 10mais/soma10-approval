@@ -435,7 +435,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 {(form.inclusos || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum item. Cada linha é um tópico do que está incluso.</p>}
                 {(form.inclusos || []).map((inc, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                    <span style={{ color: '#cbd5e1', fontSize: 16, lineHeight: 1 }}>•</span>
+                    <span style={{ color: 'var(--v2-ink3)', fontSize: 16, lineHeight: 1 }}>•</span>
                     <input value={inc} onChange={e => setIncluso(i, e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addIncluso() } }}
                       placeholder="Ex.: Hospedagem 2 diárias com café da manhã" style={{ ...inputStyle, flex: 1 }} />

@@ -87,7 +87,7 @@ function LoadingPlaceholder() {
           {[1,2,3].map(i => <div key={i} style={{ flex: 1, height: 120, background: 'var(--v2-surface1)', borderRadius: 12, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.2}s` }} />)}
         </div>
         <div style={{ width: '60%', height: 14, background: 'var(--v2-surface1)', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
-        <div style={{ width: '40%', height: 14, background: '#f8f8f8', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
+        <div style={{ width: '40%', height: 14, background: 'var(--v2-surface2)', borderRadius: 6, animation: 'shimmer 1.5s infinite' }} />
       </div>
     </div>
   )
@@ -2118,7 +2118,7 @@ function Dashboard() {
                 {/* Cabecalho colapsavel — clique para abrir a busca/lista */}
                 <button onClick={() => setClientesAberto(v => !v)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
-                  border: '1.5px solid var(--v2-rule)', background: '#f8f8f8', cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface2)', cursor: 'pointer', fontFamily: 'inherit',
                 }}>
                   <span style={{ color: 'var(--v2-ink3)', display: 'flex' }}><IconSearch size={14} /></span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: clienteEmVisualizacao ? 'var(--v2-ink)' : 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2187,7 +2187,7 @@ function Dashboard() {
               <NavBtn chave="crm" label="CRM" />
               {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
-              <NavBtn chave="meu-card" label="Meu card" onClick={() => router.push('/equipe/me')} />
+              <NavBtn chave="meu-card" label="Meu perfil" onClick={() => router.push('/equipe/me')} />
               <NavBtn chave="lista-pessoal" label="Personal list" />
               <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
             </nav>
@@ -2201,14 +2201,14 @@ function Dashboard() {
               {perfilTelefonia && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <NavBtn chave="home" label="Painel" />
-                  <NavBtn chave="meu-card" label="Meu card" onClick={() => router.push('/equipe/me')} />
+                  <NavBtn chave="meu-card" label="Meu perfil" onClick={() => router.push('/equipe/me')} />
                   <NavBtn chave="lista-pessoal" label="Personal list" />
                   {podeGrupo('crm') && <><NavBtn chave="produtos" label="Produtos" /><NavBtn chave="vendas" label="Vendas (PDV)" /><NavBtn chave="crm" label="CRM" /></>}
                   {podeGrupo('producao') && !ocultas.includes('tarefas') && <NavBtn chave="tarefas" label="Tarefas" />}
                 </nav>
               )}
               {([
-                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', 'Meu card'], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
+                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', 'Meu perfil'], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
                 { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
@@ -2341,7 +2341,7 @@ function Dashboard() {
         {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
         {mobile && !ehCliente && (
           <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-            {[{ k: 'home', label: 'Início' }, { k: 'meu-card', label: 'Meu card' }, { k: 'mensagens', label: 'Chat' }].map(it => {
+            {[{ k: 'home', label: 'Início' }, { k: 'meu-card', label: 'Meu perfil' }, { k: 'mensagens', label: 'Chat' }].map(it => {
               const ativo = aba === it.k && !menuMobile
               return (
                 <button key={it.k} onClick={() => { if (it.k === 'meu-card') { router.push('/equipe/me'); return } setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
@@ -2802,12 +2802,12 @@ function Dashboard() {
 
                   <div style={{ padding: 16 }}>
                     {postLegendaExpandida ? (
-                      <p style={{ margin: '0 0 10px', fontSize: 13.5, color: '#262626', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      <p style={{ margin: '0 0 10px', fontSize: 13.5, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                         <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
                       </p>
                     ) : (
                       <div style={{ margin: '0 0 10px' }}>
-                        <p style={{ margin: 0, fontSize: 13.5, color: '#262626', lineHeight: 1.5, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink)', lineHeight: 1.5, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
                         </p>
                         {(postPreview.legenda || '').length > 80 && (
@@ -2825,11 +2825,11 @@ function Dashboard() {
                         onde o cliente cai vindo de "Ver no planner", nas Solicitações). */}
                     {role !== 'cliente' && !['publicado', 'publicando'].includes(postPreview.status) && (
                       reprogramandoId === postPreview.id ? (
-                        <div style={{ margin: '0 0 10px', background: 'var(--v2-surface1)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px' }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Nova data e hora</label>
+                        <div style={{ margin: '0 0 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule2)', borderRadius: 10, padding: '10px 12px' }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Nova data e hora</label>
                           <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
                             style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }} />
-                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#64748b', lineHeight: 1.45 }}>
+                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', lineHeight: 1.45 }}>
                             {postPreview.status === 'aprovado'
                               ? 'O material já está aprovado — salvar coloca ele na fila de publicação nesta data.'
                               : postPreview.status === 'agendado'
@@ -4059,7 +4059,7 @@ function Dashboard() {
                         {c.nome}
                         <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? 'var(--v2-info-bg)' : 'var(--v2-ok-bg)', color: (c as any).tipo === 'interno' ? 'var(--v2-info)' : 'var(--v2-ok)' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
                         {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)' }}>Suspenso</span>}
-                        {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>Arquivado</span>}
+                        {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule2)' }}>Arquivado</span>}
                         {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
                         ) : null })()}
@@ -4176,7 +4176,7 @@ function Dashboard() {
                                   {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: 'var(--v2-ink3)' }}>Desconectar</button>}
                                 </>
                               ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: 'var(--v2-amber)' }}>Não conectado</span> : null}
-                              <span style={{ ...mchip, marginLeft: 'auto', background: '#f3f4f6', color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
+                              <span style={{ ...mchip, marginLeft: 'auto', background: 'var(--v2-surface2)', color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                             </div>
                           </div>
                           <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)' }}>Dados do cliente</span>
@@ -4486,7 +4486,7 @@ function Dashboard() {
                           </button>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
-                            <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: '#f1f5f9', border: 'none', borderRadius: 9, fontSize: 13, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                            <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
                             <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar alterações</button>
                           </div>
                         </div>

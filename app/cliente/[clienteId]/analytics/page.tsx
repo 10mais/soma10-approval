@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', borderBottom: '1px solid var(--v2-rule)' }}>Posts por relevancia ({data.posts.length})</p>
               {data.posts.map((p: any) => (
-                <div key={p.id} style={{ padding: '12px 20px', borderBottom: '1px solid #f8f8f8', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div key={p.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 14 }}>
                   {p.midiaUrl && <img src={p.midiaUrl} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda?.slice(0, 80) || '--'}</p>

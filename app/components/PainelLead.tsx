@@ -253,7 +253,7 @@ export default function PainelLead({
               {passosAbertos.map(p => (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                   <button onClick={() => concluirPasso(p.id)} title="Marcar como feito"
-                    style={{ width: 16, height: 16, borderRadius: 5, border: '1.5px solid #cbd5e1', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                    style={{ width: 16, height: 16, borderRadius: 5, border: '1.5px solid var(--v2-rule2)', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: p.quando <= hojeYmd() ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
                 </div>

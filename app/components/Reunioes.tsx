@@ -211,7 +211,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {ritual.length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma área definida para os dias da semana.</span>}
         {ritual.map(r => {
-          const cor = r.cor || '#64748b'
+          const cor = r.cor || 'var(--v2-ink2)'
           const dia = semanaDe(ref).find(d => diaDaSemana(d) === r.dia)!
           const qtd = (porDia.get(ymd(dia)) || []).length
           const hoje = ehHoje(dia)
@@ -235,7 +235,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
         })}
         {podeEditar && (
           <button onClick={() => setRitualAberto(true)} title="Definir a área e a cor de cada dia"
-            style={{ flex: '0 0 auto', minWidth: 104, border: '1px dashed #dcdcdc', borderRadius: 12, background: 'var(--v2-surface)', cursor: 'pointer', font: 'inherit', color: 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, padding: '10px 12px' }}>
+            style={{ flex: '0 0 auto', minWidth: 104, border: '1px dashed var(--v2-rule2)', borderRadius: 12, background: 'var(--v2-surface)', cursor: 'pointer', font: 'inherit', color: 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, padding: '10px 12px' }}>
             Editar ritual
           </button>
         )}
@@ -269,7 +269,7 @@ export default function Reunioes({ usuarios = [], podeEditar = true }: { usuario
               return (
                 <div key={d} style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
                   <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)' }}>{NOMES_DIA_CURTO[d]}</span>
-                  {rit && <span style={{ display: 'block', fontSize: 9, fontWeight: 800, color: rit.cor || '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{rit.area}</span>}
+                  {rit && <span style={{ display: 'block', fontSize: 9, fontWeight: 800, color: rit.cor || 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{rit.area}</span>}
                 </div>
               )
             })}
@@ -353,7 +353,7 @@ function RitualModal({ ritual, onClose, onSalvo }: { ritual: DiaRitual[]; onClos
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>A área que é tema de cada dia. Deixe em branco o dia que não tem reunião fixa.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {dias.map((d, i) => (
-            <div key={d.dia} style={{ border: '1px solid #f2f2f2', borderRadius: 12, padding: 10, borderLeft: `4px solid ${d.area.trim() ? d.cor : 'var(--v2-surface2)'}` }}>
+            <div key={d.dia} style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 10, borderLeft: `4px solid ${d.area.trim() ? d.cor : 'var(--v2-surface2)'}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 62, fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink2)', flexShrink: 0 }}>{NOMES_DIA[d.dia]}</span>
                 <input value={d.area} onChange={e => setDias(ds => ds.map((x, idx) => idx === i ? { ...x, area: e.target.value } : x))}

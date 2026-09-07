@@ -107,7 +107,7 @@ export default function CardPessoa() {
     if (!ok) { toast('Não foi possível salvar.', 'erro'); return }
     setPessoa({ ...pessoa, cargo: body.cargo, atribuicoes: body.atribuicoes, responsabilidades: body.responsabilidades, clientesResponsavel: body.clientesResponsavel })
     setEditando(false)
-    toast('Card atualizado.', 'sucesso')
+    toast('Perfil atualizado.', 'sucesso')
   }
 
   // ---- ações nas tarefas (timer + concluir), como no antigo Meu dia
@@ -117,7 +117,7 @@ export default function CardPessoa() {
     if (ini) {
       const min = Math.max(1, Math.round((Date.now() - Number(ini)) / 60000))
       localStorage.removeItem(key)
-      await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.id, apontarHoras: { minutos: min, descricao: 'Timer (card)', data: new Date().toISOString() } }) }).catch(() => {})
+      await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.id, apontarHoras: { minutos: min, descricao: 'Timer (perfil)', data: new Date().toISOString() } }) }).catch(() => {})
       carregarTarefas()
     } else { localStorage.setItem(key, String(Date.now())); setTick(x => x + 1) }
   }
@@ -179,7 +179,7 @@ export default function CardPessoa() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => router.push(`/equipe/${encodeURIComponent(pessoa.email)}/tarefas`)} style={{ padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Quadro de tarefas</button>
-          {ehAdmin && !editando && <button onClick={abrirEdicao} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}>Editar card</button>}
+          {ehAdmin && !editando && <button onClick={abrirEdicao} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}>Editar perfil</button>}
         </div>
       </div>
 

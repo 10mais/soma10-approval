@@ -94,7 +94,7 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
       <style>{`
         .am-chip{transition:all .15s ease;cursor:pointer;border:1px solid transparent}
         .am-chip:hover{transform:translateY(-1px)}
-        .am-card{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(17,17,17,.07);background:#f6f6f7;aspect-ratio:1/1;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s}
+        .am-card{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(17,17,17,.07);background:var(--v2-surface2);aspect-ratio:1/1;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s}
         .am-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px -14px rgba(0,0,0,.35)}
         .am-card .am-tools{opacity:0;transition:opacity .15s ease}
         .am-card:hover .am-tools{opacity:1}
@@ -131,7 +131,7 @@ export default function ReferenciasVisuais({ clienteId }: { clienteId: string })
         onDragLeave={() => setArrasta(false)}
         onDrop={e => { e.preventDefault(); setArrasta(false); if (e.dataTransfer.files?.length) enviarArquivos(e.dataTransfer.files) }}
         onClick={() => !enviando && inputRef.current?.click()}
-        style={{ border: `1.5px dashed ${arrasta ? 'var(--marca, var(--v2-amber-on))' : '#dcdcdc'}`, background: arrasta ? '#fffdf5' : '#fbfbfc', borderRadius: 16, padding: '20px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 16 }}>
+        style={{ border: `1.5px dashed ${arrasta ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-rule2)'}`, background: arrasta ? '#fffdf5' : '#fbfbfc', borderRadius: 16, padding: '20px 18px', textAlign: 'center', cursor: enviando ? 'wait' : 'pointer', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={enviando}
           onChange={e => { if (e.target.files?.length) enviarArquivos(e.target.files); e.target.value = '' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>

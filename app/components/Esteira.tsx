@@ -284,7 +284,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                 onDragLeave={() => setOverCol(o => (o === col.key ? null : o))}
                 onDrop={() => { const p = pautas.find(x => x.id === dragId); if (p) moverEtapa(p, col.key); setDragId(null); setOverCol(null) }}
                 style={{
-                  flex: '0 0 230px', width: 230, background: overCol === col.key ? 'var(--v2-amber-bg)' : '#f6f6f7', borderRadius: 12, padding: 10,
+                  flex: '0 0 230px', width: 230, background: overCol === col.key ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)', borderRadius: 12, padding: 10,
                   outline: overCol === col.key ? '2px dashed var(--v2-amber-on)' : 'none', outlineOffset: -2,
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>

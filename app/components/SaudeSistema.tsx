@@ -189,7 +189,7 @@ export default function SaudeSistema() {
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: essenciaisOff.length ? '#e74c3c' : '#27ae60', display: 'inline-block' }} />
           {essenciaisOff.length ? `${essenciaisOff.length} essencial(is) faltando` : 'Essenciais no ar'}
         </div>
-        <button onClick={carregar} disabled={carregando} style={{ padding: '7px 14px', background: '#f2f2f2', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+        <button onClick={carregar} disabled={carregando} style={{ padding: '7px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
           {carregando ? 'Atualizando...' : 'Atualizar'}
         </button>
         <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Verificado {tempoRelativo(dados.ts)}</span>
@@ -222,7 +222,7 @@ export default function SaudeSistema() {
         <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Cole esta URL num monitor gratuito (ex.: UptimeRobot, BetterStack) — ele te avisa se o site cair. Responde 200 quando tudo está no ar, 503 se o banco cai.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <code style={{ fontSize: 12, background: 'var(--v2-surface1)', padding: '7px 10px', borderRadius: 8, color: 'var(--v2-ink)' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
-          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: '#f2f2f2', color: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
+          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
         </div>
       </div>
 

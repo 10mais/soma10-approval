@@ -481,7 +481,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                 ) : itens.map(({ contato: c, passo: p }) => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                     <button onClick={() => concluirAbordagem(c.id, p.id)} title="Marcar como feita"
-                      style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid #cbd5e1', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0 }} />
+                      style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid var(--v2-rule2)', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0 }} />
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: cor, flexShrink: 0 }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
@@ -686,7 +686,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                     {linha('Em aberto', String(f.abertos))}
                     {linha('Ganhos', String(f.ganhos), 'var(--v2-ok)')}
                     {linha('Perdidos', String(f.perdidos), f.perdidos ? 'var(--v2-hot)' : undefined)}
-                    <div style={{ borderTop: '1px solid #f2f2f2', marginTop: 6, paddingTop: 6 }}>
+                    <div style={{ borderTop: '1px solid var(--v2-rule)', marginTop: 6, paddingTop: 6 }}>
                       {linha('Conversão', `${Math.round(f.conversao)}%`)}
                       {linha('Valor ganho', fmtR$(f.valorGanho), f.valorGanho ? 'var(--v2-ok)' : undefined)}
                     </div>
@@ -1145,7 +1145,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
 
   // Vista LISTA (tabela) com seleção
   const th: React.CSSProperties = { textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '10px 12px', whiteSpace: 'nowrap' }
-  const td: React.CSSProperties = { fontSize: 13, color: 'var(--v2-ink)', padding: '10px 12px', borderTop: '1px solid #f2f2f2' }
+  const td: React.CSSProperties = { fontSize: 13, color: 'var(--v2-ink)', padding: '10px 12px', borderTop: '1px solid var(--v2-rule)' }
   return dz(
     <div>
       {toggleVista}
@@ -1302,7 +1302,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
 
   const colOpts = Array.from({ length: nCols }, (_, i) => i)
   const th: React.CSSProperties = { textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', padding: '6px 8px', whiteSpace: 'nowrap' }
-  const td: React.CSSProperties = { fontSize: 12, color: 'var(--v2-ink)', padding: '6px 8px', borderTop: '1px solid #f2f2f2', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }
+  const td: React.CSSProperties = { fontSize: 12, color: 'var(--v2-ink)', padding: '6px 8px', borderTop: '1px solid var(--v2-rule)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
@@ -1762,7 +1762,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                       return (
                         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px' }}>
                           <button onClick={() => togglePasso(p.id)} title={p.feito ? 'Reabrir' : 'Concluir'}
-                            style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid #cbd5e1', background: p.feito ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
+                            style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid var(--v2-rule2)', background: p.feito ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
                             {p.feito && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                           </button>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-info)', flexShrink: 0 }}>{new Date(p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
@@ -1783,7 +1783,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                   <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 260, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                     {timeline.map(item => item.kind === 'criado' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)', background: '#f3f4f6', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
                         <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>Contato criado</span>
                       </div>
@@ -3264,7 +3264,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                         <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.</p>
                       ) : contatosVinculo.map(ct => (
                         <button key={ct.id} onClick={() => { vincular(ct.id); setVincularAberto(false) }}
-                          style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid #f8f8f8', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : 'var(--v2-surface)', cursor: 'pointer' }}>
+                          style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid var(--v2-rule)', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : 'var(--v2-surface)', cursor: 'pointer' }}>
                           <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct.nome}</span>
                           {ct.telefone && <span style={{ display: 'block', fontSize: 11, color: 'var(--v2-ink3)' }}>{ct.telefone}</span>}
                         </button>

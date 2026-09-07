@@ -45,7 +45,7 @@ function MapaPoltronas({ layout, ocupadas, selecionadas, onToggle, readOnly }: {
             const numero = a[2]
             const ocupada = ocupadas.has(numero)
             const sel = selecionadas.has(numero)
-            const cor = ocupada ? { bg: 'var(--v2-surface2)', bd: '#d8dde3', tx: 'var(--v2-ink3)' } : sel ? { bg: 'var(--v2-ink)', bd: 'var(--v2-ink)', tx: 'var(--v2-surface)' } : { bg: 'var(--v2-surface)', bd: '#c9cace', tx: '#475569' }
+            const cor = ocupada ? { bg: 'var(--v2-surface2)', bd: '#d8dde3', tx: 'var(--v2-ink3)' } : sel ? { bg: 'var(--v2-ink)', bd: 'var(--v2-ink)', tx: 'var(--v2-surface)' } : { bg: 'var(--v2-surface)', bd: '#c9cace', tx: 'var(--v2-ink2)' }
             return (
               <button type="button" title={`Poltrona ${rotuloPoltrona(numero)}${ocupada ? ' (ocupada)' : ''} · ${a[3] || 'leito'}`}
                 disabled={readOnly || ocupada}
@@ -211,13 +211,13 @@ export default function Reservas({ podeEditar = true, podeExcluir = false, meuEm
               {!comPoltrona ? (
                 <>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '5px 12px' }}>Fretamento — veículo inteiro</span>
-                  {viagem.contratante && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>Contratante: {viagem.contratante}</span>}
+                  {viagem.contratante && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: 'var(--v2-surface2)', borderRadius: 999, padding: '5px 12px' }}>Contratante: {viagem.contratante}</span>}
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '5px 12px' }}>{fmtBRL(viagem.valorFechado || 0)} fechado</span>
                 </>
               ) : (
                 <>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '5px 12px' }}>{vendidas} vendidas</span>
-                  {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: '#f1f5f9', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
+                  {layout && <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155', background: 'var(--v2-surface2)', borderRadius: 999, padding: '5px 12px' }}>{vagas - vendidas} livres de {vagas}</span>}
                   {!layout && <span style={{ fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '5px 12px' }}>Viagem sem veículo/croqui — defina o veículo para o mapa de poltronas.</span>}
                 </>
               )}

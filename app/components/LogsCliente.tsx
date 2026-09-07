@@ -39,9 +39,9 @@ function haQuanto(ts: number): string {
 // pendência aberta.
 function chipStatusPost(l: Log): { label: string; cor: string; bg: string } | null {
   if (!l.postId) return null
-  if (l.postExiste === false) return { label: 'Excluído', cor: 'var(--v2-ink3)', bg: '#f3f4f6' }
+  if (l.postExiste === false) return { label: 'Excluído', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface2)' }
   const st = l.postStatus || '', et = l.postEtapa || ''
-  if (st === 'excluido') return { label: 'Na lixeira', cor: 'var(--v2-ink3)', bg: '#f3f4f6' }
+  if (st === 'excluido') return { label: 'Na lixeira', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface2)' }
   if (st === 'aguardando_aprovacao' || et === 'aprovacao_copy' || et === 'aprovacao_criativo') return { label: 'Em revisão', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
   if (st === 'corrigir') return { label: 'A refazer', cor: 'var(--v2-amber)', bg: '#fff7ed' }
   if (st === 'reprovado') return { label: 'Reprovado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
@@ -118,7 +118,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtrados.map(l => {
-          const e = ESTILO[l.tipo] || { cor: 'var(--v2-ink3)', bg: '#f3f4f6', label: l.tipo }
+          const e = ESTILO[l.tipo] || { cor: 'var(--v2-ink3)', bg: 'var(--v2-surface2)', label: l.tipo }
           // O que o cliente já RESOLVEU não pede correção — pede só ser encontrado.
           // Aprovação é óbvia; correção de legenda entra aqui porque o servidor
           // (api/decision) troca o texto e SEGUE a programação: o post já está no
@@ -187,7 +187,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {mudancas.map((m, i) => (
                             <div key={i} style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, overflow: 'hidden' }}>
-                              <p style={{ margin: 0, padding: '5px 10px', fontSize: 11, fontWeight: 800, color: '#475569', background: 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.campo}</p>
+                              <p style={{ margin: 0, padding: '5px 10px', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.campo}</p>
                               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1 1 240px', minWidth: 0, padding: '8px 10px', background: 'var(--v2-hot-bg)', borderRight: '1px solid var(--v2-hot-bg)' }}>
                                   <p style={{ margin: '0 0 3px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-hot)' }}>ANTES</p>

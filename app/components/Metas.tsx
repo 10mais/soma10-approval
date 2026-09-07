@@ -226,7 +226,7 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
                   {/* meta = coluna cinza atrás; realizado = coluna colorida na frente */}
                   <div style={{ position: 'relative', width: 26, height: 110, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                     <div style={{ position: 'absolute', bottom: 0, width: 26, height: Math.max(2, hMeta), background: '#f1f1f1', borderRadius: 6 }} />
-                    <div style={{ position: 'absolute', bottom: 0, width: 26, height: hReal, background: x.semMeta ? '#cbd5e1' : c.cor, borderRadius: 6, transition: 'height .4s ease' }} />
+                    <div style={{ position: 'absolute', bottom: 0, width: 26, height: hReal, background: x.semMeta ? 'var(--v2-rule)' : c.cor, borderRadius: 6, transition: 'height .4s ease' }} />
                   </div>
                   <span style={{ fontSize: 10.5, fontWeight: selecionado || corrente ? 800 : 600, color: corrente ? 'var(--v2-ink)' : 'var(--v2-ink3)', borderBottom: corrente ? '2px solid var(--v2-ink)' : '2px solid transparent', paddingBottom: 1 }}>{MESES_CURTO[x.m]}</span>
                 </button>
@@ -288,7 +288,7 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
             )}
 
             {/* O parcial que dá para conferir: as vendas que formaram o número. */}
-            <div style={{ borderTop: '1px solid #f2f2f2', marginTop: 16, paddingTop: 12 }}>
+            <div style={{ borderTop: '1px solid var(--v2-rule)', marginTop: 16, paddingTop: 12 }}>
               <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Vendas ganhas em {MESES_LONGO[mesFoco]}</span>
               {foco.lista.length === 0 && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma oportunidade ganha neste mês ainda.</p>}
               <div style={{ maxHeight: 190, overflowY: 'auto', marginTop: 6 }}>

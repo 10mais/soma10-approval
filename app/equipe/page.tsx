@@ -46,7 +46,7 @@ export default function EquipeCards() {
         <div>
           <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Equipe</p>
           <h1 style={{ margin: '4px 0 0', fontSize: 'clamp(26px, 3vw, 34px)', fontWeight: 500, letterSpacing: '-0.015em', lineHeight: 1.1 }}>{pessoas.length} pessoa{pessoas.length === 1 ? '' : 's'}, {totalAbertas} tarefa{totalAbertas === 1 ? '' : 's'} aberta{totalAbertas === 1 ? '' : 's'}{totalAtrasadas ? `, ${totalAtrasadas} atrasada${totalAtrasadas > 1 ? 's' : ''}` : ''}</h1>
-          <p style={{ margin: '8px 0 0', fontSize: 13.5, color: 'var(--v2-ink2)' }}>Clique num card para ver atribuições, responsabilidades e tudo o que está assinalado para a pessoa.</p>
+          <p style={{ margin: '8px 0 0', fontSize: 13.5, color: 'var(--v2-ink2)' }}>Clique num perfil para ver atribuições, responsabilidades e tudo o que está assinalado para a pessoa.</p>
         </div>
       </div>
 

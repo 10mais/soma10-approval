@@ -380,7 +380,7 @@ export default function Processos({ podeEditar = true, podeExcluir = false }: { 
                         </div>
                         <button type="button" disabled={!(total > 0) || !parcPrimeiro}
                           onClick={() => setFin({ valorTotal: total, parcelas: gerarParcelas(total, Number(parcVezes) || 1, parcPrimeiro, parcMetodo), pagamentos: fin.pagamentos || [] })}
-                          style={{ padding: '9px 14px', background: total > 0 && parcPrimeiro ? 'var(--v2-ink)' : '#f3f4f6', color: total > 0 && parcPrimeiro ? 'var(--v2-surface)' : '#c4c8cc', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: total > 0 && parcPrimeiro ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>Gerar parcelas</button>
+                          style={{ padding: '9px 14px', background: total > 0 && parcPrimeiro ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: total > 0 && parcPrimeiro ? 'var(--v2-surface)' : '#c4c8cc', border: 'none', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: total > 0 && parcPrimeiro ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>Gerar parcelas</button>
                       </div>
                     ) : (<>
                       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8, fontSize: 11.5 }}>

@@ -82,7 +82,7 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {mobile && <button className="eq-topo-btn" aria-label="Menu" onClick={() => setMenuAberto(v => !v)} style={{ padding: 8 }}><Ico d={IC.menu} /></button>}
           <button className="eq-topo-btn" onClick={() => router.push('/dashboard')}><Ico d={IC.voltar} size={14} />{!mobile && 'Painel'}</button>
-          {ehAdmin && <button className="eq-topo-btn" onClick={() => router.push('/equipe')} style={pathname === '/equipe' ? { color: 'var(--v2-ink)', borderColor: 'var(--v2-amber-on)' } : undefined}><Ico d={IC.equipe} size={14} />{!mobile && 'Todos os cards'}</button>}
+          {ehAdmin && <button className="eq-topo-btn" onClick={() => router.push('/equipe')} style={pathname === '/equipe' ? { color: 'var(--v2-ink)', borderColor: 'var(--v2-amber-on)' } : undefined}><Ico d={IC.equipe} size={14} />{!mobile && 'Equipe'}</button>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button className="eq-topo-btn" onClick={alternarTema} title={tema === 'escuro' ? 'Tema claro' : 'Tema escuro'} style={{ padding: 8 }}><Ico d={tema === 'escuro' ? IC.sol : IC.lua} /></button>
@@ -97,7 +97,7 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
         <aside style={mobile
           ? { position: 'fixed', top: 56, left: 0, bottom: 0, width: 268, overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform 200ms ease', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '12px', boxSizing: 'border-box' }
           : { position: 'sticky', top: 56, width: 248, flexShrink: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '12px', boxSizing: 'border-box' }}>
-          <span className="eq-rotulo">{ehAdmin ? 'Equipe' : 'Meu card'}</span>
+          <span className="eq-rotulo">{ehAdmin ? 'Equipe' : 'Meu perfil'}</span>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {lista.map(p => (
               <button key={p.email} className={`eq-nav${atualEmail === p.email.toLowerCase() ? ' on' : ''}`} onClick={() => router.push(`/equipe/${encodeURIComponent(p.email)}`)}>

@@ -475,7 +475,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               const lista = doDia(dia).filter(a => a.status !== 'cancelado')
               return (
                 <div key={i} onClick={() => { setRef(new Date(dia)); setVisao('dia') }}
-                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : foraDoMes ? '#fcfcfc' : 'var(--v2-surface1)', border: `1px solid ${hoje ? '#f3e3ac' : feriado ? '#f9d7e6' : 'var(--v2-surface2)'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
+                  style={{ minHeight: 84, background: hoje ? '#fffdf2' : feriado ? '#fdf2f8' : foraDoMes ? 'var(--v2-surface2)' : 'var(--v2-surface1)', border: `1px solid ${hoje ? '#f3e3ac' : feriado ? '#f9d7e6' : 'var(--v2-surface2)'}`, borderRadius: 10, padding: 7, cursor: 'pointer', opacity: foraDoMes ? 0.55 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 4 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 800, color: hoje ? '#a9781a' : 'var(--v2-ink)' }}>{dia.getDate()}</span>
                     {lista.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ink)', borderRadius: 999, padding: '1px 6px', marginLeft: 'auto' }}>{lista.length}</span>}

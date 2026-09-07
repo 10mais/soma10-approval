@@ -64,7 +64,7 @@ export default function DocumentosDoCliente() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
             Documentos
           </button>
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: podeEditar ? 'var(--v2-ok)' : '#475569', background: podeEditar ? 'var(--v2-ok-bg)' : '#f1f5f9', border: `1px solid ${podeEditar ? 'var(--v2-ok-bg)' : '#e2e8f0'}`, borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{podeEditar ? 'Você pode editar' : 'Somente leitura'}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: podeEditar ? 'var(--v2-ok)' : 'var(--v2-ink2)', background: podeEditar ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)', border: `1px solid ${podeEditar ? 'var(--v2-ok-bg)' : 'var(--v2-rule2)'}`, borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{podeEditar ? 'Você pode editar' : 'Somente leitura'}</span>
           {podeEditar && salvo === 'salvando' && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>salvando…</span>}
           {podeEditar && salvo === 'ok' && <span style={{ fontSize: 11, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
         </div>

@@ -651,7 +651,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                 onDragLeave={() => setOverCol(o => o === col.key ? null : o)}
                 onDrop={() => { if (dragId) moverStatus(dragId, col.key); setDragId(null); setOverCol(null) }}
                 style={{
-                  flex: '0 0 240px', width: 240, background: overCol === col.key ? 'var(--v2-amber-bg)' : '#f6f6f7', borderRadius: 12, padding: 10,
+                  flex: '0 0 240px', width: 240, background: overCol === col.key ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)', borderRadius: 12, padding: 10,
                   outline: overCol === col.key ? '2px dashed var(--v2-amber-on)' : 'none', outlineOffset: -2,
                   display: 'flex', flexDirection: 'column', minHeight: 0,
                 }}>
@@ -857,7 +857,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                 {linha(t, false)}
                 {!subsRecolhidas[t.id] && subs.map(s => linha(s, true))}
                 {quickSubId === t.id && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid #f8f8f8', background: 'var(--v2-surface)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
                     <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) { criarSubtarefa(t, quickSubTexto) } if (e.key === 'Escape') setQuickSubId(null) }}
                       placeholder="Nome da subtarefa — Enter para adicionar, Esc para fechar"
@@ -881,7 +881,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
           </div>
           {excluidas.length === 0 && <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma tarefa na lixeira.</p>}
           {excluidas.map(t => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f8f8f8' }}>
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--v2-rule)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', textDecoration: 'line-through' }}>{t.titulo}</p>
                 <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--v2-ink3)' }}>
@@ -1732,7 +1732,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
                 <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
               </div>
               {(() => {
-                const COR_STATUS: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-info)', em_revisao: 'var(--v2-amber)', concluido: 'var(--v2-ok)', descartado: '#71717a' }
+                const COR_STATUS: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-info)', em_revisao: 'var(--v2-amber)', concluido: 'var(--v2-ok)', descartado: 'var(--v2-ink2)' }
                 const relTarefas = relacionadas.map(rid => todasTarefas.find(t => t.id === rid)).filter(Boolean)
                 return (
                   <>

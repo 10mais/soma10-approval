@@ -1156,7 +1156,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           ) : lixeiraPautas.map((p: any) => {
             const dias = diasRestantesLixeira(p.excluidoEm)
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid #f6f6f7' }}>
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--v2-rule)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || p.headline || p.legenda || 'Pauta sem título'}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 11, color: dias <= 5 ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>Excluída {p.excluidoPor ? `por ${p.excluidoPor}` : ''} · {dias === 0 ? 'some hoje' : `${dias} dia(s) restante(s)`}</p>

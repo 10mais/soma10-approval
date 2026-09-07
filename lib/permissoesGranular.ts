@@ -12,7 +12,7 @@ export type AcaoPerm = 'publicar' | 'enviar_cliente' | 'gerar_ia' | 'aprovar' | 
 // Telas admin-only (Colaboradores, Configurações, Reuniões, Trabalhe Conosco)
 // ficam FORA: o granular só afeta gerente/usuario, e admin atravessa tudo.
 export const ABAS_PERM: { key: string; label: string; categoria: string; perfil?: 'clinica' | 'turismo' | 'cidadania' | 'telefonia' }[] = [
-  { key: 'meu-card', label: 'Meu card', categoria: 'Pessoal' },
+  { key: 'meu-card', label: 'Meu perfil', categoria: 'Pessoal' },
   { key: 'lista-pessoal', label: 'Personal list', categoria: 'Pessoal' },
   { key: 'studio', label: 'Studio', categoria: 'Produção' },
   { key: 'tarefas', label: 'Tarefas', categoria: 'Produção' },
