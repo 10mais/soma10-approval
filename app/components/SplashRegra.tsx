@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { podeSair, tempoRestante, tetoRestante, SPLASH_SAIDA_MS } from '@/lib/splashTempo'
 
 // TELA DE ABERTURA: "carregando" com a regra inegociável do mês e a frase do
 // dia (pedido do dono, 06/09: "sempre que abrir o sistema, mostre carregando e
@@ -9,6 +10,16 @@ import { useEffect, useState } from 'react'
 // de tela vazia seria castigo). Uma vez por sessão do navegador — voltar de
 // outra aba não reabre. O pai decide quando os dados estão prontos; aqui só
 // se garante o tempo mínimo e a leitura da regra.
+//
+// INCIDENTE 07/09: a versão anterior agendava o fechamento dentro de um efeito
+// cujas dependências mudavam no mesmo passo (setSaindo) — o cleanup cancelava o
+// próprio timer e a splash ficava INVISÍVEL cobrindo a tela inteira (ninguém
+// clicava em nada, celular e desktop). Agora: (1) o fechamento roda num efeito
+// que só depende de `saindo`; (2) o relógio e a busca da regra vivem FORA do
+// componente, então a splash remontar (o dashboard a renderiza antes e depois
+// da sessão carregar) não reinicia os 5s nem refaz o fetch; (3) há um TETO de
+// 12s — passado ele, a splash sai aconteça o que acontecer; (4) ao começar a
+// sair ela deixa de capturar cliques (pointer-events: none).
 
 type Regra = { mes: string; nome: string; frase?: string } | null
 
@@ -16,34 +27,49 @@ export function splashJaVisto(): boolean {
   try { return sessionStorage.getItem('soma10_splash') === '1' } catch { return true }
 }
 
+// Estado compartilhado entre instâncias (uma abertura = um relógio, um fetch).
+let relogioInicio = 0
+let regraPromessa: Promise<Regra> | null = null
+function buscarRegra(): Promise<Regra> {
+  if (!regraPromessa) {
+    regraPromessa = fetch('/api/config/regras').then(r => r.ok ? r.json() : null).then(d => (d?.hoje as Regra) || null).catch(() => null)
+  }
+  return regraPromessa
+}
+
 export default function SplashRegra({ pronto, onFim, tema }: { pronto: boolean; onFim: () => void; tema: 'claro' | 'escuro' }) {
   const [regra, setRegra] = useState<Regra | undefined>(undefined) // undefined = ainda não sei
-  const [tempoOk, setTempoOk] = useState(false)
   const [saindo, setSaindo] = useState(false)
+  const [, forcar] = useState(0) // re-render quando um timer vence
+  const onFimRef = useRef(onFim)
+  onFimRef.current = onFim
+  if (!relogioInicio) relogioInicio = Date.now()
 
-  useEffect(() => {
-    fetch('/api/config/regras').then(r => r.ok ? r.json() : null).then(d => setRegra(d?.hoje || null)).catch(() => setRegra(null))
-  }, [])
+  useEffect(() => { let vivo = true; buscarRegra().then(r => { if (vivo) setRegra(r) }); return () => { vivo = false } }, [])
 
-  // O relógio só começa quando se sabe se há regra: 5s com regra, 1,2s sem.
+  // Decide se pode sair. Reavalia quando regra/pronto mudam e quando o timer
+  // (tempo mínimo ou teto) vence. Nunca cancela o fechamento já iniciado.
   useEffect(() => {
-    if (regra === undefined) return
-    const t = setTimeout(() => setTempoOk(true), regra ? 5000 : 1200)
+    if (saindo) return
+    const agora = Date.now()
+    if (podeSair({ inicio: relogioInicio, agora, temRegra: regra === undefined ? undefined : !!regra, pronto })) { setSaindo(true); return }
+    const espera = regra === undefined ? tetoRestante(relogioInicio, agora) : Math.min(tempoRestante(relogioInicio, agora, !!regra), tetoRestante(relogioInicio, agora))
+    const t = setTimeout(() => forcar(n => n + 1), Math.max(16, espera))
     return () => clearTimeout(t)
-  }, [regra])
+  }, [regra, pronto, saindo])
 
+  // Fechamento: depende SÓ de `saindo`, então nada o cancela.
   useEffect(() => {
-    if (!tempoOk || !pronto || saindo) return
-    setSaindo(true)
+    if (!saindo) return
     try { sessionStorage.setItem('soma10_splash', '1') } catch {}
-    const t = setTimeout(onFim, 420)
+    const t = setTimeout(() => onFimRef.current(), SPLASH_SAIDA_MS)
     return () => clearTimeout(t)
-  }, [tempoOk, pronto, saindo, onFim])
+  }, [saindo])
 
   const escuro = tema === 'escuro'
   return (
     <div className="soma10-v2" data-theme={escuro ? 'dark' : 'light'} role="status" aria-live="polite"
-      style={{ position: 'fixed', inset: 0, zIndex: 5000, display: 'grid', placeItems: 'center', background: 'var(--v2-ground)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', opacity: saindo ? 0 : 1, transition: 'opacity 400ms ease' }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 5000, display: 'grid', placeItems: 'center', background: 'var(--v2-ground)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', opacity: saindo ? 0 : 1, pointerEvents: saindo ? 'none' : 'auto', transition: 'opacity 400ms ease' }}>
       <style>{`
         @keyframes soma-splash-traca { to { stroke-dashoffset: 0; } }
         @keyframes soma-splash-sobe { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -68,7 +94,7 @@ export default function SplashRegra({ pronto, onFim, tema }: { pronto: boolean; 
         )}
 
         <div style={{ margin: '34px auto 0', width: 160, height: 2, background: 'var(--v2-surface2)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', background: 'var(--v2-amber-on)', animation: `soma-splash-barra ${regra ? 5000 : 1200}ms linear forwards` }} />
+          <div style={{ height: '100%', background: 'var(--v2-amber-on)', animation: `soma-splash-barra ${Math.max(200, tempoRestante(relogioInicio, Date.now(), !!regra))}ms linear forwards` }} />
         </div>
       </div>
     </div>
