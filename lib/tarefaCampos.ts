@@ -19,6 +19,7 @@ export const CAMPOS_TAREFA = [
   'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome',
   'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist',
   'documentoId', 'mapaId', 'origemPostId', // origemPostId: vínculo com a pauta do Studio
+  'tarefaPaiId', // subtarefa de (null = volta a ser tarefa); a API valida com lib/hierarquiaTarefas
 ] as const
 
 export type CampoTarefa = typeof CAMPOS_TAREFA[number]

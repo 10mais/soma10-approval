@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
 import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
+import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -246,7 +247,27 @@ export async function PUT(req: NextRequest) {
   }
 
   atualizado.atividades = novasAtividades
+  // SUBTAREFA: vincular (tarefaPaiId) ou desvincular (null). A regra é uma só
+  // (lib/hierarquiaTarefas): um nível, sem ciclo, mãe fora da lixeira; a filha
+  // assume o cliente da mãe quando divergem. O cliente confirma na tela; aqui é a lei.
+  if ('tarefaPaiId' in updates) {
+    if (updates.tarefaPaiId) {
+      const idsTodas = await redis.smembers('tarefas')
+      const todas = idsTodas.length ? ((await redis.mget<(Tarefa | null)[]>(...idsTodas.map(x => `tarefa:${x}`))).filter(Boolean) as Tarefa[]) : []
+      const v = podeSerFilha(id, String(updates.tarefaPaiId), todas as any)
+      if (!v.ok) return NextResponse.json({ error: v.motivo || 'Vínculo não permitido.' }, { status: 400 })
+      const mae = todas.find(t => t.id === updates.tarefaPaiId)!
+      const c = camposAoVincular(tarefa as any, mae as any)
+      updates.tarefaPaiId = c.tarefaPaiId
+      if (c.clienteMudou) { updates.clienteId = c.clienteId; updates.clienteNome = c.clienteNome }
+      novasAtividades.push({ id: uuid(), tipo: 'cliente', descricao: `Virou subtarefa de "${mae.titulo}"`, autor, criadoEm: agora })
+    } else {
+      updates.tarefaPaiId = null
+      if (tarefa.tarefaPaiId) novasAtividades.push({ id: uuid(), tipo: 'cliente', descricao: 'Deixou de ser subtarefa', autor, criadoEm: agora })
+    }
+  }
   Object.assign(atualizado, camposDoCorpo(updates))
+  if (atualizado.tarefaPaiId === null) delete atualizado.tarefaPaiId
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
 
   // Linha de montagem: concluir a tarefa do DESIGNER manda a pauta pro Planner

@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
-import { toast } from '@/lib/toast'
+import { toast, confirmar } from '@/lib/toast'
+import { podeSerFilha, camposAoVincular, progressoDaMae, validarEmMassa } from '@/lib/hierarquiaTarefas'
 import RichText from './RichText'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
@@ -343,6 +344,48 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   const [editModal, setEditModal] = useState<Tarefa | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
+  // SUBTAREFAS "PUXADAS" (ClickUp): arrastar uma linha sobre outra na Lista, menu na
+  // linha, barra em massa e modal — tudo passa por vincular()/desvincular().
+  const [overRow, setOverRow] = useState<string | null>(null)
+  const [escolherMae, setEscolherMae] = useState<{ ids: string[] } | null>(null)
+  const [buscaMae, setBuscaMae] = useState('')
+  // Concluir a mãe com filhas abertas: pergunta (decisão do dono: "Concluir subtarefas? Revisar subtarefas?")
+  const [perguntaMae, setPerguntaMae] = useState<{ ids: string[]; abertas: any[]; depois: (idsFilhasTambem: string[]) => void } | null>(null)
+
+  async function vincular(ids: string[], maeId: string) {
+    const mae = tarefas.find(t => t.id === maeId)
+    if (!mae) return
+    const { podem, recusadas } = validarEmMassa(ids, maeId, tarefas as any)
+    if (recusadas.length && podem.length === 0) { toast(recusadas[0].motivo, 'erro'); return }
+    const mudam = podem.map(id => tarefas.find(t => t.id === id)!).filter(t => camposAoVincular(t as any, mae as any).clienteMudou)
+    if (mudam.length) {
+      const nomes = mudam.slice(0, 3).map(t => `"${t.titulo}"`).join(', ') + (mudam.length > 3 ? ` e mais ${mudam.length - 3}` : '')
+      const ok = await confirmar(`${nomes} ${mudam.length === 1 ? 'é de outro cliente e passa' : 'são de outro cliente e passam'} a ser de ${mae.clienteNome || 'sem cliente'}, o cliente de "${mae.titulo}". Continuar?`, { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
+      if (!ok) return
+    }
+    // Otimista: a Lista reorganiza na hora; a rede confirma e ressincroniza.
+    setTarefas(ts => ts.map(t => podem.includes(t.id) ? { ...t, ...camposAoVincular(t as any, mae as any) } as any : t))
+    const res = await Promise.all(podem.map(id => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, tarefaPaiId: maeId }) }).then(r => r.ok).catch(() => false)))
+    const falhas = res.filter(x => !x).length
+    if (falhas) toast(`${falhas} tarefa(s) não foram movidas.`, 'erro')
+    else toast(podem.length === 1 ? `Agora é subtarefa de "${mae.titulo}".` : `${podem.length} tarefas viraram subtarefas de "${mae.titulo}".`, 'sucesso')
+    if (recusadas.length) toast(`${recusadas.length} não puderam: ${recusadas[0].motivo}`, 'info')
+    setSubsRecolhidas(r => ({ ...r, [maeId]: false }))
+    setSelecionadas([])
+    carregar()
+  }
+  async function desvincular(id: string) {
+    setTarefas(ts => ts.map(t => t.id === id ? { ...t, tarefaPaiId: undefined } as any : t))
+    const ok = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, tarefaPaiId: null }) }).then(r => r.ok).catch(() => false)
+    toast(ok ? 'Voltou a ser uma tarefa.' : 'Não foi possível tirar de dentro.', ok ? 'sucesso' : 'erro')
+    carregar()
+  }
+  // Concluir com pergunta: se alguma das tarefas é mãe com filhas abertas, pergunta antes.
+  function concluirComPergunta(ids: string[], aplicar: (idsFilhasTambem: string[]) => void) {
+    const abertas = ids.flatMap(id => progressoDaMae(id, tarefas as any).abertas)
+    if (abertas.length === 0) { aplicar([]); return }
+    setPerguntaMae({ ids, abertas, depois: aplicar })
+  }
   const [tarefaViewMode, setTarefaViewMode] = useState<'modal' | 'fullscreen' | 'sidebar'>('modal')
   const [confirmPopup, setConfirmPopup] = useState<{ mensagem: string; onConfirm: () => void } | null>(null)
   // Tipos de tarefa personalizados (criados pela equipe, aplicam-se a tudo)
@@ -369,6 +412,15 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   useEffect(() => { if (mostrarLixeira) carregarLixeira() }, [mostrarLixeira])
 
   async function moverStatus(id: string, status: string) {
+    if (status === 'concluido') {
+      concluirComPergunta([id], async (filhas) => {
+        const todos = [id, ...filhas]
+        setTarefas(ts => ts.map(t => todos.includes(t.id) ? { ...t, status } : t))
+        await Promise.all(todos.map(x => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: x, status }) }).catch(() => {})))
+        carregar()
+      })
+      return
+    }
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
     await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
     carregar()
@@ -412,10 +464,11 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   // para..."). Um endpoint em lote seria mais rápido e apagaria o rastro de
   // quem mudou o que — em tarefa de equipe isso é o que resolve discussão.
   const [aplicandoMassa, setAplicandoMassa] = useState(false)
-  async function aplicarEmMassa(campos: Record<string, any>, rotulo: string) {
-    if (!selecionadas.length || aplicandoMassa) return
+  async function aplicarEmMassa(campos: Record<string, any>, rotulo: string, idsExplicitos?: string[]) {
+    const alvo = idsExplicitos || selecionadas
+    if (!alvo.length || aplicandoMassa) return
     setAplicandoMassa(true)
-    const ids = [...selecionadas]
+    const ids = [...alvo]
     // Otimista: a tela responde na hora; a lista e ressincronizada no fim.
     setTarefas(ts => ts.map(t => ids.includes(t.id) ? { ...t, ...campos } as any : t))
     const res = await Promise.all(ids.map(id =>
@@ -557,7 +610,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             {/* Cada select volta para o placeholder depois de aplicar (value fixo):
                 ele é um COMANDO, não o estado atual das tarefas — que podem ter
                 seis status diferentes entre si. */}
-            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ status: v }, `movidas para ${COLUNAS.find(c => c.key === v)?.label || v}`) }} style={selEstilo} title="Mover as selecionadas de coluna">
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; if (v === 'concluido') { concluirComPergunta(selecionadas, (filhas) => aplicarEmMassa({ status: v }, 'concluídas', Array.from(new Set([...selecionadas, ...filhas])))); return } aplicarEmMassa({ status: v }, `movidas para ${COLUNAS.find(c => c.key === v)?.label || v}`) }} style={selEstilo} title="Mover as selecionadas de coluna">
               <option value="">Mover para...</option>
               {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
             </select>
@@ -573,6 +626,11 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             </select>
 
             <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, `prazo ${new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}`) }} title="Definir o prazo das selecionadas" style={{ ...selEstilo, maxWidth: 150 }} />
+            <button onClick={() => { setBuscaMae(''); setEscolherMae({ ids: selecionadas }) }} disabled={aplicandoMassa} title="As selecionadas viram subtarefas de uma tarefa-mãe"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
+              Mover para dentro de…
+            </button>
           </>}
 
           {aplicandoMassa && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>aplicando...</span>}
@@ -612,7 +670,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                         </span>
                       )})()}
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
-                      {(() => { const ns = tarefas.filter((s: any) => s.tarefaPaiId === t.id).length; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
+                      {(() => { const pg = progressoDaMae(t.id, tarefas as any); const ns = pg.total; const nsTxt = `${pg.concluidas}/${ns}`; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {t.responsavelNome && (() => { const u = (usuarios || []).find(x => x.email === t.responsavelEmail); return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '1px 6px' }}>
@@ -661,8 +719,75 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
       )}
 
       {/* LISTA */}
+      {/* Escolher a tarefa-mãe (menu da linha / em massa) */}
+      {escolherMae && (() => {
+        const q = buscaMae.trim().toLowerCase()
+        const origem = tarefas.filter(t => escolherMae.ids.includes(t.id))
+        const clientesOrigem = new Set(origem.map(t => t.clienteId || ''))
+        const candidatas = tarefas
+          .filter(t => !t.tarefaPaiId && !escolherMae.ids.includes(t.id) && t.status !== 'descartado')
+          .filter(t => !q || (t.titulo || '').toLowerCase().includes(q) || (t.clienteNome || '').toLowerCase().includes(q))
+          .sort((a, b) => Number(clientesOrigem.has(b.clienteId || '')) - Number(clientesOrigem.has(a.clienteId || '')) || (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'))
+          .slice(0, 40)
+        return (
+          <div onClick={fecharFora(() => setEscolherMae(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 18px 10px' }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Mover para dentro de</p>
+                <p style={{ margin: '4px 0 10px', fontSize: 15, fontWeight: 500, color: 'var(--v2-ink)' }}>{origem.length === 1 ? `"${origem[0]?.titulo}"` : `${origem.length} tarefas`} {origem.length === 1 ? 'vira' : 'viram'} subtarefa de…</p>
+                <input autoFocus value={buscaMae} onChange={e => setBuscaMae(e.target.value)} placeholder="Buscar tarefa-mãe pelo título ou cliente" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13.5, fontFamily: 'inherit' }} />
+              </div>
+              <div style={{ overflowY: 'auto', padding: '0 8px 8px' }}>
+                {candidatas.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma tarefa pode ser a mãe (só tarefas de primeiro nível).</p>}
+                {candidatas.map(c => {
+                  const pg = progressoDaMae(c.id, tarefas as any)
+                  const outroCliente = origem.some(o => (o.clienteId || '') !== (c.clienteId || ''))
+                  return (
+                    <button key={c.id} onClick={() => { const ids = escolherMae.ids; setEscolherMae(null); vincular(ids, c.id) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 10, border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--v2-ink)', fontFamily: 'inherit' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--v2-surface2)' }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.titulo}</span>
+                        <span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>{c.clienteNome || 'Interno'}{pg.total ? ` · ${pg.concluidas}/${pg.total} subtarefas` : ''}{outroCliente ? ' · outro cliente' : ''}</span>
+                      </span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Concluir a mãe com filhas abertas */}
+      {perguntaMae && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 460, padding: '20px 22px' }}>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-amber)' }}>Subtarefas em aberto</p>
+            <p style={{ margin: '6px 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--v2-ink)' }}>{perguntaMae.abertas.length === 1 ? 'Ainda há 1 subtarefa aberta.' : `Ainda há ${perguntaMae.abertas.length} subtarefas abertas.`}</p>
+            <ul style={{ margin: '0 0 14px', padding: 0, listStyle: 'none', fontSize: 13, color: 'var(--v2-ink2)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {perguntaMae.abertas.slice(0, 5).map((a: any) => <li key={a.id}>· {a.titulo}</li>)}
+              {perguntaMae.abertas.length > 5 && <li>· e mais {perguntaMae.abertas.length - 5}</li>}
+            </ul>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => { const f = perguntaMae.depois; const filhas = perguntaMae.abertas.map((a: any) => a.id); setPerguntaMae(null); f(filhas) }} style={{ padding: '9px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Concluir subtarefas também</button>
+              <button onClick={() => { const ids = perguntaMae.ids; setPerguntaMae(null); setView('lista'); setSubsRecolhidas(r => ({ ...r, ...Object.fromEntries(ids.map(i => [i, false])) })); toast('A tarefa-mãe continua aberta. Revise as subtarefas.', 'info') }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Revisar subtarefas</button>
+              <button onClick={() => setPerguntaMae(null)} style={{ padding: '9px 12px', background: 'none', color: 'var(--v2-ink3)', border: 0, borderRadius: 10, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {view === 'lista' && (
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+          {/* Arrastando uma subtarefa: soltar aqui devolve o primeiro nível */}
+          {dragId && tarefas.find(t => t.id === dragId)?.tarefaPaiId && (
+            <div onDragOver={e => { e.preventDefault(); setOverRow('__topo') }} onDragLeave={() => setOverRow(null)} onDrop={() => { const id = dragId; setDragId(null); setOverRow(null); if (id) desvincular(id) }}
+              style={{ margin: 10, padding: '12px 16px', borderRadius: 10, border: `2px dashed ${overRow === '__topo' ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'}`, background: overRow === '__topo' ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)', fontSize: 12.5, color: 'var(--v2-ink2)', textAlign: 'center' }}>
+              Soltar aqui para voltar a ser uma tarefa de primeiro nível
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>
             <span>Tipo</span><span>Tarefa</span><span>Responsável</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
           </div>
@@ -673,8 +798,19 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             const linha = (x: any, ehSub: boolean) => {
               const xp = tipoInfo(x.tipo)
               return (
-                <div key={x.id} onClick={() => setEditModal(x)} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid #f8f8f8', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: ehSub ? '#fcfcfc' : 'var(--v2-surface)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
+                <div key={x.id} onClick={() => setEditModal(x)}
+                  draggable={podeEditar && quickSubId !== x.id}
+                  onDragStart={e => { setDragId(x.id); e.dataTransfer.effectAllowed = 'move' }}
+                  onDragEnd={() => { setDragId(null); setOverRow(null) }}
+                  onDragOver={e => { if (dragId && dragId !== x.id) { e.preventDefault(); setOverRow(x.id) } }}
+                  onDragLeave={() => { if (overRow === x.id) setOverRow(null) }}
+                  onDrop={e => { e.preventDefault(); const id = dragId; setDragId(null); setOverRow(null); if (!id || id === x.id) return; vincular([id], ehSub ? (x.tarefaPaiId as string) : x.id) }}
+                  title={podeEditar ? 'Arraste sobre outra tarefa para torná-la subtarefa' : undefined}
+                  style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: overRow === x.id ? 'var(--v2-amber-bg)' : ehSub ? 'var(--v2-surface1)' : 'var(--v2-surface)', boxShadow: overRow === x.id ? 'inset 0 0 0 2px var(--v2-amber-on)' : 'none', opacity: dragId === x.id ? 0.5 : 1, transition: 'background 100ms' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
+                    <span onClick={e => { e.stopPropagation(); alternarSelecao(x.id) }} title="Selecionar" style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'}`, background: selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                      {selecionadas.includes(x.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#17150E" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                    </span>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={xp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={xp.icone} /></svg>
                     {xp.label}
                   </span>
@@ -686,7 +822,20 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                       </button>
                     )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
-                    {!ehSub && subs.length > 0 && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px' }}>{subs.length}</span>}
+                    {!ehSub && subs.length > 0 && (() => { const pg = progressoDaMae(x.id, tarefas as any); return (
+                      <span title={`${pg.concluidas} de ${pg.total} subtarefas concluídas`} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: pg.concluidas === pg.total ? 'var(--v2-ok)' : 'var(--v2-info)', background: pg.concluidas === pg.total ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 8px' }}>
+                        {pg.concluidas}/{pg.total}
+                        <span style={{ width: 34, height: 3, borderRadius: 2, background: 'rgba(0,0,0,0.12)', overflow: 'hidden', display: 'inline-block' }}><span style={{ display: 'block', width: `${pg.total ? Math.round((pg.concluidas / pg.total) * 100) : 0}%`, height: '100%', background: 'currentColor' }} /></span>
+                      </span>
+                    ) })()}
+                    {podeEditar && subs.length === 0 && <button onClick={e => { e.stopPropagation(); setBuscaMae(''); setEscolherMae({ ids: [x.id] }) }} title={ehSub ? 'Mover para dentro de outra tarefa' : 'Mover para dentro de uma tarefa (vira subtarefa)'} className="gt-acao-linha"
+                      style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
+                    </button>}
+                    {podeEditar && ehSub && <button onClick={e => { e.stopPropagation(); desvincular(x.id) }} title="Tirar de dentro (volta a ser tarefa)" className="gt-acao-linha"
+                      style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 20v-6a4 4 0 0 0-4-4H4M8 14l-4-4 4-4" /></svg>
+                    </button>}
                     {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
                   </span>
                   <span style={{ color: 'var(--v2-ink2)' }}>{x.responsavelNome || '--'}</span>
@@ -890,6 +1039,32 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
   const [novoSub, setNovoSub] = useState('')
   function recarregarTodas() { fetch('/api/tarefas').then(r => r.json()).then(d => setTodasTarefas(Array.isArray(d) ? d : [])).catch(() => {}) }
   const subtarefas = todasTarefas.filter(s => s.tarefaPaiId === tarefa?.id)
+  // Concluir a mãe com filhas abertas: pergunta antes de gravar (decisão do dono).
+  const [perguntaConcluir, setPerguntaConcluir] = useState(false)
+  const subsAbertas = subtarefas.filter(s => ['a_fazer', 'em_andamento', 'em_revisao'].includes(s.status))
+  async function tirarDeDentro() {
+    if (!tarefa) return
+    const ok = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, tarefaPaiId: null }) }).then(r => r.ok).catch(() => false)
+    toast(ok ? 'Voltou a ser uma tarefa.' : 'Não foi possível tirar de dentro.', ok ? 'sucesso' : 'erro')
+    if (ok) onSalvo()
+  }
+  const [buscaPuxar, setBuscaPuxar] = useState('')
+  async function puxarExistente(id: string) {
+    if (!tarefa) return
+    const v = podeSerFilha(id, tarefa.id, todasTarefas as any)
+    if (!v.ok) { toast(v.motivo || 'Vínculo não permitido.', 'erro'); return }
+    const alvo = todasTarefas.find(t => t.id === id)!
+    const c = camposAoVincular(alvo as any, tarefa as any)
+    if (c.clienteMudou) {
+      const ok = await confirmar(`"${alvo.titulo}" é de outro cliente e passa a ser de ${tarefa.clienteNome || 'sem cliente'}. Continuar?`, { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
+      if (!ok) return
+    }
+    const ok = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, tarefaPaiId: tarefa.id }) }).then(r => r.ok).catch(() => false)
+    if (!ok) { toast('Não foi possível puxar a tarefa.', 'erro'); return }
+    setBuscaPuxar('')
+    setTodasTarefas(ts => ts.map(t => t.id === id ? { ...t, ...c } : t))
+    toast(`"${alvo.titulo}" agora é subtarefa daqui.`, 'sucesso')
+  }
   async function addSubtarefa() {
     const t = novoSub.trim(); if (!t || !tarefa?.id) return
     setNovoSub('')
@@ -1048,7 +1223,14 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
     onClose()
   }
 
-  async function salvar() {
+  async function salvar(concluirFilhasArg?: unknown) {
+    const concluirFilhas = concluirFilhasArg === true // o botão Salvar passa o evento do clique
+    // Mãe indo para "concluído" com filhas abertas: pergunta antes (Concluir subtarefas? Revisar?).
+    if (tarefa && form.status === 'concluido' && tarefa.status !== 'concluido' && subsAbertas.length > 0 && !concluirFilhas && !perguntaConcluir) { setPerguntaConcluir(true); return }
+    if (concluirFilhas && subsAbertas.length) {
+      await Promise.all(subsAbertas.map(sub => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sub.id, status: 'concluido' }) }).catch(() => {})))
+    }
+    setPerguntaConcluir(false)
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
     if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
@@ -1263,6 +1445,8 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
                   style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', cursor: mae ? 'pointer' : 'default', textDecoration: mae ? 'underline' : 'none', fontFamily: 'inherit' }}>
                   {mae?.titulo || 'tarefa-mãe'}
                 </button>
+                <button type="button" onClick={tirarDeDentro} title="Tirar de dentro (volta a ser tarefa de primeiro nível)"
+                  style={{ marginLeft: 6, background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar de dentro</button>
               </div>
             )
           })()}
@@ -1477,6 +1661,16 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
           </div>
 
           {/* Subtarefas */}
+          {tarefa?.id && perguntaConcluir && (
+            <div style={{ marginTop: 14, padding: '14px 16px', border: '1px solid var(--v2-amber-on)', background: 'var(--v2-amber-bg)', borderRadius: 12 }}>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)' }}>{subsAbertas.length === 1 ? 'Ainda há 1 subtarefa aberta.' : `Ainda há ${subsAbertas.length} subtarefas abertas.`} Concluir a tarefa-mãe assim mesmo?</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                <button type="button" onClick={() => salvar(true)} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Concluir subtarefas também</button>
+                <button type="button" onClick={() => { setPerguntaConcluir(false); setForm(f => ({ ...f, status: tarefa.status })); toast('Status mantido. Revise as subtarefas abaixo.', 'info') }} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Revisar subtarefas</button>
+                <button type="button" onClick={() => setPerguntaConcluir(false)} style={{ padding: '8px 10px', background: 'none', color: 'var(--v2-ink3)', border: 0, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+              </div>
+            </div>
+          )}
           {tarefa?.id && (
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', display: 'block', marginBottom: 6 }}>Subtarefas {subtarefas.length > 0 && <span style={{ color: 'var(--v2-info)' }}>({subtarefas.filter(s => s.status === 'concluido').length}/{subtarefas.length})</span>}</label>
@@ -1499,6 +1693,29 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
                   style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
                 <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoSub.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
               </div>
+              {/* Puxar uma tarefa que já existe para dentro desta (ClickUp: "add existing task") */}
+              {!tarefa.tarefaPaiId && (() => {
+                const q = buscaPuxar.trim().toLowerCase()
+                const cands = q.length < 2 ? [] : todasTarefas
+                  .filter(t => t.id !== tarefa.id && !t.tarefaPaiId && !todasTarefas.some(o => o.tarefaPaiId === t.id) && t.status !== 'descartado' && (t.titulo || '').toLowerCase().includes(q))
+                  .slice(0, 8)
+                return (
+                  <div style={{ marginTop: 6, position: 'relative' }}>
+                    <input value={buscaPuxar} onChange={e => setBuscaPuxar(e.target.value)} placeholder="Puxar tarefa existente para dentro desta — digite para buscar"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 8, border: '1.5px dashed var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }} />
+                    {cands.length > 0 && (
+                      <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 5, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+                        {cands.map(c => (
+                          <button key={c.id} type="button" onClick={() => puxarExistente(c.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 0, background: 'transparent', cursor: 'pointer', fontSize: 12.5, color: 'var(--v2-ink)', fontFamily: 'inherit' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--v2-surface2)' }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                            {c.titulo} <span style={{ color: 'var(--v2-ink3)' }}>· {c.clienteNome || 'Interno'}{(c.clienteId || '') !== (tarefa.clienteId || '') ? ' · outro cliente' : ''}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
 
