@@ -167,7 +167,7 @@ export default function HubCliente() {
       {/* Números */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
         <Numero n={r.posts.aguardandoCliente} rotulo="aguardando o cliente" tom={r.posts.aguardandoCliente ? 'hot' : undefined} />
-        <Numero n={r.posts.emProducao} rotulo="em produção" tom="amber" />
+        <Numero n={r.posts.emProducao} rotulo={r.posts.emProducaoTarefas ? `em produção · ${r.posts.emProducaoPautas} pauta${r.posts.emProducaoPautas === 1 ? '' : 's'} + ${r.posts.emProducaoTarefas} tarefa${r.posts.emProducaoTarefas === 1 ? '' : 's'}` : 'em produção'} tom="amber" />
         <Numero n={r.posts.prontos} rotulo="prontas para publicar" />
         <Numero n={r.posts.publicadosMes} rotulo={`publicadas em ${MESES[hoje.getMonth()]}`} tom="ok" />
         <Numero n={r.tarefas.abertas} rotulo={r.tarefas.atrasadas ? `tarefas abertas · ${r.tarefas.atrasadas} atrasada${r.tarefas.atrasadas > 1 ? 's' : ''}` : 'tarefas abertas'} tom={r.tarefas.atrasadas ? 'hot' : undefined} />

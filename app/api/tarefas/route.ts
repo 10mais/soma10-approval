@@ -7,6 +7,7 @@ import { notificar } from '@/lib/notificacoes'
 import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
+import { midiasParaPauta } from '@/lib/producaoVinculo'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -268,6 +269,16 @@ export async function PUT(req: NextRequest) {
   }
   Object.assign(atualizado, camposDoCorpo(updates))
   if (atualizado.tarefaPaiId === null) delete atualizado.tarefaPaiId
+
+  // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
+  // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram
+  // e podem usá-los como criativo. Nunca bloqueia o salvamento da tarefa.
+  if (atualizado.origemPostId && ('anexos' in updates || ('origemPostId' in updates && updates.origemPostId !== tarefa.origemPostId))) {
+    try {
+      const post = await redis.get<Post>(`post:${atualizado.origemPostId}`)
+      if (post) await redis.set(`post:${post.id}`, { ...post, tarefaId: post.tarefaId || id, anexosTarefa: atualizado.anexos || [], atualizadoEm: agora })
+    } catch { /* espelho nunca bloqueia */ }
+  }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
 
   // Linha de montagem: concluir a tarefa do DESIGNER manda a pauta pro Planner
@@ -279,7 +290,8 @@ export async function PUT(req: NextRequest) {
       const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
       const av = post ? aoConcluirTarefa(post.etapa) : null
       if (post && av) {
-        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora })
+        // Pauta sem mídia recebe as imagens/vídeos anexados na tarefa como criativo (lib/producaoVinculo).
+        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora, anexosTarefa: atualizado.anexos || post.anexosTarefa, ...midiasParaPauta(post as any, atualizado.anexos || []) })
         atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo concluído — pauta enviada ao Planner como rascunho', autor, criadoEm: agora }]
         const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
         if (emailCriador && emailCriador !== (session.user as any).email) {

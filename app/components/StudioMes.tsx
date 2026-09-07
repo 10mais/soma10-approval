@@ -1,4 +1,5 @@
 'use client'
+import { tarefaDaPauta, tarefaAberta, anexosParaCriativo, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -455,6 +456,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
 
   // Controles MANUAIS da linha de montagem: o responsável manda no processo.
   const [acaoPauta, setAcaoPauta] = useState<string | null>(null)
+  // Tarefas de produção: para mostrar, em cada pauta, o estado da tarefa vinculada.
+  const [tarefasVinc, setTarefasVinc] = useState<any[]>([])
+  useEffect(() => { fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefasVinc(Array.isArray(d) ? d : [])).catch(() => {}) }, [])
   async function aprovarCopyInterno(p: Pauta) {
     const ok = await confirmar('Aprovar a copy internamente, sem esperar o cliente? A pauta avança para Criativo e a tarefa do designer é criada.', { titulo: 'Aprovar internamente', okLabel: 'Aprovar copy' })
     if (!ok) return
@@ -1533,6 +1537,18 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         {podeEditar && onAbrirComposer && (
                           <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no Planner'}</button>
                         )}
+                        {(() => { const t = tarefaDaPauta(p as any, tarefasVinc); if (!t) return null; const aberta = tarefaAberta(t); return (
+                          <span title={`Tarefa de produção: ${t.titulo || ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: aberta ? 'var(--v2-amber-bg)' : 'var(--v2-ok-bg)', color: aberta ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}
+                          </span>
+                        ) })()}
+                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => { const mid = anexosParaCriativo((p as any).anexosTarefa); const semMidia = !((p as any).imagens || []).length; const pode = podeEditar && semMidia && mid.length > 0; return (
+                          <button className="st-btn" disabled={!pode} onClick={() => salvarPatch(p.id, { imagens: mid.map(a => a.url) })}
+                            title={semMidia ? 'Usa as imagens/vídeos anexados na tarefa como criativo desta pauta' : 'A pauta já tem mídia; os anexos da tarefa ficam como referência'}
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: pode ? 'var(--v2-info)' : 'var(--v2-ink3)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: pode ? 'pointer' : 'default' }}>
+                            {(p as any).anexosTarefa.length} anexo{(p as any).anexosTarefa.length > 1 ? 's' : ''} da tarefa{pode ? ' — usar como criativo' : ''}
+                          </button>
+                        ) })()}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
                           <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
                             title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}

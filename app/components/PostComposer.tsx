@@ -1,4 +1,5 @@
 'use client'
+import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -17,6 +18,7 @@ export type ComposerValue = {
   marcoId?: string
   legenda: string
   imagens: string[]
+  anexosTarefa?: { nome: string; url: string; tipo: string }[] // espelho dos anexos da tarefa de produção (lib/producaoVinculo)
   dataAgendada: string
   formato: 'feed' | 'reel' | 'story'
   colaboradores: string[]
@@ -472,6 +474,20 @@ export default function PostComposer({
         {/* Upload de mídia */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Mídia (imagens ou vídeos)</label>
+          {(() => {
+            // Anexos que o designer subiu na TAREFA vinculada: um clique e viram mídia do post.
+            const at = anexosParaCriativo(valorInicial?.anexosTarefa || []).filter(a => !midias.some(m => m.url === a.url))
+            if (!at.length) return null
+            return (
+              <div style={{ margin: '0 0 10px', padding: '10px 12px', borderRadius: 10, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface1)' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Anexos da tarefa de produção</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {at.map(a => <button key={a.url} type="button" onClick={() => setMidias(m => [...m, { url: a.url, tipo: (/\.(mp4|mov|m4v)(\?|$)/i.test(a.url) || (a.tipo || '').startsWith('video/')) ? 'video' as const : 'imagem' as const }])}
+                    style={{ fontSize: 12, padding: '5px 10px', borderRadius: 999, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-info)', cursor: 'pointer', fontFamily: 'inherit' }}>+ {a.nome}</button>)}
+                </div>
+              </div>
+            )
+          })()}
           <div
             onDragOver={e => { e.preventDefault(); setArrastando(true) }}
             onDragLeave={() => setArrastando(false)}

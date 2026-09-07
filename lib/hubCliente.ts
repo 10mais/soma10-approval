@@ -5,13 +5,16 @@
 
 import { esperandoCliente } from './bolaDaVez'
 import { tituloDoPost, type PostRel, type TarefaRel, type MarcoRel, type ItemRel } from './relatorioSemana'
+import { resumoProducao } from './producaoVinculo'
 
 export type PlanoHub = { id: string; mes: number; ano: number; titulo?: string }
 
 export type ResumoCliente = {
   posts: {
     aguardandoCliente: number
-    emProducao: number
+    emProducao: number // pautas em produção + tarefas de produção sem pauta
+    emProducaoPautas: number
+    emProducaoTarefas: number
     prontos: number
     publicadosMes: number
     proximasPublicacoes: ItemRel[] // próximos 7 dias, em ordem
@@ -36,7 +39,6 @@ export type ResumoCliente = {
 }
 
 const DIA = 86400000
-const EM_PRODUCAO = ['briefing', 'copy', 'criativo']
 const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
 const ETAPA_LABEL: Record<string, string> = { briefing: 'Briefing', copy: 'Copy', aprovacao_copy: 'Copy em aprovação', criativo: 'Criativo', aprovacao_criativo: 'Criativo em aprovação', pronto: 'Pronto' }
 
@@ -93,11 +95,15 @@ export function resumoDoCliente(input: {
   const porEtapa: Record<string, number> = {}
   for (const p of pautas) { const e = p.etapa || 'sem_etapa'; porEtapa[e] = (porEtapa[e] || 0) + 1 }
 
+  const prod = resumoProducao(posts as any, tarefas as any)
   return {
     posts: {
       aguardandoCliente: aguardandoLista.length,
-      emProducao: posts.filter(p => p.etapa && EM_PRODUCAO.includes(p.etapa)).length,
-      prontos: posts.filter(p => p.etapa === 'pronto' && p.status !== 'publicado').length,
+      // Tarefa de criativo/conteúdo aberta = pauta em produção, mesmo "pronta" no Studio.
+      emProducao: prod.emProducao,
+      emProducaoPautas: prod.pautasEmProducao.length,
+      emProducaoTarefas: prod.tarefasSemPauta.length,
+      prontos: prod.prontas.length,
       publicadosMes,
       proximasPublicacoes: proximas,
       aguardando: aguardandoLista,

@@ -8,6 +8,7 @@
 // regras de classificação, que são o que pode errar.
 
 import { esperandoCliente } from './bolaDaVez'
+import { resumoProducao } from './producaoVinculo'
 
 export type PostRel = {
   id: string
@@ -25,6 +26,7 @@ export type PostRel = {
   excluidoEm?: string
   aguardandoDesde?: string
   redesPublicadas?: string[]
+  tarefaId?: string // tarefa de produção vinculada (lib/producaoVinculo)
 }
 
 export type TarefaRel = {
@@ -36,6 +38,7 @@ export type TarefaRel = {
   concluidoEm?: string
   responsavelNome?: string
   atualizadoEm?: string
+  origemPostId?: string // pauta que originou a tarefa
 }
 
 export type MarcoRel = {
@@ -80,7 +83,6 @@ export type Relatorio = {
 const DIA = 86400000
 const FORMATO_LABEL: Record<string, string> = { feed: 'Feed', reel: 'Reel', story: 'Story', carrossel: 'Carrossel', grafico: 'Material gráfico' }
 const ETAPA_LABEL: Record<string, string> = { briefing: 'Briefing', copy: 'Copy em produção', aprovacao_copy: 'Copy em aprovação', criativo: 'Criativo em produção', aprovacao_criativo: 'Criativo em aprovação', pronto: 'Pronto' }
-const EM_PRODUCAO = ['briefing', 'copy', 'criativo']
 const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
 
 function ms(iso?: string): number | undefined {
@@ -176,9 +178,13 @@ export function montarRelatorio(input: {
   const aguardandoCliente = posts
     .filter(p => esperandoCliente(p))
     .map(p => itemPost(p, p.aguardandoDesde || p.atualizadoEm, ETAPA_LABEL[p.etapa || ''] || 'Aguardando aprovação'))
-  const emProducao = posts
-    .filter(p => p.etapa && EM_PRODUCAO.includes(p.etapa))
-    .map(p => itemPost(p, undefined, ETAPA_LABEL[p.etapa || ''] || 'Em produção'))
+  // Em produção = pautas em etapa de produção OU com tarefa de produção aberta (mesmo
+  // "prontas" no Studio) + tarefas de produção sem pauta. Uma verdade só: lib/producaoVinculo.
+  const prod = resumoProducao(posts as any, tarefas as any)
+  const emProducao: ItemRel[] = [
+    ...prod.pautasEmProducao.map(pp => { const p = posts.find(x => x.id === pp.id)!; return itemPost(p, undefined, p.etapa === 'pronto' ? 'Criativo em produção · tarefa aberta' : (ETAPA_LABEL[p.etapa || ''] || 'Em produção')) }),
+    ...prod.tarefasSemPauta.map(tt => { const t = tarefas.find(x => x.id === tt.id)!; return { id: t.id, titulo: t.titulo || 'Tarefa', tipo: 'tarefa' as const, quando: t.prazo, detalhe: `Tarefa de produção${t.responsavelNome ? ` · ${t.responsavelNome}` : ''}` } }),
+  ]
   const tarefasAbertas = tarefas
     .filter(t => TAREFA_ABERTA.includes(t.status))
     .map(t => itemTarefa(t, t.prazo))

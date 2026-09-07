@@ -1203,6 +1203,7 @@ function Dashboard() {
     setComposerPrefill({
       clienteId: cliente?.id || post.clienteId || '',
       marcoId: (post as any).marcoId || '',
+      anexosTarefa: (post as any).anexosTarefa || [], // anexos da tarefa de produção vinculada (viram mídia com um clique)
       legenda: post.legenda || '',
       dataAgendada: paraDatetimeLocal(post.dataAgendada),
       imagens: post.imagens || [],
@@ -3542,7 +3543,7 @@ function Dashboard() {
             postsGlobais={posts as any} usuariosEquipe={usuarios.map((u: any) => ({ nome: u.nome, email: u.email }))} meuEmail={(session?.user as any)?.email || ''}
             foco={focoStudio || undefined}
             onAbrirComposer={(pauta: any) => {
-            setComposerPrefill({ clienteId: pauta.clienteId, legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
+            setComposerPrefill({ clienteId: pauta.clienteId, anexosTarefa: (pauta as any).anexosTarefa || [], legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
             setEditandoPostId(pauta.id)
             setAba('novo-post')
           }} />
