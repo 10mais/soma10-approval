@@ -469,6 +469,24 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
+  // Aprovação interna do CRIATIVO: soberana — tira a peça de reprovado/ajuste e
+  // agenda pela data (a API exige data; sem ela, avisa).
+  async function aprovarCriativoInterno(p: Pauta) {
+    const ok = await confirmar(p.status === 'reprovado'
+      ? 'O cliente reprovou esta peça. Aprovar internamente sobrepõe a decisão dele: a peça sai de Reprovado e é agendada pela data. Continuar?'
+      : 'Aprovar o criativo internamente, sem esperar o cliente? A peça é agendada pela data definida.', { titulo: 'Aprovar internamente', okLabel: 'Aprovar criativo' })
+    if (!ok) return
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/esteira/aprovar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: p.id, acao: 'aprovar_criativo', comentario: '' }),
+      }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha ao aprovar o criativo.', 'erro'); return }
+      toast('Criativo aprovado internamente — peça agendada.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
   // Aprovação da COPY: manda a pauta para o cliente aprovar o texto (etapa
   // aprovacao_copy — aparece nas Aprovações do portal; o PUT já marca o SLA).
   async function enviarCopyAprovacao(p: Pauta) {
@@ -1522,10 +1540,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
                           </button>
                         )}
-                        {podeEditar && p.etapa === 'aprovacao_copy' && (
+                        {podeEditar && (p.etapa === 'aprovacao_copy' || (p.status === 'reprovado' && (p.etapa === 'copy' || p.etapa === 'briefing'))) && (
                           <button className="st-btn" onClick={() => aprovarCopyInterno(p)} disabled={acaoPauta === p.id}
                             style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Aprovar copy internamente
+                          </button>
+                        )}
+                        {podeEditar && (p.etapa === 'aprovacao_criativo' || (p.status === 'reprovado' && p.etapa !== 'copy' && p.etapa !== 'briefing' && p.etapa !== 'aprovacao_copy')) && (
+                          <button className="st-btn" onClick={() => aprovarCriativoInterno(p)} disabled={acaoPauta === p.id}
+                            title={p.status === 'reprovado' ? 'Aprovação interna é soberana: tira a peça de Reprovado e agenda pela data' : 'Aprova o criativo sem esperar o cliente e agenda pela data'}
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                            Aprovar criativo internamente
                           </button>
                         )}
                         {podeEditar && (p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo' || p.status === 'aguardando_aprovacao') && (

@@ -70,18 +70,30 @@ export async function POST(req: NextRequest) {
     } catch { /* nunca bloqueia */ }
   }
 
+  // APROVACAO INTERNA E SOBERANA (decisao do dono, 07/09): a equipe pode tirar
+  // uma peca de 'reprovado' / 'corrigir' e seguir. A decisao anterior do cliente
+  // fica registrada (log dele) mas deixa de travar a linha; o motivo e limpo e o
+  // que ele pediu passa a contar como atendido.
+  const sobrepoe = role !== 'cliente' && (post.status === 'reprovado' || post.status === 'corrigir')
+  const limparDecisaoCliente = () => {
+    ;(post as any).motivoReprovacao = undefined
+    ;(post as any).motivoResolvido = true
+    if (Array.isArray((post as any).anotacoes)) (post as any).anotacoes = (post as any).anotacoes.map((a: any) => ({ ...a, resolvido: true }))
+  }
+
   if (acao === 'aprovar_copy') {
     post.etapa = 'criativo'
     post.copyAprovadaEm = agora
     post.ajusteCopy = undefined
+    if (sobrepoe) limparDecisaoCliente()
     // O envio da copy marca aguardando_aprovacao (link público); aprovada, volta a rascunho.
-    if (post.status === 'aguardando_aprovacao' || post.status === 'corrigir') post.status = 'rascunho'
+    if (post.status === 'aguardando_aprovacao' || post.status === 'corrigir' || post.status === 'reprovado') post.status = 'rascunho'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     // Linha de montagem: copy aprovada -> nasce a tarefa do designer (com a
     // copy e os anexos dentro). Falha aqui NUNCA derruba a aprovação.
     try { const { nascerTarefaDesigner } = await import('@/lib/tarefasDaPauta'); await nascerTarefaDesigner(postId, quem) } catch { /* segue */ }
-    await notificarDono(post.criadoPor, 'geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}". Etapa avançou para Criativo.`, postId)
+    await notificarDono(post.criadoPor, 'geral', `Copy aprovada — ${nome}`, `${quem} aprovou a copy da pauta "${post.briefing || post.legenda || 'sem título'}"${sobrepoe ? ' internamente, sobrepondo a decisão do cliente' : ''}. Etapa avançou para Criativo.`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }
 
@@ -105,12 +117,13 @@ export async function POST(req: NextRequest) {
     post.etapa = 'pronto'
     post.criativoAprovadoEm = agora
     post.ajusteCriativo = undefined
+    if (sobrepoe) limparDecisaoCliente()
     post.status = 'agendado'
     post.rascunhoInterno = false
     await redis.sadd('agendados', postId)
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
-    const msg = `${quem} aprovou o criativo e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
+    const msg = `${quem} aprovou o criativo${sobrepoe ? ' internamente, sobrepondo a decisão do cliente,' : ''} e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
     await notificarDono(post.criadoPor, 'geral', `Criativo aprovado — ${nome}`, msg, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }
