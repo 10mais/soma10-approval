@@ -44,7 +44,6 @@ const Metas = dynamic(() => import('../components/Metas'), { ssr: false, loading
 const Documentos = dynamic(() => import('../components/Documentos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardVendas = dynamic(() => import('../components/DashboardVendas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const MapasMentais = dynamic(() => import('../components/MapasMentais'), { ssr: false, loading: () => <LoadingPlaceholder /> })
-const MeuDia = dynamic(() => import('../components/MeuDia'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const PersonalList = dynamic(() => import('../components/PersonalList'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const CRM = dynamic(() => import('../components/CRM'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const LogsCliente = dynamic(() => import('../components/LogsCliente'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -192,7 +191,8 @@ const ICONE_ABA: Record<string, string> = {
   documentos: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2',
   conversao: 'M3 3v18h18M18 9l-5 5-3-3-4 4',
   mapas: 'M6 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM9 6h6a3 3 0 0 1 3 3v6M6 9v6',
-  'meu-dia': 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM8 12l2.5 2.5L16 9',
+  'meu-card': 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  equipe: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
   'lista-pessoal': 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12l2 2 4-4',
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
   tarefas: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -427,7 +427,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -896,7 +896,7 @@ function Dashboard() {
   // Vendas: papel isolado da operacao. So acessa CRM, Meu dia, Personal list,
   // Mensagens (direct) e a propria conta. Qualquer outra aba cai no CRM.
   const ehVendas = role === 'vendas'
-  const ABAS_VENDAS = ['crm', 'metas', 'conversao', 'meu-dia', 'lista-pessoal', 'mensagens', 'minha-conta']
+  const ABAS_VENDAS = ['crm', 'metas', 'conversao', 'lista-pessoal', 'mensagens', 'minha-conta']
   useEffect(() => {
     if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
   }, [ehVendas, aba])
@@ -2187,7 +2187,7 @@ function Dashboard() {
               <NavBtn chave="crm" label="CRM" />
               {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
-              <NavBtn chave="meu-dia" label="Meu dia" />
+              <NavBtn chave="meu-card" label="Meu card" onClick={() => router.push('/equipe/me')} />
               <NavBtn chave="lista-pessoal" label="Personal list" />
               <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
             </nav>
@@ -2201,19 +2201,19 @@ function Dashboard() {
               {perfilTelefonia && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <NavBtn chave="home" label="Painel" />
-                  <NavBtn chave="meu-dia" label="Meu dia" />
+                  <NavBtn chave="meu-card" label="Meu card" onClick={() => router.push('/equipe/me')} />
                   <NavBtn chave="lista-pessoal" label="Personal list" />
                   {podeGrupo('crm') && <><NavBtn chave="produtos" label="Produtos" /><NavBtn chave="vendas" label="Vendas (PDV)" /><NavBtn chave="crm" label="CRM" /></>}
                   {podeGrupo('producao') && !ocultas.includes('tarefas') && <NavBtn chave="tarefas" label="Tarefas" />}
                 </nav>
               )}
               {([
-                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-dia', 'Meu dia'], ['lista-pessoal', 'Personal list']]) as [string, string][] },
+                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', 'Meu card'], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
                 { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
-                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
+                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} onClick={a === 'meu-card' ? () => router.push('/equipe/me') : a === 'equipe' ? () => router.push('/equipe') : undefined} />)}
                 </nav>
               ))}
               {/* Operação (turismo) — viagens, ônibus, reservas (adicionadas por brick) */}
@@ -2253,7 +2253,7 @@ function Dashboard() {
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
-                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} />)}
+                  {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} onClick={a === 'meu-card' ? () => router.push('/equipe/me') : a === 'equipe' ? () => router.push('/equipe') : undefined} />)}
                 </nav>
               ))}
               {(roleView === 'admin' || podeGrupo('financeiro') || podeGrupo('clientes')) && (recolhida ? (
@@ -2341,10 +2341,10 @@ function Dashboard() {
         {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
         {mobile && !ehCliente && (
           <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-            {[{ k: 'home', label: 'Início' }, { k: 'meu-dia', label: 'Meu dia' }, { k: 'mensagens', label: 'Chat' }].map(it => {
+            {[{ k: 'home', label: 'Início' }, { k: 'meu-card', label: 'Meu card' }, { k: 'mensagens', label: 'Chat' }].map(it => {
               const ativo = aba === it.k && !menuMobile
               return (
-                <button key={it.k} onClick={() => { setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
+                <button key={it.k} onClick={() => { if (it.k === 'meu-card') { router.push('/equipe/me'); return } setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
                   <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONE_ABA[it.k] || ICONE_ABA.default} /></svg>
                   <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{it.label}</span>
                 </button>
@@ -4936,9 +4936,6 @@ function Dashboard() {
           <PersonalList />
         )}
 
-        {aba === 'meu-dia' && role !== 'cliente' && (
-          <MeuDia onAbrirTarefas={() => setAba('tarefas')} clientes={clientes as any} usuarios={usuarios as any} />
-        )}
 
         {/* CARGA DA EQUIPE (equipe) */}
         {/* Todos os clientes em cards (vitrine) — o "Todos" da Home cai aqui; cada card abre o hub /cliente/[id] */}

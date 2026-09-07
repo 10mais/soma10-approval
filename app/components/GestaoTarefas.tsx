@@ -312,7 +312,7 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
+export default function GestaoTarefas({ clientes, usuarios, clienteFixo, responsavelFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; responsavelFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
   // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
   PERFIL_CLINICA_TAREFAS = perfilClinica
   PERFIL_TURISMO_TAREFAS = perfilTurismo
@@ -326,7 +326,8 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTa
   useEffect(() => { fetch('/api/operacional').then(r => r.json()).then(d => { if (d?.lixeiraDias) setLixeiraDias(Number(d.lixeiraDias)) }).catch(() => {}) }, [])
   // clienteFixo: hub do cliente — filtro preso, seletor escondido, tarefa nova já atribuída.
   const [filtroCliente, setFiltroCliente] = useState(clienteFixo || '')
-  const [filtroResponsavel, setFiltroResponsavel] = useState('')
+  // responsavelFixo: card do colaborador — filtro preso à pessoa, seletor escondido.
+  const [filtroResponsavel, setFiltroResponsavel] = useState(responsavelFixo || '')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroPrioridade, setFiltroPrioridade] = useState('')
   const [busca, setBusca] = useState('')
@@ -489,10 +490,10 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTa
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             )}
-            <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
+            {!responsavelFixo && <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os responsáveis</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
-            </select>
+            </select>}
             <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
               <option value="">Todos os tipos</option>
               {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -748,7 +749,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTa
 
       {/* Modal nova/editar tarefa */}
       {(novaModal || editModal) && (
-        <TarefaModal key={editModal?.id || 'novo'} tarefa={editModal} clientes={clientes} usuarios={usuarios}
+        <TarefaModal responsavelPadrao={responsavelFixo} key={editModal?.id || 'novo'} tarefa={editModal} clientes={clientes} usuarios={usuarios}
           tiposCustom={tiposCustom} onTiposCustom={aplicarTiposCustom}
           viewMode={editModal ? tarefaViewMode : 'modal'}
           onChangeViewMode={setTarefaViewMode}
@@ -768,8 +769,8 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, abrirTa
   )
 }
 
-export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
-  tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]
+export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+  tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]; responsavelPadrao?: string
   tiposCustom?: { key: string; label: string; cor: string; icone: string }[]
   onTiposCustom?: (lista: { key: string; label: string; cor: string; icone: string }[]) => void
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
@@ -779,7 +780,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, tiposCustom = [], onTi
     titulo: tarefa?.titulo || '', descricao: tarefa?.descricao || '',
     tipo: tarefa?.tipo || 'tarefa',
     status: tarefa?.status || 'a_fazer', prioridade: tarefa?.prioridade || 'media',
-    responsavelEmail: tarefa?.responsavelEmail || '', clienteId: tarefa?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
+    responsavelEmail: tarefa?.responsavelEmail || responsavelPadrao || '', clienteId: tarefa?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
     marcoId: (tarefa as any)?.marcoId || '',
     prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
     recorrencia: (tarefa as any)?.recorrencia || '',

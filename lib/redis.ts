@@ -32,6 +32,11 @@ export type Usuario = {
   telefone?: string
   bio?: string
   fusoHorario?: string
+  // CARD DO COLABORADOR (/equipe/[email], lib/hubPessoa): o que a pessoa faz e por
+  // quem responde. Editado pelo admin no próprio card.
+  atribuicoes?: string[] // áreas/funções: 'Design', 'Copy', 'Tráfego'…
+  responsabilidades?: string[] // compromissos em texto, um por linha
+  clientesResponsavel?: string[] // ids de clientes pelos quais responde
   clienteId?: string
   // Varejo multi-loja (perfil telefonia): vincula o usuário a UMA loja. Operador
   // (usuario/vendas) com lojaId = travado nela (isolamento entre unidades). Admin
