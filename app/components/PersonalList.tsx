@@ -12,7 +12,7 @@ function textoDe(html: string) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
 }
 
-export default function PersonalList() {
+export default function PersonalList({ compacto = false }: { compacto?: boolean } = {}) {
   const [notepads, setNotepads] = useState<Notepad[]>([])
   const [itens, setItens] = useState<Item[]>([])
   const [arquivadas, setArquivadas] = useState<Item[]>([]) // microtarefas concluídas (arquivadas)
@@ -103,18 +103,18 @@ export default function PersonalList() {
   const ordenadas = [...notepads].sort((a, b) => (a.fixado === b.fixado ? quando(b) - quando(a) : a.fixado ? -1 : 1))
 
   return (
-    <div style={{ maxWidth: 900 }}>
-      <div style={{ marginBottom: 18 }}>
+    <div style={{ maxWidth: compacto ? undefined : 900 }}>
+      <div style={{ marginBottom: compacto ? 10 : 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Personal list</h2>
+          <h2 style={{ margin: 0, fontSize: compacto ? 12.5 : 18, fontWeight: compacto ? 500 : undefined, letterSpacing: compacto ? '0.12em' : undefined, textTransform: compacto ? 'uppercase' : undefined, color: compacto ? 'var(--v2-ink3)' : 'var(--v2-ink)' }}>{compacto ? 'Bloco de notas' : 'Personal list'}</h2>
           {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
           {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
         </div>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
+        <p style={{ margin: '4px 0 0', fontSize: compacto ? 12 : 13, color: 'var(--v2-ink3)' }}>{compacto ? 'Só você vê. Anote e vá resolvendo durante o dia.' : 'Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.'}</p>
       </div>
 
       {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 12 : 20 }}>
           {/* NOTEPADS */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid var(--v2-rule)' : 'none' }}>

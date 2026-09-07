@@ -1,4 +1,5 @@
 'use client'
+import PersonalList from '@/app/components/PersonalList'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
@@ -166,7 +167,12 @@ export default function CardPessoa() {
   const rotulo: React.CSSProperties = { fontSize: 10.5, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1240 }}>
+    <div className={`eq-perfil${ehMeu ? ' com-notas' : ''}`} style={{ display: 'grid', gap: 18, alignItems: 'start' }}>
+      <style>{`
+        .eq-perfil { grid-template-columns: minmax(0, 1fr); }
+        @media (min-width: 1100px) { .eq-perfil.com-notas { grid-template-columns: minmax(0, 1fr) 380px; } .eq-perfil .eq-notas { position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow-y: auto; } }
+      `}</style>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
@@ -300,6 +306,11 @@ export default function CardPessoa() {
           onExcluir={ehAdmin ? async () => { if (await confirmar('Excluir esta tarefa?', { titulo: 'Excluir tarefa', okLabel: 'Excluir', perigo: true })) { await fetch(`/api/tarefas?id=${tarefaAberta.id}`, { method: 'DELETE' }); setTarefaAberta(null); carregarTarefas() } } : undefined}
         />
       )}
+    </div>
+      {/* BLOCO DE NOTAS pessoal (dono, 07/09: "relação de tarefas pessoais, semelhante ao ClickUp,
+          para ir lançando e resolvendo durante o dia"). É a Personal list de sempre — notepads +
+          microtarefas, privados, salvos por usuário em /api/personal — só que aqui, ao lado do perfil. */}
+      {ehMeu && <aside className="eq-notas"><PersonalList compacto /></aside>}
     </div>
   )
 }

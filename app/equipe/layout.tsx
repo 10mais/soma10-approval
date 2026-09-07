@@ -80,7 +80,6 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
 
       <header style={{ position: 'sticky', top: 0, zIndex: 100, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: mobile ? '0 14px' : '0 22px', background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {mobile && <button className="eq-topo-btn" aria-label="Menu" onClick={() => setMenuAberto(v => !v)} style={{ padding: 8 }}><Ico d={IC.menu} /></button>}
           <button className="eq-topo-btn" onClick={() => router.push('/dashboard')}><Ico d={IC.voltar} size={14} />{!mobile && 'Painel'}</button>
           {ehAdmin && <button className="eq-topo-btn" onClick={() => router.push('/equipe')} style={pathname === '/equipe' ? { color: 'var(--v2-ink)', borderColor: 'var(--v2-amber-on)' } : undefined}><Ico d={IC.equipe} size={14} />{!mobile && 'Equipe'}</button>}
         </div>
@@ -91,26 +90,10 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
         </div>
       </header>
 
-      {mobile && menuAberto && <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.45)', zIndex: 150 }} />}
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <aside style={mobile
-          ? { position: 'fixed', top: 56, left: 0, bottom: 0, width: 268, overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform 200ms ease', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '12px', boxSizing: 'border-box' }
-          : { position: 'sticky', top: 56, width: 248, flexShrink: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '12px', boxSizing: 'border-box' }}>
-          <span className="eq-rotulo">{ehAdmin ? 'Equipe' : 'Meu perfil'}</span>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {lista.map(p => (
-              <button key={p.email} className={`eq-nav${atualEmail === p.email.toLowerCase() ? ' on' : ''}`} onClick={() => router.push(`/equipe/${encodeURIComponent(p.email)}`)}>
-                <AvatarPessoa p={p} tam={30} />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}{p.email.toLowerCase() === meuEmail ? ' (você)' : ''}</span>
-                  {p.cargo && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.cargo}</span>}
-                </span>
-              </button>
-            ))}
-            {lista.length === 0 && <p style={{ margin: '6px 10px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Carregando…</p>}
-          </nav>
-        </aside>
+        {/* A lista de pessoas SAIU daqui (dono, 07/09: "pode ocultar, ali em cima já aparece Equipe").
+            O botão Equipe do topo leva à galeria; o conteúdo usa a largura toda. */}
         <main style={{ flex: 1, minWidth: 0, padding: mobile ? '16px 14px 40px' : '26px 32px 48px' }}>{children}</main>
       </div>
     </div>
