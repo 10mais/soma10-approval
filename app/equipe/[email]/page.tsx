@@ -52,6 +52,23 @@ export default function CardPessoa() {
   const seg = decodeURIComponent(params.email || '').toLowerCase()
   const email = seg === 'me' ? meuEmail : seg
   const ehMeu = email === meuEmail
+  // Bloco de notas (só no próprio perfil): pode ser ocultado (lembra a escolha) e abre
+  // com Ctrl+N / Alt+N (dono, 07/09). Chrome reserva Ctrl+N para "nova janela" e pode
+  // não entregar a tecla à página — por isso Alt+N também vale.
+  const [notas, setNotasRaw] = useState(true)
+  const [focoNotas, setFocoNotas] = useState(0)
+  useEffect(() => { try { if (localStorage.getItem('soma10-notas-visiveis') === '0') setNotasRaw(false) } catch {} }, [])
+  const setNotas = (v: boolean) => { setNotasRaw(v); try { localStorage.setItem('soma10-notas-visiveis', v ? '1' : '0') } catch {} }
+  useEffect(() => {
+    if (!ehMeu) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey || e.altKey) && !e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault(); setNotas(true); setFocoNotas(n => n + 1)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [ehMeu])
 
   const [pessoa, setPessoa] = useState<Pessoa | null>(null)
   const [tarefas, setTarefas] = useState<any[]>([])
@@ -167,7 +184,7 @@ export default function CardPessoa() {
   const rotulo: React.CSSProperties = { fontSize: 10.5, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }
 
   return (
-    <div className={`eq-perfil${ehMeu ? ' com-notas' : ''}`} style={{ display: 'grid', gap: 18, alignItems: 'start' }}>
+    <div className={`eq-perfil${ehMeu && notas ? ' com-notas' : ''}`} style={{ display: 'grid', gap: 18, alignItems: 'start' }}>
       <style>{`
         .eq-perfil { grid-template-columns: minmax(0, 1fr); }
         @media (min-width: 1100px) { .eq-perfil.com-notas { grid-template-columns: minmax(0, 1fr) 380px; } .eq-perfil .eq-notas { position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow-y: auto; } }
@@ -186,6 +203,9 @@ export default function CardPessoa() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => router.push(`/equipe/${encodeURIComponent(pessoa.email)}/tarefas`)} style={{ padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Quadro de tarefas</button>
           {ehAdmin && !editando && <button onClick={abrirEdicao} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}>Editar perfil</button>}
+          {ehMeu && <button onClick={() => { setNotas(!notas); if (!notas) setFocoNotas(n => n + 1) }} title={notas ? 'Ocultar o bloco de notas' : 'Mostrar o bloco de notas (Ctrl+N)'} style={{ padding: '11px 16px', background: notas ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: notas ? 'var(--v2-amber)' : 'var(--v2-ink)', border: `1px solid ${notas ? 'var(--v2-amber)' : 'var(--v2-rule)'}`, borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {notas ? 'Ocultar notas' : 'Notas'}<kbd style={{ fontFamily: 'inherit', fontSize: 11, opacity: 0.7, border: '1px solid currentColor', borderRadius: 5, padding: '1px 5px' }}>Ctrl+N</kbd>
+          </button>}
         </div>
       </div>
 
@@ -310,7 +330,7 @@ export default function CardPessoa() {
       {/* BLOCO DE NOTAS pessoal (dono, 07/09: "relação de tarefas pessoais, semelhante ao ClickUp,
           para ir lançando e resolvendo durante o dia"). É a Personal list de sempre — notepads +
           microtarefas, privados, salvos por usuário em /api/personal — só que aqui, ao lado do perfil. */}
-      {ehMeu && <aside className="eq-notas"><PersonalList compacto /></aside>}
+      {ehMeu && notas && <aside className="eq-notas"><PersonalList compacto onOcultar={() => setNotas(false)} foco={focoNotas} /></aside>}
     </div>
   )
 }

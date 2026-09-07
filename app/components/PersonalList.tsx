@@ -12,7 +12,7 @@ function textoDe(html: string) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
 }
 
-export default function PersonalList({ compacto = false }: { compacto?: boolean } = {}) {
+export default function PersonalList({ compacto = false, onOcultar, foco }: { compacto?: boolean; onOcultar?: () => void; foco?: number } = {}) {
   const [notepads, setNotepads] = useState<Notepad[]>([])
   const [itens, setItens] = useState<Item[]>([])
   const [arquivadas, setArquivadas] = useState<Item[]>([]) // microtarefas concluídas (arquivadas)
@@ -23,6 +23,9 @@ export default function PersonalList({ compacto = false }: { compacto?: boolean 
   const [salvo, setSalvo] = useState<'idle' | 'salvando' | 'ok'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const montado = useRef(false)
+  // Atalho (Ctrl+N no perfil): o pai incrementa `foco` e o cursor vai para a microtarefa nova.
+  const inputNovo = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (foco && !carregando) { const t = setTimeout(() => inputNovo.current?.focus(), 60); return () => clearTimeout(t) } }, [foco, carregando])
 
   useEffect(() => {
     fetch('/api/personal').then(r => r.json()).then(d => {
@@ -104,22 +107,26 @@ export default function PersonalList({ compacto = false }: { compacto?: boolean 
 
   return (
     <div style={{ maxWidth: compacto ? undefined : 900 }}>
-      <div style={{ marginBottom: compacto ? 10 : 18 }}>
+      {/* Compacto (perfil): sem cabeçalho — "já é suficiente o Notepads e informações abaixo" (dono, 07/09). */}
+      {!compacto && <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: compacto ? 12.5 : 18, fontWeight: compacto ? 500 : undefined, letterSpacing: compacto ? '0.12em' : undefined, textTransform: compacto ? 'uppercase' : undefined, color: compacto ? 'var(--v2-ink3)' : 'var(--v2-ink)' }}>{compacto ? 'Bloco de notas' : 'Personal list'}</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Personal list</h2>
           {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
           {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
         </div>
-        <p style={{ margin: '4px 0 0', fontSize: compacto ? 12 : 13, color: 'var(--v2-ink3)' }}>{compacto ? 'Só você vê. Anote e vá resolvendo durante o dia.' : 'Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.'}</p>
-      </div>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Seu espaço privado. Só você vê — não entra em Tarefas nem na Esteira.</p>
+      </div>}
 
       {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 12 : 20 }}>
           {/* NOTEPADS */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid var(--v2-rule)' : 'none' }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Notepads</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Notepads{compacto && salvo === 'salvando' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--v2-ink3)' }}>salvando…</span>}{compacto && salvo === 'ok' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--v2-ok)' }}>salvo</span>}</span>
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {onOcultar && <button type="button" onClick={onOcultar} title="Ocultar o bloco de notas (Ctrl+N reabre)" aria-label="Ocultar o bloco de notas" style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17, lineHeight: 1, display: 'grid', placeItems: 'center' }}>×</button>}
               <button onClick={novaNota} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
+              </span>
             </div>
             {notepads.length === 0 ? (
               <div onClick={novaNota} style={{ padding: '34px 16px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, cursor: 'pointer' }}>
@@ -153,7 +160,7 @@ export default function PersonalList({ compacto = false }: { compacto?: boolean 
               {itens.length > 0 && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{itens.length} pendente{itens.length > 1 ? 's' : ''}</span>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: itens.length ? 12 : 0 }}>
-              <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem() }} placeholder="Adicionar microtarefa e Enter..."
+              <input ref={inputNovo} value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addItem() }} placeholder="Adicionar microtarefa e Enter..."
                 style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               <button onClick={addItem} style={{ flexShrink: 0, padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Adicionar</button>
             </div>

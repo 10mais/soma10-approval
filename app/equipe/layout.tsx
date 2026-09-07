@@ -48,6 +48,11 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
 
   const [mobile, setMobile] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
+  // Lista de pessoas RECOLHIDA por padrão (dono, 07/09: "pode permanecer, porém recolhido,
+  // com a seta para estender"). Só avatares; a seta expande; a escolha fica no navegador.
+  const [recolhida, setRecolhida] = useState(true)
+  useEffect(() => { try { if (localStorage.getItem('soma10-equipe-recolhida') === '0') setRecolhida(false) } catch {} }, [])
+  function alternarRecolhida() { setRecolhida(v => { const n = !v; try { localStorage.setItem('soma10-equipe-recolhida', n ? '1' : '0') } catch {}; return n }) }
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 900px)')
     const apply = () => setMobile(mq.matches)
@@ -80,6 +85,7 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
 
       <header style={{ position: 'sticky', top: 0, zIndex: 100, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: mobile ? '0 14px' : '0 22px', background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {mobile && <button className="eq-topo-btn" aria-label="Menu" onClick={() => setMenuAberto(v => !v)} style={{ padding: 8 }}><Ico d={IC.menu} /></button>}
           <button className="eq-topo-btn" onClick={() => router.push('/dashboard')}><Ico d={IC.voltar} size={14} />{!mobile && 'Painel'}</button>
           {ehAdmin && <button className="eq-topo-btn" onClick={() => router.push('/equipe')} style={pathname === '/equipe' ? { color: 'var(--v2-ink)', borderColor: 'var(--v2-amber-on)' } : undefined}><Ico d={IC.equipe} size={14} />{!mobile && 'Equipe'}</button>}
         </div>
@@ -92,8 +98,31 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
 
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        {/* A lista de pessoas SAIU daqui (dono, 07/09: "pode ocultar, ali em cima já aparece Equipe").
-            O botão Equipe do topo leva à galeria; o conteúdo usa a largura toda. */}
+        {mobile && menuAberto && <div onClick={() => setMenuAberto(false)} style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.45)', zIndex: 150 }} />}
+        {(() => { const mini = recolhida && !mobile; return (
+        <aside aria-label="Pessoas da equipe" style={mobile
+          ? { position: 'fixed', top: 56, left: 0, bottom: 0, width: 268, overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform 200ms ease', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: 12, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }
+          : { position: 'sticky', top: 56, width: mini ? 64 : 248, flexShrink: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', overflowX: 'hidden', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: mini ? '12px 8px' : 12, boxSizing: 'border-box', transition: 'width 180ms ease', display: 'flex', flexDirection: 'column' }}>
+          {!mini && <span className="eq-rotulo">{ehAdmin ? 'Equipe' : 'Meu perfil'}</span>}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, marginTop: mini ? 4 : 0 }}>
+            {lista.map(p => (
+              <button key={p.email} className={`eq-nav${atualEmail === p.email.toLowerCase() ? ' on' : ''}`} title={mini ? `${p.nome}${p.cargo ? ` · ${p.cargo}` : ''}` : undefined} onClick={() => router.push(`/equipe/${encodeURIComponent(p.email)}`)} style={mini ? { justifyContent: 'center', padding: '7px 0' } : undefined}>
+                <AvatarPessoa p={p} tam={30} />
+                {!mini && <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}{p.email.toLowerCase() === meuEmail ? ' (você)' : ''}</span>
+                  {p.cargo && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.cargo}</span>}
+                </span>}
+              </button>
+            ))}
+            {lista.length === 0 && !mini && <p style={{ margin: '6px 10px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Carregando…</p>}
+          </nav>
+          {!mobile && (
+            <button onClick={alternarRecolhida} title={recolhida ? 'Expandir a lista' : 'Recolher a lista'} aria-label={recolhida ? 'Expandir a lista' : 'Recolher a lista'} className="eq-topo-btn" style={{ alignSelf: mini ? 'center' : 'flex-end', padding: 8, marginTop: 10, flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)', transition: 'transform 160ms' }}><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          )}
+        </aside>
+        ) })()}
         <main style={{ flex: 1, minWidth: 0, padding: mobile ? '16px 14px 40px' : '26px 32px 48px' }}>{children}</main>
       </div>
     </div>
