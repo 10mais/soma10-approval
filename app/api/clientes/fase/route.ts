@@ -5,7 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Marco } from '@/lib/redis'
 import { getPostsDoCliente } from '@/lib/postsIndex'
 import { registrarAuditoria } from '@/lib/auditoria'
-import { faseDoCliente, checklistOnboarding, avaliarTransicao, FASE_ROTULO, type FaseCliente } from '@/lib/faseCliente'
+import { faseDoCliente, checklistOnboarding, agruparPorFase, avaliarTransicao, FASE_ROTULO, type FaseCliente } from '@/lib/faseCliente'
+import { lerConfigOnboarding } from '@/lib/onboardingConfigStore'
 
 export const runtime = 'nodejs'
 
@@ -19,15 +20,16 @@ export const runtime = 'nodejs'
 async function carregar(clienteId: string) {
   const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
   if (!cliente) return null
-  const [posts, idsMarcos] = await Promise.all([
+  const [posts, idsMarcos, cfg] = await Promise.all([
     getPostsDoCliente(clienteId).catch(() => []),
     redis.smembers('marcos').catch(() => [] as string[]),
+    lerConfigOnboarding(),
   ])
   const marcosTodos = idsMarcos.length ? ((await redis.mget<(Marco | null)[]>(...idsMarcos.map(i => `marco:${i}`))).filter(Boolean) as Marco[]) : []
   const marcos = marcosTodos.filter(m => (m as any).clienteId === clienteId).length
   const publicados = posts.filter(p => p.status === 'publicado').length
-  const itens = checklistOnboarding({ cliente, marcos, publicados })
-  return { cliente, itens }
+  const itens = checklistOnboarding({ cliente, marcos, publicados }, cfg)
+  return { cliente, itens, fases: agruparPorFase(itens, cfg) }
 }
 
 export async function GET(req: NextRequest) {
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
   const fase = faseDoCliente(r.cliente)
   return NextResponse.json({
     fase, rotulo: FASE_ROTULO[fase], faseDesde: r.cliente.faseDesde || r.cliente.criadoEm, onboardingConcluidoEm: r.cliente.onboardingConcluidoEm || null,
-    itens: r.itens, feitos: r.itens.filter(i => i.ok).length, total: r.itens.length,
+    itens: r.itens, fases: r.fases, feitos: r.itens.filter(i => i.ok).length, total: r.itens.length,
     podeConcluir: r.itens.every(i => i.ok), ehAdmin: role === 'admin',
     handoffVendas: (r.cliente as any).handoffVendas || '',
   })

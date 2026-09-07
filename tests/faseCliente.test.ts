@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { faseDoCliente, checklistOnboarding, podeConcluirOnboarding, pendentesOnboarding, avaliarTransicao, limparChecklist, ITENS_MANUAIS } from '@/lib/faseCliente'
+import { faseDoCliente, checklistOnboarding, podeConcluirOnboarding, pendentesOnboarding, avaliarTransicao, limparChecklist, agruparPorFase, ITENS_MANUAIS } from '@/lib/faseCliente'
+import { normalizarConfig } from '@/lib/onboardingConfig'
 
 const completo = {
   segmento: 'Clínica', metaConectado: true, entregaveis: ['social_media'], postsMensais: 12,
@@ -65,5 +66,27 @@ describe('faseCliente — ciclo de vida do cliente', () => {
     expect(limparChecklist({ contrato: true, acessos: 'sim', invadido: true, kickoff: false })).toEqual({ contrato: true })
     expect(limparChecklist(null)).toEqual({})
     expect(limparChecklist('x')).toEqual({})
+  })
+
+  it('agrupa por fase na ordem da config, com contagem por fase', () => {
+    const itens = checklistOnboarding({ cliente: { ...completo, onboardingChecklist: { contrato: true, acessos: true, passagem: true, kickoff: true } }, marcos: 0, publicados: 0 })
+    const fases = agruparPorFase(itens)
+    expect(fases.map(f => [f.nome, f.feitos, f.total])).toEqual([['Formalização', 4, 4], ['Fundação', 3, 4], ['Go live', 0, 1]])
+  })
+
+  it('config PERSONALIZADA: etapas novas manuais e automáticas, checklist gravado só aceita as manuais', () => {
+    const cfg = normalizarConfig({ fases: [
+      { nome: 'Diagnóstico', etapas: [{ nome: 'Auditoria das redes' }, { nome: 'Redes conectadas', auto: 'redes' }] },
+      { nome: 'Lançamento', etapas: [{ nome: 'Primeiro post', auto: 'primeiro' }, { nome: 'Reunião de 30 dias' }] },
+    ] })
+    const itens = checklistOnboarding({ cliente: { metaConectado: true, onboardingChecklist: { 'auditoria-das-redes': true, 'redes-conectadas': true } }, marcos: 0, publicados: 0 }, cfg)
+    expect(itens.map(i => [i.chave, i.ok, i.manual, i.faseNome])).toEqual([
+      ['auditoria-das-redes', true, true, 'Diagnóstico'],
+      ['redes-conectadas', true, false, 'Diagnóstico'],
+      ['primeiro-post', false, false, 'Lançamento'],
+      ['reuniao-de-30-dias', false, true, 'Lançamento'],
+    ])
+    // etapa automática marcada "à mão" é ignorada; chave desconhecida também
+    expect(limparChecklist({ 'auditoria-das-redes': true, 'redes-conectadas': true, contrato: true }, cfg)).toEqual({ 'auditoria-das-redes': true })
   })
 })

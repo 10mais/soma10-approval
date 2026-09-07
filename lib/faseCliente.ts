@@ -9,6 +9,12 @@
 //
 // Cliente antigo sem o campo é tratado como `producao`: a carteira que já
 // existe não volta para o onboarding por causa de um campo novo.
+//
+// O CHECKLIST vem de lib/onboardingConfig (fases > etapas, editável em
+// Configurações). Etapa manual = a equipe marca (fica em `onboardingChecklist`
+// por id); etapa automática = detectada pelos dados do cliente.
+
+import { configPadrao, etapasDaConfig, type ConfigOnboarding, type Detector, type EtapaOnb } from './onboardingConfig'
 
 export type FaseCliente = 'onboarding' | 'producao'
 
@@ -18,18 +24,11 @@ export function faseDoCliente(c: { fase?: string } | null | undefined): FaseClie
   return c?.fase === 'onboarding' ? 'onboarding' : 'producao'
 }
 
-// Itens do checklist. Os AUTOMÁTICOS são detectados pelos dados (nada a marcar);
-// os MANUAIS a equipe marca na tela (ficam em `onboardingChecklist`). A lista
-// segue o onboarding da 10+ no ClickUp (formalização, acessos, ativos, DNA da
-// marca, go live) — ver lib/modelosSugeridos.
-export type ItemOnboarding = { chave: string; label: string; dica?: string; ok: boolean; manual: boolean }
+export type ItemOnboarding = { chave: string; label: string; dica?: string; ok: boolean; manual: boolean; auto?: Detector; faseId: string; faseNome: string }
 
-export const ITENS_MANUAIS: { chave: string; label: string; dica?: string }[] = [
-  { chave: 'contrato', label: 'Contrato formalizado e assinado', dica: 'Financeiro / jurídico' },
-  { chave: 'acessos', label: 'Acessos recebidos (Meta, site, ferramentas)', dica: 'Solicitar ao cliente' },
-  { chave: 'passagem', label: 'Passagem de bastão lida pelo gestor', dica: 'Texto do closer na ficha' },
-  { chave: 'kickoff', label: 'Reunião de kickoff realizada', dica: 'Alinhamento inicial com o cliente' },
-]
+// Compatibilidade: as etapas manuais do padrão (quem só precisa das chaves).
+export const ITENS_MANUAIS: { chave: string; label: string; dica?: string }[] =
+  etapasDaConfig(configPadrao()).filter(e => !e.auto).map(e => ({ chave: e.id, label: e.nome, dica: e.dica }))
 
 export type EntradaChecklist = {
   cliente: { segmento?: string; descricao?: string; palavrasChave?: unknown; metaConectado?: boolean; instagramConectado?: boolean; entregaveis?: unknown[]; postsMensais?: number; onboardingChecklist?: Record<string, boolean> | null } | null | undefined
@@ -37,19 +36,38 @@ export type EntradaChecklist = {
   publicados: number
 }
 
-export function checklistOnboarding(e: EntradaChecklist): ItemOnboarding[] {
+function detectar(auto: Detector, e: EntradaChecklist): boolean {
   const c = e.cliente
-  const marcados = c?.onboardingChecklist || {}
-  const automaticos: ItemOnboarding[] = [
-    { chave: 'escopo', label: 'Escopo do contrato definido', dica: 'Editar cliente: entregáveis ou posts/mês', ok: !!((c?.entregaveis && c.entregaveis.length > 0) || (c?.postsMensais && c.postsMensais > 0)), manual: false },
-    { chave: 'marca', label: 'Brand Board preenchido', dica: 'Aba Marca', ok: !!(c?.segmento || c?.descricao || c?.palavrasChave), manual: false },
-    { chave: 'redes', label: 'Redes sociais conectadas', dica: 'Conectar Instagram / Facebook', ok: !!(c?.metaConectado || c?.instagramConectado), manual: false },
-    { chave: 'playbook', label: 'Playbook (etapas) criado', dica: 'Aba Playbook: aplicar o modelo de onboarding', ok: e.marcos > 0, manual: false },
-    { chave: 'primeiro', label: 'Primeiro conteúdo publicado', dica: 'Planner', ok: e.publicados > 0, manual: false },
-  ]
-  const manuais: ItemOnboarding[] = ITENS_MANUAIS.map(m => ({ ...m, ok: !!marcados[m.chave], manual: true }))
-  // Ordem de jornada: formalizar → acessos → passagem → kickoff → escopo → marca → redes → playbook → primeiro post
-  return [...manuais, ...automaticos]
+  switch (auto) {
+    case 'escopo': return !!((c?.entregaveis && c.entregaveis.length > 0) || (c?.postsMensais && c.postsMensais > 0))
+    case 'marca': return !!(c?.segmento || c?.descricao || c?.palavrasChave)
+    case 'redes': return !!(c?.metaConectado || c?.instagramConectado)
+    case 'playbook': return e.marcos > 0
+    case 'primeiro': return e.publicados > 0
+  }
+}
+
+export function checklistOnboarding(e: EntradaChecklist, cfg: ConfigOnboarding = configPadrao()): ItemOnboarding[] {
+  const marcados = e.cliente?.onboardingChecklist || {}
+  const itens: ItemOnboarding[] = []
+  for (const f of cfg.fases) {
+    for (const et of f.etapas) {
+      itens.push({
+        chave: et.id, label: et.nome, dica: et.dica, faseId: f.id, faseNome: f.nome,
+        manual: !et.auto, auto: et.auto,
+        ok: et.auto ? detectar(et.auto, e) : !!marcados[et.id],
+      })
+    }
+  }
+  return itens
+}
+
+export type FaseChecklist = { id: string; nome: string; itens: ItemOnboarding[]; feitos: number; total: number }
+export function agruparPorFase(itens: ItemOnboarding[], cfg: ConfigOnboarding = configPadrao()): FaseChecklist[] {
+  return cfg.fases.map(f => {
+    const meus = itens.filter(i => i.faseId === f.id)
+    return { id: f.id, nome: f.nome, itens: meus, feitos: meus.filter(i => i.ok).length, total: meus.length }
+  }).filter(f => f.total > 0)
 }
 
 export function pendentesOnboarding(itens: ItemOnboarding[]): ItemOnboarding[] {
@@ -77,13 +95,15 @@ export function avaliarTransicao(p: PedidoTransicao): ResultadoTransicao {
   return { ok: true }
 }
 
-// Só chaves conhecidas entram no checklist manual gravado (nada vindo do cliente vira campo solto).
-export function limparChecklist(bruto: unknown): Record<string, boolean> {
+// Só ids de etapas MANUAIS da config entram no checklist gravado (nada vindo
+// do cliente vira campo solto; etapa automática não se marca à mão).
+export function limparChecklist(bruto: unknown, cfg: ConfigOnboarding = configPadrao()): Record<string, boolean> {
   const saida: Record<string, boolean> = {}
   if (bruto && typeof bruto === 'object') {
-    for (const m of ITENS_MANUAIS) {
-      const v = (bruto as Record<string, unknown>)[m.chave]
-      if (v === true) saida[m.chave] = true
+    const manuais: EtapaOnb[] = etapasDaConfig(cfg).filter(e => !e.auto)
+    for (const m of manuais) {
+      const v = (bruto as Record<string, unknown>)[m.id]
+      if (v === true) saida[m.id] = true
     }
   }
   return saida

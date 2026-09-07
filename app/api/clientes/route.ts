@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { limparChecklist } from '@/lib/faseCliente'
+import { lerConfigOnboarding } from '@/lib/onboardingConfigStore'
 import { redis, Cliente, Usuario } from '@/lib/redis'
 import { getClientesRaw } from '@/lib/cache'
 import { revalidateTag } from 'next/cache'
@@ -150,7 +151,7 @@ export async function PUT(req: NextRequest) {
   }
   // Checklist MANUAL do onboarding: só chaves conhecidas (lib/faseCliente). A
   // FASE em si não entra aqui — muda só pela rota /api/clientes/fase.
-  if ('onboardingChecklist' in updates) atualizado.onboardingChecklist = limparChecklist(updates.onboardingChecklist)
+  if ('onboardingChecklist' in updates) atualizado.onboardingChecklist = limparChecklist(updates.onboardingChecklist, await lerConfigOnboarding())
   // Papéis do squad: sanitiza e garante que quem ocupa um papel esteja TAMBÉM
   // na lista `squad` — é ela que manda notificação (aprovação, esteira, cron de
   // alertas) e alimenta o ProducaoBoard. Aqui, no servidor, para valer venha o

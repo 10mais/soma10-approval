@@ -27,6 +27,7 @@ const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false,
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RegrasDoMes = dynamic(() => import('../components/RegrasDoMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const OnboardingConfig = dynamic(() => import('../components/OnboardingConfig'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const ClientesTodos = dynamic(() => import('../components/ClientesTodos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const SplashRegra = dynamic(() => import('../components/SplashRegra'), { ssr: false })
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -496,7 +497,7 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
-  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras'>('geral')
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras' | 'onboarding'>('geral')
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
     if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
@@ -5036,7 +5037,7 @@ function Dashboard() {
 
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--v2-rule)' }}>
-              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema'], ['regras', 'Regras do mês']] as const).map(([k, l]) => (
+              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema'], ['regras', 'Regras do mês'], ['onboarding', 'Onboarding']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
@@ -5073,6 +5074,11 @@ function Dashboard() {
             {abaConfig === 'regras' && (
               <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 20 }}>
                 <RegrasDoMes />
+              </div>
+            )}
+            {abaConfig === 'onboarding' && (
+              <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 20 }}>
+                <OnboardingConfig />
               </div>
             )}
             {abaConfig === 'sistema' && (
