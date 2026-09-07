@@ -5,6 +5,8 @@ import AvatarCliente from './AvatarCliente'
 import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
+import AplicarModal, { type Template } from './AplicarModelo'
+import { toast } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -51,6 +53,17 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const [editModal, setEditModal] = useState<Marco | null>(null)
   const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
   const [novoModal, setNovoModal] = useState(false)
+  // Aplicar modelo direto daqui (pedido do dono, 07/09: "sem clareza de como
+  // lançar etapas") — lista os modelos e reaproveita o modal com prévia.
+  const [escolhendoModelo, setEscolhendoModelo] = useState(false)
+  const [templates, setTemplates] = useState<Template[] | null>(null)
+  const [templateSel, setTemplateSel] = useState<Template | null>(null)
+  const [equipe, setEquipe] = useState<{ email: string; nome?: string }[]>([])
+  function abrirModelos() {
+    setEscolhendoModelo(true)
+    if (templates === null) fetch('/api/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => setTemplates([]))
+    if (!equipe.length) fetch('/api/usuarios').then(r => r.json()).then(d => setEquipe(Array.isArray(d) ? d : [])).catch(() => {})
+  }
   const [refDate, setRefDate] = useState(new Date())
 
   // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
@@ -137,7 +150,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>
-          {editavel && <button onClick={() => setNovoModal(true)} style={{ marginLeft: 'auto', padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>}
+          {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
+            <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova etapa</button>
+          </div>}
         </>}
       </div>
 
@@ -211,7 +227,15 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
-          <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco cadastrado. Clique em "+ Novo marco" para comecar.'}</p>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <p style={{ margin: 0 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhuma etapa ainda. Comece de um modelo pronto (onboarding, ciclo mensal…) ou crie as etapas uma a uma.'}</p>
+            {editavel && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button onClick={abrirModelos} style={{ padding: '10px 18px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
+                <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Nova etapa</button>
+              </div>
+            )}
+          </div>
         )}
 
         {clientesComMarcos.map(c => {
@@ -223,7 +247,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                   <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
-                <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
+                <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} etapa(s)</span>
               </div>
               <div style={{ position: 'relative', minHeight: 36 * marcosCliente.length || 36, padding: '4px 0' }}>
                 {/* Linha de hoje */}
@@ -264,6 +288,33 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
       {/* Modal DETALHE (cliente, read-only) */}
       {detalheModal && <MarcoDetalhe marco={detalheModal} onClose={() => setDetalheModal(null)} />}
+
+      {/* Escolher o modelo (lista vem de /api/templates; o de onboarding é semeado pelo servidor) */}
+      {escolhendoModelo && !templateSel && (
+        <div onClick={fecharFora(() => setEscolhendoModelo(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: 22, boxSizing: 'border-box' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Aplicar modelo</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>Um modelo cria todas as etapas (e as tarefas) de uma vez, encadeadas a partir da data de início. Você confere a prévia antes de gravar.</p>
+            {templates === null && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando modelos…</p>}
+            {templates && templates.length === 0 && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum modelo cadastrado. Crie um em Estratégia → Modelos.</p>}
+            {templates && templates.map(t => (
+              <button key={t.id} onClick={() => setTemplateSel(t)} style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 3, padding: '12px 14px', marginBottom: 8, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)' }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{t.nome}</span>
+                {t.descricao && <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{t.descricao}</span>}
+                <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{(t.marcos || []).length} etapa(s) · {(t.tarefas || []).length} tarefa(s)</span>
+              </button>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button onClick={() => setEscolhendoModelo(false)} style={{ padding: '10px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {templateSel && (
+        <AplicarModal template={templateSel} clientes={clientes as any} equipe={equipe} preSelecionados={clienteAtivo ? [clienteAtivo] : []}
+          onClose={() => { setTemplateSel(null); setEscolhendoModelo(false) }}
+          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar(); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} etapa(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
+      )}
     </div>
   )
 }
@@ -356,7 +407,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar etapa' : 'Nova etapa'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>

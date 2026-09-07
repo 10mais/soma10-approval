@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, TemplateProjeto } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { MODELOS_SUGERIDOS } from '@/lib/modelosSugeridos'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,17 @@ export async function GET() {
   if (!session || (session.user as any).role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   const ids = await redis.smembers('templates')
   const itens = ids.length ? ((await redis.mget<(TemplateProjeto | null)[]>(...ids.map(i => `template:${i}`))).filter(Boolean) as TemplateProjeto[]) : []
+  // O modelo de ONBOARDING existe por padrão (decisão do dono, 07/09): a etapa
+  // "Playbook criado" do onboarding manda aplicá-lo, então ele não pode depender
+  // de alguém adotar a sugestão antes. Semeado uma vez; depois é um modelo
+  // comum (editável/excluível — excluído, volta na próxima leitura).
+  const sug = MODELOS_SUGERIDOS.find(m => m.chave === 'onboarding')
+  if (sug && !itens.some(t => t.sugestaoChave === 'onboarding')) {
+    const t: TemplateProjeto = { id: uuid(), nome: sug.nome, descricao: sug.descricao, marcos: sug.marcos as any, tarefas: sug.tarefas as any, criadoPor: 'sistema', criadoEm: new Date().toISOString(), sugestaoChave: 'onboarding' }
+    await redis.set(`template:${t.id}`, t)
+    await redis.sadd('templates', t.id)
+    itens.push(t)
+  }
   itens.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
   return NextResponse.json(itens)
 }

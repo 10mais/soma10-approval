@@ -866,6 +866,7 @@ export type TemplateProjeto = {
   tarefas: TemplateTarefa[]
   criadoPor?: string
   criadoEm: string
+  sugestaoChave?: string // nasceu de lib/modelosSugeridos (ex.: 'onboarding') — semeado pelo servidor, editável como qualquer outro
 }
 
 export type TarefaAtividade = {
