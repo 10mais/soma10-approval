@@ -1071,7 +1071,7 @@ function Dashboard() {
 
       autoTable(doc, {
         startY: 38,
-        head: [['Posts', 'Curtidas', 'Comentários', 'Alcance', 'Impressões', 'Salvamentos', 'Compartilhamentos']],
+        head: [['Posts', 'Curtidas', 'Comentários', 'Alcance', 'Visualizações', 'Salvamentos', 'Compartilhamentos']],
         body: [[
           totais.posts ?? 0, totais.curtidas ?? 0, totais.comentarios ?? 0,
           totais.alcance ?? 0, totais.impressoes ?? 0, totais.salvamentos ?? 0, totais.compartilhamentos ?? 0,
@@ -1083,7 +1083,7 @@ function Dashboard() {
       const posts: any[] = analyticsData.posts || []
       autoTable(doc, {
         startY: ((doc as any).lastAutoTable?.finalY || 38) + 12,
-        head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Comentários', 'Alcance', 'Impressões']],
+        head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Comentários', 'Alcance', 'Visualizações']],
         body: posts.map(p => [
           p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
           p.tipo || '—',
@@ -3332,7 +3332,7 @@ function Dashboard() {
                       { label: 'Curtidas', valor: analyticsData.totais?.curtidas, anterior: ant.curtidas },
                       { label: 'Comentários', valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
                       { label: 'Alcance', valor: analyticsData.totais?.alcance, anterior: ant.alcance },
-                      { label: 'Impressoes', valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
+                      { label: 'Visualizações', valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
                       { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos, anterior: ant.salvamentos },
                       { label: 'Compartilhamentos', valor: analyticsData.totais?.compartilhamentos, anterior: ant.compartilhamentos },
                     ].map(card => {
@@ -3387,6 +3387,9 @@ function Dashboard() {
                       )
                     })}
                   </div>
+                )}
+                {analyticsData.erroMidias && (
+                  <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '-12px 0 16px' }}>Métricas por post: a Meta respondeu “{analyticsData.erroMidias}”</p>
                 )}
                 {analyticsData.erroInsightsConta && (
                   <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '-12px 0 16px' }}>Série diária indisponível: {analyticsData.erroInsightsConta}</p>
@@ -3460,7 +3463,7 @@ function Dashboard() {
                             <span><strong>{p.curtidas}</strong> curtidas</span>
                             <span><strong>{p.comentarios}</strong> coment.</span>
                             <span><strong>{p.alcance}</strong> alcance</span>
-                            <span><strong>{p.impressoes}</strong> impr.</span>
+                            <span><strong>{p.impressoes}</strong> views</span>
                           </div>
                         </a>
                       ))}

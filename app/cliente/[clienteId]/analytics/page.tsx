@@ -36,7 +36,7 @@ export default function AnalyticsPage() {
               { l: 'Curtidas', v: data.totais?.curtidas },
               { l: 'Comentarios', v: data.totais?.comentarios },
               { l: 'Alcance', v: data.totais?.alcance },
-              { l: 'Impressoes', v: data.totais?.impressoes },
+              { l: 'Visualizacoes', v: data.totais?.impressoes },
             ].map(k => (
               <div key={k.l} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase' }}>{k.l}</p>
@@ -44,6 +44,7 @@ export default function AnalyticsPage() {
               </div>
             ))}
           </div>
+          {data.erroMidias && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '-8px 0 16px' }}>Metricas por post: a Meta respondeu “{data.erroMidias}”</p>}
           {(data.posts || []).length > 0 && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <p style={{ margin: 0, padding: '16px 20px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', borderBottom: '1px solid var(--v2-rule)' }}>Posts por relevancia ({data.posts.length})</p>

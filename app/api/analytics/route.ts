@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   // IMPORTANTE: usar SEMPRE as credenciais do próprio cliente. Nunca cair em uma
   // conta global de ambiente — isso faria todos os clientes mostrarem os mesmos dados.
-  const VERSION = process.env.META_API_VERSION || 'v19.0'
+  const VERSION = process.env.META_API_VERSION || 'v21.0'
   let BASE: string
   let TOKEN: string | undefined
   let IG_ID: string | undefined
@@ -68,15 +68,33 @@ export async function GET(req: NextRequest) {
     }, { status: 200 })
   }
 
+  // Métricas por mídia. `impressions` e `plays` foram DESCONTINUADAS pela Meta
+  // (v22, valendo para todas as versões desde abril/2025; `impressions` já não
+  // existia para mídia criada após 02/07/2024). Pedir uma métrica inválida
+  // derruba a chamada INTEIRA — era isso que zerava alcance, salvamentos e
+  // compartilhamentos junto. `views` é a substituta (jan/2025). Se a API do
+  // cliente não aceitar `views`, cai para o conjunto sem ela: alcance nunca
+  // mais some por tabela.
+  async function insightsDaMidia(id: string): Promise<{ valores: Record<string, number>; erro: string | null }> {
+    const ler = (ins: { data: any }) => { const v: Record<string, number> = {}; for (const item of (ins.data?.data || [])) v[item.name] = item.values?.[0]?.value ?? 0; return v }
+    const completo = await chamarGraph(`${BASE}/${id}/insights?metric=views,reach,saved,shares&access_token=${TOKEN}`)
+    if (!completo.erro) return { valores: ler(completo), erro: null }
+    const basico = await chamarGraph(`${BASE}/${id}/insights?metric=reach,saved,shares&access_token=${TOKEN}`)
+    return { valores: ler(basico), erro: basico.erro || completo.erro }
+  }
+
   // Janela padrão: últimos 30 dias
   const agora = Math.floor(Date.now() / 1000)
   const since = paraTimestamp(desde) || (agora - 30 * 24 * 3600)
   const until = paraTimestamp(ate, true) || agora
 
   // 1-4) Busca perfil, insights, demografia e midias em paralelo
-  const [perfil, insightsConta, demografiaGenero, demografiaIdade, midiasRes] = await Promise.all([
+  // Conta: `profile_views` foi descontinuada (out/2024) e `impressions` também;
+  // `reach` segue como série diária e `views` só existe como total do período.
+  const [perfil, alcanceConta, viewsConta, demografiaGenero, demografiaIdade, midiasRes] = await Promise.all([
     chamarGraph(`${BASE}/${IG_ID}?fields=username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${TOKEN}`),
-    chamarGraph(`${BASE}/${IG_ID}/insights?metric=reach,profile_views&period=day&since=${since}&until=${until}&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/insights?metric=reach&period=day&since=${since}&until=${until}&access_token=${TOKEN}`),
+    chamarGraph(`${BASE}/${IG_ID}/insights?metric=views&period=day&metric_type=total_value&since=${since}&until=${until}&access_token=${TOKEN}`),
     chamarGraph(`${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=gender&access_token=${TOKEN}`),
     chamarGraph(`${BASE}/${IG_ID}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=age&access_token=${TOKEN}`),
     chamarGraph(`${BASE}/${IG_ID}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&since=${since}&until=${until}&limit=50&access_token=${TOKEN}`),
@@ -84,14 +102,10 @@ export async function GET(req: NextRequest) {
   const midias: any[] = midiasRes.data?.data || []
 
   // 5) Métricas por mídia (alcance, impressões, salvamentos, compartilhamentos) — melhor esforço, tolerante a falhas individuais
+  const errosMidias: string[] = []
   const midiasComInsights = await Promise.all(midias.map(async (m) => {
-    const ehVideo = m.media_type === 'VIDEO' || m.media_type === 'REELS'
-    const metricas = ehVideo ? 'plays,reach,saved,shares' : 'impressions,reach,saved,shares'
-    const ins = await chamarGraph(`${BASE}/${m.id}/insights?metric=${metricas}&access_token=${TOKEN}`)
-    const valores: Record<string, number> = {}
-    for (const item of (ins.data?.data || [])) {
-      valores[item.name] = item.values?.[0]?.value ?? 0
-    }
+    const { valores, erro } = await insightsDaMidia(m.id)
+    if (erro) errosMidias.push(erro)
     return {
       id: m.id,
       legenda: m.caption || '',
@@ -102,7 +116,7 @@ export async function GET(req: NextRequest) {
       curtidas: m.like_count ?? 0,
       comentarios: m.comments_count ?? 0,
       alcance: valores.reach ?? 0,
-      impressoes: valores.impressions ?? valores.plays ?? 0,
+      impressoes: valores.views ?? 0, // "impressoes" = visualizacoes (metrica `views` da Meta); chave mantida para o PDF e as telas
       salvamentos: valores.saved ?? 0,
       compartilhamentos: valores.shares ?? 0,
     }
@@ -136,16 +150,10 @@ export async function GET(req: NextRequest) {
   )
   const midiasAnt: any[] = midiasAntRes.data?.data || []
   const midiasAntComInsights = await Promise.all(midiasAnt.map(async (m) => {
-    const ehVideo = m.media_type === 'VIDEO' || m.media_type === 'REELS'
-    const metricas = ehVideo ? 'plays,reach,saved,shares' : 'impressions,reach,saved,shares'
-    const ins = await chamarGraph(`${BASE}/${m.id}/insights?metric=${metricas}&access_token=${TOKEN}`)
-    const valores: Record<string, number> = {}
-    for (const item of (ins.data?.data || [])) {
-      valores[item.name] = item.values?.[0]?.value ?? 0
-    }
+    const { valores } = await insightsDaMidia(m.id)
     return {
       curtidas: m.like_count ?? 0, comentarios: m.comments_count ?? 0,
-      alcance: valores.reach ?? 0, impressoes: valores.impressions ?? valores.plays ?? 0,
+      alcance: valores.reach ?? 0, impressoes: valores.views ?? 0,
       salvamentos: valores.saved ?? 0, compartilhamentos: valores.shares ?? 0,
     }
   }))
@@ -164,8 +172,9 @@ export async function GET(req: NextRequest) {
     periodoAnterior: { since: anteriorSince, until: anteriorUntil },
     perfil: perfil.data || null,
     erroPerfil: perfil.erro,
-    insightsConta: insightsConta.data?.data || [],
-    erroInsightsConta: insightsConta.erro,
+    insightsConta: [...(alcanceConta.data?.data || []), ...(viewsConta.data?.data || [])],
+    erroInsightsConta: alcanceConta.erro,
+    erroMidias: errosMidias[0] || null, // primeira resposta de erro da Meta nas metricas por post (para a tela explicar em vez de mostrar zero)
     demografia: {
       genero: demografiaGenero.data?.data?.[0]?.total_value?.breakdowns?.[0]?.results || null,
       idade: demografiaIdade.data?.data?.[0]?.total_value?.breakdowns?.[0]?.results || null,
