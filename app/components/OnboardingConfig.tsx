@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { toast } from '@/lib/toast'
+import { toast, confirmar } from '@/lib/toast'
 import { configPadrao, DETECTORES, type ConfigOnboarding, type Detector, type EtapaOnb, type FaseOnb } from '@/lib/onboardingConfig'
 
 // Editor das FASES e ETAPAS do onboarding (Configurações → Onboarding).
@@ -33,7 +33,14 @@ export default function OnboardingConfig() {
   const mudarEtapa = (i: number, j: number, patch: Partial<EtapaOnb>) => mudarFase(i, { etapas: cfg.fases[i].etapas.map((e, k) => k === j ? { ...e, ...patch } : e) })
   const addFase = () => { setFases(fs => [...fs, { id: '', nome: '', etapas: [] }]); setAberta(cfg.fases.length) }
   const addEtapa = (i: number) => mudarFase(i, { etapas: [...cfg.fases[i].etapas, { id: '', nome: '' }] })
-  const tirarFase = (i: number) => { if (cfg.fases[i].etapas.length && !window.confirm(`Remover a fase "${cfg.fases[i].nome || 'sem nome'}" e suas ${cfg.fases[i].etapas.length} etapas? O que os clientes já marcaram nelas some.`)) return; setFases(fs => fs.filter((_, k) => k !== i)) }
+  const tirarFase = async (i: number) => {
+    const f = cfg.fases[i]
+    if (f.etapas.length) {
+      const ok = await confirmar(`A fase "${f.nome || 'sem nome'}" tem ${f.etapas.length} ${f.etapas.length === 1 ? 'etapa' : 'etapas'}. O que os clientes já marcaram nelas some ao salvar.`, { titulo: 'Remover fase', okLabel: 'Remover', perigo: true })
+      if (!ok) return
+    }
+    setFases(fs => fs.filter((_, k) => k !== i))
+  }
   const tirarEtapa = (i: number, j: number) => mudarFase(i, { etapas: cfg.fases[i].etapas.filter((_, k) => k !== j) })
 
   async function salvar() {
@@ -44,7 +51,10 @@ export default function OnboardingConfig() {
     setCfg({ fases: r.fases })
     toast('Onboarding salvo. Vale para todos os clientes na fase.', 'sucesso')
   }
-  function restaurarPadrao() { if (window.confirm('Voltar para as 3 fases e 9 etapas padrão? Nada é salvo até você clicar em Salvar.')) setCfg(configPadrao()) }
+  async function restaurarPadrao() {
+    const ok = await confirmar('Volta para as 3 fases e 9 etapas padrão. Nada é gravado até você clicar em Salvar.', { titulo: 'Restaurar padrão', okLabel: 'Restaurar' })
+    if (ok) setCfg(configPadrao())
+  }
 
   const totalEtapas = cfg.fases.reduce((n, f) => n + f.etapas.length, 0)
 

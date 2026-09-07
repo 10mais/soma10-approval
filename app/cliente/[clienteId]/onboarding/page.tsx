@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { confirmar } from '@/lib/toast'
 import type { ItemOnboarding, FaseCliente, FaseChecklist } from '@/lib/faseCliente'
 
 // ONBOARDING — o momento exclusivo por que TODO cliente passa antes de "Em
@@ -31,6 +32,9 @@ export default function OnboardingCliente() {
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
+  // Forçar conclusão (admin): painel inline com o motivo — nada de prompt nativo.
+  const [forcando, setForcando] = useState(false)
+  const [motivo, setMotivo] = useState('')
 
   const carregar = useCallback(() => {
     setErro('')
@@ -67,16 +71,16 @@ export default function OnboardingCliente() {
 
   async function mudarFase(para: FaseCliente, forcar = false) {
     if (!e || salvando) return
-    let motivo = ''
-    if (forcar) {
-      if (!window.confirm(`Concluir o onboarding com ${e.total - e.feitos} pendência(s)? Isso fica registrado na auditoria.`)) return
-      motivo = window.prompt('Motivo (opcional):') || ''
-    } else if (para === 'onboarding' && !window.confirm('Reabrir o onboarding deste cliente?')) return
+    if (para === 'onboarding') {
+      const ok = await confirmar('O cliente volta para a fase de onboarding e o checklist fica editável de novo.', { titulo: 'Reabrir onboarding', okLabel: 'Reabrir' })
+      if (!ok) return
+    }
     setSalvando('fase'); setAviso('')
     try {
-      const r = await fetch('/api/clientes/fase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, fase: para, forcar, motivo }) })
+      const r = await fetch('/api/clientes/fase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, fase: para, forcar, motivo: forcar ? motivo.trim() : '' }) })
       const d = await r.json().catch(() => null)
       if (!r.ok) { setAviso(d?.error || 'A mudança de fase foi recusada.'); return }
+      setForcando(false); setMotivo('')
       await carregar()
       if (para === 'producao') router.push(base)
     } catch { setAviso('Sem conexão. Tente de novo.') }
@@ -122,16 +126,37 @@ export default function OnboardingCliente() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {emOnboarding && e.podeConcluir && <button type="button" disabled={!!salvando} onClick={() => mudarFase('producao')} style={{ padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>Concluir onboarding → Em produção</button>}
           {emOnboarding && !e.podeConcluir && <button type="button" disabled title={`Faltam ${e.total - e.feitos} etapas`} style={{ padding: '11px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink3)', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'not-allowed', minHeight: 44 }}>Concluir onboarding · faltam {e.total - e.feitos}</button>}
-          {emOnboarding && !e.podeConcluir && e.ehAdmin && <button type="button" disabled={!!salvando} onClick={() => mudarFase('producao', true)} style={{ padding: '11px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 44 }}>Forçar conclusão</button>}
+          {emOnboarding && !e.podeConcluir && e.ehAdmin && <button type="button" disabled={!!salvando} onClick={() => setForcando(v => !v)} style={{ padding: '11px 14px', background: forcando ? 'var(--v2-surface2)' : 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 44 }}>Forçar conclusão</button>}
           {!emOnboarding && e.ehAdmin && <button type="button" disabled={!!salvando} onClick={() => mudarFase('onboarding')} style={{ padding: '11px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 44 }}>Reabrir onboarding</button>}
         </div>
       </div>
 
       {aviso && <div role="alert" style={{ background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 12, padding: '12px 16px', fontSize: 13.5 }}>{aviso}</div>}
 
+      {forcando && emOnboarding && (
+        <section style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-amber-on)', borderRadius: 16, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>Concluir com {e.total - e.feitos} {e.total - e.feitos === 1 ? 'pendência' : 'pendências'}?</p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--v2-ink2)', lineHeight: 1.6 }}>{e.itens.filter(i => !i.ok).map(i => <li key={i.chave}>{i.label}</li>)}</ul>
+          <label style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Motivo (fica na auditoria)</label>
+          <textarea value={motivo} onChange={ev => setMotivo(ev.target.value)} rows={2} placeholder="Ex.: cliente pediu para começar antes do kickoff" style={{ boxSizing: 'border-box', width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" disabled={!!salvando} onClick={() => mudarFase('producao', true)} style={{ padding: '10px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Concluir mesmo assim</button>
+            <button type="button" onClick={() => { setForcando(false); setMotivo('') }} style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13, cursor: 'pointer', minHeight: 42 }}>Cancelar</button>
+          </div>
+        </section>
+      )}
+
       <div style={{ height: 6, background: 'var(--v2-surface2)', borderRadius: 999, overflow: 'hidden' }} aria-label={`${pct}% do onboarding`}>
         <div style={{ width: `${pct}%`, height: '100%', background: emOnboarding ? 'var(--v2-info)' : 'var(--v2-ok)', transition: 'width 300ms ease' }} />
       </div>
+
+      {/* As FASES e ETAPAS se editam em Configurações → Onboarding (valem para todos os clientes). */}
+      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>Fases e etapas valem para todos os clientes.</span>
+        {e.ehAdmin
+          ? <button type="button" onClick={() => { try { sessionStorage.setItem('soma10_aba', 'config'); sessionStorage.setItem('soma10_abaConfig', 'onboarding') } catch {} router.push('/dashboard') }} style={{ background: 'none', border: 0, padding: 0, color: 'var(--v2-amber)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', minHeight: 24 }}>Editar fases e etapas →</button>
+          : <span>Um administrador edita em Configurações → Onboarding.</span>}
+      </p>
 
       {/* Uma seção por FASE, na ordem configurada; a primeira fase incompleta é a "atual". */}
       {fases.map((f, idx) => {

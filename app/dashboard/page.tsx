@@ -497,7 +497,12 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
-  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras' | 'onboarding'>('geral')
+  // Atalho vindo de outra tela (ex.: hub → "Editar fases e etapas"): abre direto na aba pedida, uma vez.
+  const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras' | 'onboarding'>(() => {
+    if (typeof window === 'undefined') return 'geral'
+    try { const s = sessionStorage.getItem('soma10_abaConfig'); if (s) { sessionStorage.removeItem('soma10_abaConfig'); if (s === 'onboarding' || s === 'regras' || s === 'geral' || s === 'operacional' || s === 'notificacoes' || s === 'integracoes' || s === 'permissoes' || s === 'sistema') return s } } catch {}
+    return 'geral'
+  })
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
     if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
