@@ -86,6 +86,13 @@ export default function RichText({ value, onChange, placeholder = '', minHeight 
                 <button key={c} type="button" title={c} onMouseDown={e => { e.preventDefault(); cmd('foreColor', c); setCorAberta(false) }}
                   style={{ width: 18, height: 18, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.1)', background: c, cursor: 'pointer' }} />
               ))}
+              {/* Qualquer cor: seletor nativo (espectro completo) + código hex (pedido do dono, 07/09) */}
+              <label title="Qualquer cor (espectro completo)" onMouseDown={e => e.stopPropagation()} style={{ width: 18, height: 18, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.15)', background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)', cursor: 'pointer', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                <input type="color" defaultValue="#000000" onChange={e => cmd('foreColor', e.target.value)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} aria-label="Escolher qualquer cor" />
+              </label>
+              <input type="text" placeholder="#000000" maxLength={7} spellCheck={false} aria-label="Código da cor (hex)" onMouseDown={e => e.stopPropagation()}
+                onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) { cmd('foreColor', v); setCorAberta(false) } } }}
+                style={{ width: 66, height: 20, fontSize: 11, fontFamily: 'ui-monospace, monospace', border: '1px solid var(--v2-rule)', borderRadius: 5, padding: '0 5px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', outline: 'none' }} />
             </div>
           )}
         </div>
