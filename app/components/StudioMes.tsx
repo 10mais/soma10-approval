@@ -395,6 +395,15 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     }).catch(() => {})
   }
 
+  // Vários campos de uma vez (checklist da solicitação do cliente): otimista, sem recarregar.
+  async function salvarPatch(id: string, campos: Record<string, unknown>) {
+    setPautas(ps => ps.map(p => p.id === id ? { ...p, ...campos } : p))
+    await fetch('/api/posts', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...campos }),
+    }).catch(() => {})
+  }
+
   // Anexos da pauta (referências p/ o designer): sobem pro Blob e ficam no Post.
   const [anexando, setAnexando] = useState<string | null>(null)
   async function salvarAnexos(id: string, anexos: { nome: string; url: string; tipo: string }[]) {
@@ -1295,8 +1304,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                       PORTAL no body: o st-row anima com transform, e transform em ancestral
                       prende o position:fixed dentro da linha (modal saía clipado). */}
                   {aberto && createPortal(
-                    <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 950, padding: '3vh 20px', overflowY: 'auto' }}>
-                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 18, width: '100%', maxWidth: 1080, maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px' }}>
+                    <div onClick={fecharFora(() => toggleLinha(p.id), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 950, padding: 20 }}>
+                    <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 960, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 30px 80px rgba(0,0,0,0.35)', padding: '18px 24px 24px', boxSizing: 'border-box' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: est.cor, background: est.bg, borderRadius: 999, padding: '4px 11px', flexShrink: 0 }}>{est.label}</span>
                       <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.briefing || 'Pauta sem título'}</span>
@@ -1308,13 +1317,38 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <div className="st-detail" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
                       <div><PipelinePauta p={p} /></div>
-                      {(ajuste || anot.length > 0) && (
-                        <div style={{ fontSize: 12, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '10px 14px', lineHeight: 1.5 }}>
-                          <strong>Cliente pediu:</strong>
-                          {ajuste && <div style={{ marginTop: 3, whiteSpace: 'pre-wrap' }}>{String(ajuste)}</div>}
-                          {anot.length > 0 && <ol style={{ margin: '4px 0 0', paddingLeft: 16 }}>{anot.map((a: any, i: number) => <li key={i}>{a.text || a.texto}</li>)}</ol>}
-                        </div>
-                      )}
+                      {/* SOLICITAÇÃO DO CLIENTE como checklist: cada pedido (texto + marcações no
+                          criativo) vira um item que a equipe marca ao atender. Usa os campos que já
+                          existem (motivoResolvido / anotacoes[i].resolvido — os mesmos do Planner). */}
+                      {(ajuste || anot.length > 0) && (() => {
+                        type ItemSol = { k: string; texto: string; ok: boolean; i?: number }
+                        const itens: ItemSol[] = [
+                          ...(ajuste ? [{ k: 'motivo', texto: String(ajuste), ok: !!(p as any).motivoResolvido }] : []),
+                          ...anot.map((a: any, i: number) => ({ k: `anot-${i}`, texto: String(a.text || a.texto || ''), ok: !!a.resolvido, i })),
+                        ]
+                        const feitos = itens.filter(i => i.ok).length
+                        const tudo = feitos === itens.length
+                        const origem = p.ajusteCopy ? 'ajuste na copy' : p.ajusteCriativo ? 'ajuste no criativo' : p.motivoReprovacao ? 'reprovação' : 'marcações no criativo'
+                        const marcar = (it: ItemSol) => {
+                          if (it.k === 'motivo') salvarPatch(p.id, { motivoResolvido: !it.ok })
+                          else salvarPatch(p.id, { anotacoes: anot.map((a: any, j: number) => j === it.i ? { ...a, resolvido: !it.ok } : a) })
+                        }
+                        return (
+                          <div style={{ fontSize: 12.5, color: tudo ? 'var(--v2-ok)' : 'var(--v2-hot)', background: tudo ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)', borderRadius: 12, padding: '12px 14px', lineHeight: 1.5 }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+                              <strong style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Solicitação do cliente · {origem}</strong>
+                              <span style={{ marginLeft: 'auto', fontSize: 11.5, opacity: 0.85 }}>{tudo ? 'Tudo atendido' : `${feitos} de ${itens.length} ${itens.length === 1 ? 'atendido' : 'atendidos'}`}</span>
+                            </div>
+                            {itens.map(it => (
+                              <label key={it.k} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '5px 0', cursor: 'pointer', color: 'var(--v2-ink)', minHeight: 30 }}>
+                                <input type="checkbox" checked={it.ok} onChange={() => marcar(it)} aria-label="Marcar como atendido" style={{ marginTop: 3, accentColor: 'var(--v2-ok)', width: 16, height: 16, flexShrink: 0 }} />
+                                <span style={{ flex: 1, whiteSpace: 'pre-wrap', textDecoration: it.ok ? 'line-through' : 'none', opacity: it.ok ? 0.6 : 1 }}>{it.texto}</span>
+                              </label>
+                            ))}
+                            <p style={{ margin: '6px 0 0', fontSize: 11.5, opacity: 0.85 }}>{tudo ? 'Pronto para reenviar ao cliente.' : 'Marque cada pedido ao atender. O cliente recebe a peça de volta quando você reenviar.'}</p>
+                          </div>
+                        )
+                      })()}
                       {/* TOPO: formato + data — o formato personaliza o formulário abaixo */}
                       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                         <div>
