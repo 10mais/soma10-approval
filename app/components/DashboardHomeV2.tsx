@@ -306,7 +306,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
 
             {/* CLIENTES */}
             <section id="v2-clientes" className="v2-sec v2-a d4">
-              <div className="v2-sec-h"><h2>Clientes</h2><span className="dica">quem espera há mais tempo vem primeiro</span><button className="mais" onClick={() => onIr('clientes')}>Todos</button></div>
+              <div className="v2-sec-h"><h2>Clientes</h2><span className="dica">quem espera há mais tempo vem primeiro</span><button className="mais" onClick={() => onIr('clientes-todos')}>Todos</button></div>
               {dados.clientes.length === 0 && <p className="v2-vazio">Nenhum cliente ativo.</p>}
               <div className="v2-trilho-wrap">
                 <button className="v2-seta e" type="button" aria-label="Clientes anteriores" onClick={() => rolarTrilho(-1)} disabled={!podeEsq}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg></button>

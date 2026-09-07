@@ -27,6 +27,7 @@ const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false,
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RegrasDoMes = dynamic(() => import('../components/RegrasDoMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const ClientesTodos = dynamic(() => import('../components/ClientesTodos'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const SplashRegra = dynamic(() => import('../components/SplashRegra'), { ssr: false })
 const GestaoTarefas = dynamic(() => import('../components/GestaoTarefas'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const Playbook = dynamic(() => import('../components/Playbook'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -425,7 +426,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'meu-dia' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -4931,6 +4932,10 @@ function Dashboard() {
         )}
 
         {/* CARGA DA EQUIPE (equipe) */}
+        {/* Todos os clientes em cards (vitrine) — o "Todos" da Home cai aqui; cada card abre o hub /cliente/[id] */}
+        {aba === 'clientes-todos' && role !== 'cliente' && (
+          <ClientesTodos onAbrir={(id: string) => router.push(`/cliente/${id}`)} onIr={(a: string) => setAba(a as any)} podeGerir={role === 'admin' || podeGrupo('clientes')} />
+        )}
         {aba === 'carga' && role !== 'cliente' && (
           <CargaEquipe usuarios={usuarios as any} />
         )}
