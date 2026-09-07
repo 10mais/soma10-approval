@@ -53,18 +53,26 @@ export default function CardPessoa() {
   const email = seg === 'me' ? meuEmail : seg
   const ehMeu = email === meuEmail
   // Bloco de notas (só no próprio perfil): pode ser ocultado (lembra a escolha) e abre
-  // com Ctrl+N / Alt+N (dono, 07/09). Chrome reserva Ctrl+N para "nova janela" e pode
-  // não entregar a tecla à página — por isso Alt+N também vale.
+  // por atalho (dono, 07/09). O pedido era Ctrl+N, mas o Chrome RESERVA Ctrl+N ("nova
+  // janela") e nunca entrega a tecla à página — confirmado pelo dono. Atalhos que
+  // funcionam: Alt+N em qualquer lugar, ou a tecla N sozinha quando nada está sendo
+  // digitado (como em apps de tarefas). Ctrl+N fica tratado para o sistema instalado
+  // como app, onde o navegador pode deixar passar.
   const [notas, setNotasRaw] = useState(true)
   const [focoNotas, setFocoNotas] = useState(0)
   useEffect(() => { try { if (localStorage.getItem('soma10-notas-visiveis') === '0') setNotasRaw(false) } catch {} }, [])
   const setNotas = (v: boolean) => { setNotasRaw(v); try { localStorage.setItem('soma10-notas-visiveis', v ? '1' : '0') } catch {} }
   useEffect(() => {
     if (!ehMeu) return
+    const digitando = () => {
+      const el = document.activeElement as HTMLElement | null
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+    }
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey || e.altKey) && !e.shiftKey && e.key.toLowerCase() === 'n') {
-        e.preventDefault(); setNotas(true); setFocoNotas(n => n + 1)
-      }
+      if (e.key.toLowerCase() !== 'n' || e.shiftKey || e.repeat) return
+      const comModificador = e.altKey || e.ctrlKey || e.metaKey
+      if (!comModificador && digitando()) return // "n" solta só vale fora de campos de texto
+      e.preventDefault(); setNotas(true); setFocoNotas(n => n + 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -203,8 +211,8 @@ export default function CardPessoa() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => router.push(`/equipe/${encodeURIComponent(pessoa.email)}/tarefas`)} style={{ padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Quadro de tarefas</button>
           {ehAdmin && !editando && <button onClick={abrirEdicao} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}>Editar perfil</button>}
-          {ehMeu && <button onClick={() => { setNotas(!notas); if (!notas) setFocoNotas(n => n + 1) }} title={notas ? 'Ocultar o bloco de notas' : 'Mostrar o bloco de notas (Ctrl+N)'} style={{ padding: '11px 16px', background: notas ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: notas ? 'var(--v2-amber)' : 'var(--v2-ink)', border: `1px solid ${notas ? 'var(--v2-amber)' : 'var(--v2-rule)'}`, borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {notas ? 'Ocultar notas' : 'Notas'}<kbd style={{ fontFamily: 'inherit', fontSize: 11, opacity: 0.7, border: '1px solid currentColor', borderRadius: 5, padding: '1px 5px' }}>Ctrl+N</kbd>
+          {ehMeu && <button onClick={() => { setNotas(!notas); if (!notas) setFocoNotas(n => n + 1) }} title={notas ? 'Ocultar o bloco de notas' : 'Mostrar o bloco de notas (Alt+N, ou N fora de um campo de texto)'} style={{ padding: '11px 16px', background: notas ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: notas ? 'var(--v2-amber)' : 'var(--v2-ink)', border: `1px solid ${notas ? 'var(--v2-amber)' : 'var(--v2-rule)'}`, borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {notas ? 'Ocultar notas' : 'Notas'}<kbd style={{ fontFamily: 'inherit', fontSize: 11, opacity: 0.7, border: '1px solid currentColor', borderRadius: 5, padding: '1px 5px' }}>Alt+N</kbd>
           </button>}
         </div>
       </div>
