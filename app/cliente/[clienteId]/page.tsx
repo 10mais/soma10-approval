@@ -3,6 +3,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
 import { resumoDoCliente, type ResumoCliente } from '@/lib/hubCliente'
+import { paragrafar, resumir } from '@/lib/textoBruto'
 import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 
 // INÍCIO DO HUB: tudo o que está atribuído ao cliente, numa tela — bola da vez,
@@ -17,6 +18,27 @@ function fmtDia(iso?: string) {
   const d = new Date(iso)
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
+// Descrição do negócio: costuma ser um documento inteiro colado sem quebras.
+// lib/textoBruto descobre títulos/itens/parágrafos; fechado mostra o resumo.
+function Descricao({ texto }: { texto: string }) {
+  const [aberto, setAberto] = useState(false)
+  const blocos = useMemo(() => paragrafar(texto), [texto])
+  const r = useMemo(() => resumir(texto, 260), [texto])
+  const temMais = r.cortado || blocos.length > 1
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {!aberto
+        ? <p style={{ margin: 0 }}>{r.texto}</p>
+        : blocos.map((b, i) => b.tipo === 'titulo'
+          ? <p key={i} style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>{b.texto}</p>
+          : b.tipo === 'item'
+            ? <p key={i} style={{ margin: 0, paddingLeft: 16, textIndent: -16 }}>{b.texto}</p>
+            : <p key={i} style={{ margin: 0 }}>{b.texto}</p>)}
+      {temMais && <button type="button" onClick={() => setAberto(v => !v)} style={{ alignSelf: 'flex-start', background: 'none', border: 0, padding: 0, color: 'var(--v2-amber)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', minHeight: 24 }}>{aberto ? 'Ver menos' : 'Ver mais'}</button>}
+    </div>
+  )
+}
+
 function diasDesde(iso?: string) { if (!iso) return null; return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)) }
 
 function Cartao({ titulo, acao, onAcao, children, destaque }: { titulo: string; acao?: string; onAcao?: () => void; children: React.ReactNode; destaque?: boolean }) {
@@ -200,7 +222,7 @@ export default function HubCliente() {
         <Cartao titulo="Sobre o projeto" acao="Marca" onAcao={() => router.push(`${base}/marca`)}>
           {cliente.descricao || cliente.publicoAlvo || cliente.entregaveis?.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>
-              {cliente.descricao && <p style={{ margin: 0 }}>{cliente.descricao}</p>}
+              {cliente.descricao && <Descricao texto={cliente.descricao} />}
               {cliente.publicoAlvo && <p style={{ margin: 0 }}><span style={{ color: 'var(--v2-ink3)' }}>Público: </span>{cliente.publicoAlvo}</p>}
               {cliente.entregaveis?.length > 0 && <p style={{ margin: 0 }}><span style={{ color: 'var(--v2-ink3)' }}>Entregáveis: </span>{cliente.entregaveis.join(', ').replace(/_/g, ' ')}</p>}
               {cliente.postsMensais > 0 && <p style={{ margin: 0 }}><span style={{ color: 'var(--v2-ink3)' }}>Contrato: </span>{cliente.postsMensais} posts/mês</p>}
