@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Parte = { texto: string; destaque?: boolean; quente?: boolean; alvo?: 'tarefas' | 'clientes' | 'hoje' | 'reunioes' }
 type Evento = { id: string; hora: string; minuto: number; tipo: 'post' | 'reuniao' | 'agenda'; titulo: string; detalhe?: string; feito?: boolean }
-type Cartao = { id: string; nome: string; logo?: string; cor?: string; lado: 'cliente' | 'agencia' | 'ninguem'; frase: string; diasParado?: number; totalCliente: number; totalAgencia: number; primeiro?: string }
+type Cartao = { id: string; nome: string; logo?: string; cor?: string; fase?: 'onboarding' | 'producao'; lado: 'cliente' | 'agencia' | 'ninguem'; frase: string; diasParado?: number; totalCliente: number; totalAgencia: number; primeiro?: string }
 type ItemFila = { id: string; titulo: string; tipo?: string; status: string; prazo?: string; clienteNome?: string; anexos: number }
 type Chegou = { id: string; ts: number; clienteId: string; clienteNome: string; tipo: string; acao: string; resumo?: string; postId?: string }
 type Dados = {
@@ -191,6 +191,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
         .v2-cli .logo { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-weight: 600; font-size: 13px; margin-bottom: 14px; color: #17150E; background: var(--v2-amber-on); overflow: hidden; }
         .v2-cli .logo img { width: 100%; height: 100%; object-fit: cover; }
         .v2-cli .nome { font-size: 15.5px; font-weight: 500; margin: 0 0 4px; }
+        .v2-fase { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--v2-info); background: var(--v2-info-bg); padding: 3px 8px; border-radius: 999px; margin: -4px 0 8px; }
         .v2-cli .estado { font-size: 13px; color: var(--v2-ink2); margin: 0 0 12px; min-height: 38px; }
         .v2-bola { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; }
         .v2-bola::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -318,6 +319,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
                     <button key={c.id} className={`v2-cli${parado ? ' parado' : ''}`} onClick={() => onVerCliente(c.id)} type="button">
                       {c.lado === 'cliente' && typeof c.diasParado === 'number' && c.diasParado > 0 && <div className="dias">{c.diasParado}<small>{c.diasParado === 1 ? 'dia' : 'dias'}</small></div>}
                       <div className="logo" style={c.cor ? { background: c.cor } : undefined}>{c.logo ? <img src={c.logo} alt="" /> : iniciais(c.nome)}</div>
+                      {c.fase === 'onboarding' && <span className="v2-fase">Onboarding</span>}
                       <p className="nome">{c.nome}</p>
                       <p className="estado">{c.lado === 'ninguem' ? 'Nada pendente.' : <>{c.frase}{c.primeiro ? <> — <b style={{ fontWeight: 500 }}>{c.primeiro}</b></> : null}</>}</p>
                       <span className={`v2-bola ${c.lado}${parado ? ' parado' : ''}`}>{c.lado === 'cliente' ? 'Com o cliente' : c.lado === 'agencia' ? 'Com a equipe' : 'Em dia'}</span>

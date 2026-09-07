@@ -7,6 +7,7 @@ import { listarLogsCliente } from '@/lib/logCliente'
 import { montarContexto, reguaDoDia, type PostLite } from '@/lib/contextoPessoa'
 import { montarManchete } from '@/lib/manchete'
 import { calcularBola, fraseDaBola } from '@/lib/bolaDaVez'
+import { faseDoCliente } from '@/lib/faseCliente'
 import { eventosDeHoje, agendaConfigurada } from '@/lib/googleCalendar'
 import { normalizarConfig, regraDoDia } from '@/lib/regrasDoMes'
 
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     .map(c => {
       const b = calcularBola(P.filter(p => p.clienteId === c.id) as any, T.filter(t => t.clienteId === c.id) as any, agora)
       return {
-        id: c.id, nome: c.nome, logo: c.logo, cor: (c as any).corPrimaria,
+        id: c.id, nome: c.nome, logo: c.logo, cor: (c as any).corPrimaria, fase: faseDoCliente(c),
         lado: b.lado, frase: fraseDaBola(b, false), diasParado: b.diasParado,
         totalCliente: b.totalCliente, totalAgencia: b.totalAgencia,
         primeiro: b.itens[0]?.titulo,

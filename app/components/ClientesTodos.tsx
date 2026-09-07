@@ -10,13 +10,13 @@ import { useEffect, useMemo, useState } from 'react'
 // (/cliente/[id]), via onAbrir, como no trilho. "Cadastro e conexões" leva à
 // tela de gestão (aba `clientes`), que é onde o "Todos" caía por engano.
 
-type Cartao = { id: string; nome: string; logo?: string; cor?: string; lado: 'cliente' | 'agencia' | 'ninguem'; frase: string; diasParado?: number; totalCliente: number; totalAgencia: number; primeiro?: string }
-type Filtro = 'todos' | 'cliente' | 'agencia' | 'ninguem'
+type Cartao = { id: string; nome: string; logo?: string; cor?: string; fase?: 'onboarding' | 'producao'; lado: 'cliente' | 'agencia' | 'ninguem'; frase: string; diasParado?: number; totalCliente: number; totalAgencia: number; primeiro?: string }
+type Filtro = 'todos' | 'onboarding' | 'cliente' | 'agencia' | 'ninguem'
 
 function iniciais(nome: string) { return nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || '').join('') || '?' }
 function semAcento(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
 
-const ROTULO: Record<Filtro, string> = { todos: 'Todos', cliente: 'Com o cliente', agencia: 'Com a equipe', ninguem: 'Em dia' }
+const ROTULO: Record<Filtro, string> = { todos: 'Todos', onboarding: 'Onboarding', cliente: 'Com o cliente', agencia: 'Com a equipe', ninguem: 'Em dia' }
 
 export default function ClientesTodos({ onAbrir, onIr, podeGerir }: { onAbrir: (id: string) => void; onIr: (aba: string) => void; podeGerir: boolean }) {
   const [clientes, setClientes] = useState<Cartao[] | null>(null)
@@ -36,14 +36,14 @@ export default function ClientesTodos({ onAbrir, onIr, podeGerir }: { onAbrir: (
   }, [tentativa])
 
   const contagem = useMemo(() => {
-    const c: Record<Filtro, number> = { todos: 0, cliente: 0, agencia: 0, ninguem: 0 }
-    for (const x of clientes || []) { c.todos++; c[x.lado]++ }
+    const c: Record<Filtro, number> = { todos: 0, onboarding: 0, cliente: 0, agencia: 0, ninguem: 0 }
+    for (const x of clientes || []) { c.todos++; c[x.lado]++; if (x.fase === 'onboarding') c.onboarding++ }
     return c
   }, [clientes])
 
   const lista = useMemo(() => {
     const q = semAcento(busca.trim())
-    return (clientes || []).filter(c => (filtro === 'todos' || c.lado === filtro) && (!q || semAcento(c.nome).includes(q)))
+    return (clientes || []).filter(c => (filtro === 'todos' || (filtro === 'onboarding' ? c.fase === 'onboarding' : c.lado === filtro)) && (!q || semAcento(c.nome).includes(q)))
   }, [clientes, busca, filtro])
 
   return (
@@ -70,6 +70,9 @@ export default function ClientesTodos({ onAbrir, onIr, podeGerir }: { onAbrir: (
         .v2-todos .v2-cli .logo { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-weight: 600; font-size: 13px; margin-bottom: 14px; color: #17150E; background: var(--v2-amber-on); overflow: hidden; }
         .v2-todos .v2-cli .logo img { width: 100%; height: 100%; object-fit: cover; }
         .v2-todos .v2-cli .nome { font-size: 15.5px; font-weight: 500; margin: 0 0 4px; }
+        .v2-todos .v2-fase { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--v2-info); background: var(--v2-info-bg); padding: 3px 8px; border-radius: 999px; margin: -4px 0 8px; align-self: flex-start; }
+        .v2-todos .secao { font-size: 12.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v2-ink3); margin: 0 0 12px; }
+        .v2-todos .secao + .grade { margin-bottom: 26px; }
         .v2-todos .v2-cli .estado { font-size: 13px; color: var(--v2-ink2); margin: 0 0 12px; min-height: 38px; flex: 1; }
         .v2-todos .v2-cli .dias { position: absolute; top: 14px; right: 14px; font-size: 22px; font-weight: 300; color: var(--v2-ink3); font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
         .v2-todos .v2-cli .dias small { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
@@ -98,7 +101,7 @@ export default function ClientesTodos({ onAbrir, onIr, podeGerir }: { onAbrir: (
       <div className="barra">
         <input className="busca" type="search" placeholder="Buscar cliente" value={busca} onChange={e => setBusca(e.target.value)} aria-label="Buscar cliente" autoComplete="off" />
         <div className="chips" role="tablist" aria-label="Filtrar por situação">
-          {(['todos', 'cliente', 'agencia', 'ninguem'] as Filtro[]).map(f => (
+          {(['todos', 'onboarding', 'cliente', 'agencia', 'ninguem'] as Filtro[]).map(f => (
             <button key={f} type="button" role="tab" aria-selected={filtro === f} className={`chip${filtro === f ? ' on' : ''}`} onClick={() => setFiltro(f)}>
               {ROTULO[f]}{clientes && <small>{contagem[f]}</small>}
             </button>
@@ -118,22 +121,32 @@ export default function ClientesTodos({ onAbrir, onIr, podeGerir }: { onAbrir: (
         <p className="vazio">{contagem.todos === 0 ? 'Nenhum cliente ativo.' : busca ? `Nenhum cliente com "${busca.trim()}"${filtro !== 'todos' ? ` em "${ROTULO[filtro]}"` : ''}.` : `Nenhum cliente em "${ROTULO[filtro]}".`}</p>
       )}
 
-      {clientes && lista.length > 0 && (
+      {clientes && lista.length > 0 && (filtro === 'todos' && lista.some(c => c.fase === 'onboarding') ? (
+        <>
+          <p className="secao">Em onboarding · {lista.filter(c => c.fase === 'onboarding').length}</p>
+          <div className="grade">{lista.filter(c => c.fase === 'onboarding').map(cartao)}</div>
+          {lista.some(c => c.fase !== 'onboarding') && <p className="secao">Em produção · {lista.filter(c => c.fase !== 'onboarding').length}</p>}
+          <div className="grade">{lista.filter(c => c.fase !== 'onboarding').map(cartao)}</div>
+        </>
+      ) : (
         <div className="grade">
-          {lista.map(c => {
-            const parado = c.lado === 'cliente' && (c.diasParado || 0) >= 3
-            return (
-              <button key={c.id} type="button" className={`v2-cli${parado ? ' parado' : ''}`} onClick={() => onAbrir(c.id)} aria-label={`Abrir ${c.nome}`}>
-                {c.lado === 'cliente' && typeof c.diasParado === 'number' && c.diasParado > 0 && <div className="dias">{c.diasParado}<small>{c.diasParado === 1 ? 'dia' : 'dias'}</small></div>}
-                <div className="logo" style={c.cor ? { background: c.cor } : undefined}>{c.logo ? <img src={c.logo} alt="" /> : iniciais(c.nome)}</div>
-                <p className="nome">{c.nome}</p>
-                <p className="estado">{c.lado === 'ninguem' ? 'Nada pendente.' : <>{c.frase}{c.primeiro ? <> — <b style={{ fontWeight: 500 }}>{c.primeiro}</b></> : null}</>}</p>
-                <span className={`v2-bola ${c.lado}${parado ? ' parado' : ''}`}>{c.lado === 'cliente' ? 'Com o cliente' : c.lado === 'agencia' ? 'Com a equipe' : 'Em dia'}</span>
-              </button>
-            )
-          })}
+          {lista.map(cartao)}
         </div>
-      )}
+      ))}
     </div>
   )
+
+  function cartao(c: Cartao) {
+    const parado = c.lado === 'cliente' && (c.diasParado || 0) >= 3
+    return (
+      <button key={c.id} type="button" className={`v2-cli${parado ? ' parado' : ''}`} onClick={() => onAbrir(c.id)} aria-label={`Abrir ${c.nome}`}>
+        {c.lado === 'cliente' && typeof c.diasParado === 'number' && c.diasParado > 0 && <div className="dias">{c.diasParado}<small>{c.diasParado === 1 ? 'dia' : 'dias'}</small></div>}
+        <div className="logo" style={c.cor ? { background: c.cor } : undefined}>{c.logo ? <img src={c.logo} alt="" /> : iniciais(c.nome)}</div>
+        {c.fase === 'onboarding' && <span className="v2-fase">Onboarding</span>}
+        <p className="nome">{c.nome}</p>
+        <p className="estado">{c.lado === 'ninguem' ? 'Nada pendente.' : <>{c.frase}{c.primeiro ? <> — <b style={{ fontWeight: 500 }}>{c.primeiro}</b></> : null}</>}</p>
+        <span className={`v2-bola ${c.lado}${parado ? ' parado' : ''}`}>{c.lado === 'cliente' ? 'Com o cliente' : c.lado === 'agencia' ? 'Com a equipe' : 'Em dia'}</span>
+      </button>
+    )
+  }
 }

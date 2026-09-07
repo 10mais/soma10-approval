@@ -12,7 +12,7 @@ import { fecharFora } from '@/lib/fecharModal'
 // (isso fica para o multi-tenant). O papel `cliente`, se ainda existir, vê só o
 // núcleo antigo (Início, Entregas, Aprovações, Solicitar, Documentos).
 
-type Item = { key: string; label: string; icone: string; badge?: 'aprovacoes'; perm?: string; modulo?: string; soEquipe?: boolean }
+type Item = { key: string; label: string; icone: string; badge?: 'aprovacoes' | 'onboarding'; perm?: string; modulo?: string; soEquipe?: boolean }
 type Grupo = { titulo: string; itens: Item[] }
 
 const IC: Record<string, string> = {
@@ -40,6 +40,7 @@ const IC: Record<string, string> = {
 const GRUPOS_EQUIPE: Grupo[] = [
   { titulo: 'Visão', itens: [
     { key: '', label: 'Início', icone: 'inicio' },
+    { key: '/onboarding', label: 'Onboarding', icone: 'entregas', badge: 'onboarding' },
     { key: '/relatorio', label: 'Relatório da semana', icone: 'relatorio' },
   ] },
   { titulo: 'Produção', itens: [
@@ -206,7 +207,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cliente?.nome || 'Carregando…'}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cliente?.instagram ? `@${String(cliente.instagram).replace(/^@/, '')}` : cliente?.segmento || ''}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cliente?.fase === 'onboarding' ? 'Em onboarding' : cliente?.instagram ? `@${String(cliente.instagram).replace(/^@/, '')}` : cliente?.segmento || ''}</p>
             </div>
           </div>
           <nav>
@@ -218,6 +219,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                     <Ico d={IC[i.icone]} />
                     <span style={{ flex: 1 }}>{i.label}</span>
                     {i.badge === 'aprovacoes' && pendentes > 0 && <span style={{ background: 'var(--v2-hot)', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, padding: '0 5px', display: 'grid', placeItems: 'center', fontSize: 10.5, fontWeight: 600 }}>{pendentes}</span>}
+                    {i.badge === 'onboarding' && cliente?.fase === 'onboarding' && <span style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--v2-info)', display: 'inline-block' }} aria-label="Em onboarding" />}
                   </button>
                 ))}
               </div>

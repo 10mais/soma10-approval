@@ -64,6 +64,8 @@ export async function POST(req: NextRequest) {
     postsMensais: Number(dados.postsMensais) || 0,
     ...(dados.contratoValor !== undefined ? { contratoValor: Number(dados.contratoValor) || 0 } : (negocio.valor ? { contratoValor: Number(negocio.valor) } : {})),
     handoffVendas,
+    // Cliente convertido do CRM também começa no ONBOARDING (lib/faseCliente).
+    fase: 'onboarding', faseDesde: agora,
     criadoEm: agora,
   }
 

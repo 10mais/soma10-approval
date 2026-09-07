@@ -116,6 +116,14 @@ export default function HubCliente() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1240 }}>
+      {/* ONBOARDING: enquanto o cliente está nessa fase, é a primeira coisa da tela */}
+      {cliente.fase === 'onboarding' && (
+        <button type="button" onClick={() => router.push(`${base}/onboarding`)} style={{ textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', background: 'var(--v2-info-bg)', border: '1px solid var(--v2-info)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--v2-info)', background: 'var(--v2-surface)', padding: '4px 9px', borderRadius: 999 }}>Onboarding</span>
+          <span style={{ flex: 1, fontSize: 14, color: 'var(--v2-ink)' }}>Este cliente ainda está no onboarding{cliente.faseDesde || cliente.criadoEm ? ` desde ${new Date(cliente.faseDesde || cliente.criadoEm).toLocaleDateString('pt-BR')}` : ''}. Conclua o checklist para passar a <b style={{ fontWeight: 600 }}>Em produção</b>.</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--v2-info)' }}>Abrir onboarding →</span>
+        </button>
+      )}
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>

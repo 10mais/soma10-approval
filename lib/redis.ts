@@ -170,6 +170,12 @@ export type Cliente = {
   // Pontual = um lançamento; Modular = um lançamento por mês com valores diferentes.
   receitasAvulsas?: ReceitaAvulsa[]
   criadoEm: string
+  // Fase do ciclo de vida (lib/faseCliente): nasce em 'onboarding'; só a rota
+  // /api/clientes/fase muda. Ausente = 'producao' (carteira antiga).
+  fase?: 'onboarding' | 'producao'
+  faseDesde?: string // ISO — quando entrou na fase atual
+  onboardingConcluidoEm?: string // ISO — quando passou para producao
+  onboardingChecklist?: Record<string, boolean> // itens MANUAIS marcados pela equipe (chaves em lib/faseCliente)
   // Integração Meta — Facebook (Página) e/ou Instagram (login do Instagram)
   facebookPageId?: string
   facebookPageToken?: string
