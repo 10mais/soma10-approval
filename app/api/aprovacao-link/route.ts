@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, Post } from '@/lib/redis'
+import { esperandoCliente } from '@/lib/bolaDaVez'
 import { v4 as uuid } from 'uuid'
 import { checarRate } from '@/lib/rateLimit'
 
@@ -48,11 +49,19 @@ export async function GET(req: NextRequest) {
   const ids = await redis.smembers('posts')
   const todos = ids.length ? ((await redis.mget<(Post | null)[]>(...ids.map(i => `post:${i}`))).filter(Boolean) as Post[]) : []
   const posts = todos
-    // Mostra os aguardando aprovação E os que estão EM AJUSTE (corrigir) — para o
-    // criativo não sumir enquanto a agência trabalha e o cliente poder editar o ajuste.
-    // A COPY em aprovação (etapa aprovacao_copy) entra pelo mesmo link: o cliente
-    // aprova o TEXTO antes de a arte ser produzida (linha de montagem).
-    .filter(p => p.clienteId === clienteId && (p.status === 'aguardando_aprovacao' || p.status === 'corrigir' || p.etapa === 'aprovacao_copy'))
+    // O QUE O CLIENTE VÊ: o mesmo que o portal dele e o mesmo que o hub conta na frase
+    // "N materiais esperam o cliente aprovar" — a regra é uma só, `esperandoCliente`
+    // (lib/bolaDaVez, testada): status aguardando_aprovacao OU etapa de aprovação
+    // (copy ou criativo). Aqui entram TAMBÉM os que estão em ajuste (corrigir), para o
+    // material não sumir enquanto a agência trabalha e o cliente poder editar o pedido.
+    //
+    // BUG corrigido em 08/09 (dono: "na nossa tela aparece conteúdo para aprovação e no
+    // link do cliente não?"): este filtro olhava só o STATUS e, de etapa, apenas
+    // aprovacao_copy. Criativo que ficou em `aprovacao_criativo` sem o status
+    // `aguardando_aprovacao` aparecia para a equipe e para o cliente logado, mas o link
+    // público dizia "Tudo aprovado" — o cliente não tinha como aprovar.
+    .filter(p => p.clienteId === clienteId && !(p as any).excluidoEm
+      && (esperandoCliente(p as any) || p.status === 'corrigir'))
     .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
     .map(p => ({
       id: p.id, codigo: (p as any).codigo, imagens: p.imagens || [], legenda: p.legenda || '',
