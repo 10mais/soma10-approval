@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     itens: r.itens, fases: r.fases, feitos: r.itens.filter(i => i.ok).length, total: r.itens.length,
     podeConcluir: r.itens.every(i => i.ok), ehAdmin: role === 'admin',
     handoffVendas: (r.cliente as any).handoffVendas || '',
+    clienteNome: r.cliente.nome,
   })
 }
 

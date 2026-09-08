@@ -497,6 +497,9 @@ function Dashboard() {
   const [configAgencia, setConfigAgencia] = useState<ConfigAgencia>({ nomeAgencia: 'Soma10 Approval', corPrimaria: '#ffc00f', corSecundaria: '#111111' })
   const [salvandoConfig, setSalvandoConfig] = useState(false)
   // Hub de Configurações em abas
+  // Volta garantida: quem veio do onboarding de um cliente vê a faixa "Voltar para o cliente".
+  const [voltarCliente, setVoltarCliente] = useState<{ href: string; nome: string } | null>(null)
+  useEffect(() => { try { const v = sessionStorage.getItem('soma10-voltar-cliente'); if (v) setVoltarCliente(JSON.parse(v)) } catch {} }, [])
   // Atalho vindo de outra tela (ex.: hub → "Editar fases e etapas"): abre direto na aba pedida, uma vez.
   const [abaConfig, setAbaConfig] = useState<'geral' | 'operacional' | 'notificacoes' | 'integracoes' | 'permissoes' | 'sistema' | 'regras' | 'onboarding'>(() => {
     if (typeof window === 'undefined') return 'geral'
@@ -5081,6 +5084,14 @@ function Dashboard() {
             )}
             {abaConfig === 'onboarding' && (
               <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 20 }}>
+                {/* Veio do onboarding de um cliente? Volta garantida para o mesmo card (soma10-voltar-cliente). */}
+                {voltarCliente && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber)' }}>
+                    <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink)' }}>Você veio do onboarding de <strong style={{ fontWeight: 600 }}>{voltarCliente.nome}</strong>.</span>
+                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; router.push(voltarCliente.href) }} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>← Voltar para o cliente</button>
+                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; setVoltarCliente(null) }} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 12.5, cursor: 'pointer' }}>ficar aqui</button>
+                  </div>
+                )}
                 <OnboardingConfig />
               </div>
             )}

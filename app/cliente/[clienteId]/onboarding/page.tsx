@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
+import OnboardingConfig from '@/app/components/OnboardingConfig'
 import type { ItemOnboarding, FaseCliente, FaseChecklist } from '@/lib/faseCliente'
 
 // ONBOARDING — o momento exclusivo por que TODO cliente passa antes de "Em
@@ -14,7 +16,7 @@ import type { ItemOnboarding, FaseCliente, FaseChecklist } from '@/lib/faseClien
 
 type Estado = {
   fase: FaseCliente; rotulo: string; faseDesde?: string; onboardingConcluidoEm?: string | null
-  itens: ItemOnboarding[]; fases: FaseChecklist[]; feitos: number; total: number; podeConcluir: boolean; ehAdmin: boolean; handoffVendas?: string
+  itens: ItemOnboarding[]; fases: FaseChecklist[]; feitos: number; total: number; podeConcluir: boolean; ehAdmin: boolean; handoffVendas?: string; clienteNome?: string
 }
 
 // Atalho por DETECTOR (etapa automática): onde a etapa se resolve dentro do hub.
@@ -35,6 +37,10 @@ export default function OnboardingCliente() {
   // Forçar conclusão (admin): painel inline com o motivo — nada de prompt nativo.
   const [forcando, setForcando] = useState(false)
   const [motivo, setMotivo] = useState('')
+  // Editor das fases/etapas ABERTO POR CIMA desta página (dono, 07/09: "precisamos voltar para o
+  // mesmo local"): salvou, fechou, o checklist recarrega aqui. Abrir em Configurações também
+  // funciona, com volta garantida (soma10-voltar-cliente).
+  const [editorAberto, setEditorAberto] = useState(false)
 
   const carregar = useCallback(() => {
     setErro('')
@@ -154,7 +160,11 @@ export default function OnboardingCliente() {
       <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <span>Fases e etapas valem para todos os clientes.</span>
         {e.ehAdmin
-          ? <button type="button" onClick={() => { try { sessionStorage.setItem('soma10_aba', 'config'); sessionStorage.setItem('soma10_abaConfig', 'onboarding') } catch {} router.push('/dashboard') }} style={{ background: 'none', border: 0, padding: 0, color: 'var(--v2-amber)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', minHeight: 24 }}>Editar fases e etapas →</button>
+          ? <>
+              <button type="button" onClick={() => setEditorAberto(true)} style={{ background: 'none', border: 0, padding: 0, color: 'var(--v2-amber)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', minHeight: 24 }}>Editar fases e etapas</button>
+              <span aria-hidden>·</span>
+              <button type="button" onClick={() => { try { sessionStorage.setItem('soma10_aba', 'config'); sessionStorage.setItem('soma10_abaConfig', 'onboarding'); sessionStorage.setItem('soma10-voltar-cliente', JSON.stringify({ href: `${base}/onboarding`, nome: e.clienteNome || 'cliente' })) } catch {} router.push('/dashboard') }} style={{ background: 'none', border: 0, padding: 0, color: 'var(--v2-ink3)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', minHeight: 24 }}>abrir em Configurações</button>
+            </>
           : <span>Um administrador edita em Configurações → Onboarding.</span>}
       </p>
 
@@ -180,6 +190,21 @@ export default function OnboardingCliente() {
           <h2 style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Passagem de bastão (vendas → onboarding)</h2>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap' }}>{e.handoffVendas}</p>
         </section>
+      )}
+
+      {/* EDITOR DAS FASES por cima da página: mesmo componente de Configurações → Onboarding. */}
+      {editorAberto && (
+        <div onClick={fecharFora(() => setEditorAberto(false), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+          <div onClick={ev => ev.stopPropagation()} className="anim-modal" role="dialog" aria-label="Fases e etapas do onboarding" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 920, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)' }}>
+              <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Vale para todos os clientes. Ao salvar, o checklist de {e.clienteNome || 'este cliente'} recarrega aqui.</span>
+              <button type="button" onClick={() => setEditorAberto(false)} aria-label="Fechar" style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'grid', placeItems: 'center' }}>×</button>
+            </div>
+            <div style={{ padding: 20, overflowY: 'auto' }}>
+              <OnboardingConfig onSalvo={() => { carregar() }} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

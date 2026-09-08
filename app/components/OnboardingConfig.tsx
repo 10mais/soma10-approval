@@ -18,7 +18,7 @@ function mover<T>(lista: T[], i: number, delta: number): T[] {
   const c = [...lista]; const [x] = c.splice(i, 1); c.splice(j, 0, x); return c
 }
 
-export default function OnboardingConfig() {
+export default function OnboardingConfig({ onSalvo }: { onSalvo?: () => void } = {}) {
   const [cfg, setCfg] = useState<ConfigOnboarding>(configPadrao())
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -50,6 +50,7 @@ export default function OnboardingConfig() {
     if (!r?.ok) { toast(r?.error || 'Não foi possível salvar.', 'erro'); return }
     setCfg({ fases: r.fases })
     toast('Onboarding salvo. Vale para todos os clientes na fase.', 'sucesso')
+    onSalvo?.()
   }
   async function restaurarPadrao() {
     const ok = await confirmar('Volta para as 3 fases e 9 etapas padrão. Nada é gravado até você clicar em Salvar.', { titulo: 'Restaurar padrão', okLabel: 'Restaurar' })
