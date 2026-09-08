@@ -10,6 +10,7 @@ import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 import AplicarModal, { type Template } from './AplicarModelo'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
+import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, colunasFimDeSemana, type TipoArraste } from '@/lib/ganttArraste'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
@@ -64,7 +65,14 @@ function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (c
     </div>
   )
 }
-function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
+// Valor "só dia" (YYYY-MM-DD ou meia-noite UTC, como o marco grava) formata em UTC — no fuso do
+// Brasil o Date local mostraria o dia ANTERIOR (barra dizia 07/09, formulário 08/09). Prazos com
+// hora (tarefas, 23:59 local) continuam no fuso local.
+function fmtData(iso: string) {
+  if (!iso) return ''
+  const soDia = /^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z)?$/.test(iso)
+  return new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', ...(soDia ? { timeZone: 'UTC' } : {}) })
+}
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
   const [marcos, setMarcos] = useState<Marco[]>([])
@@ -88,6 +96,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const el = ganttEl
     if (!el) return
     const onWheel = (e: WheelEvent) => {
+      // Só com CTRL (dono, 08/09): scroll puro continua rolando a página; Ctrl+scroll (e a pinça
+      // do trackpad, que chega como wheel com ctrlKey) aproxima e afasta.
+      if (!e.ctrlKey) return
       if (Math.abs(e.deltaY) < 1) return
       e.preventDefault()
       const atual = diasRef.current
@@ -157,6 +168,63 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
   const alturaTarefas = (n: number) => 30 + 26 * Math.max(1, n)
   const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return H_MARCO + (nv >= 1 ? H_SUB * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaTarefas(tarefasDoMarco(m.id).length) : 0) }
+  // ARRASTAR BARRAS = AJUSTAR PRAZOS (dono, 08/09: "ajustar prazos arrastando a barra para a
+  // direita ou esquerda"). Corpo da barra move (marco leva as etapas junto); as pontas mudam
+  // início/fim. Dias inteiros, prévia ao vivo sem gravar, grava ao soltar (regra em
+  // lib/ganttArraste). Clique sem mover continua abrindo o marco.
+  type ArrasteVivo = { tipo: TipoArraste; marcoId: string; subId?: string; x0: number; dias: number; moveu: boolean }
+  const arrasteRef = useRef<ArrasteVivo | null>(null)
+  const [previa, setPrevia] = useState<{ marcoId: string; subId?: string; tipo: TipoArraste; dias: number } | null>(null)
+  const ignorarClique = useRef(false)
+  function comecarArraste(e: React.PointerEvent, tipo: TipoArraste, marcoId: string, subId?: string) {
+    if (!editavel || e.button !== 0) return
+    e.stopPropagation()
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
+    arrasteRef.current = { tipo, marcoId, subId, x0: e.clientX, dias: 0, moveu: false }
+  }
+  function moverArraste(e: React.PointerEvent) {
+    const a = arrasteRef.current; if (!a) return
+    const dx = e.clientX - a.x0
+    if (!a.moveu && Math.abs(dx) < 4) return
+    a.moveu = true
+    const largura = ganttEl ? ganttEl.getBoundingClientRect().width : 0
+    const d = pxParaDias(dx, largura / diasRef.current)
+    if (d !== a.dias) { a.dias = d; setPrevia({ marcoId: a.marcoId, subId: a.subId, tipo: a.tipo, dias: d }) }
+  }
+  async function soltarArraste(e: React.PointerEvent) {
+    const a = arrasteRef.current; if (!a) return
+    arrasteRef.current = null
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch {}
+    setPrevia(null)
+    if (!a.moveu) return
+    ignorarClique.current = true; setTimeout(() => { ignorarClique.current = false }, 0)
+    const m = marcos.find(x => x.id === a.marcoId); if (!m) return
+    const patch = aplicarArraste(m, { tipo: a.tipo, subId: a.subId, dias: a.dias })
+    if (!patch) return
+    const novo = { ...m, ...patch }
+    setMarcos(prev => prev.map(x => (x.id === m.id ? novo : x)))
+    const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, ...patch }) }).catch(() => null)
+    if (!r || !r.ok) { toast('Não foi possível gravar o novo prazo.', 'erro'); carregar(); return }
+    const se = a.subId ? (novo.subetapas || []).find(x => x.id === a.subId) : undefined
+    const per = se ? periodoDaEtapa(novo, se) : { ini: novo.dataInicio, fim: novo.dataFim || novo.dataInicio }
+    toast(`${se ? se.titulo : m.titulo}: ${rotuloPeriodo(per.ini, per.fim)}`, 'sucesso', 'Prazo ajustado')
+  }
+  // Marco como está sendo visto DURANTE o arraste (prévia; nada gravado).
+  const marcoNaPrevia = (m: Marco): Marco => {
+    if (!previa || previa.marcoId !== m.id) return m
+    const p = aplicarArraste(m, { tipo: previa.tipo, subId: previa.subId, dias: previa.dias })
+    return p ? { ...m, ...p } : m
+  }
+  const arrastando = (marcoId: string, subId?: string) => !!previa && previa.marcoId === marcoId && (previa.subId || undefined) === subId
+  const alcas = (marcoId: string, subId?: string) => (editavel ? (<>
+    <div onPointerDown={e => comecarArraste(e, 'inicio', marcoId, subId)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} onClick={e => e.stopPropagation()} title="Puxe para mudar o início" aria-label="Mudar o início"
+      style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
+    <div onPointerDown={e => comecarArraste(e, 'fim', marcoId, subId)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} onClick={e => e.stopPropagation()} title="Puxe para mudar o fim" aria-label="Mudar o fim"
+      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
+  </>) : null)
+  const etiquetaPrevia = (ini: string, fim?: string) => (
+    <span aria-live="polite" style={{ position: 'absolute', top: -20, left: 0, fontSize: 10.5, fontWeight: 800, background: 'var(--v2-ink)', color: 'var(--v2-surface)', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap', zIndex: 5, pointerEvents: 'none' }}>{rotuloPeriodo(ini, fim)}</span>
+  )
   // Aplicar modelo direto daqui (pedido do dono, 07/09: "sem clareza de como
   // lançar etapas") — lista os modelos e reaproveita o modal com prévia.
   const [escolhendoModelo, setEscolhendoModelo] = useState(false)
@@ -266,6 +334,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
 
   // Gera labels de datas no eixo
+  const meses = rotulosMeses(inicio.getTime(), dias)
+  const fds = colunasFimDeSemana(inicio.getTime(), dias)
   const labels: { pct: number; txt: string }[] = []
   const step = dias <= 12 ? 1 : dias <= 45 ? 7 : dias <= 120 ? 15 : dias <= 240 ? 30 : 60
   for (let d = 0; d <= totalDias; d += step) {
@@ -296,6 +366,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
+            <button onClick={() => { const j = janelaParaCaber(marcos.filter(m => m.clienteId === clienteAtivo)); setRefDate(new Date(j.inicioMs)); setDias(j.dias); const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a); setPeriodo(perto.key) }} title="Ajustar a janela para caber todos os marcos e etapas do cliente" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Ajustar</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -361,11 +432,16 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       </div>
 
       {/* Timeline — scroll do mouse aqui = zoom (semanal … anual) */}
-      <div ref={setGanttEl} title="Scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div ref={setGanttEl} title="Ctrl + scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
-        <div style={{ position: 'relative', height: 28, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
+        <div style={{ position: 'relative', height: 40, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
+          {fds.map((f, i) => <div key={'f' + i} aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: `${f.pct}%`, width: `${f.larguraPct}%`, background: 'var(--v2-ink)', opacity: 0.045, pointerEvents: 'none' }} />)}
+          {meses.map((l, i) => (
+            <span key={'m' + i} style={{ position: 'absolute', left: `${l.pct}%`, top: 3, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--v2-ink2)', paddingLeft: 6, borderLeft: l.pct > 0 ? '1px solid var(--v2-rule2)' : 'none', lineHeight: '14px', whiteSpace: 'nowrap' }}>{l.txt}</span>
+          ))}
+          <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 20, borderTop: '1px solid var(--v2-rule)' }} />
           {labels.map((l, i) => (
-            <span key={i} style={{ position: 'absolute', left: `${l.pct}%`, top: 6, fontSize: 9, color: 'var(--v2-ink3)', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>{l.txt}</span>
+            <span key={i} style={{ position: 'absolute', left: `${l.pct}%`, top: 24, fontSize: 9, color: 'var(--v2-ink3)', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>{l.txt}</span>
           ))}
           {/* Linha de hoje */}
           {(() => {
@@ -403,6 +479,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
               </div>
               <div style={{ position: 'relative', minHeight: (marcosCliente.reduce((h, m) => h + alturaMarco(m), 0) + 4) || 36, padding: '4px 0' }}>
+                {fds.map((f, i) => <div key={'f' + i} aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: `${f.pct}%`, width: `${f.larguraPct}%`, background: 'var(--v2-ink)', opacity: 0.035, pointerEvents: 'none' }} />)}
                 {/* Linha de hoje */}
                 {(() => {
                   const hojePct = posicaoPct(new Date().toISOString())
@@ -411,7 +488,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 {(() => {
                   // Posição vertical acumulada: cada marco ocupa 34px + 24px por sub-etapa aberta.
                   let topo = 4
-                  return marcosCliente.map(m => {
+                  return marcosCliente.map(m0 => {
+                    const m = marcoNaPrevia(m0)
                     const left = posicaoPct(m.dataInicio)
                     const pg = progressoMarco(m.subetapas)
                     const fimEf = fimEfetivoDoMarco(m, m.subetapas)
@@ -426,14 +504,16 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     topo += altura
                     return (
                       <div key={m.id}>
-                        <div onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
+                        <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
-                            background: corDoMarco(m), borderRadius: 6, cursor: 'pointer',
+                            background: corDoMarco(m), borderRadius: 6, cursor: editavel ? (arrastando(m.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                             border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
                           }}>
                           {pg.total > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pg.pct}%`, background: 'rgba(255,255,255,0.28)', borderRadius: 6, pointerEvents: 'none' }} />}
+                          {alcas(m.id)}
+                          {arrastando(m.id) && etiquetaPrevia(m.dataInicio, fimEf || m.dataFim)}
                           {subs.length > 0 && (
                             <button type="button" onClick={e => { e.stopPropagation(); alternarGantt(m.id) }} title={aberto ? 'Recolher as etapas' : 'Mostrar as etapas'} aria-label={aberto ? 'Recolher as etapas' : 'Mostrar as etapas'}
                               style={{ position: 'relative', width: 18, height: 18, marginRight: 6, marginLeft: -4, borderRadius: 5, border: 0, background: 'rgba(0,0,0,0.22)', color: 'var(--v2-surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, padding: 0 }}>
@@ -459,14 +539,16 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           const corStatus = se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'
                           const k = kpiPct(se)
                           return (
-                            <div key={se.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)}
+                            <div key={se.id} onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id, se.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste}
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
                                 position: 'absolute', top: topMarco + H_MARCO + j * H_SUB, left: `${l}%`, width: `${w}%`, height: H_SUBBARRA, minWidth: 22,
-                                background: se.cor || corDoMarco(m), opacity: se.status === 'concluido' ? 0.45 : 0.7, borderRadius: 5, cursor: 'pointer',
+                                background: se.cor || corDoMarco(m), opacity: se.status === 'concluido' ? 0.45 : arrastando(m.id, se.id) ? 1 : 0.7, borderRadius: 5, cursor: editavel ? (arrastando(m.id, se.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                                 borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
                               }}>
                               {k !== null && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${k}%`, background: 'rgba(255,255,255,0.22)', pointerEvents: 'none' }} />}
+                              {alcas(m.id, se.id)}
+                              {arrastando(m.id, se.id) && etiquetaPrevia(ini, fim)}
                               <span style={{ position: 'relative', fontSize: F_SUB, fontWeight: 600, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
                               {se.kpi && se.kpiMeta ? <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: 'var(--v2-surface)', whiteSpace: 'nowrap', flexShrink: 0 }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
                             </div>
@@ -492,22 +574,26 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                             ) })}
                           </div>
                         )}
-                        {/* ALCA: arrastar para baixo amplia TODOS os marcos (escala vertical), para cima reduz */}
-                        {!somenteLeitura && (
-                          <div onPointerDown={e => iniciarArraste(e)} onClick={e => e.stopPropagation()} title="Arraste para baixo para ampliar os marcos na tela (todos crescem juntos) ou para cima para reduzir" aria-label="Ampliar ou reduzir os marcos"
-                            style={{ position: 'absolute', top: topMarco + altura - 6, left: 0, right: 0, height: 10, cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3 }}>
-                            <span style={{ width: 34, height: 4, borderRadius: 999, background: 'var(--v2-rule2)', opacity: 0.8 }} />
-                          </div>
-                        )}
                       </div>
                     )
                   })
                 })()}
+                {/* ALCA (uma por cliente — dono, 08/09: "se a do meio faz o mesmo que a de baixo, é inútil"):
+                    arrastar para baixo amplia TODOS os marcos (escala vertical), para cima reduz */}
+                {!somenteLeitura && (
+                  <div onPointerDown={e => iniciarArraste(e)} onClick={e => e.stopPropagation()} title="Arraste para baixo para ampliar os marcos na tela (todos crescem juntos) ou para cima para reduzir" aria-label="Ampliar ou reduzir os marcos"
+                    style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 10, cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3 }}>
+                    <span style={{ width: 34, height: 4, borderRadius: 999, background: 'var(--v2-rule2)', opacity: 0.8 }} />
+                  </div>
+                )}
               </div>
             </div>
           )
         })}
       </div>
+      {editavel && clientesComMarcos.length > 0 && (
+        <p style={{ margin: '8px 2px 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Arraste a barra para mover o prazo · puxe as pontas para mudar início e fim · Ctrl + scroll aproxima e afasta · alça no rodapé amplia · &quot;Ajustar&quot; mostra tudo</p>
+      )}
       </>}
 
       {/* Modal novo/editar marco (equipe) */}
