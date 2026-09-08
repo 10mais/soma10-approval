@@ -71,12 +71,12 @@ export default function AplicarModal({ template, clientes, equipe = [], preSelec
 
         {!previa ? (<>
           <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Aplicar modelo</h3>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>"{template.nome}" — {(template.marcos || []).length} etapa(s) e {(template.tarefas || []).length} tarefa(s) por cliente.</p>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>"{template.nome}" — {(template.marcos || []).length} marco(s) e {(template.tarefas || []).length} tarefa(s) por cliente.</p>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Clientes {sel.size > 0 && <span style={{ color: 'var(--v2-ink)' }}>· {sel.size} selecionado(s)</span>}</label>
             <div style={{ display: 'flex', gap: 12 }}>
-              {semEtapas.length > 0 && <button onClick={selecionarSemEtapas} style={linkBt}>Todos sem etapas ({semEtapas.length})</button>}
+              {semEtapas.length > 0 && <button onClick={selecionarSemEtapas} style={linkBt}>Todos sem marcos ({semEtapas.length})</button>}
               {sel.size > 0 && <button onClick={() => setSel(new Set())} style={{ ...linkBt, color: 'var(--v2-ink3)' }}>Limpar</button>}
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function AplicarModal({ template, clientes, equipe = [], preSelec
                   <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} style={{ cursor: 'pointer' }} />
                   <span style={{ flex: 1, color: 'var(--v2-ink)' }}>{c.nome}</span>
                   <span style={{ fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap', color: n ? 'var(--v2-ok)' : 'var(--v2-amber)', background: n ? 'var(--v2-ok-bg)' : 'var(--v2-amber-bg)' }}>
-                    {n ? `${n} etapa${n > 1 ? 's' : ''}` : 'Sem etapas'}
+                    {n ? `${n} marco${n > 1 ? 's' : ''}` : 'Sem marcos'}
                   </span>
                 </label>
               )
@@ -110,11 +110,11 @@ export default function AplicarModal({ template, clientes, equipe = [], preSelec
 
           {comEtapasSelecionados > 0 && (
             <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', color: 'var(--v2-amber)', fontSize: 12.5 }}>
-              <strong>{comEtapasSelecionados} cliente(s) já têm etapas no Playbook.</strong> Aplicar de novo SOMA as etapas do modelo às que já existem — não substitui. Desmarque quem não deve receber.
+              <strong>{comEtapasSelecionados} cliente(s) já têm marcos no Playbook.</strong> Aplicar de novo SOMA os marcos do modelo aos que já existem — não substitui. Desmarque quem não deve receber.
             </div>
           )}
 
-          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Etapas que serão criadas</p>
+          <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Marcos que serão criados</p>
           <div style={{ border: '1.5px solid var(--v2-rule)', borderRadius: 10, marginBottom: 14 }}>
             {previa.etapas.map((e, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: i < previa.etapas.length - 1 ? '1px solid var(--v2-surface1)' : 'none', fontSize: 13 }}>
@@ -126,7 +126,7 @@ export default function AplicarModal({ template, clientes, equipe = [], preSelec
                 </span>
               </div>
             ))}
-            {previa.etapas.length === 0 && <p style={{ margin: 0, padding: 14, fontSize: 12.5, color: '#c00' }}>Este modelo não tem nenhuma etapa. Termine o rascunho antes de aplicar.</p>}
+            {previa.etapas.length === 0 && <p style={{ margin: 0, padding: 14, fontSize: 12.5, color: '#c00' }}>Este modelo não tem nenhum marco. Termine o rascunho antes de aplicar.</p>}
           </div>
 
           <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Vai para</p>
@@ -139,7 +139,7 @@ export default function AplicarModal({ template, clientes, equipe = [], preSelec
           </div>
 
           <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink2)' }}>
-            Total: <strong>{previa.etapas.length * previa.alvos.length} etapa(s)</strong> e <strong>{previa.tarefas.length * previa.alvos.length} tarefa(s)</strong>.
+            Total: <strong>{previa.etapas.length * previa.alvos.length} marco(s)</strong> e <strong>{previa.tarefas.length * previa.alvos.length} tarefa(s)</strong>.
           </p>
 
           {/* Tarefa sem dono não é erro — mas some no quadro de todo mundo, e

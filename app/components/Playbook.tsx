@@ -77,6 +77,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const [editModal, setEditModal] = useState<Marco | null>(null)
   const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
   const [novoModal, setNovoModal] = useState(false)
+  // Gantt: as sub-etapas aparecem como linhas ABAIXO do marco, cada uma no seu período
+  // (dono, 07/09: "tudo acontece simultaneamente"). Abertas por padrão; o chevron recolhe.
+  const [ganttRecolhidos, setGanttRecolhidos] = useState<Set<string>>(new Set())
+  const alternarGantt = (id: string) => setGanttRecolhidos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   // Aplicar modelo direto daqui (pedido do dono, 07/09: "sem clareza de como
   // lançar etapas") — lista os modelos e reaproveita o modal com prévia.
   const [escolhendoModelo, setEscolhendoModelo] = useState(false)
@@ -176,7 +180,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           </div>
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
-            <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova etapa</button>
+            <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
           </div>}
         </>}
       </div>
@@ -252,11 +256,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <p style={{ margin: 0 }}>{somenteLeitura ? 'Nenhuma etapa cadastrada ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhuma etapa ainda. Comece de um modelo pronto (onboarding, ciclo mensal…) ou crie as etapas uma a uma.'}</p>
+            <p style={{ margin: 0 }}>{somenteLeitura ? 'Nenhum marco cadastrado ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco ainda. Comece de um modelo pronto (onboarding, ciclo mensal…) ou crie os marcos um a um. Cada marco pode ter etapas dentro dele.'}</p>
             {editavel && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button onClick={abrirModelos} style={{ padding: '10px 18px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
-                <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Nova etapa</button>
+                <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
               </div>
             )}
           </div>
@@ -271,33 +275,72 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                   <AvatarCliente logo={c.logo} nome={c.nome} clienteId={c.id} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
-                <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} etapa(s)</span>
+                <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
               </div>
-              <div style={{ position: 'relative', minHeight: 36 * marcosCliente.length || 36, padding: '4px 0' }}>
+              <div style={{ position: 'relative', minHeight: (marcosCliente.reduce((h, m) => h + 34 + (ganttRecolhidos.has(m.id) ? 0 : 24 * (m.subetapas?.length || 0)), 0) + 4) || 36, padding: '4px 0' }}>
                 {/* Linha de hoje */}
                 {(() => {
                   const hojePct = posicaoPct(new Date().toISOString())
                   return hojePct > 0 && hojePct < 100 ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${hojePct}%`, width: 1, background: '#ffc00f33' }} /> : null
                 })()}
-                {marcosCliente.map((m, i) => {
-                  const left = posicaoPct(m.dataInicio)
-                  const pg = progressoMarco(m.subetapas)
-                  const fimEf = fimEfetivoDoMarco(m, m.subetapas)
-                  const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
-                  return (
-                    <div key={m.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
-                      style={{
-                        position: 'absolute', top: 4 + i * 34, left: `${left}%`, width: `${width}%`, height: 28,
-                        background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
-                        border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
-                      }}>
-                      {pg.total > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pg.pct}%`, background: 'rgba(255,255,255,0.28)', borderRadius: 6, pointerEvents: 'none' }} />}
-                      <span style={{ position: 'relative', fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
-                      {pg.total > 0 && <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: pg.atrasadas.length ? 'var(--v2-hot)' : 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{pg.concluidas}/{pg.total}</span>}
-                    </div>
-                  )
-                })}
+                {(() => {
+                  // Posição vertical acumulada: cada marco ocupa 34px + 24px por sub-etapa aberta.
+                  let topo = 4
+                  return marcosCliente.map(m => {
+                    const left = posicaoPct(m.dataInicio)
+                    const pg = progressoMarco(m.subetapas)
+                    const fimEf = fimEfetivoDoMarco(m, m.subetapas)
+                    const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
+                    const subs = m.subetapas || []
+                    const aberto = subs.length > 0 && !ganttRecolhidos.has(m.id)
+                    const topMarco = topo
+                    topo += 34 + (aberto ? 24 * subs.length : 0)
+                    return (
+                      <div key={m.id}>
+                        <div onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
+                          style={{
+                            position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: 28,
+                            background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
+                            border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
+                          }}>
+                          {pg.total > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pg.pct}%`, background: 'rgba(255,255,255,0.28)', borderRadius: 6, pointerEvents: 'none' }} />}
+                          {subs.length > 0 && (
+                            <button type="button" onClick={e => { e.stopPropagation(); alternarGantt(m.id) }} title={aberto ? 'Recolher as etapas' : 'Mostrar as etapas'} aria-label={aberto ? 'Recolher as etapas' : 'Mostrar as etapas'}
+                              style={{ position: 'relative', width: 18, height: 18, marginRight: 6, marginLeft: -4, borderRadius: 5, border: 0, background: 'rgba(0,0,0,0.22)', color: 'var(--v2-surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, padding: 0 }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
+                            </button>
+                          )}
+                          <span style={{ position: 'relative', fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                          {pg.total > 0 && <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: pg.atrasadas.length ? 'var(--v2-hot)' : 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{pg.concluidas}/{pg.total}</span>}
+                        </div>
+                        {/* SUB-ETAPAS como linhas próprias, cada uma no seu período (simultâneas ao marco) */}
+                        {aberto && subs.map((se, j) => {
+                          const ini = se.dataInicio || m.dataInicio
+                          const fim = se.dataFim || se.dataInicio || m.dataFim || m.dataInicio
+                          const l = posicaoPct(ini)
+                          const w = Math.max(larguraPct(ini, fim), 1.2)
+                          const atrasada = pg.atrasadas.some(a => a.id === se.id)
+                          const corStatus = se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'
+                          const k = kpiPct(se)
+                          return (
+                            <div key={se.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)}
+                              title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
+                              style={{
+                                position: 'absolute', top: topMarco + 34 + j * 24, left: `${l}%`, width: `${w}%`, height: 18, minWidth: 22,
+                                background: corCategoria(m.categoria), opacity: se.status === 'concluido' ? 0.45 : 0.7, borderRadius: 5, cursor: 'pointer',
+                                borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
+                              }}>
+                              {k !== null && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${k}%`, background: 'rgba(255,255,255,0.22)', pointerEvents: 'none' }} />}
+                              <span style={{ position: 'relative', fontSize: 9.5, fontWeight: 600, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
+                              {se.kpi && se.kpiMeta ? <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: 'var(--v2-surface)', whiteSpace: 'nowrap', flexShrink: 0 }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             </div>
           )
@@ -322,14 +365,14 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         <div onClick={fecharFora(() => setEscolhendoModelo(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: 22, boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Aplicar modelo</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>Um modelo cria todas as etapas (e as tarefas) de uma vez, encadeadas a partir da data de início. Você confere a prévia antes de gravar.</p>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>Um modelo cria todos os marcos (e as tarefas) de uma vez, encadeados a partir da data de início. Você confere a prévia antes de gravar.</p>
             {templates === null && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando modelos…</p>}
             {templates && templates.length === 0 && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum modelo cadastrado. Crie um em Estratégia → Modelos.</p>}
             {templates && templates.map(t => (
               <button key={t.id} onClick={() => setTemplateSel(t)} style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 3, padding: '12px 14px', marginBottom: 8, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)' }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{t.nome}</span>
                 {t.descricao && <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{t.descricao}</span>}
-                <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{(t.marcos || []).length} etapa(s) · {(t.tarefas || []).length} tarefa(s)</span>
+                <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{(t.marcos || []).length} marco(s) · {(t.tarefas || []).length} tarefa(s)</span>
               </button>
             ))}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -341,7 +384,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {templateSel && (
         <AplicarModal template={templateSel} clientes={clientes as any} equipe={equipe} preSelecionados={clienteAtivo ? [clienteAtivo] : []}
           onClose={() => { setTemplateSel(null); setEscolhendoModelo(false) }}
-          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar(); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} etapa(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
+          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar(); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} marco(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
       )}
     </div>
   )
@@ -404,7 +447,7 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
                 ) })}
               </div>
             ) })()}
-            <p style={lbl}>Entregas desta etapa</p>
+            <p style={lbl}>Entregas deste marco</p>
             <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="var(--v2-ok)" />
           </div>
         </div>
@@ -455,7 +498,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar etapa' : 'Nova etapa'}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>
@@ -551,7 +594,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
         {/* Entregas vinculadas a esta etapa */}
         {marco && (
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas desta etapa</h4>
+            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas deste marco</h4>
             <EntregasMarco marcoId={marco.id} entregas={entregas} cor={STATUS_COR[form.status] === 'var(--v2-amber-on)' ? 'var(--v2-amber)' : 'var(--v2-ok)'} />
           </div>
         )}
