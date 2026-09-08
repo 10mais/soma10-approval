@@ -76,6 +76,9 @@ export async function PUT(req: NextRequest) {
   // Sub-etapas: sempre pela lib (título obrigatório, status conhecido, datas/números válidos).
   if ('subetapas' in updates) atualizado.subetapas = normalizarSubetapas(updates.subetapas)
   // Cor propria do marco: so #rrggbb; vazio limpa (volta a cor da categoria).
+  // Ordem manual das linhas do Gantt (dono, 08/09): posição do marco e "as etapas seguem o array".
+  if ('ordem' in updates) { const n = typeof updates.ordem === 'number' ? updates.ordem : NaN; atualizado.ordem = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : undefined }
+  if ('ordemEtapasManual' in updates) atualizado.ordemEtapasManual = updates.ordemEtapasManual === true ? true : undefined
   if ('cor' in updates) atualizado.cor = typeof updates.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(updates.cor) ? updates.cor.toLowerCase() : undefined
   await redis.set(`marco:${id}`, atualizado)
 

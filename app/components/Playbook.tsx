@@ -12,6 +12,7 @@ import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
 import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, type TipoArraste } from '@/lib/ganttArraste'
 import { ordenarPorDuracao, progressoTempo, textoTempo, progressoTarefas, pctConclusaoEtapa, pctConclusaoMarco } from '@/lib/progressoGantt'
+import { reordenar, novaPosicao, ordenarMarcos } from '@/lib/ordemGantt'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
@@ -19,6 +20,8 @@ type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
   subetapas?: SubEtapa[]
   cor?: string
+  ordem?: number // posição manual no Gantt (lib/ordemGantt); ausente = ordem automática
+  ordemEtapasManual?: boolean // as etapas seguem o array, não a duração
   id: string; clienteId: string; clienteNome: string; titulo: string; descricao?: string
   categoria: string; status: string; dataInicio: string; dataFim?: string; responsavelNome?: string
 }
@@ -167,7 +170,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const tarefasDaEtapa = (marcoId: string, subId: string) => tarefas.filter(t => t.marcoId === marcoId && t.subetapaId === subId && !t.excluidoEm)
   // ORDEM DO GANTT (dono, 08/09): "trabalhos mais longos para cima". Vale para marcos e para
   // as etapas dentro do marco; empate mantém a ordem cronológica (lib/progressoGantt).
-  const etapasOrdenadas = (m: Marco) => ordenarPorDuracao(m.subetapas || [], se => { const per = periodoDaEtapa(m, se); return { ini: per.ini, fim: per.fim } })
+  // Ordem manual (a pessoa arrastou) vence a automática; sem ela, o mais longo em cima.
+  const etapasOrdenadas = (m: Marco) => m.ordemEtapasManual ? (m.subetapas || []) : ordenarPorDuracao(m.subetapas || [], se => { const per = periodoDaEtapa(m, se); return { ini: per.ini, fim: per.fim } })
   // Tarefas do marco agrupadas POR ETAPA (dono: "mostrar a tarefa dentro de cada etapa").
   const gruposDeTarefas = (m: Marco) => {
     const lista = tarefasDoMarco(m.id)
@@ -196,10 +200,26 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // direita ou esquerda"). Corpo da barra move (marco leva as etapas junto); as pontas mudam
   // início/fim. Dias inteiros, prévia ao vivo sem gravar, grava ao soltar (regra em
   // lib/ganttArraste). Clique sem mover continua abrindo o marco.
-  type ArrasteVivo = { tipo: TipoArraste; marcoId: string; subId?: string; x0: number; dias: number; moveu: boolean }
+  type ArrasteVivo = { tipo: TipoArraste; marcoId: string; subId?: string; x0: number; y0: number; eixo: 'x' | 'y' | null; dias: number; dy: number; moveu: boolean }
   const arrasteRef = useRef<ArrasteVivo | null>(null)
   const [previa, setPrevia] = useState<{ marcoId: string; subId?: string; tipo: TipoArraste; dias: number } | null>(null)
+  // Arraste VERTICAL = ordem manual (dono, 08/09: "me deixe mover de cima para baixo qualquer
+  // etapa"). O mesmo gesto serve para as duas coisas: o eixo é decidido no primeiro movimento
+  // — para os lados muda prazo, para cima/baixo muda a ordem.
+  const [previaV, setPreviaV] = useState<{ marcoId: string; subId?: string; dy: number; para: number } | null>(null)
   const ignorarClique = useRef(false)
+  const marcosDoCliente = (clienteId: string) => ordenarMarcos(marcos.filter(m => m.clienteId === clienteId), l => ordenarPorDuracao(l, m => ({ ini: m.dataInicio, fim: fimEfetivoDoMarco(m, m.subetapas) || m.dataFim })))
+  // Linhas em jogo no arraste vertical: as etapas do marco, ou os marcos do cliente.
+  function contextoVertical(marcoId: string, subId?: string) {
+    const m = marcos.find(x => x.id === marcoId)
+    if (!m) return null
+    if (subId) {
+      const lista = etapasOrdenadas(m)
+      return { marco: m, ids: lista.map(x => x.id), alturas: lista.map(() => H_SUB), de: lista.findIndex(x => x.id === subId) }
+    }
+    const lista = marcosDoCliente(m.clienteId)
+    return { marco: m, ids: lista.map(x => x.id), alturas: lista.map(alturaMarco), de: lista.findIndex(x => x.id === marcoId) }
+  }
   function comecarArraste(e: React.PointerEvent, tipo: TipoArraste, marcoId: string, subId?: string) {
     if (!editavel || e.button !== 0) return
     // Clique num BOTAO dentro da barra (recolher etapas, ver tarefas) nunca vira arraste
@@ -208,14 +228,26 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     // chevron parava de funcionar (dono, 08/09: "a seta de RECOLHER não está mais funcionando").
     if ((e.target as HTMLElement)?.closest?.('button')) return
     e.stopPropagation()
-    arrasteRef.current = { tipo, marcoId, subId, x0: e.clientX, dias: 0, moveu: false }
+    // Puxar as PONTAS é sempre prazo; só o corpo da barra ("mover") pode virar reordenação.
+    arrasteRef.current = { tipo, marcoId, subId, x0: e.clientX, y0: e.clientY, eixo: tipo === 'mover' ? null : 'x', dias: 0, dy: 0, moveu: false }
   }
   function moverArraste(e: React.PointerEvent) {
     const a = arrasteRef.current; if (!a) return
-    const dx = e.clientX - a.x0
-    if (!a.moveu && Math.abs(dx) < 4) return
-    if (!a.moveu) { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {} }
-    a.moveu = true
+    const dx = e.clientX - a.x0, dy = e.clientY - a.y0
+    if (!a.moveu && Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+    if (!a.moveu) {
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
+      if (!a.eixo) a.eixo = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'
+      a.moveu = true
+    }
+    if (a.eixo === 'y') {
+      const ctx = contextoVertical(a.marcoId, a.subId)
+      if (!ctx || ctx.de < 0) return
+      const para = novaPosicao(ctx.alturas, ctx.de, dy)
+      a.dy = dy
+      setPreviaV({ marcoId: a.marcoId, subId: a.subId, dy, para })
+      return
+    }
     const largura = ganttEl ? ganttEl.getBoundingClientRect().width : 0
     const d = pxParaDias(dx, largura / diasRef.current)
     if (d !== a.dias) { a.dias = d; setPrevia({ marcoId: a.marcoId, subId: a.subId, tipo: a.tipo, dias: d }) }
@@ -224,9 +256,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const a = arrasteRef.current; if (!a) return
     arrasteRef.current = null
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch {}
-    setPrevia(null)
+    setPrevia(null); setPreviaV(null)
     if (!a.moveu) return
     ignorarClique.current = true; setTimeout(() => { ignorarClique.current = false }, 0)
+    if (a.eixo === 'y') { await soltarVertical(a); return }
     const m = marcos.find(x => x.id === a.marcoId); if (!m) return
     const patch = aplicarArraste(m, { tipo: a.tipo, subId: a.subId, dias: a.dias })
     if (!patch) return
@@ -238,6 +271,39 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const per = se ? periodoDaEtapa(novo, se) : { ini: novo.dataInicio, fim: novo.dataFim || novo.dataInicio }
     toast(`${se ? se.titulo : m.titulo}: ${rotuloPeriodo(per.ini, per.fim)}`, 'sucesso', 'Prazo ajustado')
   }
+  // Grava a nova ORDEM: etapa vira ordem do array (+ marca o marco como manual); marco
+  // recebe `ordem` 0..n-1 e o cliente inteiro passa a seguir a mão.
+  async function soltarVertical(a: ArrasteVivo) {
+    const ctx = contextoVertical(a.marcoId, a.subId)
+    if (!ctx || ctx.de < 0) return
+    const para = novaPosicao(ctx.alturas, ctx.de, a.dy)
+    if (para === ctx.de) return
+    if (a.subId) {
+      const lista = etapasOrdenadas(ctx.marco)
+      const nova = reordenar(lista, ctx.de, para)
+      setMarcos(prev => prev.map(x => x.id === ctx.marco.id ? { ...x, subetapas: nova, ordemEtapasManual: true } : x))
+      const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ctx.marco.id, subetapas: nova, ordemEtapasManual: true }) }).catch(() => null)
+      if (!r || !r.ok) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
+      toast(`${nova[para].titulo}: agora é a ${para + 1}ª etapa`, 'sucesso', 'Ordem alterada')
+      return
+    }
+    const lista = marcosDoCliente(ctx.marco.clienteId)
+    const nova = reordenar(lista, ctx.de, para)
+    setMarcos(prev => prev.map(x => { const i = nova.findIndex(n => n.id === x.id); return i >= 0 ? { ...x, ordem: i } : x }))
+    const respostas = await Promise.all(nova.map((mm, i) => mm.ordem === i ? Promise.resolve(true) : fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: i }) }).then(r => r.ok).catch(() => false)))
+    if (respostas.some(ok => !ok)) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
+    toast(`${nova[para].titulo}: agora é o ${para + 1}º marco`, 'sucesso', 'Ordem alterada')
+  }
+  // Volta para a ordem automática (mais longo em cima) no cliente inteiro (temOrdemManual vive junto de clienteAtivo).
+  async function voltarOrdemAutomatica() {
+    const alvos = marcos.filter(m => m.clienteId === clienteAtivo && (typeof m.ordem === 'number' || m.ordemEtapasManual))
+    if (!alvos.length) return
+    setMarcos(prev => prev.map(x => alvos.some(a => a.id === x.id) ? { ...x, ordem: undefined, ordemEtapasManual: undefined } : x))
+    await Promise.all(alvos.map(mm => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: null, ordemEtapasManual: false }) }).catch(() => null)))
+    carregar()
+    toast('Voltou a ordenar pelos trabalhos mais longos.', 'sucesso')
+  }
+  const arrastandoV = (marcoId: string, subId?: string) => !!previaV && previaV.marcoId === marcoId && (previaV.subId || undefined) === subId
   // Marco como está sendo visto DURANTE o arraste (prévia; nada gravado).
   const marcoNaPrevia = (m: Marco): Marco => {
     if (!previa || previa.marcoId !== m.id) return m
@@ -274,6 +340,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
   // Playbook e sempre escopado a UM cliente. No portal vem fixo; na agencia, escolhido.
   const clienteAtivo = clienteFixo || filtroCliente
+  // Declarado AQUI porque lê clienteAtivo: em cima do arquivo daria "Cannot access before initialization".
+  const temOrdemManual = marcos.some(m => m.clienteId === clienteAtivo && (typeof m.ordem === 'number' || m.ordemEtapasManual))
 
   // Cor dos botoes primarios: cor do cliente no portal (clienteFixo), amarelo na agencia.
   const corMarca = clienteFixo ? (clientes.find(c => c.id === clienteFixo)?.corPrimaria || '#ffc00f') : '#ffc00f'
@@ -394,6 +462,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
+            {editavel && temOrdemManual && <button onClick={voltarOrdemAutomatica} title="Voltar a ordenar automaticamente (trabalhos mais longos em cima)" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Ordem automática</button>}
             <button onClick={() => { const j = janelaParaCaber(marcos.filter(m => m.clienteId === clienteAtivo)); setRefDate(new Date(j.inicioMs)); setDias(j.dias); const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a); setPeriodo(perto.key) }} title="Ajustar a janela para caber todos os marcos e etapas do cliente" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Ajustar</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>
@@ -495,7 +564,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         )}
 
         {clientesComMarcos.map(c => {
-          const marcosCliente = ordenarPorDuracao(marcos.filter(m => m.clienteId === c.id), m => ({ ini: m.dataInicio, fim: fimEfetivoDoMarco(m, m.subetapas) || m.dataFim }))
+          const marcosCliente = marcosDoCliente(c.id)
           return (
             <div key={c.id} style={{ borderBottom: '1px solid var(--v2-surface1)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--v2-surface1)' }}>
@@ -510,6 +579,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 {(() => {
                   const hojePct = posicaoPct(new Date().toISOString())
                   return hojePct > 0 && hojePct < 100 ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${hojePct}%`, width: 1, background: '#ffc00f33' }} /> : null
+                })()}
+                {/* Guia do destino ao arrastar um MARCO para cima/baixo */}
+                {previaV && !previaV.subId && marcosCliente.some(m => m.id === previaV.marcoId) && (() => {
+                  const alturas = marcosCliente.map(alturaMarco)
+                  const top = 4 + alturas.slice(0, previaV.para).reduce((a, h) => a + h, 0)
+                  return <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top, height: 3, background: 'var(--v2-amber-on)', borderRadius: 2, zIndex: 5 }} />
                 })()}
                 {(() => {
                   // Posição vertical acumulada: cada marco ocupa 34px + 24px por sub-etapa aberta.
@@ -538,6 +613,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                         <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
+                            ...(arrastandoV(m.id) ? { transform: `translateY(${previaV!.dy}px)`, zIndex: 6, boxShadow: '0 8px 20px rgba(0,0,0,0.3)' } : null),
                             background: 'transparent', borderRadius: 6, cursor: editavel ? (arrastando(m.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                             border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
@@ -572,6 +648,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                             <span title="Conclusão" style={{ fontSize: 10, fontWeight: 900 }}>{pctM}%</span>
                           </span>
                         </div>
+                        {/* Guia do destino ao arrastar uma ETAPA para cima/baixo */}
+                        {aberto && previaV && previaV.subId && previaV.marcoId === m.id && (
+                          <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: topMarco + H_MARCO + previaV.para * H_SUB, height: 3, background: 'var(--v2-amber-on)', borderRadius: 2, zIndex: 5 }} />
+                        )}
                         {/* SUB-ETAPAS como linhas próprias, cada uma no seu período (simultâneas ao marco) */}
                         {aberto && subs.map((se, j) => {
                           const ini = se.dataInicio || m.dataInicio
@@ -591,6 +671,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
                                 position: 'absolute', top: topMarco + H_MARCO + j * H_SUB, left: `${l}%`, width: `${w}%`, height: H_SUBBARRA, minWidth: 22,
+                                ...(arrastandoV(m.id, se.id) ? { transform: `translateY(${previaV!.dy}px)`, zIndex: 6, boxShadow: '0 8px 20px rgba(0,0,0,0.3)' } : null),
                                 background: 'transparent', opacity: se.status === 'concluido' ? 0.6 : 1, borderRadius: 5, cursor: editavel ? (arrastando(m.id, se.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                                 borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
                               }}>
@@ -659,7 +740,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         })}
       </div>
       {editavel && clientesComMarcos.length > 0 && (
-        <p style={{ margin: '8px 2px 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Os trabalhos mais longos ficam em cima · a parte cheia da barra é a conclusão (tarefas feitas) · arraste a barra para mover o prazo, puxe as pontas para mudar início e fim · Ctrl + scroll aproxima e afasta · alça no rodapé amplia · &quot;Ajustar&quot; mostra tudo</p>
+        <p style={{ margin: '8px 2px 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Arraste a barra para os LADOS para mover o prazo e para CIMA/BAIXO para trocar a ordem · puxe as pontas para mudar início e fim · sem ordem manual, os trabalhos mais longos ficam em cima · a parte cheia da barra é a conclusão (tarefas feitas) · Ctrl + scroll aproxima e afasta · alça no rodapé amplia · &quot;Ajustar&quot; mostra tudo</p>
       )}
       </>}
 
@@ -805,7 +886,8 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   // Sub-etapas do marco (prazo + KPI próprios). Vão no mesmo PUT/POST do marco.
   const [subs, setSubs] = useState<SubEtapa[]>(marco?.subetapas || [])
   const patchSub = (id: string, patch: Partial<SubEtapa>) => setSubs(a => a.map(x => x.id === id ? { ...x, ...patch } : x))
-  const moverSub = (i: number, d: number) => setSubs(a => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; const [x] = c.splice(i, 1); c.splice(j, 0, x); return c })
+  const [reordenouSubs, setReordenouSubs] = useState(false)
+  const moverSub = (i: number, d: number) => { setReordenouSubs(true); return setSubs(a => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; const [x] = c.splice(i, 1); c.splice(j, 0, x); return c }) }
   const pgSubs = progressoMarco(subs)
   const sugerido = statusSugerido(form.status, subs)
   const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
@@ -828,7 +910,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   async function salvar() {
     setSalvando(true)
     const cli = clientes.find(c => c.id === form.clienteId)
-    const body = { ...form, cor: form.cor || '', subetapas: subs.filter(x => x.titulo.trim()), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
+    const body = { ...form, cor: form.cor || '', subetapas: subs.filter(x => x.titulo.trim()), ...(reordenouSubs ? { ordemEtapasManual: true } : {}), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
     if (marco) {
       await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) })
     } else {

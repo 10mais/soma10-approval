@@ -814,6 +814,11 @@ export type Marco = {
   // Etapas DENTRO do marco, com prazo e KPI próprios (lib/subetapas). Progresso,
   // atraso e prazo efetivo são derivados delas; nada disso é gravado à parte.
   subetapas?: import('./subetapas').SubEtapa[]
+  // Ordem MANUAL das linhas no Gantt (lib/ordemGantt): `ordem` posiciona o marco entre
+  // os do cliente; `ordemEtapasManual` diz que a ordem das etapas é a do array, não a
+  // automática por duração. Ausentes = ordenação automática (mais longo em cima).
+  ordem?: number
+  ordemEtapasManual?: boolean
   criadoPor: string
   criadoEm: string
   atualizadoEm: string
