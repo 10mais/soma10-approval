@@ -181,5 +181,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }
 
+  // REVISÃO INTERNA do criativo (dono, 07/09: "a aprovação do criativo é primeiro
+  // interna, a equipe conduz"). Só equipe. 'revisar_criativo' libera o envio ao
+  // cliente; 'ajuste_interno' devolve a peça ao designer (reabre a tarefa com o
+  // feedback) e limpa a entrega — a pauta continua no Studio, em 'criativo'.
+  if (acao === 'revisar_criativo' || acao === 'ajuste_interno') {
+    if (role === 'cliente') return NextResponse.json({ error: 'ação da equipe' }, { status: 403 })
+    const titulo = post.briefing || post.legenda || 'sem título'
+    if (acao === 'revisar_criativo') {
+      post.criativoRevisaoInternaEm = agora
+      post.criativoRevisaoInternaPor = quem
+      post.ajusteInterno = undefined
+      post.atualizadoEm = agora
+      await redis.set(`post:${postId}`, post)
+      await notificarDono(post.criadoPor, 'geral', `Criativo revisado — ${nome}`, `${quem} aprovou internamente o criativo da pauta "${titulo}". Pode ir para o cliente.`, postId)
+      return NextResponse.json({ ok: true, revisao: 'aprovada' })
+    }
+    post.ajusteInterno = comentario || 'Ajuste solicitado pela equipe'
+    post.criativoEntregueEm = undefined
+    post.criativoRevisaoInternaEm = undefined
+    post.etapa = 'criativo'
+    post.status = 'rascunho'
+    post.etapaDesde = agora; post.aguardandoDesde = undefined; post.atualizadoEm = agora
+    await redis.set(`post:${postId}`, post)
+    let reaberta = false
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); reaberta = await reabrirTarefaDaPauta(postId, comentario || '', quem, 'equipe') } catch { /* segue */ }
+    await notificarDono(post.criadoPor, 'geral', `Ajuste interno no criativo — ${nome}`, `${quem} pediu ajuste ao designer na pauta "${titulo}": "${comentario || 'sem comentário'}".${reaberta ? ' A tarefa foi reaberta.' : ''}`, postId)
+    return NextResponse.json({ ok: true, revisao: 'pendente', tarefaReaberta: reaberta })
+  }
+
   return NextResponse.json({ error: 'ação inválida' }, { status: 400 })
 }

@@ -128,3 +128,23 @@ export function prazoTarefaMae(pautas: { dataAgendada?: string }[], plano: { mes
   // Date.UTC(ano, mes, 0): dia zero do mes SEGUINTE = ultimo dia do mes do plano (mes e 1-12).
   return new Date(Date.UTC(plano.ano, plano.mes, 0, 23, 59, 0)).toISOString()
 }
+
+// REVISÃO INTERNA do criativo (dono, 07/09: "a aprovação do criativo é primeiro
+// interna, então a equipe precisa conduzir essa parte"). Quando a tarefa do
+// designer entrega o criativo (criativoEntregueEm), a pauta fica PENDENTE de
+// revisão interna até alguém da equipe aprovar (criativoRevisaoInternaEm) ou
+// pedir ajuste (que limpa a entrega e reabre a tarefa). Pauta sem entrega de
+// tarefa (arte subida à mão no Studio) não passa por este portão: 'nao_se_aplica'.
+// 'aguardando_designer': a equipe pediu ajuste e a nova entrega ainda nao veio —
+// a arte antiga continua na pauta, mas NAO pode ir ao cliente.
+export type RevisaoInterna = 'nao_se_aplica' | 'pendente' | 'aprovada' | 'aguardando_designer'
+export function revisaoInternaDoCriativo(p: { criativoEntregueEm?: string; criativoRevisaoInternaEm?: string; etapa?: string; ajusteInterno?: string }): RevisaoInterna {
+  if (!p.criativoEntregueEm) return p.ajusteInterno && p.etapa === 'criativo' ? 'aguardando_designer' : 'nao_se_aplica'
+  if (p.criativoRevisaoInternaEm && p.criativoRevisaoInternaEm >= p.criativoEntregueEm) return 'aprovada'
+  return p.etapa === 'criativo' ? 'pendente' : 'aprovada'
+}
+// Enviar ao cliente só com a revisão interna feita (ou quando ela não se aplica).
+export function podeEnviarAoCliente(p: { criativoEntregueEm?: string; criativoRevisaoInternaEm?: string; etapa?: string; ajusteInterno?: string }): boolean {
+  const r = revisaoInternaDoCriativo(p)
+  return r !== 'pendente' && r !== 'aguardando_designer'
+}

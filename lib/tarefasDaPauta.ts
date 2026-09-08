@@ -69,7 +69,8 @@ export async function tarefaMaeDoPlano(planoId: string, autor: string): Promise<
 // a peca para a estacao certa — reabre a tarefa do designer com o feedback
 // dentro. Idempotente: tarefa ja aberta so registra o feedback (nao reseta o
 // status de quem ja esta trabalhando). Nunca mexe na etapa da pauta.
-export async function reabrirTarefaDaPauta(postId: string, feedback: string, autor: string): Promise<boolean> {
+export async function reabrirTarefaDaPauta(postId: string, feedback: string, autor: string, origem: 'cliente' | 'equipe' = 'cliente'): Promise<boolean> {
+  const quemPediu = origem === 'cliente' ? 'Cliente' : 'Revisão interna'
   const post = await redis.get<Post>(`post:${postId}`)
   const tarefaId = post?.tarefaId
   if (!post || !tarefaId) return false
@@ -82,12 +83,12 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
     status: estavaConcluida ? 'a_fazer' : t.status,
     ...(estavaConcluida ? { concluidoEm: undefined } : {}),
     atualizadoEm: agora,
-    atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: estavaConcluida ? 'Cliente pediu ajuste no criativo — tarefa reaberta' : 'Cliente pediu ajuste no criativo', autor, criadoEm: agora }],
-    comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback do cliente: ${feedback || 'sem comentário'}`, criadoEm: agora }],
+    atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: estavaConcluida ? `${quemPediu} pediu ajuste no criativo — tarefa reaberta` : `${quemPediu} pediu ajuste no criativo`, autor, criadoEm: agora }],
+    comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback ${origem === 'cliente' ? 'do cliente' : 'da revisão interna'}: ${feedback || 'sem comentário'}`, criadoEm: agora }],
   }
   await redis.set(`tarefa:${tarefaId}`, atualizada)
   if (t.responsavelEmail) {
-    await notificar(t.responsavelEmail, 'tarefa_alterada', `Ajuste no criativo — ${post.clienteNome || 'Cliente'}`, `O cliente pediu ajuste no criativo da tarefa "${t.titulo}": ${(feedback || 'sem comentário').slice(0, 140)}`, undefined, tarefaId).catch(() => {})
+    await notificar(t.responsavelEmail, 'tarefa_alterada', `Ajuste no criativo — ${post.clienteNome || 'Cliente'}`, `${origem === 'cliente' ? 'O cliente' : 'A revisão interna'} pediu ajuste no criativo da tarefa "${t.titulo}": ${(feedback || 'sem comentário').slice(0, 140)}`, undefined, tarefaId).catch(() => {})
   }
   return true
 }

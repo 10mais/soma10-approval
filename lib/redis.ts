@@ -991,6 +991,9 @@ export type Post = {
   anexos?: { nome: string; url: string; tipo: string }[] // referências da pauta (mesmo shape de Tarefa.anexos)
   anexosTarefa?: { nome: string; url: string; tipo: string; papel?: 'referencia' | 'criativo' }[] // espelho dos anexos da tarefa de produção vinculada (lib/producaoVinculo)
   criativoEntregueEm?: string // ISO — a tarefa de produção foi concluída e o criativo pronto voltou ao Studio
+  criativoRevisaoInternaEm?: string // ISO — equipe aprovou internamente o criativo entregue (lib/esteiraFluxo.revisaoInternaDoCriativo)
+  criativoRevisaoInternaPor?: string
+  ajusteInterno?: string // último pedido de ajuste da REVISÃO INTERNA ao designer (limpo na próxima entrega)
   // Carrossel: a copy separada lâmina por lâmina, cada uma com seu anexo (referência da arte daquela lâmina)
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   // Material gráfico (formato 'grafico'): specs do material impresso/aplicado

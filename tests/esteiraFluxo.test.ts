@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato } from '@/lib/esteiraFluxo'
+import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 
 // Linha de montagem Studio > Tarefa > Planner: as transicoes do fluxo.
@@ -201,5 +201,38 @@ describe('descricaoTarefaDesigner — formato e origem', () => {
   it('caminho automático segue dizendo copy aprovada', () => {
     expect(descricaoTarefaDesigner({ briefing: 'x' })).toContain('Copy aprovada pelo cliente')
     expect(descricaoTarefaDesigner({ briefing: 'x' }, { manual: false })).toContain('Copy aprovada pelo cliente')
+  })
+})
+
+describe('revisaoInternaDoCriativo — a aprovacao do criativo e primeiro interna (dono 07/09)', () => {
+  it('arte subida a mao no Studio (sem entrega de tarefa): nao se aplica, pode enviar', () => {
+    expect(revisaoInternaDoCriativo({ etapa: 'criativo' })).toBe('nao_se_aplica')
+    expect(podeEnviarAoCliente({ etapa: 'criativo' })).toBe(true)
+  })
+  it('tarefa entregou o criativo e ninguem revisou: PENDENTE, nao pode enviar ao cliente', () => {
+    const p = { etapa: 'criativo', criativoEntregueEm: '2026-09-07T10:00:00.000Z' }
+    expect(revisaoInternaDoCriativo(p)).toBe('pendente')
+    expect(podeEnviarAoCliente(p)).toBe(false)
+  })
+  it('equipe aprovou depois da entrega: APROVADA, libera o envio', () => {
+    const p = { etapa: 'criativo', criativoEntregueEm: '2026-09-07T10:00:00.000Z', criativoRevisaoInternaEm: '2026-09-07T12:00:00.000Z' }
+    expect(revisaoInternaDoCriativo(p)).toBe('aprovada')
+    expect(podeEnviarAoCliente(p)).toBe(true)
+  })
+  it('revisao ANTIGA (antes de uma nova entrega) nao vale: volta a pendente', () => {
+    const p = { etapa: 'criativo', criativoEntregueEm: '2026-09-08T10:00:00.000Z', criativoRevisaoInternaEm: '2026-09-07T12:00:00.000Z' }
+    expect(revisaoInternaDoCriativo(p)).toBe('pendente')
+  })
+  it('equipe pediu ajuste e o designer ainda nao entregou: AGUARDANDO, a arte antiga nao vai ao cliente', () => {
+    const p = { etapa: 'criativo', ajusteInterno: 'trocar a cor' }
+    expect(revisaoInternaDoCriativo(p)).toBe('aguardando_designer')
+    expect(podeEnviarAoCliente(p)).toBe(false)
+    // nova entrega limpa o ajuste e volta a pendente
+    expect(revisaoInternaDoCriativo({ etapa: 'criativo', criativoEntregueEm: '2026-09-08T10:00:00.000Z' })).toBe('pendente')
+  })
+
+  it('pauta que ja seguiu (aprovacao do cliente / pronto) nao trava mais', () => {
+    expect(revisaoInternaDoCriativo({ etapa: 'aprovacao_criativo', criativoEntregueEm: '2026-09-07T10:00:00.000Z' })).toBe('aprovada')
+    expect(revisaoInternaDoCriativo({ etapa: 'pronto', criativoEntregueEm: '2026-09-07T10:00:00.000Z' })).toBe('aprovada')
   })
 })

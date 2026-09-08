@@ -1,5 +1,6 @@
 'use client'
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
+import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -26,7 +27,7 @@ type Pauta = {
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   medidas?: string; localAplicacao?: string
-  tarefaId?: string; criativoEntregueEm?: string
+  tarefaId?: string; criativoEntregueEm?: string; criativoRevisaoInternaEm?: string; ajusteInterno?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
   criadoEm?: string; atualizadoEm?: string
@@ -65,6 +66,8 @@ function estadoStudio(p: Pauta): { label: string; cor: string; bg: string } {
     case 'reprovado': return { label: 'Reprovado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
     case 'falha_publicacao': return { label: 'Falha', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
     default: // rascunho
+      if (revisaoInternaDoCriativo(p) === 'pendente') return { label: 'Revisão interna', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+      if (revisaoInternaDoCriativo(p) === 'aguardando_designer') return { label: 'Com o designer', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
       return (p.imagens || []).length > 0
         ? { label: 'Pronto p/ enviar', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
         : { label: 'Rascunho', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' }
@@ -126,6 +129,7 @@ function CampoLabel({ children }: { children: ReactNode }) {
 // Mostra onde a pauta está e qual é o próximo passo.
 function PipelinePauta({ p }: { p: Pauta }) {
   const temCriativo = (p.imagens || []).length > 0
+  const revisao = revisaoInternaDoCriativo(p)
   // falha_publicacao já passou pela aprovação — o problema é na POSTAGEM.
   const aprovado = ['aprovado', 'agendado', 'publicando', 'publicado', 'falha_publicacao'].includes(p.status)
   const passos: { label: string; ok: boolean; alerta?: boolean; meio?: boolean }[] = [
@@ -133,6 +137,7 @@ function PipelinePauta({ p }: { p: Pauta }) {
     { label: 'Briefing', ok: !!(p.briefing || '').trim() },
     { label: 'Copy', ok: !!(p.legenda || '').trim() },
     { label: 'Criativo', ok: temCriativo },
+    ...(revisao !== 'nao_se_aplica' ? [{ label: revisao === 'aguardando_designer' ? 'Com o designer' : 'Revisão interna', ok: revisao === 'aprovada' || aprovado || p.status === 'aguardando_aprovacao', meio: revisao === 'pendente' || revisao === 'aguardando_designer' }] : []),
     {
       label: p.status === 'aguardando_aprovacao' ? 'No cliente' : p.status === 'corrigir' ? 'Ajuste pedido' : p.status === 'reprovado' ? 'Reprovado' : 'Aprovação',
       ok: aprovado, alerta: p.status === 'corrigir' || p.status === 'reprovado', meio: p.status === 'aguardando_aprovacao',
@@ -488,6 +493,34 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       }).then(x => x.json())
       if (!r?.ok) { toast(r?.error || 'Falha ao aprovar o criativo.', 'erro'); return }
       toast('Criativo aprovado internamente — peça agendada.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
+  // REVISÃO INTERNA do criativo (dono, 07/09: "a aprovação do criativo é primeiro
+  // interna, a equipe conduz"). Aprovar libera o envio ao cliente; pedir ajuste
+  // devolve ao designer (reabre a tarefa com o feedback) e a pauta segue no Studio.
+  const [ajusteInternoPara, setAjusteInternoPara] = useState<Pauta | null>(null)
+  const [ajusteInternoTexto, setAjusteInternoTexto] = useState('')
+  async function revisarCriativoInterno(p: Pauta) {
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/esteira/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: p.id, acao: 'revisar_criativo' }) }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha na revisão interna.', 'erro'); return }
+      toast('Criativo aprovado internamente — pode enviar ao cliente.', 'sucesso')
+      carregarPautas(planoSel)
+    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
+  }
+  async function pedirAjusteInterno() {
+    const p = ajusteInternoPara
+    if (!p) return
+    const texto = ajusteInternoTexto.trim()
+    if (!texto) { toast('Escreva o que precisa mudar.', 'erro'); return }
+    setAcaoPauta(p.id)
+    try {
+      const r = await fetch('/api/esteira/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: p.id, acao: 'ajuste_interno', comentario: texto }) }).then(x => x.json())
+      if (!r?.ok) { toast(r?.error || 'Falha ao pedir o ajuste.', 'erro'); return }
+      setAjusteInternoPara(null); setAjusteInternoTexto('')
+      toast(r.tarefaReaberta ? 'Ajuste enviado ao designer — a tarefa foi reaberta.' : 'Ajuste registrado na pauta.', 'sucesso')
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
@@ -1300,7 +1333,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           {gerandoFoto === p.id ? 'Gerando foto…' : gerandoCriativo === p.id ? 'Gerando…' : (capa ? 'Regerar' : 'Criar arte')}
                         </button>
                       ) })()}
-                      {podeEnviar && !semMidia && podeEditar && podeEnviarCliente && (
+                      {podeEnviar && !semMidia && podeEditar && podeEnviarCliente && podeEnviarAoCliente(p) && (
                         <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
@@ -1339,6 +1372,9 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                     <div className="st-detail" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       {/* Régua do pipeline: onde a pauta está e o próximo passo */}
                       <div><PipelinePauta p={p} /></div>
+                      {p.ajusteInterno && !p.criativoEntregueEm && (
+                        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '8px 12px' }}><strong style={{ fontWeight: 600 }}>Ajuste pedido ao designer:</strong> “{p.ajusteInterno}” — a tarefa foi reaberta; ao concluir de novo, o criativo volta para revisão.</p>
+                      )}
                       {/* SOLICITAÇÃO DO CLIENTE como checklist: cada pedido (texto + marcações no
                           criativo) vira um item que a equipe marca ao atender. Usa os campos que já
                           existem (motivoResolvido / anotacoes[i].resolvido — os mesmos do Planner). */}
@@ -1592,7 +1628,21 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             Enviar copy para aprovação
                           </button>
                         )}
-                        {podeEditar && podeEnviar && !semMidia && podeEnviarCliente && (
+                        {podeEditar && revisaoInternaDoCriativo(p) === 'pendente' && (
+                          <>
+                            <button className="st-btn st-cta" onClick={() => revisarCriativoInterno(p)} disabled={acaoPauta === p.id}
+                              title="Aprovação interna do criativo entregue pelo designer — libera o envio ao cliente"
+                              style={{ padding: '10px 16px', background: 'var(--v2-ok)', color: '#fff', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                              Aprovar criativo (revisão interna)
+                            </button>
+                            <button className="st-btn" onClick={() => { setAjusteInternoPara(p); setAjusteInternoTexto('') }} disabled={acaoPauta === p.id}
+                              title="Devolve ao designer: reabre a tarefa com o seu feedback"
+                              style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
+                              Pedir ajuste ao designer
+                            </button>
+                          </>
+                        )}
+                        {podeEditar && podeEnviar && !semMidia && podeEnviarCliente && podeEnviarAoCliente(p) && (
                           <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                         )}
                       </div>
@@ -1922,6 +1972,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       })()}
 
       {/* Modal de compartilhamento do link de aprovação */}
+      {ajusteInternoPara && (
+        <div onClick={fecharFora(() => setAjusteInternoPara(null), { temAlteracoes: () => !!ajusteInternoTexto.trim() })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1250, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="soma10-no-invert anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, padding: 22, boxSizing: 'border-box' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Pedir ajuste ao designer</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>“{ajusteInternoPara.briefing || ajusteInternoPara.headline || 'Pauta'}” — a tarefa é reaberta com este feedback e a pauta continua no Studio até a nova entrega.</p>
+            <textarea autoFocus value={ajusteInternoTexto} onChange={e => setAjusteInternoTexto(e.target.value)} rows={4} placeholder="O que precisa mudar? Seja específico: elemento, o que está errado e como deveria ficar."
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+              <button onClick={() => setAjusteInternoPara(null)} style={{ padding: '10px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={pedirAjusteInterno} disabled={acaoPauta === ajusteInternoPara.id || !ajusteInternoTexto.trim()} style={{ padding: '10px 18px', background: 'var(--v2-hot)', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: ajusteInternoTexto.trim() ? 1 : 0.5 }}>Enviar ao designer</button>
+            </div>
+          </div>
+        </div>
+      )}
       {linkModal && (
         <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
