@@ -19,6 +19,7 @@ export type SubEtapa = {
   kpiMeta?: number
   kpiAtual?: number
   responsavelNome?: string
+  cor?: string // #rrggbb; ausente = cor do marco
 }
 
 export const SUBETAPA_STATUS: { key: SubEtapaStatus; label: string }[] = [
@@ -62,6 +63,7 @@ export function normalizarSubetapas(bruto: unknown): SubEtapa[] {
     const atual = num(e?.kpiAtual); if (atual !== undefined) s.kpiAtual = atual
     const resp = typeof e?.responsavelNome === 'string' ? e.responsavelNome.trim().slice(0, 80) : ''
     if (resp) s.responsavelNome = resp
+    if (typeof e?.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(e.cor)) s.cor = e.cor.toLowerCase()
     saida.push(s)
   })
   return saida

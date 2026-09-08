@@ -8,11 +8,13 @@ describe('subetapas — etapas dentro do marco', () => {
     const subs = normalizarSubetapas([
       { id: 'a', titulo: '  Auditoria  ', status: 'em_andamento', dataInicio: '2026-09-01T00:00:00.000Z', dataFim: '2026-09-10', kpi: 'Leads', kpiMeta: '50', kpiAtual: 12.5 },
       { titulo: '', status: 'concluido' },
-      { titulo: 'Sem id', status: 'inventado', dataFim: 'ontem', kpiMeta: 'x' },
+      { titulo: 'Sem id', status: 'inventado', dataFim: 'ontem', kpiMeta: 'x', cor: 'azul' },
+      { titulo: 'Com cor', cor: '#1E90FF' },
     ])
     expect(subs).toEqual([
       { id: 'a', titulo: 'Auditoria', status: 'em_andamento', dataInicio: '2026-09-01', dataFim: '2026-09-10', kpi: 'Leads', kpiMeta: 50, kpiAtual: 12.5 },
       { id: 'se-3', titulo: 'Sem id', status: 'pendente' },
+      { id: 'se-4', titulo: 'Com cor', status: 'pendente', cor: '#1e90ff' },
     ])
     expect(normalizarSubetapas(null)).toEqual([])
   })

@@ -810,6 +810,7 @@ export type Marco = {
   dataInicio: string // ISO
   dataFim?: string // ISO
   responsavelNome?: string
+  cor?: string // cor propria do marco (#rrggbb); ausente = cor da categoria
   // Etapas DENTRO do marco, com prazo e KPI próprios (lib/subetapas). Progresso,
   // atraso e prazo efetivo são derivados delas; nada disso é gravado à parte.
   subetapas?: import('./subetapas').SubEtapa[]

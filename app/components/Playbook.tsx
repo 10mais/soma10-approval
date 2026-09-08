@@ -8,11 +8,15 @@ import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 import AplicarModal, { type Template } from './AplicarModelo'
+import { TarefaModal } from './GestaoTarefas'
+import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
+import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
   subetapas?: SubEtapa[]
+  cor?: string
   id: string; clienteId: string; clienteNome: string; titulo: string; descricao?: string
   categoria: string; status: string; dataInicio: string; dataFim?: string; responsavelNome?: string
 }
@@ -44,6 +48,22 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || 'var(--v2-ink3)' }
+// Cor propria do marco (dono, 07/09: "troca de cor a cada marco ou etapa para ficar muito visual") ou a da categoria.
+function corDoMarco(m: { cor?: string; categoria: string }) { return m.cor || corCategoria(m.categoria) }
+const PALETA = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#dc2626', '#475569']
+type TarefaLeve = { id: string; titulo: string; status: string; tipo?: string; prioridade?: string; responsavelNome?: string; responsavelEmail?: string; prazo?: string; marcoId?: string; clienteId?: string; excluidoEm?: string }
+const STATUS_TAREFA: Record<string, { label: string; cor: string }> = { a_fazer: { label: 'A fazer', cor: 'var(--v2-ink3)' }, em_andamento: { label: 'Em andamento', cor: 'var(--v2-amber)' }, em_revisao: { label: 'Em revisão', cor: 'var(--v2-info)' }, concluido: { label: 'Concluída', cor: 'var(--v2-ok)' }, descartado: { label: 'Descartada', cor: 'var(--v2-ink3)' } }
+function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (cor?: string) => void; titulo?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} title={titulo}>
+      {PALETA.map(c => <button key={c} type="button" onClick={() => onChange(valor === c ? undefined : c)} aria-label={`Cor ${c}`} style={{ width: 22, height: 22, borderRadius: 7, border: valor === c ? '2px solid var(--v2-ink)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />)}
+      <label title="Qualquer cor" style={{ width: 22, height: 22, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+        <input type="color" value={valor && /^#[0-9a-f]{6}$/i.test(valor) ? valor : '#888888'} onChange={e => onChange(e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label="Escolher qualquer cor" />
+      </label>
+      {valor && <button type="button" onClick={() => onChange(undefined)} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px' }}>cor da categoria</button>}
+    </div>
+  )
+}
 function fmtData(iso: string) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '' }
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
@@ -96,8 +116,34 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const [novoModal, setNovoModal] = useState(false)
   // Gantt: as sub-etapas aparecem como linhas ABAIXO do marco, cada uma no seu período
   // (dono, 07/09: "tudo acontece simultaneamente"). Abertas por padrão; o chevron recolhe.
-  const [ganttRecolhidos, setGanttRecolhidos] = useState<Set<string>>(new Set())
-  const alternarGantt = (id: string) => setGanttRecolhidos(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  // NIVEL de cada marco no Gantt (dono, 07/09: "expandir/arrastar canto para baixo para
+  // expandir ou resumir"): 0 = so a barra, 1 = + etapas (padrao), 2 = + tarefas do marco.
+  // Chevron alterna 0/1; a alca no rodape do marco arrasta para baixo (expande) ou para cima (resume).
+  const [nivelGantt, setNivelGantt] = useState<Map<string, number>>(new Map())
+  const nivelDe = (id: string) => nivelGantt.has(id) ? nivelGantt.get(id)! : 1
+  const setNivel = (id: string, n: number) => setNivelGantt(prev => { const m = new Map(prev); m.set(id, Math.max(0, Math.min(2, n))); return m })
+  const alternarGantt = (id: string) => setNivel(id, nivelDe(id) > 0 ? 0 : 1)
+  function iniciarArraste(e: React.PointerEvent, id: string) {
+    e.preventDefault(); e.stopPropagation()
+    const y0 = e.clientY, n0 = nivelDe(id)
+    const mover = (ev: PointerEvent) => setNivel(id, n0 + Math.round((ev.clientY - y0) / 28))
+    const soltar = () => { window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar) }
+    window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar)
+  }
+  // TAREFAS do cliente (equipe): listadas por marco no Gantt e no formulario; criadas daqui
+  // ja com cliente + marco + responsavel do squad por tipo (lib/responsavelPorTipo).
+  const [tarefas, setTarefas] = useState<TarefaLeve[]>([])
+  const [usuarios, setUsuarios] = useState<{ email: string; nome?: string }[]>([])
+  const [squadPapeis, setSquadPapeis] = useState<SquadPapeis | undefined>(undefined)
+  const [tarefaAberta, setTarefaAberta] = useState<TarefaLeve | null>(null)
+  const [novaTarefaPara, setNovaTarefaPara] = useState<Marco | null>(null)
+  const tarefasDoMarco = (id: string) => tarefas.filter(t => t.marcoId === id && !t.excluidoEm)
+  function carregarTarefas() {
+    if (somenteLeitura) return
+    fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
+  }
+  const alturaTarefas = (n: number) => 30 + 26 * Math.max(1, n)
+  const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return 34 + (nv >= 1 ? 24 * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaTarefas(tarefasDoMarco(m.id).length) : 0) }
   // Aplicar modelo direto daqui (pedido do dono, 07/09: "sem clareza de como
   // lançar etapas") — lista os modelos e reaproveita o modal com prévia.
   const [escolhendoModelo, setEscolhendoModelo] = useState(false)
@@ -140,6 +186,16 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       .catch(() => setBola(null))
   }
   useEffect(() => { carregar() }, [clienteAtivo])
+  useEffect(() => {
+    if (somenteLeitura) return
+    carregarTarefas()
+    if (!usuarios.length) fetch('/api/usuarios').then(r => r.ok ? r.json() : []).then(d => setUsuarios(Array.isArray(d) ? d : [])).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteAtivo, somenteLeitura])
+  useEffect(() => {
+    if (!clienteAtivo || somenteLeitura) { setSquadPapeis(undefined); return }
+    fetch(`/api/clientes?id=${clienteAtivo}`).then(r => r.ok ? r.json() : null).then(c => { const cli = Array.isArray(c) ? c.find((x: any) => x.id === clienteAtivo) : c; setSquadPapeis(cli?.squadPapeis) }).catch(() => {})
+  }, [clienteAtivo, somenteLeitura])
 
   const inicio = new Date(refDate)
   inicio.setHours(0, 0, 0, 0)
@@ -293,7 +349,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
                 <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
               </div>
-              <div style={{ position: 'relative', minHeight: (marcosCliente.reduce((h, m) => h + 34 + (ganttRecolhidos.has(m.id) ? 0 : 24 * (m.subetapas?.length || 0)), 0) + 4) || 36, padding: '4px 0' }}>
+              <div style={{ position: 'relative', minHeight: (marcosCliente.reduce((h, m) => h + alturaMarco(m), 0) + 4) || 36, padding: '4px 0' }}>
                 {/* Linha de hoje */}
                 {(() => {
                   const hojePct = posicaoPct(new Date().toISOString())
@@ -308,15 +364,19 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     const fimEf = fimEfetivoDoMarco(m, m.subetapas)
                     const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
                     const subs = m.subetapas || []
-                    const aberto = subs.length > 0 && !ganttRecolhidos.has(m.id)
+                    const nivel = nivelDe(m.id)
+                    const aberto = subs.length > 0 && nivel >= 1
+                    const tarefasM = tarefasDoMarco(m.id)
+                    const mostraTarefas = nivel >= 2 && !somenteLeitura
+                    const altura = alturaMarco(m)
                     const topMarco = topo
-                    topo += 34 + (aberto ? 24 * subs.length : 0)
+                    topo += altura
                     return (
                       <div key={m.id}>
                         <div onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: 28,
-                            background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
+                            background: corDoMarco(m), borderRadius: 6, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                             border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
                           }}>
@@ -344,7 +404,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
                                 position: 'absolute', top: topMarco + 34 + j * 24, left: `${l}%`, width: `${w}%`, height: 18, minWidth: 22,
-                                background: corCategoria(m.categoria), opacity: se.status === 'concluido' ? 0.45 : 0.7, borderRadius: 5, cursor: 'pointer',
+                                background: se.cor || corDoMarco(m), opacity: se.status === 'concluido' ? 0.45 : 0.7, borderRadius: 5, cursor: 'pointer',
                                 borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
                               }}>
                               {k !== null && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${k}%`, background: 'rgba(255,255,255,0.22)', pointerEvents: 'none' }} />}
@@ -353,6 +413,32 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                             </div>
                           )
                         })}
+                        {/* TAREFAS DO MARCO (nivel 2): abrir qualquer uma, ou criar ja com cliente + marco + responsavel do squad */}
+                        {mostraTarefas && (
+                          <div style={{ position: 'absolute', top: topMarco + 34 + (aberto ? 24 * subs.length : 0), left: 0, right: 0, height: alturaTarefas(tarefasM.length), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 22 }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Tarefas · {tarefasM.length}</span>
+                              {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Tarefa</button>}
+                            </div>
+                            {tarefasM.length === 0 && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: '26px' }}>Nenhuma tarefa neste marco.</p>}
+                            {tarefasM.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
+                              <button key={t.id} type="button" onClick={e => { e.stopPropagation(); setTarefaAberta(t) }} title="Abrir a tarefa" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 26, background: 'none', border: 0, borderBottom: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
+                                <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
+                                <span style={{ fontSize: 10.5, color: st.cor, whiteSpace: 'nowrap' }}>{st.label}</span>
+                                {t.responsavelNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{t.responsavelNome.split(' ')[0]}</span>}
+                                {t.prazo && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{fmtData(t.prazo)}</span>}
+                              </button>
+                            ) })}
+                          </div>
+                        )}
+                        {/* ALCA: arrastar para baixo expande (etapas -> tarefas), para cima resume */}
+                        {!somenteLeitura && (
+                          <div onPointerDown={e => iniciarArraste(e, m.id)} onClick={e => e.stopPropagation()} title="Arraste para baixo para expandir (etapas, tarefas) ou para cima para resumir" aria-label="Expandir ou resumir o marco"
+                            style={{ position: 'absolute', top: topMarco + altura - 6, left: 0, right: 0, height: 10, cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3 }}>
+                            <span style={{ width: 34, height: 4, borderRadius: 999, background: 'var(--v2-rule2)', opacity: 0.8 }} />
+                          </div>
+                        )}
                       </div>
                     )
                   })
@@ -367,6 +453,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {/* Modal novo/editar marco (equipe) */}
       {(novoModal || editModal) && (
         <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo} corMarca={corMarca} corMarcaTexto={corMarcaTexto}
+          tarefasDoMarcoModal={editModal && !somenteLeitura ? tarefasDoMarco(editModal.id) : undefined} onAbrirTarefa={t => setTarefaAberta(t)} onNovaTarefa={editModal ? () => setNovaTarefaPara(editModal) : undefined}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
           onExcluir={editModal && excluivel ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
@@ -376,6 +463,20 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {/* Modal DETALHE (cliente, read-only) */}
       {detalheModal && <MarcoDetalhe marco={detalheModal} onClose={() => setDetalheModal(null)} />}
 
+      {/* TAREFA aberta/criada a partir do Playbook: mesmo modal da Gestao de tarefas. Nova tarefa nasce
+          com o cliente e o marco preenchidos e o responsavel do squad pelo tipo (lib/responsavelPorTipo). */}
+      {(tarefaAberta || novaTarefaPara) && (
+        <TarefaModal
+          key={tarefaAberta?.id || `nova-${novaTarefaPara?.id}`}
+          tarefa={(tarefaAberta || { clienteId: novaTarefaPara!.clienteId, clienteNome: novaTarefaPara!.clienteNome, marcoId: novaTarefaPara!.id, tipo: 'tarefa', status: 'a_fazer', prioridade: 'media' }) as any}
+          clientes={clientes as any}
+          usuarios={usuarios as any}
+          responsavelPorTipo={tipo => responsavelPorTipo(squadPapeis, tipo)}
+          onClose={() => { setTarefaAberta(null); setNovaTarefaPara(null) }}
+          onSalvo={() => { setTarefaAberta(null); setNovaTarefaPara(null); carregarTarefas() }}
+          onRecarregar={(t: any) => { setTarefaAberta(t); carregarTarefas() }}
+        />
+      )}
       {/* Escolher o modelo (lista vem de /api/templates; o de onboarding é semeado pelo servidor) */}
       {escolhendoModelo && !templateSel && (
         <div onClick={fecharFora(() => setEscolhendoModelo(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
@@ -473,8 +574,9 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
   )
 }
 
-function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber-on)', corMarcaTexto = 'var(--v2-ink)', onClose, onSalvo, onExcluir }: {
+function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber-on)', corMarcaTexto = 'var(--v2-ink)', onClose, onSalvo, onExcluir, tarefasDoMarcoModal, onAbrirTarefa, onNovaTarefa }: {
   marco: Marco | null; clientes: { id: string; nome: string }[]; clientePadrao?: string
+  tarefasDoMarcoModal?: TarefaLeve[]; onAbrirTarefa?: (t: TarefaLeve) => void; onNovaTarefa?: () => void
   corMarca?: string; corMarcaTexto?: string
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
 }) {
@@ -484,6 +586,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
     clienteId: marco?.clienteId || clientePadrao || '', responsavelNome: marco?.responsavelNome || '',
     dataInicio: marco?.dataInicio ? marco.dataInicio.split('T')[0] : new Date().toISOString().split('T')[0],
     dataFim: marco?.dataFim ? marco.dataFim.split('T')[0] : '',
+    cor: marco?.cor as string | undefined,
   })
   const [salvando, setSalvando] = useState(false)
   // Sub-etapas do marco (prazo + KPI próprios). Vão no mesmo PUT/POST do marco.
@@ -501,7 +604,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   async function salvar() {
     setSalvando(true)
     const cli = clientes.find(c => c.id === form.clienteId)
-    const body = { ...form, subetapas: subs.filter(x => x.titulo.trim()), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
+    const body = { ...form, cor: form.cor || '', subetapas: subs.filter(x => x.titulo.trim()), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
     if (marco) {
       await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) })
     } else {
@@ -567,6 +670,10 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsável"
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cor do marco <span style={{ fontWeight: 400 }}>— sem escolher, vale a da categoria</span></label>
+            <ColorPicker valor={form.cor} onChange={cor => setForm(f => ({ ...f, cor }))} />
+          </div>
         </div>
 
         {/* SUB-ETAPAS: passos dentro do marco, cada um com prazo e KPI próprios (dono, 07/09).
@@ -582,6 +689,9 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             <div key={se.id} style={{ border: `1px solid ${atrasada ? 'var(--v2-hot)' : 'var(--v2-rule)'}`, borderRadius: 12, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <label title="Cor da etapa (vazio = cor do marco)" style={{ width: 22, height: 22, borderRadius: 7, border: '1px solid var(--v2-rule)', background: se.cor || form.cor || 'var(--v2-surface2)', cursor: 'pointer', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                  <input type="color" value={se.cor || form.cor || '#888888'} onChange={e => patchSub(se.id, { cor: e.target.value })} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label="Cor da etapa" />
+                </label>
                 <input value={se.titulo} onChange={e => patchSub(se.id, { titulo: e.target.value })} placeholder="Etapa (ex.: Auditoria dos perfis)" style={{ ...inp, flex: 1 }} aria-label="Título da etapa" />
                 <select value={se.status} onChange={e => patchSub(se.id, { status: e.target.value as SubEtapa['status'] })} style={{ ...inp, width: 140, flexShrink: 0 }} aria-label="Status da etapa">
                   {SUBETAPA_STATUS.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
@@ -606,6 +716,27 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             </button>
           )}
         </div>
+
+        {/* TAREFAS DESTE MARCO (dono, 07/09): abrir uma etapa do Playbook e ja criar/abrir tarefas dela */}
+        {marco && tarefasDoMarcoModal && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Tarefas deste marco</h4>
+              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tarefasDoMarcoModal.length} · nascem ja no cliente, neste marco e com o responsavel do squad pelo tipo</span>
+              {onNovaTarefa && <button type="button" onClick={onNovaTarefa} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>+ Nova tarefa</button>}
+            </div>
+            {tarefasDoMarcoModal.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma tarefa ainda.</p>}
+            {tarefasDoMarcoModal.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
+              <button key={t.id} type="button" onClick={() => onAbrirTarefa?.(t)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 4px', background: 'none', border: 0, borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, textDecoration: t.status === 'concluido' ? 'line-through' : 'none' }}>{t.titulo}</span>
+                <span style={{ fontSize: 11.5, color: st.cor }}>{st.label}</span>
+                {t.responsavelNome && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{t.responsavelNome}</span>}
+                {t.prazo && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{fmtData(t.prazo)}</span>}
+              </button>
+            ) })}
+          </div>
+        )}
 
         {/* Entregas vinculadas a esta etapa */}
         {marco && (

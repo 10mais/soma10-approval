@@ -921,24 +921,36 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   )
 }
 
-export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, responsavelPadrao, responsavelPorTipo, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]; responsavelPadrao?: string
+  // Playbook: quem recebe a tarefa segundo o squad do cliente, por tipo (lib/responsavelPorTipo). So em tarefa NOVA.
+  responsavelPorTipo?: (tipo: string) => string
   tiposCustom?: { key: string; label: string; cor: string; icone: string }[]
   onTiposCustom?: (lista: { key: string; label: string; cor: string; icone: string }[]) => void
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
   viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
+  // `tarefa` = edição (existe no banco). O Playbook passa um objeto SEM id só para
+  // pré-preencher (cliente, marco, tipo): isso é criação — POST, sem atividade/comentários.
+  const tarefa: Tarefa | null = tarefaEntrada && tarefaEntrada.id ? tarefaEntrada : null
   const [form, setForm] = useState({
-    titulo: tarefa?.titulo || '', descricao: tarefa?.descricao || '',
-    tipo: tarefa?.tipo || 'tarefa',
-    status: tarefa?.status || 'a_fazer', prioridade: tarefa?.prioridade || 'media',
-    responsavelEmail: tarefa?.responsavelEmail || responsavelPadrao || '', clienteId: tarefa?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
-    marcoId: (tarefa as any)?.marcoId || '',
-    prazo: tarefa?.prazo ? tarefa.prazo.split('T')[0] : '',
-    recorrencia: (tarefa as any)?.recorrencia || '',
-    origemPostId: (tarefa as any)?.origemPostId || '',
+    titulo: tarefaEntrada?.titulo || '', descricao: tarefaEntrada?.descricao || '',
+    tipo: tarefaEntrada?.tipo || 'tarefa',
+    status: tarefaEntrada?.status || 'a_fazer', prioridade: tarefaEntrada?.prioridade || 'media',
+    responsavelEmail: tarefaEntrada?.responsavelEmail || responsavelPadrao || '', clienteId: tarefaEntrada?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
+    marcoId: (tarefaEntrada as any)?.marcoId || '',
+    prazo: tarefaEntrada?.prazo ? tarefaEntrada.prazo.split('T')[0] : '',
+    recorrencia: (tarefaEntrada as any)?.recorrencia || '',
+    origemPostId: (tarefaEntrada as any)?.origemPostId || '',
   })
   const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  // Responsavel automatico por tipo (squad do cliente): tarefa nova segue o tipo escolhido.
+  useEffect(() => {
+    if (tarefa?.id || !responsavelPorTipo) return
+    const sugerido = responsavelPorTipo(form.tipo)
+    if (sugerido) setForm(f => ({ ...f, responsavelEmail: sugerido }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.tipo])
   // Vincular PAUTA do Studio: ao escolher o cliente, lista as pautas dele (da
   // esteira) para criar a tarefa de produção já com briefing + copy + anexos.
   const [pautasCliente, setPautasCliente] = useState<any[]>([])

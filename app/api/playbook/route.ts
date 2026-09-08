@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     dataFim: body.dataFim || '',
     responsavelNome: body.responsavelNome || '',
     subetapas: normalizarSubetapas(body.subetapas),
+    ...(typeof body.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.cor) ? { cor: body.cor.toLowerCase() } : {}),
     criadoPor: session.user?.name || '',
     criadoEm: agora,
     atualizadoEm: agora,
@@ -74,6 +75,8 @@ export async function PUT(req: NextRequest) {
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
   // Sub-etapas: sempre pela lib (título obrigatório, status conhecido, datas/números válidos).
   if ('subetapas' in updates) atualizado.subetapas = normalizarSubetapas(updates.subetapas)
+  // Cor propria do marco: so #rrggbb; vazio limpa (volta a cor da categoria).
+  if ('cor' in updates) atualizado.cor = typeof updates.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(updates.cor) ? updates.cor.toLowerCase() : undefined
   await redis.set(`marco:${id}`, atualizado)
 
   // Automação legada (toggle antigo): etapa concluída -> notifica a equipe
