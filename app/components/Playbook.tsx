@@ -13,6 +13,7 @@ import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
 import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, type TipoArraste } from '@/lib/ganttArraste'
 import { ordenarPorDuracao, progressoTempo, textoTempo, progressoTarefas, pctConclusaoEtapa, pctConclusaoMarco } from '@/lib/progressoGantt'
 import { reordenar, novaPosicao, ordenarMarcos } from '@/lib/ordemGantt'
+import { registrarDesfazer } from '@/lib/desfazer'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
@@ -267,6 +268,14 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     setMarcos(prev => prev.map(x => (x.id === m.id ? novo : x)))
     const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, ...patch }) }).catch(() => null)
     if (!r || !r.ok) { toast('Não foi possível gravar o novo prazo.', 'erro'); carregar(); return }
+    // Ctrl+Z: volta exatamente os campos que este arraste mexeu (lib/desfazer).
+    const antesPatch: Record<string, any> = { id: m.id }
+    for (const k of Object.keys(patch)) antesPatch[k] = (m as any)[k] ?? (k === 'subetapas' ? [] : '')
+    registrarDesfazer(`Prazo de "${m.titulo}"`, async () => {
+      const rr = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antesPatch) }).catch(() => null)
+      carregar()
+      return !!rr?.ok
+    })
     const se = a.subId ? (novo.subetapas || []).find(x => x.id === a.subId) : undefined
     const per = se ? periodoDaEtapa(novo, se) : { ini: novo.dataInicio, fim: novo.dataFim || novo.dataInicio }
     toast(`${se ? se.titulo : m.titulo}: ${rotuloPeriodo(per.ini, per.fim)}`, 'sucesso', 'Prazo ajustado')
@@ -284,6 +293,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       setMarcos(prev => prev.map(x => x.id === ctx.marco.id ? { ...x, subetapas: nova, ordemEtapasManual: true } : x))
       const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ctx.marco.id, subetapas: nova, ordemEtapasManual: true }) }).catch(() => null)
       if (!r || !r.ok) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
+      const antesSubs = ctx.marco.subetapas || [], antesManual = ctx.marco.ordemEtapasManual === true
+      registrarDesfazer(`Ordem das etapas de "${ctx.marco.titulo}"`, async () => {
+        const rr = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ctx.marco.id, subetapas: antesSubs, ordemEtapasManual: antesManual }) }).catch(() => null)
+        carregar()
+        return !!rr?.ok
+      })
       toast(`${nova[para].titulo}: agora é a ${para + 1}ª etapa`, 'sucesso', 'Ordem alterada')
       return
     }
@@ -292,6 +307,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     setMarcos(prev => prev.map(x => { const i = nova.findIndex(n => n.id === x.id); return i >= 0 ? { ...x, ordem: i } : x }))
     const respostas = await Promise.all(nova.map((mm, i) => mm.ordem === i ? Promise.resolve(true) : fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: i }) }).then(r => r.ok).catch(() => false)))
     if (respostas.some(ok => !ok)) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
+    const antesOrdem = lista.map(mm => ({ id: mm.id, ordem: typeof mm.ordem === 'number' ? mm.ordem : null }))
+    registrarDesfazer('Ordem dos marcos', async () => {
+      const rs = await Promise.all(antesOrdem.map(o => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) }).then(r => r.ok).catch(() => false)))
+      carregar()
+      return rs.every(Boolean)
+    })
     toast(`${nova[para].titulo}: agora é o ${para + 1}º marco`, 'sucesso', 'Ordem alterada')
   }
   // Volta para a ordem automática (mais longo em cima) no cliente inteiro (temOrdemManual vive junto de clienteAtivo).
@@ -300,6 +321,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     if (!alvos.length) return
     setMarcos(prev => prev.map(x => alvos.some(a => a.id === x.id) ? { ...x, ordem: undefined, ordemEtapasManual: undefined } : x))
     await Promise.all(alvos.map(mm => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: null, ordemEtapasManual: false }) }).catch(() => null)))
+    registrarDesfazer('Ordem automática', async () => {
+      const rs = await Promise.all(alvos.map(mm => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: typeof mm.ordem === 'number' ? mm.ordem : null, ordemEtapasManual: mm.ordemEtapasManual === true }) }).then(r => r.ok).catch(() => false)))
+      carregar()
+      return rs.every(Boolean)
+    })
     carregar()
     toast('Voltou a ordenar pelos trabalhos mais longos.', 'sucesso')
   }
@@ -750,7 +776,17 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           tarefasDoMarcoModal={editModal && !somenteLeitura ? tarefasDoMarco(editModal.id) : undefined} onAbrirTarefa={t => setTarefaAberta(t)} onNovaTarefa={editModal ? () => setNovaTarefaPara(editModal) : undefined}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
           onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
-          onExcluir={editModal && excluivel ? async () => { await fetch(`/api/playbook?id=${editModal.id}`, { method: 'DELETE' }); setEditModal(null); carregar() } : undefined}
+          onExcluir={editModal && excluivel ? async () => {
+            const apagado = editModal
+            await fetch(`/api/playbook?id=${apagado.id}`, { method: 'DELETE' })
+            // Ctrl+Z recria o marco com o MESMO id (a rota aceita `id` quando ele não existe mais).
+            registrarDesfazer(`Exclusão do marco "${apagado.titulo}"`, async () => {
+              const r = await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(apagado) }).catch(() => null)
+              carregar()
+              return !!r?.ok
+            })
+            setEditModal(null); carregar()
+          } : undefined}
         />
       )}
 
@@ -912,7 +948,14 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
     const cli = clientes.find(c => c.id === form.clienteId)
     const body = { ...form, cor: form.cor || '', subetapas: subs.filter(x => x.titulo.trim()), ...(reordenouSubs ? { ordemEtapasManual: true } : {}), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
     if (marco) {
+      const antes: Record<string, any> = { id: marco.id }
+      for (const k of Object.keys(body)) antes[k] = (marco as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
       await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) })
+      registrarDesfazer(`Edição do marco "${marco.titulo}"`, async () => {
+        const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
+        onSalvo() // recarrega a tela de trás (o modal já fechou quando o Ctrl+Z acontece)
+        return !!r?.ok
+      })
     } else {
       await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     }

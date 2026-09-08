@@ -10,6 +10,7 @@ import PushSetup from './components/PushSetup'
 import Ortografia from './components/Ortografia'
 import AssistenteIA from './components/AssistenteIA'
 import Toaster from './components/Toaster'
+import Desfazer from './components/Desfazer'
 import { getPerfilCache } from '@/lib/cache'
 import { nomeSistema } from '@/lib/perfisInstanciaCatalogo'
 
@@ -42,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={outfit.variable}>
       <body className={outfit.variable} style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
-        <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /></Providers>
+        <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /><Desfazer /></Providers>
       </body>
     </html>
   )

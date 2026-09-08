@@ -37,8 +37,13 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const agora = new Date().toISOString()
+  // DESFAZER uma exclusão (lib/desfazer): o corpo pode trazer o `id` do marco apagado
+  // para ele voltar com a MESMA identidade — tarefas e vínculos apontam para esse id.
+  // Só vale se o id não existir mais; id em uso nunca é sobrescrito por aqui.
+  const idPedido = typeof body.id === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(body.id) ? body.id : ''
+  const jaExiste = idPedido ? await redis.get<Marco>(`marco:${idPedido}`) : null
   const marco: Marco = {
-    id: uuid(),
+    id: idPedido && !jaExiste ? idPedido : uuid(),
     clienteId: body.clienteId || '',
     clienteNome: body.clienteNome || '',
     titulo: body.titulo || 'Novo marco',
@@ -49,6 +54,8 @@ export async function POST(req: NextRequest) {
     dataFim: body.dataFim || '',
     responsavelNome: body.responsavelNome || '',
     subetapas: normalizarSubetapas(body.subetapas),
+    ...(typeof body.ordem === 'number' && Number.isFinite(body.ordem) ? { ordem: Math.max(0, Math.trunc(body.ordem)) } : {}),
+    ...(body.ordemEtapasManual === true ? { ordemEtapasManual: true } : {}),
     ...(typeof body.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.cor) ? { cor: body.cor.toLowerCase() } : {}),
     criadoPor: session.user?.name || '',
     criadoEm: agora,

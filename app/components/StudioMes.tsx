@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
+import { registrarDesfazer } from '@/lib/desfazer'
 import { contraste, LARGURA, ALTURA } from '@/lib/criativoTemplates'
 import { OBJETIVOS, objetivoDef } from '@/lib/criativoObjetivos'
 import { atrasada, emRisco } from '@/lib/entregas'
@@ -980,6 +981,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     if (!(await confirmar('Excluir esta pauta? Será removida permanentemente.', { titulo: 'Excluir pauta', okLabel: 'Excluir', perigo: true }))) return
     setPautas(ps => ps.filter(x => x.id !== p.id))
     await fetch(`/api/posts?id=${p.id}`, { method: 'DELETE' }).catch(() => {})
+    registrarDesfazer(`Exclusão da pauta "${(p.briefing || p.legenda || 'sem título').slice(0, 40)}"`, async () => {
+      const r = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, restaurar: true }) }).catch(() => null)
+      if (planoSel) carregarPautas(planoSel)
+      return !!r?.ok
+    })
   }
 
   // Métrica da Fase 0: quanto a equipe ajusta o que a IA gerou.

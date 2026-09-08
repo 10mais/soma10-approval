@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast, confirmar } from '@/lib/toast'
+import { registrarDesfazer } from '@/lib/desfazer'
 import { podeSerFilha, camposAoVincular, progressoDaMae, validarEmMassa } from '@/lib/hierarquiaTarefas'
 import RichText from './RichText'
 import OptImg from './OptImg'
@@ -423,8 +424,14 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
       })
       return
     }
+    const antes = tarefas.find(t => t.id === id)
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
     await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
+    if (antes) registrarDesfazer(`Status de "${antes.titulo}"`, async () => {
+      const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: antes.status }) }).catch(() => null)
+      carregar()
+      return !!r?.ok
+    })
     carregar()
   }
 
@@ -490,7 +497,13 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
     setConfirmPopup({
       mensagem: `Excluir ${selecionadas.length} tarefa(s)?`,
       onConfirm: async () => {
-        await Promise.all(selecionadas.map(id => fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })))
+        const ids = [...selecionadas]
+        await Promise.all(ids.map(id => fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })))
+        registrarDesfazer(`Exclusão de ${ids.length} tarefa(s)`, async () => {
+          const rs = await Promise.all(ids.map(id => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).then(r => r.ok).catch(() => false)))
+          carregar()
+          return rs.every(Boolean)
+        })
         setSelecionadas([])
         carregar()
         setConfirmPopup(null)
@@ -505,6 +518,11 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
         setConfirmPopup(null)
         setTarefas(ts => ts.filter(t => t.id !== id)) // remocao otimista
         await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' }).catch(() => {})
+        registrarDesfazer(`Exclusão de "${titulo}"`, async () => {
+          const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).catch(() => null)
+          carregar()
+          return !!r?.ok
+        })
         carregar()
       }
     })
@@ -910,9 +928,18 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
           onRecarregar={(t) => { setEditModal(t); carregar() }}
           onExcluir={editModal && podeExcluir ? () => {
             const id = editModal.id
+            const titulo = editModal.titulo
             setConfirmPopup({
               mensagem: `Excluir a tarefa "${editModal.titulo}"?`,
-              onConfirm: async () => { await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' }); setEditModal(null); setConfirmPopup(null); carregar() }
+              onConfirm: async () => {
+                await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })
+                registrarDesfazer(`Exclusão de "${titulo}"`, async () => {
+                  const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).catch(() => null)
+                  carregar()
+                  return !!r?.ok
+                })
+                setEditModal(null); setConfirmPopup(null); carregar()
+              }
             })
           } : undefined}
         />
@@ -1258,7 +1285,15 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
     const cli = (clientes || []).find(c => c.id === form.clienteId)
     const body = { ...form, anexos, responsavelNome: resp?.nome || '', clienteNome: cli?.nome || '', prazo: form.prazo ? new Date(form.prazo + 'T23:59:59').toISOString() : '' }
     if (tarefa) {
+      // DESFAZER: guarda o valor ANTERIOR de cada campo que o formulário mexe.
+      const antes: Record<string, any> = { id: tarefa.id }
+      for (const k of Object.keys(body)) antes[k] = (tarefa as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
       await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) })
+      registrarDesfazer(`Edição de "${tarefa.titulo}"`, async () => {
+        const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
+        onSalvo() // recarrega a lista de trás (o modal já fechou quando o Ctrl+Z acontece)
+        return !!r?.ok
+      })
     } else {
       await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     }
