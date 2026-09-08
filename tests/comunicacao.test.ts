@@ -109,6 +109,30 @@ describe('comunicação — candidatos, sem repetir e podendo evoluir', () => {
     expect(c.find(x => x.assunto === 'marco:m2')?.tipo).toBe('reuniao')
   })
 
+  it('fato ANTIGO não vira sugestão de hoje (o botão mostrava 88 num cliente com histórico)', () => {
+    const velho = new Date(2026, 7, 1, 10, 0).toISOString() // 01/08, muito além da janela
+    const c = candidatosDoDia({
+      posts: [
+        { id: 'p1', headline: 'Post velho publicado', status: 'publicado', publicadoEm: velho },
+        { id: 'p2', headline: 'Copy aprovada faz tempo', status: 'rascunho', copyAprovadaEm: velho },
+      ],
+      tarefas: [{ id: 't1', titulo: 'Tarefa antiga', status: 'concluido', concluidoEm: velho }],
+      marcos: [{ id: 'm1', titulo: 'Marco antigo', status: 'concluido', dataFim: '2026-08-02' }],
+      agora: AGORA,
+    })
+    expect(c).toEqual([])
+    // o mesmo fato dentro da janela conta
+    const ontem = new Date(2026, 8, 8, 10, 0).toISOString()
+    expect(candidatosDoDia({ posts: [{ id: 'p1', headline: 'Publicado ontem', status: 'publicado', publicadoEm: ontem }], agora: AGORA })).toHaveLength(1)
+  })
+
+  it('material esperando o cliente NÃO tem janela: é a realidade de agora', () => {
+    const antigo = { id: 'p1', headline: 'Parado desde julho', etapa: 'aprovacao_criativo', status: 'aguardando_aprovacao', aguardandoDesde: new Date(2026, 6, 1, 10, 0).toISOString() }
+    const c = candidatosDoDia({ posts: [antigo], agora: AGORA })
+    expect(c).toHaveLength(1)
+    expect(c[0].tipo).toBe('questionamento')
+  })
+
   it('os dias futuros da semana já mostram o que está previsto', () => {
     const s = semanaUtil(AGORA)
     const p = previstoNaSemana({

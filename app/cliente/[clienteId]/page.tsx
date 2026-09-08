@@ -102,7 +102,7 @@ export default function HubCliente() {
     const j = (u: string) => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)
     Promise.all([
       j(`/api/clientes?id=${clienteId}`),
-      j(`/api/posts?clienteId=${clienteId}`),
+      j(`/api/posts?clienteId=${clienteId}${ehEquipe ? '&esteira=1' : ''}`),
       ehEquipe ? j('/api/tarefas') : Promise.resolve([]),
       j(`/api/playbook?clienteId=${clienteId}`),
       j(`/api/planos?clienteId=${clienteId}`),

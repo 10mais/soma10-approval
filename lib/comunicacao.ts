@@ -139,7 +139,7 @@ export type PostCom = {
   copyAprovadaEm?: string; criativoAprovadoEm?: string; publicadoEm?: string; atualizadoEm?: string
 }
 export type TarefaCom = { id: string; titulo: string; status?: string; tipo?: string; prazo?: string; concluidoEm?: string; excluidoEm?: string; clienteId?: string }
-export type MarcoCom = { id: string; titulo: string; status?: string; categoria?: string; dataInicio?: string; dataFim?: string; subetapas?: { id: string; titulo: string; status?: string; dataFim?: string }[] }
+export type MarcoCom = { id: string; titulo: string; status?: string; categoria?: string; dataInicio?: string; dataFim?: string; atualizadoEm?: string; subetapas?: { id: string; titulo: string; status?: string; dataFim?: string }[] }
 
 export type Candidato = {
   assunto: string
@@ -151,10 +151,19 @@ export type Candidato = {
   anteriores: number // quantas vezes este assunto já foi comunicado
 }
 
+// Só fato RECENTE vira sugestão do dia. Sem isso, a primeira abertura num cliente com
+// histórico despejava tudo o que já aconteceu (o dono viu "88" no botão em 08/09) — o
+// oposto de objetividade. O que espera o cliente NÃO tem janela: é a realidade de agora.
+export const JANELA_DIAS = 7
 const ETAPAS_CLIENTE = ['aprovacao_copy', 'aprovacao_criativo']
 const AJUSTE = ['corrigir', 'reprovado']
 const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
 
+function recente(iso: string | undefined, agora: number): boolean {
+  if (!iso) return false
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) && agora - t <= JANELA_DIAS * DIA_MS && t <= agora + DIA_MS
+}
 function tituloPost(p: PostCom): string {
   const t = (p.headline || p.legenda || p.briefing || '').replace(/\s+/g, ' ').trim()
   return t ? (t.length > 60 ? t.slice(0, 57) + '…' : t) : 'Material sem título'
@@ -219,6 +228,7 @@ export function candidatosDoDia(entrada: {
   // 2) PUBLICADO: virou entrega no ar.
   for (const p of posts) {
     if (p.status !== 'publicado') continue
+    if (!recente(p.publicadoEm || p.dataAgendada, agora)) continue
     const assunto = `post:${p.id}`, estado = 'publicado'
     if (!por(assunto, estado)) continue
     out.push({
@@ -232,7 +242,7 @@ export function candidatosDoDia(entrada: {
   // 3) APROVADO pelo cliente: informação de processo, o que acontece agora.
   for (const p of posts) {
     const aprovado = p.criativoAprovadoEm || p.copyAprovadaEm
-    if (!aprovado || p.status === 'publicado') continue
+    if (!aprovado || p.status === 'publicado' || !recente(aprovado, agora)) continue
     const assunto = `post:${p.id}`, estado = p.criativoAprovadoEm ? 'aprovado_criativo' : 'aprovado_copy'
     if (!por(assunto, estado)) continue
     out.push({
@@ -247,7 +257,7 @@ export function candidatosDoDia(entrada: {
 
   // 4) TAREFA concluída: informação de processo (o que a agência entregou).
   for (const t of tarefas) {
-    if (t.status !== 'concluido' || !t.concluidoEm) continue
+    if (t.status !== 'concluido' || !recente(t.concluidoEm, agora)) continue
     const assunto = `tarefa:${t.id}`, estado = 'concluido'
     if (!por(assunto, estado)) continue
     out.push({
@@ -261,7 +271,7 @@ export function candidatosDoDia(entrada: {
   // 5) PLAYBOOK: etapa e marco concluídos são vitória de plano.
   for (const m of marcos) {
     for (const se of m.subetapas || []) {
-      if (se.status !== 'concluido') continue
+      if (se.status !== 'concluido' || !recente(se.dataFim || m.atualizadoEm, agora)) continue
       const assunto = `etapa:${m.id}:${se.id}`, estado = 'concluido'
       if (!por(assunto, estado)) continue
       out.push({
@@ -271,7 +281,7 @@ export function candidatosDoDia(entrada: {
         anteriores: vezes(assunto),
       })
     }
-    if (m.status === 'concluido') {
+    if (m.status === 'concluido' && recente(m.dataFim || m.atualizadoEm, agora)) {
       const assunto = `marco:${m.id}`, estado = 'concluido'
       if (por(assunto, estado)) out.push({
         assunto, estado, tipo: 'vitoria', quando: m.dataFim,

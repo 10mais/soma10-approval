@@ -91,8 +91,16 @@ export async function GET(req: NextRequest) {
   }
 
   // Posts na esteira: exclui briefing/copy/criativo do Planner, mas MANTEM aprovacao_copy
-  // e aprovacao_criativo (necessarios para a tela de aprovacoes do cliente)
-  filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto' || p!.etapa === 'aprovacao_copy' || p!.etapa === 'aprovacao_criativo')
+  // e aprovacao_criativo (necessarios para a tela de aprovacoes do cliente).
+  //
+  // `?esteira=1` (só EQUIPE) devolve TUDO, inclusive as pautas em produção. Sem isso, telas
+  // internas que só contam ficavam cegas: o hub do cliente dizia "0 pautas de setembro" com
+  // 12 pautas no Studio, porque quase todas estavam em briefing/copy/criativo (dono, 08/09).
+  // O Planner e o cliente continuam com o filtro, que é o motivo de ele existir.
+  const verEsteira = req.nextUrl.searchParams.get('esteira') === '1' && role !== 'cliente'
+  if (!verEsteira) {
+    filtrados = filtrados.filter(p => !p!.etapa || p!.etapa === 'pronto' || p!.etapa === 'aprovacao_copy' || p!.etapa === 'aprovacao_criativo')
+  }
 
   // Esconde da EQUIPE o conteúdo de cliente ARQUIVADO ou já EXCLUÍDO (órfão):
   // post sem clienteId (avulso) ou de cliente ativo permanece. O set vem do
