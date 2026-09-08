@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao } from '@/lib/producaoVinculo'
+import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
 
 // O hub do cliente mostrava "0 em produção" com 10 tarefas de criativo abertas:
 // a pauta estava "pronta" no Studio enquanto a tarefa do designer seguia aberta.
@@ -70,5 +70,29 @@ describe('anexos → criativo', () => {
     expect(midiasParaPauta({ id: 'p' }, TAREFAS[0].anexos)).toEqual({ imagens: ['https://x/arte.png'] })
     expect(midiasParaPauta({ id: 'p', imagens: ['https://x/ja.png'] }, TAREFAS[0].anexos)).toEqual({})
     expect(midiasParaPauta({ id: 'p' }, [{ nome: 'x', url: 'https://x/x.pdf', tipo: 'application/pdf' }])).toEqual({})
+  })
+})
+
+describe('criativo pronto (anexo com papel) — dono 07/09', () => {
+  const ref = { nome: 'ref.png', url: 'https://x/ref.png', tipo: 'image/png', papel: 'referencia' as const }
+  const arte = { nome: 'arte.png', url: 'https://x/arte.png', tipo: 'image/png', papel: 'criativo' as const }
+  const pdf = { nome: 'brief.pdf', url: 'https://x/b.pdf', tipo: 'application/pdf', papel: 'criativo' as const }
+
+  it('so os anexos marcados como criativo (imagem/video) sao o criativo pronto', () => {
+    expect(anexosCriativoPronto([ref, arte, pdf]).map(a => a.url)).toEqual(['https://x/arte.png'])
+  })
+  it('tarefa antiga sem papel: todos os anexos de imagem/video contam (compatibilidade)', () => {
+    expect(anexosCriativoPronto([{ nome: 'a.png', url: 'https://x/a.png', tipo: 'image/png' }]).length).toBe(1)
+  })
+  it('quando o papel ja e usado, so referencia = sem criativo pronto', () => {
+    expect(anexosCriativoPronto([ref])).toEqual([])
+    expect(midiasParaPauta({ id: 'p' }, [ref])).toEqual({})
+    expect(midiasParaPauta({ id: 'p' }, [ref, arte])).toEqual({ imagens: ['https://x/arte.png'] })
+  })
+  it('avisoAoConcluir: tarefa de producao vinculada sem criativo pronto avisa; com criativo ou sem pauta, nao', () => {
+    expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref] })).toMatch(/sem arte/i)
+    expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref, arte] })).toBeNull()
+    expect(avisoAoConcluir({ tipo: 'criativo', anexos: [] })).toBeNull()
+    expect(avisoAoConcluir({ tipo: 'tarefa', origemPostId: 'p1', anexos: [] })).toBeNull()
   })
 })

@@ -9,11 +9,12 @@ import RichText from './RichText'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
+import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; squad?: string[] }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
 type Anotacao = { id: string; x: number; y: number; texto: string; autor: string; autorNome: string; criadoEm: string }
-type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[] }
+type Anexo = { nome: string; url: string; tipo: string; anotacoes?: Anotacao[]; papel?: 'referencia' | 'criativo' } // papel 'criativo' = arte pronta (lib/producaoVinculo)
 type Tarefa = {
   id: string; titulo: string; descricao?: string; tipo?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
@@ -1166,7 +1167,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
     setAnexos(arr => arr.map((a, i) => i === idx ? { ...a, anotacoes: (a.anotacoes || []).filter(an => an.id !== anotacaoId) } : a))
   }
 
-  async function enviarAnexos(arquivos: File[]) {
+  async function enviarAnexos(arquivos: File[], papel: 'referencia' | 'criativo' = 'referencia') {
     if (!arquivos.length) return
     setEnviandoAnexo(true)
     for (const arquivo of arquivos) {
@@ -1177,7 +1178,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
           access: 'public', handleUploadUrl: '/api/upload', contentType: arquivo.type, clientPayload: arquivo.type,
           onUploadProgress: ({ percentage }) => setProgAnexo(percentage),
         })
-        setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type }])
+        setAnexos(a => [...a, { nome: arquivo.name, url: blob.url, tipo: arquivo.type, papel }])
       } catch { /* erro silencioso — segue para o próximo */ }
     }
     setEnviandoAnexo(false)
@@ -1233,6 +1234,11 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
       await Promise.all(subsAbertas.map(sub => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sub.id, status: 'concluido' }) }).catch(() => {})))
     }
     setPerguntaConcluir(false)
+    // Tarefa de PRODUÇÃO vinculada a pauta indo para "concluído" sem criativo pronto: avisa (a pauta voltaria ao Studio sem arte).
+    if (tarefa && form.status === 'concluido' && tarefa.status !== 'concluido') {
+      const aviso = avisoAoConcluir({ tipo: form.tipo, origemPostId: form.origemPostId, anexos })
+      if (aviso && !(await confirmar(aviso, { titulo: 'Concluir sem criativo pronto?', okLabel: 'Concluir mesmo assim', cancelLabel: 'Voltar e anexar' }))) return
+    }
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
     if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
@@ -1563,7 +1569,7 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
                     <option key={p.id} value={p.id}>{(p.briefing || p.headline || p.legenda || 'Pauta sem título').slice(0, 60)} · {ROTULO_ETAPA[p.etapa] || p.etapa}{p.tarefaId ? ' (já tem tarefa)' : ''}</option>
                   ))}
                 </select>
-                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — ao concluir esta tarefa, a pauta vai ao Planner como rascunho.</p>}
+                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — anexe o criativo pronto; ao concluir, a pauta volta ao Studio com ele para revisão e envio.</p>}
               </div>
             )}
             {!PERFIL_CLINICA_TAREFAS && (
@@ -1795,12 +1801,45 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
             </div>
           )}
 
-          {/* Anexos */}
+          {/* CRIATIVO PRONTO (dono, 07/09): em tarefa de produção, a arte entregue tem lugar próprio.
+              É o que vira a mídia da pauta quando a tarefa é concluída — referências ficam em "Anexos". */}
+          {(ehTarefaDeProducao({ tipo: form.tipo }) || !!form.origemPostId) && (() => {
+            const prontos = anexos.map((a, i) => ({ a, i })).filter(x => x.a.papel === 'criativo')
+            const validos = anexosCriativoPronto(anexos).length
+            return (
+              <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: `1.5px solid ${prontos.length ? 'var(--v2-ok)' : 'var(--v2-amber-on)'}`, background: prontos.length ? 'var(--v2-ok-bg)' : 'var(--v2-amber-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Criativo pronto</label>
+                  <span style={{ fontSize: 11.5, color: 'var(--v2-ink2)' }}>{prontos.length ? `${validos} arquivo${validos > 1 ? 's' : ''} — vira a mídia da pauta ao concluir` : form.origemPostId ? 'Anexe a arte final aqui. Ao concluir, a pauta volta ao Studio com ela.' : 'Anexe a arte final aqui.'}</span>
+                  <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: enviandoAnexo ? 'wait' : 'pointer', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700 }}>
+                    {enviandoAnexo ? 'Enviando...' : '+ Anexar criativo pronto'}
+                    <input type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoAnexo}
+                      onChange={e => { enviarAnexos(Array.from(e.target.files || []), 'criativo'); e.target.value = '' }} />
+                  </label>
+                </div>
+                {prontos.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {prontos.map(({ a, i }) => (
+                      <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '2px solid var(--v2-ok)', cursor: 'pointer' }}>
+                        {a.tipo.startsWith('video')
+                          ? <video src={a.url} style={{ width: 96, height: 96, objectFit: 'cover' }} muted preload="metadata" />
+                          : <img src={a.url} alt={a.nome} style={{ width: 96, height: 96, objectFit: 'cover' }} />}
+                        <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} title="Remover" style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>×</button>
+                        <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'referencia' } : x)) }} title="Mover para referências" style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>ref.</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* Anexos (referências) */}
           <div style={{ marginTop: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Anexos</label>
-            {anexos.length > 0 && (
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Anexos{anexos.some(a => a.papel === 'criativo') ? ' (referências)' : ''}</label>
+            {anexos.some(a => a.papel !== 'criativo') && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                {anexos.map((a, i) => (
+                {anexos.map((a, i) => a.papel === 'criativo' ? null : (
                   <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
                     {a.tipo.startsWith('video') ? (
                       <video src={a.url} style={{ width: 80, height: 80, objectFit: 'cover' }} muted preload="metadata" />
@@ -1818,6 +1857,9 @@ export function TarefaModal({ tarefa, clientes, usuarios, responsavelPadrao, tip
                       title={`Baixar ${a.nome}`}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
+                    {(ehTarefaDeProducao({ tipo: form.tipo }) || !!form.origemPostId) && (a.tipo.startsWith('image') || a.tipo.startsWith('video')) && (
+                      <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'criativo' } : x)) }} title="Marcar como criativo pronto" style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>é a arte</button>
+                    )}
                   </div>
                 ))}
               </div>

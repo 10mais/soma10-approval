@@ -281,21 +281,22 @@ export async function PUT(req: NextRequest) {
   }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
 
-  // Linha de montagem: concluir a tarefa do DESIGNER manda a pauta pro Planner
-  // como RASCUNHO, com a copy aprovada (regra pura em lib/esteiraFluxo, testada:
-  // só age em etapa 'criativo' — reabrir nunca regride, aprovações não são
-  // puladas). Falha no gancho nunca bloqueia a conclusão da tarefa.
+  // Linha de montagem: concluir a tarefa do DESIGNER devolve a pauta ao STUDIO
+  // com o criativo pronto (regra pura em lib/esteiraFluxo, testada: só age em
+  // etapa 'criativo' — reabrir nunca regride, aprovações não são puladas). Do
+  // Studio a equipe revisa e sobe para o cliente ou para o Planner. Falha no
+  // gancho nunca bloqueia a conclusão da tarefa.
   if (updates.status === 'concluido' && tarefa.status !== 'concluido' && tarefa.origemPostId) {
     try {
       const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
       const av = post ? aoConcluirTarefa(post.etapa) : null
       if (post && av) {
         // Pauta sem mídia recebe as imagens/vídeos anexados na tarefa como criativo (lib/producaoVinculo).
-        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora, anexosTarefa: atualizado.anexos || post.anexosTarefa, ...midiasParaPauta(post as any, atualizado.anexos || []) })
-        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo concluído — pauta enviada ao Planner como rascunho', autor, criadoEm: agora }]
+        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora, criativoEntregueEm: agora, anexosTarefa: atualizado.anexos || post.anexosTarefa, ...midiasParaPauta(post as any, atualizado.anexos || []) })
+        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo pronto entregue — a pauta voltou ao Studio para revisão e envio', autor, criadoEm: agora }]
         const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
         if (emailCriador && emailCriador !== (session.user as any).email) {
-          await notificar(emailCriador, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} concluiu a tarefa "${atualizado.titulo}". A pauta está no Planner como rascunho, pronta para revisão e envio ao cliente.`, post.id).catch(() => {})
+          await notificar(emailCriador, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} concluiu a tarefa "${atualizado.titulo}". O criativo pronto voltou ao Studio: revise e envie ao cliente ou ao Planner.`, post.id).catch(() => {})
         }
       }
     } catch { /* sync nunca bloqueia a conclusão */ }

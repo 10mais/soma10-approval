@@ -839,7 +839,7 @@ export type Tarefa = {
   tarefaPaiId?: string // tarefa-mãe (subtarefa = filha de outra tarefa)
   prazo?: string // ISO date
   recorrencia?: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' // ao concluir, gera a próxima ocorrência
-  anexos?: { nome: string; url: string; tipo: string }[]
+  anexos?: { nome: string; url: string; tipo: string; papel?: 'referencia' | 'criativo' }[] // papel 'criativo' = arte pronta (lib/producaoVinculo)
   atividades?: TarefaAtividade[]
   comentarios?: TarefaComentario[]
   apontamentos?: Apontamento[] // horas trabalhadas (apontamento de tempo)
@@ -989,7 +989,8 @@ export type Post = {
   cta?: string // chamada para ação NA ARTE (ex.: "Agende agora")
   sugestaoLegenda?: string // rascunho de legenda sugerido no briefing
   anexos?: { nome: string; url: string; tipo: string }[] // referências da pauta (mesmo shape de Tarefa.anexos)
-  anexosTarefa?: { nome: string; url: string; tipo: string }[] // espelho dos anexos da tarefa de produção vinculada (lib/producaoVinculo)
+  anexosTarefa?: { nome: string; url: string; tipo: string; papel?: 'referencia' | 'criativo' }[] // espelho dos anexos da tarefa de produção vinculada (lib/producaoVinculo)
+  criativoEntregueEm?: string // ISO — a tarefa de produção foi concluída e o criativo pronto voltou ao Studio
   // Carrossel: a copy separada lâmina por lâmina, cada uma com seu anexo (referência da arte daquela lâmina)
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   // Material gráfico (formato 'grafico'): specs do material impresso/aplicado

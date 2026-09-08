@@ -13,13 +13,17 @@
 // A automacao nunca tira o controle do humano: concluir/reabrir tarefa fora da
 // etapa certa nao mexe na pauta, e nada aqui regride etapa.
 
-// Concluir a tarefa do designer manda a pauta pro Planner como RASCUNHO, com a
-// copy aprovada. So age quando a pauta esta em 'criativo' (producao da arte).
-// Qualquer outra etapa — inclusive aprovacoes (bola do cliente) e 'pronto' (ja
-// no Planner) — devolve null: concluir de novo, reabrir ou tarefa de pauta
-// avulsa sem esteira nunca regride nem re-dispara nada.
-export function aoConcluirTarefa(etapa?: string): { etapa: 'pronto'; status: 'rascunho' } | null {
-  return etapa === 'criativo' ? { etapa: 'pronto', status: 'rascunho' } : null
+// Concluir a tarefa do designer devolve a pauta ao STUDIO com o criativo pronto
+// (decisao do dono, 07/09: "inicia no Studio, quando aprovado vira tarefa; quando
+// a tarefa for concluida, volta pro Studio" — e do Studio a equipe sobe para
+// aprovacao do cliente ou para o Planner). A pauta fica em 'criativo' (etapa da
+// arte), status rascunho, e o chamador grava `criativoEntregueEm` + as midias.
+// Antes (23/07) ia direto ao Planner como rascunho; isso pulava a revisao no Studio.
+// So age quando a pauta esta em 'criativo'. Qualquer outra etapa — inclusive
+// aprovacoes (bola do cliente) e 'pronto' (ja no Planner) — devolve null: concluir
+// de novo, reabrir ou tarefa de pauta avulsa sem esteira nunca regride nem re-dispara.
+export function aoConcluirTarefa(etapa?: string): { etapa: 'criativo'; status: 'rascunho'; voltaAoStudio: true } | null {
+  return etapa === 'criativo' ? { etapa: 'criativo', status: 'rascunho', voltaAoStudio: true } : null
 }
 
 // Copy aprovada => nasce a tarefa do designer. Idempotente: pauta que ja tem

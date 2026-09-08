@@ -7,8 +7,8 @@ import { apareceNoPlanner } from '@/lib/plannerFiltro'
 // precisa de fato aparecer no Planner — senao a peca some entre as estacoes.
 
 describe('aoConcluirTarefa', () => {
-  it('criativo (designer terminou) -> Planner como rascunho', () => {
-    expect(aoConcluirTarefa('criativo')).toEqual({ etapa: 'pronto', status: 'rascunho' })
+  it('criativo (designer terminou) -> VOLTA AO STUDIO com o criativo pronto (nao pula para o Planner)', () => {
+    expect(aoConcluirTarefa('criativo')).toEqual({ etapa: 'criativo', status: 'rascunho', voltaAoStudio: true })
   })
 
   it('qualquer outra etapa nao mexe na pauta (nunca regride, nunca pula aprovacao)', () => {
@@ -23,12 +23,12 @@ describe('aoConcluirTarefa', () => {
     expect(aoConcluirTarefa('qualquer_coisa')).toBeNull()
   })
 
-  it('ORACULO plannerFiltro: antes da conclusao a pauta NAO esta no Planner; depois ESTA', () => {
+  it('ORACULO plannerFiltro: concluir a tarefa NAO poe a pauta no Planner — ela volta ao Studio (a equipe sobe de la)', () => {
     const antes = { status: 'rascunho', etapa: 'criativo', rascunhoInterno: true }
     expect(apareceNoPlanner(antes)).toBe(false)
     const av = aoConcluirTarefa(antes.etapa)!
     const depois = { ...antes, etapa: av.etapa, status: av.status }
-    expect(apareceNoPlanner(depois)).toBe(true)
+    expect(apareceNoPlanner(depois)).toBe(false)
   })
 })
 

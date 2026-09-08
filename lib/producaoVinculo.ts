@@ -26,7 +26,9 @@ export type TarefaV = {
   anexos?: Anexo[]
   excluidoEm?: string
 }
-export type Anexo = { nome: string; url: string; tipo: string }
+// `papel`: 'referencia' (material de apoio, o padrão) ou 'criativo' (a ARTE PRONTA
+// que o designer entrega — é o que vira mídia da pauta). Anexo sem papel = referência.
+export type Anexo = { nome: string; url: string; tipo: string; papel?: 'referencia' | 'criativo' }
 
 // Tipos de tarefa que são PRODUÇÃO de conteúdo/criativo. 'tarefa' genérica,
 // estratégia, landing page etc. ficam de fora.
@@ -90,9 +92,25 @@ export function anexosParaCriativo(anexos: Anexo[] = []): Anexo[] {
   })
 }
 
-/** Ao concluir a tarefa: se a pauta ainda não tem mídia, os anexos de imagem/vídeo da tarefa viram o criativo. */
+/** O CRIATIVO PRONTO da tarefa: os anexos marcados como 'criativo' (só imagem/vídeo).
+ *  Compatibilidade: tarefa antiga sem papel nenhum -> todos os anexos de imagem/vídeo contam. */
+export function anexosCriativoPronto(anexos: Anexo[] = []): Anexo[] {
+  const marcados = anexos.filter(a => a.papel === 'criativo')
+  if (marcados.length) return anexosParaCriativo(marcados)
+  if (anexos.some(a => a.papel === 'referencia')) return [] // já se usa o papel: sem criativo marcado = sem criativo
+  return anexosParaCriativo(anexos)
+}
+
+/** Ao concluir a tarefa: se a pauta ainda não tem mídia, o criativo pronto da tarefa vira a mídia da pauta. */
 export function midiasParaPauta(post: PostV, anexosTarefa: Anexo[] = []): { imagens: string[] } | {} {
   if (post.imagens && post.imagens.length) return {}
-  const urls = anexosParaCriativo(anexosTarefa).map(a => a.url)
+  const urls = anexosCriativoPronto(anexosTarefa).map(a => a.url)
   return urls.length ? { imagens: urls } : {}
+}
+
+/** Concluir tarefa de PRODUÇÃO vinculada a pauta sem criativo pronto: a tela avisa (não bloqueia). */
+export function avisoAoConcluir(t: { tipo?: string; origemPostId?: string; anexos?: Anexo[] }): string | null {
+  if (!t.origemPostId || !ehTarefaDeProducao(t)) return null
+  if (anexosCriativoPronto(t.anexos || []).length) return null
+  return 'Esta tarefa está vinculada a uma pauta e não tem criativo pronto anexado. Concluir assim devolve a pauta ao Studio SEM arte.'
 }

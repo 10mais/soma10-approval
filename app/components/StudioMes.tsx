@@ -1,5 +1,5 @@
 'use client'
-import { tarefaDaPauta, tarefaAberta, anexosParaCriativo, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
+import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -26,7 +26,7 @@ type Pauta = {
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   medidas?: string; localAplicacao?: string
-  tarefaId?: string
+  tarefaId?: string; criativoEntregueEm?: string
   dataAgendada?: string; codigo?: string; colaboradores?: string[]; capasVideo?: Record<string, string>; redes?: string[]
   ajusteCopy?: string; ajusteCriativo?: string; motivoReprovacao?: string; anotacoes?: any[]
   criadoEm?: string; atualizadoEm?: string
@@ -1542,11 +1542,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}
                           </span>
                         ) })()}
-                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => { const mid = anexosParaCriativo((p as any).anexosTarefa); const semMidia = !((p as any).imagens || []).length; const pode = podeEditar && semMidia && mid.length > 0; return (
+                        {/* CRIATIVO PRONTO vindo da tarefa (dono, 07/09): a arte entregue pelo designer.
+                            Se a pauta ainda não tem mídia, um clique usa; se já tem, fica como referência. */}
+                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => { const mid = anexosCriativoPronto((p as any).anexosTarefa); const semMidia = !((p as any).imagens || []).length; const pode = podeEditar && semMidia && mid.length > 0; const entregue = (p as any).criativoEntregueEm as string | undefined; return (
                           <button className="st-btn" disabled={!pode} onClick={() => salvarPatch(p.id, { imagens: mid.map(a => a.url) })}
-                            title={semMidia ? 'Usa as imagens/vídeos anexados na tarefa como criativo desta pauta' : 'A pauta já tem mídia; os anexos da tarefa ficam como referência'}
-                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: pode ? 'var(--v2-info)' : 'var(--v2-ink3)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: pode ? 'pointer' : 'default' }}>
-                            {(p as any).anexosTarefa.length} anexo{(p as any).anexosTarefa.length > 1 ? 's' : ''} da tarefa{pode ? ' — usar como criativo' : ''}
+                            title={mid.length === 0 ? 'A tarefa tem anexos, mas nenhum marcado como criativo pronto' : semMidia ? 'Usa o criativo pronto da tarefa como mídia desta pauta' : 'A pauta já tem mídia; o criativo da tarefa fica como referência'}
+                            style={{ padding: '10px 14px', background: entregue ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: pode ? 'var(--v2-info)' : entregue ? 'var(--v2-ok)' : 'var(--v2-ink3)', border: `1px solid ${entregue ? 'var(--v2-ok-bg)' : 'var(--v2-rule)'}`, borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: pode ? 'pointer' : 'default' }}>
+                            {entregue ? `Criativo entregue pela tarefa em ${new Date(entregue).toLocaleDateString('pt-BR')}` : `${(p as any).anexosTarefa.length} anexo${(p as any).anexosTarefa.length > 1 ? 's' : ''} da tarefa`}{pode ? ' — usar como criativo' : ''}
                           </button>
                         ) })()}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
