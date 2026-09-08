@@ -1,30 +1,30 @@
-import { confirmar } from './toast'
 import { clicouNoFundo } from './modalFora'
 
 // Handler de fechar-ao-clicar-fora para os modais do sistema. A regra de "foi
 // mesmo um clique no fundo?" mora em lib/modalFora.ts (puro, testado).
 //
 // Uso:
-//   <div onClick={fecharFora(() => setForm(null))} style={{ position:'fixed', inset:0, … }}>
+//   <div onClick={fecharFora(() => setForm(null))} …>                      // fecha
+//   <div onClick={fecharFora(onClose, { temAlteracoes, salvar })} …>       // salva sozinho e fecha
 //
-// Modal com formulário PERGUNTA antes de descartar (é o padrão): clique fora
-// acidental não pode levar o trabalho junto. Passe `perguntar: false` só onde não
-// há o que perder — backdrop de menu, visualizador de imagem.
+// REGRA DO SISTEMA (dono, 08/09/2026): "salve automaticamente sempre que houver
+// alteração; nunca 'sair sem salvar'". O diálogo "Sair sem salvar?" foi
+// REMOVIDO de todo o sistema — ele aparecia até em quem só abriu para olhar
+// (o marco do Playbook perguntava sempre) e ensinava a clicar sem ler.
 //
-// ⚠️ E ONDE O MODAL SALVA SOZINHO (campo a campo, no onBlur/onChange): ali NÃO
-// há alteração pendente quando o clique fora acontece — tudo já foi gravado.
-// Perguntar "sair sem salvar?" é MENTIRA, e diálogo que mente ensina a clicar
-// sem ler; no dia em que a pergunta for verdadeira, ninguém lê. Foi o caso do
-// NegocioModal do CRM (relatado pelo dono em 17/07): apliquei a guarda nos 53
-// overlays de uma vez, sem separar quem tem botão Salvar de quem salva sozinho.
-// A regra: tem botão Salvar → pergunta. Salva sozinho ou não é formulário →
-// perguntar: false.
+// Como fica: clique fora com alteração pendente → `salvar()` (o modal grava e
+// fecha por conta própria ao terminar; se o formulário estiver inválido, o
+// próprio salvar avisa e o modal continua aberto). Sem alteração → fecha.
+// Modal que não passa `salvar` fecha direto — vale para caixas de texto de
+// ação (gerar plano, pedir ajuste), onde "salvar" seria executar a ação.
 //
-// `temAlteracoes` evita a pergunta boba quando o formulário está intocado.
+// `perguntar` e `temAlteracoes` continuam aceitos pelas chamadas antigas;
+// `perguntar` não faz mais nada (não há mais pergunta).
 
 type Opcoes = {
   perguntar?: boolean
   temAlteracoes?: () => boolean
+  salvar?: () => void | Promise<void>
   mensagem?: string
   titulo?: string
 }
@@ -32,16 +32,8 @@ type Opcoes = {
 export function fecharFora(aoFechar: () => void, opts: Opcoes = {}) {
   return (e: { target: unknown; currentTarget: unknown }) => {
     if (!clicouNoFundo(e)) return
-
-    const perguntar = opts.perguntar !== false
-    const sujo = opts.temAlteracoes ? opts.temAlteracoes() : true
-    if (!perguntar || !sujo) { aoFechar(); return }
-
-    confirmar(opts.mensagem || 'Você tem alterações não salvas.', {
-      titulo: opts.titulo || 'Sair sem salvar?',
-      okLabel: 'Sair sem salvar',
-      cancelLabel: 'Continuar editando',
-      perigo: true,
-    }).then(ok => { if (ok) aoFechar() })
+    const sujo = opts.temAlteracoes ? opts.temAlteracoes() : false
+    if (sujo && opts.salvar) { void opts.salvar(); return }
+    aoFechar()
   }
 }

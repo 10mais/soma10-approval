@@ -51,7 +51,7 @@ function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?
 // Cor propria do marco (dono, 07/09: "troca de cor a cada marco ou etapa para ficar muito visual") ou a da categoria.
 function corDoMarco(m: { cor?: string; categoria: string }) { return m.cor || corCategoria(m.categoria) }
 const PALETA = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#dc2626', '#475569']
-type TarefaLeve = { id: string; titulo: string; status: string; tipo?: string; prioridade?: string; responsavelNome?: string; responsavelEmail?: string; prazo?: string; marcoId?: string; clienteId?: string; excluidoEm?: string }
+type TarefaLeve = { id: string; titulo: string; status: string; tipo?: string; prioridade?: string; responsavelNome?: string; responsavelEmail?: string; prazo?: string; marcoId?: string; subetapaId?: string; clienteId?: string; excluidoEm?: string }
 const STATUS_TAREFA: Record<string, { label: string; cor: string }> = { a_fazer: { label: 'A fazer', cor: 'var(--v2-ink3)' }, em_andamento: { label: 'Em andamento', cor: 'var(--v2-amber)' }, em_revisao: { label: 'Em revisão', cor: 'var(--v2-info)' }, concluido: { label: 'Concluída', cor: 'var(--v2-ok)' }, descartado: { label: 'Descartada', cor: 'var(--v2-ink3)' } }
 function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (cor?: string) => void; titulo?: string }) {
   return (
@@ -80,9 +80,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // afasta), entre 3 dias e 2 anos, e a DATA SOB O CURSOR fica parada — como num mapa.
   // Pinça no trackpad chega como wheel com ctrlKey e cai no mesmo caminho. Listener
   // nativo com passive:false — o onWheel do React é passivo e não seguraria a página.
-  const ganttRef = useRef<HTMLDivElement>(null)
+  // Ref de CALLBACK + efeito dependente do elemento: o Gantt só monta depois que o
+  // cliente é escolhido/carregado, então `useRef` + efeito [] rodava com ref vazio
+  // em produção e o zoom nunca ligava (dono, 08/09: "o zoom não está funcionando").
+  const [ganttEl, setGanttEl] = useState<HTMLDivElement | null>(null)
   useEffect(() => {
-    const el = ganttRef.current
+    const el = ganttEl
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaY) < 1) return
@@ -109,7 +112,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [ganttEl])
   const [filtroCliente, setFiltroCliente] = useState('')
   const [editModal, setEditModal] = useState<Marco | null>(null)
   const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
@@ -123,10 +126,20 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const nivelDe = (id: string) => nivelGantt.has(id) ? nivelGantt.get(id)! : 1
   const setNivel = (id: string, n: number) => setNivelGantt(prev => { const m = new Map(prev); m.set(id, Math.max(0, Math.min(2, n))); return m })
   const alternarGantt = (id: string) => setNivel(id, nivelDe(id) > 0 ? 0 : 1)
-  function iniciarArraste(e: React.PointerEvent, id: string) {
+  const alternarTarefas = (id: string) => setNivel(id, nivelDe(id) >= 2 ? 1 : 2)
+  // ESCALA VERTICAL (dono, 08/09: "expandir um marco para ficar maior na tela — puxe todos
+  // proporcionais"): arrastar a alça de QUALQUER marco amplia/reduz TODOS juntos (0,8x a 3x);
+  // barras, linhas das etapas e letras crescem na mesma proporção. Lembrada por navegador.
+  const [escala, setEscalaState] = useState(1)
+  const escalaRef = useRef(1)
+  useEffect(() => { try { const v = parseFloat(localStorage.getItem('soma10-playbook-escala') || ''); if (v >= 0.8 && v <= 3) { setEscalaState(v); escalaRef.current = v } } catch {} }, [])
+  const mudarEscala = (v: number) => { const e = Math.round(Math.max(0.8, Math.min(3, v)) * 100) / 100; escalaRef.current = e; setEscalaState(e); try { localStorage.setItem('soma10-playbook-escala', String(e)) } catch {} }
+  const H_MARCO = Math.round(34 * escala), H_BARRA = Math.round(28 * escala), H_SUB = Math.round(24 * escala), H_SUBBARRA = Math.round(18 * escala)
+  const F_MARCO = Math.min(16, 10 * escala), F_SUB = Math.min(15, 9.5 * escala)
+  function iniciarArraste(e: React.PointerEvent) {
     e.preventDefault(); e.stopPropagation()
-    const y0 = e.clientY, n0 = nivelDe(id)
-    const mover = (ev: PointerEvent) => setNivel(id, n0 + Math.round((ev.clientY - y0) / 28))
+    const y0 = e.clientY, e0 = escalaRef.current
+    const mover = (ev: PointerEvent) => mudarEscala(e0 + (ev.clientY - y0) / 110)
     const soltar = () => { window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar) }
     window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar)
   }
@@ -143,7 +156,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
   }
   const alturaTarefas = (n: number) => 30 + 26 * Math.max(1, n)
-  const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return 34 + (nv >= 1 ? 24 * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaTarefas(tarefasDoMarco(m.id).length) : 0) }
+  const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return H_MARCO + (nv >= 1 ? H_SUB * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaTarefas(tarefasDoMarco(m.id).length) : 0) }
   // Aplicar modelo direto daqui (pedido do dono, 07/09: "sem clareza de como
   // lançar etapas") — lista os modelos e reaproveita o modal com prévia.
   const [escolhendoModelo, setEscolhendoModelo] = useState(false)
@@ -200,6 +213,41 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const inicio = new Date(refDate)
   inicio.setHours(0, 0, 0, 0)
   const fim = new Date(inicio.getTime() + dias * 24 * 60 * 60 * 1000)
+  // BARRA DE ROLAGEM da linha do tempo (dono, 08/09: "ver mais para frente ou mais para trás"):
+  // uma barra nativa cujo conteúdo cobre a FAIXA do cliente (marcos ± margem, sempre incluindo
+  // hoje e a janela atual); rolar move a janela, e mover a janela (setas, zoom, Hoje) move a barra.
+  const MS_DIA = 24 * 60 * 60 * 1000
+  const [barraEl, setBarraEl] = useState<HTMLDivElement | null>(null)
+  const [larguraBarra, setLarguraBarra] = useState(0)
+  useEffect(() => {
+    if (!barraEl) return
+    const medir = () => setLarguraBarra(barraEl.clientWidth)
+    medir()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null
+    ro?.observe(barraEl)
+    return () => ro?.disconnect()
+  }, [barraEl])
+  const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0)
+  let faixaIni = hoje0.getTime() - 180 * MS_DIA, faixaFim = hoje0.getTime() + 365 * MS_DIA
+  for (const m of marcos) {
+    if (clienteAtivo && m.clienteId !== clienteAtivo) continue
+    const a = new Date(m.dataInicio).getTime(); const b = new Date(fimEfetivoDoMarco(m, m.subetapas) || m.dataFim || m.dataInicio).getTime()
+    if (a && a - 90 * MS_DIA < faixaIni) faixaIni = a - 90 * MS_DIA
+    if (b && b + 180 * MS_DIA > faixaFim) faixaFim = b + 180 * MS_DIA
+  }
+  faixaIni = Math.min(faixaIni, inicio.getTime()); faixaFim = Math.max(faixaFim, fim.getTime())
+  const larguraInterna = larguraBarra > 0 ? Math.round(larguraBarra * ((faixaFim - faixaIni) / MS_DIA) / dias) : 0
+  const inicioMs = inicio.getTime()
+  useEffect(() => {
+    if (!barraEl || !larguraInterna) return
+    const alvo = Math.round(((inicioMs - faixaIni) / (faixaFim - faixaIni)) * larguraInterna)
+    if (Math.abs(barraEl.scrollLeft - alvo) > 1) barraEl.scrollLeft = alvo
+  }, [barraEl, larguraInterna, inicioMs, faixaIni, faixaFim])
+  function rolarBarra(e: React.UIEvent<HTMLDivElement>) {
+    if (!larguraInterna) return
+    const t = faixaIni + (e.currentTarget.scrollLeft / larguraInterna) * (faixaFim - faixaIni)
+    if (Math.abs(t - inicioMs) >= MS_DIA / 2) setRefDate(new Date(t))
+  }
 
   // Agrupa marcos do cliente ativo (nunca generico)
   const clientesComMarcos = clienteAtivo ? clientes.filter(c => c.id === clienteAtivo).filter(c => marcos.some(m => m.clienteId === c.id)) : []
@@ -313,7 +361,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       </div>
 
       {/* Timeline — scroll do mouse aqui = zoom (semanal … anual) */}
-      <div ref={ganttRef} title="Scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div ref={setGanttEl} title="Scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
         <div style={{ position: 'relative', height: 28, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
           {labels.map((l, i) => (
@@ -324,6 +372,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             const hojePct = posicaoPct(new Date().toISOString())
             return hojePct > 0 && hojePct < 100 ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${hojePct}%`, width: 2, background: 'var(--v2-amber-on)', zIndex: 2 }} /> : null
           })()}
+        </div>
+        {/* Barra de rolagem: arrastar leva a janela para frente/para trás na faixa do cliente */}
+        <div ref={setBarraEl} onScroll={rolarBarra} title="Arraste para ver mais para frente ou mais para trás na linha do tempo" aria-label="Rolagem da linha do tempo"
+          style={{ overflowX: 'auto', overflowY: 'hidden', height: 14, background: 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)' }}>
+          <div style={{ width: larguraInterna || '100%', height: 1 }} />
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
@@ -375,7 +428,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                       <div key={m.id}>
                         <div onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
-                            position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: 28,
+                            position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
                             background: corDoMarco(m), borderRadius: 6, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                             border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
@@ -387,7 +440,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
                             </button>
                           )}
-                          <span style={{ position: 'relative', fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                          <span style={{ position: 'relative', fontSize: F_MARCO, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                          {!somenteLeitura && (
+                            <button type="button" onClick={e => { e.stopPropagation(); alternarTarefas(m.id) }} title={mostraTarefas ? 'Esconder as tarefas deste marco' : `Ver as tarefas deste marco (${tarefasM.length})`} aria-label={mostraTarefas ? 'Esconder as tarefas do marco' : 'Ver as tarefas do marco'}
+                              style={{ position: 'relative', marginLeft: 8, height: 18, padding: '0 6px', borderRadius: 5, border: 0, background: mostraTarefas ? 'var(--v2-surface)' : 'rgba(0,0,0,0.22)', color: mostraTarefas ? corDoMarco(m) : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 9.5, fontWeight: 800 }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>{tarefasM.length}
+                            </button>
+                          )}
                           {pg.total > 0 && <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: pg.atrasadas.length ? 'var(--v2-hot)' : 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{pg.concluidas}/{pg.total}</span>}
                         </div>
                         {/* SUB-ETAPAS como linhas próprias, cada uma no seu período (simultâneas ao marco) */}
@@ -403,19 +462,19 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                             <div key={se.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)}
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
-                                position: 'absolute', top: topMarco + 34 + j * 24, left: `${l}%`, width: `${w}%`, height: 18, minWidth: 22,
+                                position: 'absolute', top: topMarco + H_MARCO + j * H_SUB, left: `${l}%`, width: `${w}%`, height: H_SUBBARRA, minWidth: 22,
                                 background: se.cor || corDoMarco(m), opacity: se.status === 'concluido' ? 0.45 : 0.7, borderRadius: 5, cursor: 'pointer',
                                 borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
                               }}>
                               {k !== null && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${k}%`, background: 'rgba(255,255,255,0.22)', pointerEvents: 'none' }} />}
-                              <span style={{ position: 'relative', fontSize: 9.5, fontWeight: 600, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
+                              <span style={{ position: 'relative', fontSize: F_SUB, fontWeight: 600, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
                               {se.kpi && se.kpiMeta ? <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: 'var(--v2-surface)', whiteSpace: 'nowrap', flexShrink: 0 }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
                             </div>
                           )
                         })}
                         {/* TAREFAS DO MARCO (nivel 2): abrir qualquer uma, ou criar ja com cliente + marco + responsavel do squad */}
                         {mostraTarefas && (
-                          <div style={{ position: 'absolute', top: topMarco + 34 + (aberto ? 24 * subs.length : 0), left: 0, right: 0, height: alturaTarefas(tarefasM.length), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
+                          <div style={{ position: 'absolute', top: topMarco + H_MARCO + (aberto ? H_SUB * subs.length : 0), left: 0, right: 0, height: alturaTarefas(tarefasM.length), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 22 }}>
                               <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Tarefas · {tarefasM.length}</span>
                               {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Tarefa</button>}
@@ -425,6 +484,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               <button key={t.id} type="button" onClick={e => { e.stopPropagation(); setTarefaAberta(t) }} title="Abrir a tarefa" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 26, background: 'none', border: 0, borderBottom: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
                                 <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
                                 <span style={{ flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
+                                {t.subetapaId && subs.some(x => x.id === t.subetapaId) && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }} title="Etapa do marco">› {subs.find(x => x.id === t.subetapaId)!.titulo}</span>}
                                 <span style={{ fontSize: 10.5, color: st.cor, whiteSpace: 'nowrap' }}>{st.label}</span>
                                 {t.responsavelNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{t.responsavelNome.split(' ')[0]}</span>}
                                 {t.prazo && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{fmtData(t.prazo)}</span>}
@@ -432,9 +492,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                             ) })}
                           </div>
                         )}
-                        {/* ALCA: arrastar para baixo expande (etapas -> tarefas), para cima resume */}
+                        {/* ALCA: arrastar para baixo amplia TODOS os marcos (escala vertical), para cima reduz */}
                         {!somenteLeitura && (
-                          <div onPointerDown={e => iniciarArraste(e, m.id)} onClick={e => e.stopPropagation()} title="Arraste para baixo para expandir (etapas, tarefas) ou para cima para resumir" aria-label="Expandir ou resumir o marco"
+                          <div onPointerDown={e => iniciarArraste(e)} onClick={e => e.stopPropagation()} title="Arraste para baixo para ampliar os marcos na tela (todos crescem juntos) ou para cima para reduzir" aria-label="Ampliar ou reduzir os marcos"
                             style={{ position: 'absolute', top: topMarco + altura - 6, left: 0, right: 0, height: 10, cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3 }}>
                             <span style={{ width: 34, height: 4, borderRadius: 999, background: 'var(--v2-rule2)', opacity: 0.8 }} />
                           </div>
@@ -601,6 +661,17 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
     fetch(`/api/playbook/entregas?clienteId=${marco.clienteId}`).then(r => r.json()).then(d => { if (d && !d.error) setEntregas(d) }).catch(() => {})
   }, [marco?.clienteId])
 
+  // REGRA DO SISTEMA (dono, 08/09): fechar com alteração = SALVA sozinho, sem perguntar.
+  // Abrir só para olhar e fechar não altera nada — fecha direto (o retrato inicial cobre form + etapas).
+  const retratoInicial = useRef(JSON.stringify({ form, subs }))
+  const alterado = () => JSON.stringify({ form, subs }) !== retratoInicial.current
+  async function fecharSalvando() {
+    if (salvando) return
+    if (!alterado()) { onClose(); return }
+    if (!form.titulo.trim() || !form.clienteId) { toast('Dê um título ao marco para salvar.', 'erro'); return }
+    await salvar()
+    toast('Marco salvo.', 'sucesso')
+  }
   async function salvar() {
     setSalvando(true)
     const cli = clientes.find(c => c.id === form.clienteId)
@@ -615,7 +686,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   }
 
   return (
-    <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(fecharSalvando)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -750,7 +821,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
           <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? corMarca : 'var(--v2-surface2)', color: (form.titulo.trim() && form.clienteId) ? corMarcaTexto : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (marco ? 'Salvar' : 'Criar marco')}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={fecharSalvando} title="Fecha; se algo mudou, salva antes" style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
           {onExcluir && (
             <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
           )}

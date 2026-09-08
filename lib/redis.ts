@@ -836,7 +836,8 @@ export type Tarefa = {
   responsavelNome?: string
   clienteId?: string
   clienteNome?: string
-  marcoId?: string // etapa do Playbook a que a tarefa pertence
+  marcoId?: string // marco do Playbook a que a tarefa pertence
+  subetapaId?: string // etapa DENTRO do marco (marco.subetapas[].id), opcional
   tarefaPaiId?: string // tarefa-mãe (subtarefa = filha de outra tarefa)
   prazo?: string // ISO date
   recorrencia?: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' // ao concluir, gera a próxima ocorrência

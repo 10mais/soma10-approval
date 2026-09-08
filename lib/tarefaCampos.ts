@@ -17,7 +17,7 @@ import type { Tarefa } from './redis'
 export const CAMPOS_TAREFA = [
   'titulo', 'descricao', 'tipo', 'status', 'prioridade',
   'responsavelEmail', 'responsavelNome', 'clienteId', 'clienteNome',
-  'marcoId', 'prazo', 'recorrencia', 'anexos', 'checklist',
+  'marcoId', 'subetapaId', 'prazo', 'recorrencia', 'anexos', 'checklist',
   'documentoId', 'mapaId', 'origemPostId', // origemPostId: vínculo com a pauta do Studio
   'tarefaPaiId', // subtarefa de (null = volta a ser tarefa); a API valida com lib/hierarquiaTarefas
 ] as const

@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useRef, useState } from 'react'
-import { toast, confirmar } from '@/lib/toast'
+import { toast } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 
 // Editor de ROTEIRO (itinerário) de uma viagem — modal dedicado. Monta a linha
@@ -51,8 +51,9 @@ export default function RoteiroViagem({ viagem, podeEditar = true, onClose, onSa
   const setP = (id: string, patch: Partial<Parada>) => setParadas(ps => ps.map(p => p.id === id ? { ...p, ...patch } : p))
   const rmP = (id: string) => setParadas(ps => ps.filter(p => p.id !== id))
 
+  // Fechar com alteração = SALVA o roteiro (regra do sistema, 08/09: nunca "sair sem salvar").
   async function fechar() {
-    if (sujo) { const ok = await confirmar('Você tem alterações não salvas no roteiro.', { titulo: 'Alterações não salvas', okLabel: 'Sair sem salvar', cancelLabel: 'Continuar editando', perigo: true }); if (!ok) return }
+    if (sujo) { await salvar(); return }
     onClose()
   }
   async function salvar() {

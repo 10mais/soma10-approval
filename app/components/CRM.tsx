@@ -1586,7 +1586,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
     onSalvo()
   }
   return (
-    <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada, salvar: () => { if (!f.nome.trim()) { toast('Informe o nome para salvar a ficha.', 'erro'); return } return salvar() } })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>

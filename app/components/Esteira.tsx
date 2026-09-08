@@ -170,10 +170,11 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
     const f = formPauta
     return !!(f.briefing.trim() || f.sugestaoImagem.trim() || f.textoImagem.trim() || f.sugestaoLegenda.trim() || f.refImagemUrl.trim() || f.formato !== 'feed')
   }
+  // Fechar com alteração = SALVA a pauta (regra do sistema, 08/09: nunca "sair sem salvar").
   async function fecharNovaPauta() {
     if (pautaTemAlteracoes()) {
-      const ok = await confirmar('Você tem alterações não salvas nesta pauta.', { titulo: 'Alterações não salvas', okLabel: 'Sair sem salvar', cancelLabel: 'Continuar editando', perigo: true })
-      if (!ok) return
+      if (!formPauta.briefing.trim()) { toast('Escreva o briefing para salvar a pauta.', 'erro'); return }
+      await criarPauta(); return
     }
     setNovaPautaModal(false)
   }

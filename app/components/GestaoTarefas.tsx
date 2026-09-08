@@ -939,11 +939,12 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
     status: tarefaEntrada?.status || 'a_fazer', prioridade: tarefaEntrada?.prioridade || 'media',
     responsavelEmail: tarefaEntrada?.responsavelEmail || responsavelPadrao || '', clienteId: tarefaEntrada?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
     marcoId: (tarefaEntrada as any)?.marcoId || '',
+    subetapaId: (tarefaEntrada as any)?.subetapaId || '',
     prazo: tarefaEntrada?.prazo ? tarefaEntrada.prazo.split('T')[0] : '',
     recorrencia: (tarefaEntrada as any)?.recorrencia || '',
     origemPostId: (tarefaEntrada as any)?.origemPostId || '',
   })
-  const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  const [marcos, setMarcos] = useState<{ id: string; titulo: string; subetapas?: { id: string; titulo: string }[] }[]>([])
   // Responsavel automatico por tipo (squad do cliente): tarefa nova segue o tipo escolhido.
   useEffect(() => {
     if (tarefa?.id || !responsavelPorTipo) return
@@ -1161,7 +1162,6 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
     if (r?.tarefa) { setApontamentos(r.tarefa.apontamentos || []); onRecarregar?.(r.tarefa) }
   }
   const [salvando, setSalvando] = useState(false)
-  const [confirmarFechar, setConfirmarFechar] = useState(false)
   const [abaInterna, setAbaInterna] = useState<'detalhes' | 'activity'>('detalhes')
   const [novoComentario, setNovoComentario] = useState('')
   const [enviandoComentario, setEnviandoComentario] = useState(false)
@@ -1230,11 +1230,10 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
   // Snapshot inicial para detectar alterações não salvas (guarda ao fechar)
   const snapshotInicial = useRef<string | null>(null)
   useEffect(() => { snapshotInicial.current = JSON.stringify({ ...form, anexos }) }, [])
-  function fechar() {
-    if (snapshotInicial.current !== null && JSON.stringify({ ...form, anexos }) !== snapshotInicial.current) {
-      setConfirmarFechar(true)
-      return
-    }
+  // REGRA DO SISTEMA (dono, 08/09): alteração pendente ao fechar = SALVA sozinho; nunca "sair sem salvar".
+  // salvar() valida (título, vínculo…), grava e chama onSalvo (que fecha); inválido = toast e segue aberto.
+  async function fechar() {
+    if (snapshotInicial.current !== null && JSON.stringify({ ...form, anexos }) !== snapshotInicial.current) { await salvar(); return }
     onClose()
   }
 
@@ -1253,7 +1252,7 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
     }
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
-    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a uma etapa do Playbook do cliente (campo "Etapa do Playbook").', 'erro'); return }
+    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a um marco ou etapa do Playbook do cliente (campo "Marco ou etapa do Playbook").', 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
@@ -1561,7 +1560,7 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     const cid = e.target.value
                     const sq = ((clientes || []).find(c => c.id === cid)?.squad || []).filter(em => (usuarios || []).some(u => u.email === em && u.role !== 'cliente'))
                     // Ao escolher o cliente, sugere o 1º membro do squad como responsável (só se ainda vazio).
-                    setForm(f => ({ ...f, clienteId: cid, marcoId: '', responsavelEmail: (!f.responsavelEmail && sq.length) ? sq[0] : f.responsavelEmail }))
+                    setForm(f => ({ ...f, clienteId: cid, marcoId: '', subetapaId: '', responsavelEmail: (!f.responsavelEmail && sq.length) ? sq[0] : f.responsavelEmail }))
                   }}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">Nenhum</option>
@@ -1587,8 +1586,8 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
             {!PERFIL_CLINICA_TAREFAS && (
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Etapa do Playbook {form.origemPostId ? '' : '*'}</label>
-                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar etapa</button>}
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Marco ou etapa do Playbook {form.origemPostId ? '' : '*'}</label>
+                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar marco</button>}
                 </div>
                 {!form.clienteId && (
                   <select disabled value="" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface1)', color: 'var(--v2-ink3)' }}>
@@ -1596,13 +1595,21 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   </select>
                 )}
                 {form.clienteId && !criandoEtapa && (<>
-                  <select value={form.marcoId} onChange={e => { if (e.target.value === '__nova__') { setCriandoEtapa(true) } else { setForm(f => ({ ...f, marcoId: e.target.value })) } }}
+                  {/* MARCO > ETAPA (dono, 08/09): a tarefa pode apontar para o marco inteiro ou para uma etapa dentro dele.
+                      Valor composto "marcoId::subetapaId" para a etapa; a tarefa guarda os dois campos. */}
+                  <select value={form.subetapaId ? `${form.marcoId}::${form.subetapaId}` : form.marcoId}
+                    onChange={e => { const v = e.target.value; if (v === '__nova__') { setCriandoEtapa(true) } else { const [mid, sid] = v.split('::'); setForm(f => ({ ...f, marcoId: mid || '', subetapaId: sid || '' })) } }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie uma abaixo' : 'Selecione a etapa...'}</option>
-                    {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
-                    <option value="__nova__">+ Criar nova etapa...</option>
+                    <option value="">{marcos.length === 0 ? 'Nenhum marco — crie um abaixo' : 'Selecione o marco ou a etapa...'}</option>
+                    {marcos.map(m => (m.subetapas && m.subetapas.length) ? (
+                      <optgroup key={m.id} label={m.titulo}>
+                        <option value={m.id}>{m.titulo} (o marco inteiro)</option>
+                        {m.subetapas.map(se => <option key={se.id} value={`${m.id}::${se.id}`}>{'\u00a0\u00a0\u2514 '}{se.titulo}</option>)}
+                      </optgroup>
+                    ) : <option key={m.id} value={m.id}>{m.titulo}</option>)}
+                    <option value="__nova__">+ Criar novo marco...</option>
                   </select>
-                  {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Clique em "+ Criar etapa".</p>}
+                  {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem marcos no Playbook. Clique em "+ Criar marco".</p>}
                 </>)}
                 {form.clienteId && criandoEtapa && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1977,25 +1984,6 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
         />
       )}
 
-      {/* Confirmação de alterações não salvas (substitui o confirm nativo do navegador) */}
-      {confirmarFechar && (
-        <div onClick={e => { e.stopPropagation(); setConfirmarFechar(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 380, width: '100%', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--v2-amber-bg)', color: 'var(--v2-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-              </div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)' }}>Alterações não salvas</h3>
-            </div>
-            <p style={{ margin: '0 0 20px', fontSize: 13.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>Você fez alterações nesta tarefa que ainda não foram salvas. Se sair agora, elas serão perdidas.</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmarFechar(false)} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Continuar editando</button>
-              <button onClick={() => { setConfirmarFechar(false); onClose() }} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Sair sem salvar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   , document.body)
 }

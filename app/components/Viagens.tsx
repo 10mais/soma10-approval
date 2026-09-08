@@ -177,11 +177,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
     const f: Form = { id: e.id, titulo: e.titulo, tipo: e.tipo || 'pacote', pacoteId: e.pacoteId || '', roteiro: e.roteiro || '', internacional: !!e.internacional, dataIda: e.dataIda, dataVolta: e.dataVolta || '', horaSaida: e.horaSaida || '', horaRetorno: e.horaRetorno || '', veiculoId: e.veiculoId || '', motoristas: e.motoristas || [], valorPacote: String(e.valorPacote || ''), valorFechado: e.valorFechado ? String(e.valorFechado) : '', contratante: e.contratante || '', descontoPadrao: e.descontoPadrao ? String(e.descontoPadrao) : '', inclusos: e.inclusos || [], despesas: despesasParaForm(e.despesas), paradas: e.paradas || [], status: e.status, observacoes: e.observacoes || '' }
     setForm(f); setFormInicial(snap(f))
   }
+  // Fechar com alteração = SALVA a viagem (regra do sistema, 08/09: nunca "sair sem salvar"); inválida = toast e segue aberta.
   async function fecharForm() {
-    if (form && snap(form) !== formInicial) {
-      const ok = await confirmar('Você tem alterações não salvas nesta viagem.', { titulo: 'Alterações não salvas', okLabel: 'Sair sem salvar', cancelLabel: 'Continuar editando', perigo: true })
-      if (!ok) return
-    }
+    if (form && snap(form) !== formInicial) { await salvar(); return }
     setForm(null)
   }
   const setMot = (i: number, patch: Partial<Motorista>) => setForm(f => f && ({ ...f, motoristas: (f.motoristas || []).map((m, j) => j === i ? { ...m, ...patch } : m) }))
