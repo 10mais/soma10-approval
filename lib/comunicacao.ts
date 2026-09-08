@@ -106,14 +106,18 @@ export function semanaUtil(agora: number = Date.now()): DiaSemana[] {
   })
 }
 
+// Dia LOCAL de um instante. Usar `iso.slice(0,10)` (que é UTC) jogaria um comunicado
+// das 21h no Brasil para o dia seguinte da faixa da semana.
+export const diaLocal = (iso?: string) => (iso ? ymd(new Date(iso)) : '')
+
 export function doDia(comunicados: Comunicado[], data: string): Comunicado[] {
-  return comunicados.filter(c => (c.em || '').slice(0, 10) === data)
+  return comunicados.filter(c => diaLocal(c.em) === data)
 }
 
 // Dias ÚTEIS sem nenhuma comunicação que conta, contando de trás para frente a
 // partir de hoje (hoje entra na conta). Fim de semana não pesa.
 export function diasUteisSemComunicar(comunicados: Comunicado[], agora: number = Date.now()): number {
-  const dias = new Set(comunicados.map(c => (c.em || '').slice(0, 10)))
+  const dias = new Set(comunicados.map(c => diaLocal(c.em)))
   let n = 0
   const d = new Date(agora); d.setHours(0, 0, 0, 0)
   for (let i = 0; i < 30; i++) {
@@ -278,8 +282,11 @@ export function candidatosDoDia(entrada: {
     }
     // 6) REUNIÃO de hoje ou amanhã (marco de categoria reunião).
     if (m.categoria === 'reuniao' && m.dataInicio) {
+      // Dias de CALENDÁRIO nos dois lados. Com fração arredondada, a mesma reunião dava
+      // 1 no fuso do Brasil e 2 em UTC (build da Vercel roda em UTC e pegou isso).
       const hoje0 = new Date(agora); hoje0.setHours(0, 0, 0, 0)
-      const faltam = Math.round((new Date(m.dataInicio).getTime() - hoje0.getTime()) / DIA_MS)
+      const diaReuniao = new Date(m.dataInicio); diaReuniao.setHours(0, 0, 0, 0)
+      const faltam = Math.round((diaReuniao.getTime() - hoje0.getTime()) / DIA_MS)
       if (faltam >= 0 && faltam <= 1) { // hoje ou amanhã; reunião passada não volta
         const assunto = `marco:${m.id}`, estado = `reuniao:${ymd(new Date(m.dataInicio))}`
         if (por(assunto, estado)) out.push({
@@ -320,17 +327,17 @@ export function previstoNaSemana(entrada: { posts?: PostCom[]; tarefas?: TarefaC
   const out: Previsto[] = []
   for (const p of entrada.posts || []) {
     if (p.excluidoEm || !p.dataAgendada) continue
-    const data = p.dataAgendada.slice(0, 10)
+    const data = diaLocal(p.dataAgendada)
     if (dias.has(data) && p.status !== 'publicado') out.push({ data, texto: `Publicação: ${tituloPost(p)}` })
   }
   for (const t of entrada.tarefas || []) {
     if (t.excluidoEm || !t.prazo || !ABERTA.includes(t.status || '')) continue
-    const data = t.prazo.slice(0, 10)
+    const data = diaLocal(t.prazo)
     if (dias.has(data)) out.push({ data, texto: `Prazo: ${t.titulo}` })
   }
   for (const m of entrada.marcos || []) {
     if (!m.dataFim) continue
-    const data = m.dataFim.slice(0, 10)
+    const data = diaLocal(m.dataFim)
     if (dias.has(data)) out.push({ data, texto: `${m.categoria === 'reuniao' ? 'Reunião' : 'Entrega'}: ${m.titulo}` })
   }
   return out
