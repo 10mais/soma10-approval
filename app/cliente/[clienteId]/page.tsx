@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { resumoDoCliente, type ResumoCliente } from '@/lib/hubCliente'
 import { paragrafar, resumir } from '@/lib/textoBruto'
 import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
+import ComunicacaoDiaria from '@/app/components/ComunicacaoDiaria'
+import { candidatosDoDia, diasUteisSemComunicar, type Comunicado } from '@/lib/comunicacao'
 
 // INÍCIO DO HUB: tudo o que está atribuído ao cliente, numa tela — bola da vez,
 // aprovações paradas, próximas publicações, tarefas abertas, pautas do mês,
@@ -91,6 +93,9 @@ export default function HubCliente() {
   const [marcos, setMarcos] = useState<any[]>([])
   const [planos, setPlanos] = useState<any[]>([])
   const [bola, setBola] = useState<BolaDaVez | null>(null)
+  // COMUNICAÇÃO DIÁRIA (dono, 08/09): painel por cima do hub, para não perder o lugar.
+  const [comunicados, setComunicados] = useState<Comunicado[]>([])
+  const [comAberta, setComAberta] = useState(false)
   const [carregado, setCarregado] = useState(false)
 
   useEffect(() => {
@@ -102,13 +107,15 @@ export default function HubCliente() {
       j(`/api/playbook?clienteId=${clienteId}`),
       j(`/api/planos?clienteId=${clienteId}`),
       j(`/api/playbook/bola?clienteId=${clienteId}`),
-    ]).then(([c, p, t, m, pl, b]) => {
+      ehEquipe ? j(`/api/comunicados?clienteId=${clienteId}`) : Promise.resolve([]),
+    ]).then(([c, p, t, m, pl, b, cm]) => {
       setCliente(Array.isArray(c) ? c.find((x: any) => x.id === clienteId) : c)
       setPosts(Array.isArray(p) ? p : [])
       setTarefas(Array.isArray(t) ? t.filter((x: any) => x.clienteId === clienteId) : [])
       setMarcos(Array.isArray(m) ? m : [])
       setPlanos(Array.isArray(pl) ? pl : [])
       setBola(b && !b.error ? b : null)
+      setComunicados(Array.isArray(cm) ? cm : [])
       setCarregado(true)
     })
   }, [clienteId, ehEquipe])
@@ -159,6 +166,20 @@ export default function HubCliente() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {ehEquipe && (() => {
+            // O botão já conta a história antes do clique: quantos itens há para comunicar
+            // hoje e há quantos dias úteis este cliente não recebe uma comunicação de valor.
+            const nCand = candidatosDoDia({ posts, tarefas, marcos, comunicados }).length
+            const sem = diasUteisSemComunicar(comunicados)
+            return (
+              <button onClick={() => setComAberta(true)} title="Comunicação diária com este cliente"
+                style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: `1px solid ${comunicados.length > 0 && sem >= 2 ? 'var(--v2-hot)' : 'var(--v2-rule)'}`, borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                Comunicação diária
+                {nCand > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#17150E', background: 'var(--v2-amber-on)', borderRadius: 999, padding: '1px 7px' }}>{nCand}</span>}
+                {comunicados.length > 0 && sem >= 2 && <span title={`${sem} dias úteis sem comunicar`} style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)' }}>{sem}d</span>}
+              </button>
+            )
+          })()}
           <button onClick={() => router.push(`${base}/relatorio`)} style={{ padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Criar relatório da semana</button>
           <button onClick={() => router.push(`${base}/playbook`)} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}>Abrir Playbook</button>
         </div>
@@ -230,6 +251,15 @@ export default function HubCliente() {
           ) : <Vazio texto="Sem descrição. Preencha em Configurações → Clientes." />}
         </Cartao>
       </div>
+
+      {comAberta && (
+        <ComunicacaoDiaria
+          clienteId={clienteId} clienteNome={cliente.nome} telefone={(cliente as any).telefone}
+          posts={posts} tarefas={tarefas} marcos={marcos}
+          onFechar={() => setComAberta(false)}
+          onMudou={setComunicados}
+        />
+      )}
     </div>
   )
 }
