@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Marco, Cliente } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { normalizarSubetapas } from '@/lib/subetapas'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { temModulo } from '@/lib/modulos'
 
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
     dataInicio: body.dataInicio || agora,
     dataFim: body.dataFim || '',
     responsavelNome: body.responsavelNome || '',
+    subetapas: normalizarSubetapas(body.subetapas),
     criadoPor: session.user?.name || '',
     criadoEm: agora,
     atualizadoEm: agora,
@@ -70,6 +72,8 @@ export async function PUT(req: NextRequest) {
   const camposPermitidos = ['titulo', 'descricao', 'categoria', 'status', 'dataInicio', 'dataFim', 'responsavelNome', 'clienteId', 'clienteNome']
   const atualizado = { ...marco, atualizadoEm: new Date().toISOString() } as any
   for (const c of camposPermitidos) { if (c in updates) atualizado[c] = updates[c] }
+  // Sub-etapas: sempre pela lib (título obrigatório, status conhecido, datas/números válidos).
+  if ('subetapas' in updates) atualizado.subetapas = normalizarSubetapas(updates.subetapas)
   await redis.set(`marco:${id}`, atualizado)
 
   // Automação legada (toggle antigo): etapa concluída -> notifica a equipe

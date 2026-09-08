@@ -810,6 +810,9 @@ export type Marco = {
   dataInicio: string // ISO
   dataFim?: string // ISO
   responsavelNome?: string
+  // Etapas DENTRO do marco, com prazo e KPI próprios (lib/subetapas). Progresso,
+  // atraso e prazo efetivo são derivados delas; nada disso é gravado à parte.
+  subetapas?: import('./subetapas').SubEtapa[]
   criadoPor: string
   criadoEm: string
   atualizadoEm: string

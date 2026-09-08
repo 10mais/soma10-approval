@@ -1,5 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { v4 as uuid } from 'uuid'
+import { progressoMarco, fimEfetivoDoMarco, statusSugerido, kpiPct, SUBETAPA_STATUS, type SubEtapa } from '@/lib/subetapas'
 import EntregasMarco, { Entregas } from './EntregasMarco'
 import AvatarCliente from './AvatarCliente'
 import { confirmar } from '@/lib/toast'
@@ -10,6 +12,7 @@ import { toast } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
+  subetapas?: SubEtapa[]
   id: string; clienteId: string; clienteNome: string; titulo: string; descricao?: string
   categoria: string; status: string; dataInicio: string; dataFim?: string; responsavelNome?: string
 }
@@ -49,6 +52,27 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // posts e tarefas que já existem — nada digitado, nada gravado.
   const [bola, setBola] = useState<BolaDaVez | null>(null)
   const [periodo, setPeriodo] = useState('mensal')
+  // ZOOM PELO SCROLL (dono, 07/09): rodar o mouse sobre a linha do tempo aproxima (para cima:
+  // semanal) ou afasta (para baixo: anual), um degrau por gesto. Listener nativo com
+  // passive:false — o onWheel do React é passivo e não conseguiria segurar a rolagem da página.
+  const ganttRef = useRef<HTMLDivElement>(null)
+  const periodoRef = useRef(periodo); periodoRef.current = periodo
+  const ultimoZoom = useRef(0)
+  useEffect(() => {
+    const el = ganttRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) < 4) return
+      e.preventDefault()
+      const agora = Date.now(); if (agora - ultimoZoom.current < 220) return
+      ultimoZoom.current = agora
+      const i = PERIODOS.findIndex(p => p.key === periodoRef.current)
+      const j = e.deltaY < 0 ? Math.max(0, i - 1) : Math.min(PERIODOS.length - 1, i + 1)
+      if (j !== i) setPeriodo(PERIODOS[j].key)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
   const [filtroCliente, setFiltroCliente] = useState('')
   const [editModal, setEditModal] = useState<Marco | null>(null)
   const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
@@ -212,8 +236,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         ))}
       </div>
 
-      {/* Timeline */}
-      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      {/* Timeline — scroll do mouse aqui = zoom (semanal … anual) */}
+      <div ref={ganttRef} title="Role o mouse aqui para aproximar ou afastar a linha do tempo" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
         <div style={{ position: 'relative', height: 28, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
           {labels.map((l, i) => (
@@ -257,16 +281,20 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 })()}
                 {marcosCliente.map((m, i) => {
                   const left = posicaoPct(m.dataInicio)
-                  const width = larguraPct(m.dataInicio, m.dataFim)
+                  const pg = progressoMarco(m.subetapas)
+                  const fimEf = fimEfetivoDoMarco(m, m.subetapas)
+                  const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
                   return (
-                    <div key={m.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${m.dataFim ? ' - ' + fmtData(m.dataFim) : ''})`}
+                    <div key={m.id} onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                       style={{
                         position: 'absolute', top: 4 + i * 34, left: `${left}%`, width: `${width}%`, height: 28,
                         background: corCategoria(m.categoria), borderRadius: 6, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                         border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
                       }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                      {pg.total > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pg.pct}%`, background: 'rgba(255,255,255,0.28)', borderRadius: 6, pointerEvents: 'none' }} />}
+                      <span style={{ position: 'relative', fontSize: 10, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                      {pg.total > 0 && <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: pg.atrasadas.length ? 'var(--v2-hot)' : 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{pg.concluidas}/{pg.total}</span>}
                     </div>
                   )
                 })}
@@ -362,6 +390,20 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
             </div>
           )}
           <div>
+            {(marco.subetapas?.length || 0) > 0 && (() => { const pg = progressoMarco(marco.subetapas); return (
+              <div style={{ marginBottom: 14 }}>
+                <p style={lbl}>Etapas deste marco · {pg.concluidas} de {pg.total}</p>
+                <div style={{ height: 6, background: 'var(--v2-surface2)', borderRadius: 999, overflow: 'hidden', margin: '6px 0 10px' }}><div style={{ width: `${pg.pct}%`, height: '100%', background: 'var(--v2-ok)' }} /></div>
+                {marco.subetapas!.map(se => { const k = kpiPct(se); const atrasada = pg.atrasadas.some(a => a.id === se.id); return (
+                  <div key={se.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--v2-surface1)', fontSize: 13 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: 999, flexShrink: 0, background: se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber)' : 'var(--v2-rule2)' }} />
+                    <span style={{ flex: 1, minWidth: 0, color: se.status === 'concluido' ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
+                    {se.kpi && <span style={{ fontSize: 12, color: 'var(--v2-ink2)', whiteSpace: 'nowrap' }}>{se.kpi}: {se.kpiAtual ?? 0}{se.kpiMeta ? ` / ${se.kpiMeta}` : ''}{k !== null ? ` (${k}%)` : ''}</span>}
+                    {se.dataFim && <span style={{ fontSize: 12, color: atrasada ? 'var(--v2-hot)' : 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{fmtData(se.dataFim)}</span>}
+                  </div>
+                ) })}
+              </div>
+            ) })()}
             <p style={lbl}>Entregas desta etapa</p>
             <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="var(--v2-ok)" />
           </div>
@@ -385,6 +427,12 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
     dataFim: marco?.dataFim ? marco.dataFim.split('T')[0] : '',
   })
   const [salvando, setSalvando] = useState(false)
+  // Sub-etapas do marco (prazo + KPI próprios). Vão no mesmo PUT/POST do marco.
+  const [subs, setSubs] = useState<SubEtapa[]>(marco?.subetapas || [])
+  const patchSub = (id: string, patch: Partial<SubEtapa>) => setSubs(a => a.map(x => x.id === id ? { ...x, ...patch } : x))
+  const moverSub = (i: number, d: number) => setSubs(a => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; const [x] = c.splice(i, 1); c.splice(j, 0, x); return c })
+  const pgSubs = progressoMarco(subs)
+  const sugerido = statusSugerido(form.status, subs)
   const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
   useEffect(() => {
     if (!marco?.clienteId) return
@@ -394,7 +442,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   async function salvar() {
     setSalvando(true)
     const cli = clientes.find(c => c.id === form.clienteId)
-    const body = { ...form, clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
+    const body = { ...form, subetapas: subs.filter(x => x.titulo.trim()), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
     if (marco) {
       await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) })
     } else {
@@ -460,6 +508,44 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsável"
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
+        </div>
+
+        {/* SUB-ETAPAS: passos dentro do marco, cada um com prazo e KPI próprios (dono, 07/09).
+            Contam no progresso (n/m na barra do Gantt), no prazo efetivo e nos KPIs — tudo no mesmo marco. */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Etapas deste marco</h4>
+            {pgSubs.total > 0 && <span style={{ fontSize: 12, color: pgSubs.atrasadas.length ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{pgSubs.concluidas} de {pgSubs.total} concluídas{pgSubs.atrasadas.length ? ` · ${pgSubs.atrasadas.length} atrasada(s)` : ''}{pgSubs.kpis.total ? ` · KPIs ${pgSubs.kpis.atingidos}/${pgSubs.kpis.total}` : ''}{pgSubs.fimEfetivo && (!form.dataFim || pgSubs.fimEfetivo > form.dataFim) ? ` · prazo efetivo ${fmtData(pgSubs.fimEfetivo)}` : ''}</span>}
+            <button type="button" onClick={() => setSubs(a => [...a, { id: uuid(), titulo: '', status: 'pendente' }])} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>+ Etapa</button>
+          </div>
+          {subs.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma etapa dentro deste marco. Use quando o marco tem passos com prazo e KPI próprios (ex.: "Auditoria", "Setup da campanha", "Primeiros 30 dias").</p>}
+          {subs.map((se, i) => { const k = kpiPct(se); const atrasada = pgSubs.atrasadas.some(a => a.id === se.id); const inp: React.CSSProperties = { padding: '8px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--v2-surface)', color: 'var(--v2-ink)', minWidth: 0 }; return (
+            <div key={se.id} style={{ border: `1px solid ${atrasada ? 'var(--v2-hot)' : 'var(--v2-rule)'}`, borderRadius: 12, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <input value={se.titulo} onChange={e => patchSub(se.id, { titulo: e.target.value })} placeholder="Etapa (ex.: Auditoria dos perfis)" style={{ ...inp, flex: 1 }} aria-label="Título da etapa" />
+                <select value={se.status} onChange={e => patchSub(se.id, { status: e.target.value as SubEtapa['status'] })} style={{ ...inp, width: 140, flexShrink: 0 }} aria-label="Status da etapa">
+                  {SUBETAPA_STATUS.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
+                </select>
+                <button type="button" title="Subir" onClick={() => moverSub(i, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === 0 ? 0.35 : 1, flexShrink: 0 }}>↑</button>
+                <button type="button" title="Descer" onClick={() => moverSub(i, 1)} disabled={i === subs.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === subs.length - 1 ? 0.35 : 1, flexShrink: 0 }}>↓</button>
+                <button type="button" title="Remover etapa" onClick={() => setSubs(a => a.filter(x => x.id !== se.id))} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-hot)', cursor: 'pointer', flexShrink: 0 }}>×</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--v2-ink3)' }}>Início<input type="date" value={se.dataInicio || ''} onChange={e => patchSub(se.id, { dataInicio: e.target.value || undefined })} style={{ ...inp, width: 140 }} /></label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: atrasada ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>Prazo<input type="date" value={se.dataFim || ''} onChange={e => patchSub(se.id, { dataFim: e.target.value || undefined })} style={{ ...inp, width: 140, borderColor: atrasada ? 'var(--v2-hot)' : undefined }} /></label>
+                <input value={se.kpi || ''} onChange={e => patchSub(se.id, { kpi: e.target.value })} placeholder="KPI (ex.: Leads)" style={{ ...inp, width: 150 }} aria-label="Nome do KPI" />
+                <input type="number" value={se.kpiMeta ?? ''} onChange={e => patchSub(se.id, { kpiMeta: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="Meta" style={{ ...inp, width: 90 }} aria-label="Meta do KPI" />
+                <input type="number" value={se.kpiAtual ?? ''} onChange={e => patchSub(se.id, { kpiAtual: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="Atual" style={{ ...inp, width: 90 }} aria-label="Valor atual do KPI" />
+                {k !== null && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: k >= 100 ? 'var(--v2-ok)' : 'var(--v2-ink3)' }}><span style={{ width: 70, height: 5, background: 'var(--v2-surface2)', borderRadius: 999, overflow: 'hidden', display: 'inline-block' }}><span style={{ display: 'block', width: `${k}%`, height: '100%', background: k >= 100 ? 'var(--v2-ok)' : 'var(--v2-amber-on)' }} /></span>{k}%</span>}
+              </div>
+            </div>
+          ) })}
+          {subs.length > 0 && sugerido !== form.status && (
+            <button type="button" onClick={() => setForm(f => ({ ...f, status: sugerido as any }))} style={{ marginTop: 4, padding: '8px 12px', background: 'var(--v2-amber-bg)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber)', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Pelas etapas, o marco está "{STATUS_LABEL[sugerido] || sugerido}" — aplicar ao status
+            </button>
+          )}
         </div>
 
         {/* Entregas vinculadas a esta etapa */}
