@@ -52,23 +52,40 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // posts e tarefas que já existem — nada digitado, nada gravado.
   const [bola, setBola] = useState<BolaDaVez | null>(null)
   const [periodo, setPeriodo] = useState('mensal')
-  // ZOOM PELO SCROLL (dono, 07/09): rodar o mouse sobre a linha do tempo aproxima (para cima:
-  // semanal) ou afasta (para baixo: anual), um degrau por gesto. Listener nativo com
-  // passive:false — o onWheel do React é passivo e não conseguiria segurar a rolagem da página.
+  // Janela CONTÍNUA em dias (zoom livre): os botões de período são atalhos para escalas fixas.
+  const [dias, setDias] = useState(30)
+  const diasRef = useRef(dias); diasRef.current = dias
+  // ZOOM LIVRE PELO SCROLL (dono, 07/09: "zoom in e zoom out livre com scroll do mouse"):
+  // cada notch multiplica a janela por um fator suave (para cima aproxima, para baixo
+  // afasta), entre 3 dias e 2 anos, e a DATA SOB O CURSOR fica parada — como num mapa.
+  // Pinça no trackpad chega como wheel com ctrlKey e cai no mesmo caminho. Listener
+  // nativo com passive:false — o onWheel do React é passivo e não seguraria a página.
   const ganttRef = useRef<HTMLDivElement>(null)
-  const periodoRef = useRef(periodo); periodoRef.current = periodo
-  const ultimoZoom = useRef(0)
   useEffect(() => {
     const el = ganttRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) < 4) return
+      if (Math.abs(e.deltaY) < 1) return
       e.preventDefault()
-      const agora = Date.now(); if (agora - ultimoZoom.current < 220) return
-      ultimoZoom.current = agora
-      const i = PERIODOS.findIndex(p => p.key === periodoRef.current)
-      const j = e.deltaY < 0 ? Math.max(0, i - 1) : Math.min(PERIODOS.length - 1, i + 1)
-      if (j !== i) setPeriodo(PERIODOS[j].key)
+      const atual = diasRef.current
+      // deltaMode 1 = linhas (Firefox); normaliza para pixels.
+      const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      const fator = Math.exp(Math.max(-300, Math.min(300, delta)) * 0.0022)
+      const novo = Math.max(3, Math.min(730, atual * fator))
+      if (Math.abs(novo - atual) < 0.01) return
+      // Âncora: a data sob o ponteiro não se move.
+      const r = el.getBoundingClientRect()
+      const frac = r.width > 0 ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0
+      const ms = 24 * 60 * 60 * 1000
+      setDias(novo)
+      setRefDate(d => {
+        const ini = new Date(d); ini.setHours(0, 0, 0, 0)
+        const dataSobCursor = ini.getTime() + frac * atual * ms
+        return new Date(dataSobCursor - frac * novo * ms)
+      })
+      // Destaque do botão acompanha a escala mais próxima.
+      const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / novo)) < Math.abs(Math.log(a.dias / novo)) ? b : a)
+      setPeriodo(perto.key)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -124,16 +141,15 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
   useEffect(() => { carregar() }, [clienteAtivo])
 
-  const periodoAtual = PERIODOS.find(p => p.key === periodo) || PERIODOS[1]
   const inicio = new Date(refDate)
   inicio.setHours(0, 0, 0, 0)
-  const fim = new Date(inicio.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000)
+  const fim = new Date(inicio.getTime() + dias * 24 * 60 * 60 * 1000)
 
   // Agrupa marcos do cliente ativo (nunca generico)
   const clientesComMarcos = clienteAtivo ? clientes.filter(c => c.id === clienteAtivo).filter(c => marcos.some(m => m.clienteId === c.id)) : []
   const clientesSemMarcos = clienteAtivo ? clientes.filter(c => c.id === clienteAtivo).filter(c => !marcos.some(m => m.clienteId === c.id)) : []
 
-  const totalDias = periodoAtual.dias
+  const totalDias = dias
   function posicaoPct(data: string): number {
     const d = new Date(data).getTime()
     const i = inicio.getTime()
@@ -147,7 +163,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
   // Gera labels de datas no eixo
   const labels: { pct: number; txt: string }[] = []
-  const step = periodo === 'semanal' ? 1 : periodo === 'mensal' ? 7 : periodo === 'trimestral' ? 15 : periodo === 'semestral' ? 30 : 60
+  const step = dias <= 12 ? 1 : dias <= 45 ? 7 : dias <= 120 ? 15 : dias <= 240 ? 30 : 60
   for (let d = 0; d <= totalDias; d += step) {
     const dt = new Date(inicio.getTime() + d * 24 * 60 * 60 * 1000)
     labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) })
@@ -159,7 +175,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Playbook</h2>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {PERIODOS.map(p => (
-            <button key={p.key} onClick={() => setPeriodo(p.key)} style={{
+            <button key={p.key} onClick={() => { setPeriodo(p.key); setDias(p.dias) }} style={{
               padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
               background: periodo === p.key ? 'var(--v2-surface)' : 'transparent', color: periodo === p.key ? 'var(--v2-ink)' : 'var(--v2-ink3)',
               boxShadow: periodo === p.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
@@ -174,9 +190,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         )}
         {clienteAtivo && <>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setRefDate(d => new Date(d.getTime() - periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
-            <button onClick={() => setRefDate(d => new Date(d.getTime() + periodoAtual.dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
+            <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
@@ -241,7 +257,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       </div>
 
       {/* Timeline — scroll do mouse aqui = zoom (semanal … anual) */}
-      <div ref={ganttRef} title="Role o mouse aqui para aproximar ou afastar a linha do tempo" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div ref={ganttRef} title="Scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
         <div style={{ position: 'relative', height: 28, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
           {labels.map((l, i) => (
