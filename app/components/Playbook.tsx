@@ -11,6 +11,7 @@ import AplicarModal, { type Template } from './AplicarModelo'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
 import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, colunasFimDeSemana, type TipoArraste } from '@/lib/ganttArraste'
+import { ordenarPorDuracao, progressoTempo, textoTempo, progressoTarefas, pctConclusaoEtapa, pctConclusaoMarco } from '@/lib/progressoGantt'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
@@ -161,13 +162,36 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const [squadPapeis, setSquadPapeis] = useState<SquadPapeis | undefined>(undefined)
   const [tarefaAberta, setTarefaAberta] = useState<TarefaLeve | null>(null)
   const [novaTarefaPara, setNovaTarefaPara] = useState<Marco | null>(null)
+  const [novaTarefaEtapa, setNovaTarefaEtapa] = useState('') // etapa do marco em que a tarefa nasce
   const tarefasDoMarco = (id: string) => tarefas.filter(t => t.marcoId === id && !t.excluidoEm)
+  const tarefasDaEtapa = (marcoId: string, subId: string) => tarefas.filter(t => t.marcoId === marcoId && t.subetapaId === subId && !t.excluidoEm)
+  // ORDEM DO GANTT (dono, 08/09): "trabalhos mais longos para cima". Vale para marcos e para
+  // as etapas dentro do marco; empate mantém a ordem cronológica (lib/progressoGantt).
+  const etapasOrdenadas = (m: Marco) => ordenarPorDuracao(m.subetapas || [], se => { const per = periodoDaEtapa(m, se); return { ini: per.ini, fim: per.fim } })
+  // Tarefas do marco agrupadas POR ETAPA (dono: "mostrar a tarefa dentro de cada etapa").
+  const gruposDeTarefas = (m: Marco) => {
+    const lista = tarefasDoMarco(m.id)
+    const subs = m.subetapas || []
+    const grupos: { id: string; titulo?: string; itens: TarefaLeve[] }[] = []
+    for (const se of etapasOrdenadas(m)) {
+      const itens = lista.filter(t => t.subetapaId === se.id)
+      if (itens.length) grupos.push({ id: se.id, titulo: se.titulo, itens })
+    }
+    const soltas = lista.filter(t => !t.subetapaId || !subs.some(x => x.id === t.subetapaId))
+    if (soltas.length) grupos.push({ id: '', titulo: grupos.length ? 'Sem etapa' : undefined, itens: soltas })
+    return grupos
+  }
+  const alturaPainel = (m: Marco) => {
+    const g = gruposDeTarefas(m)
+    const linhas = g.reduce((a, x) => a + x.itens.length, 0)
+    const cabecalhos = g.filter(x => x.titulo).length
+    return 30 + 20 * cabecalhos + 26 * Math.max(1, linhas)
+  }
   function carregarTarefas() {
     if (somenteLeitura) return
     fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
   }
-  const alturaTarefas = (n: number) => 30 + 26 * Math.max(1, n)
-  const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return H_MARCO + (nv >= 1 ? H_SUB * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaTarefas(tarefasDoMarco(m.id).length) : 0) }
+  const alturaMarco = (m: Marco) => { const nv = nivelDe(m.id); return H_MARCO + (nv >= 1 ? H_SUB * (m.subetapas?.length || 0) : 0) + (nv >= 2 ? alturaPainel(m) : 0) }
   // ARRASTAR BARRAS = AJUSTAR PRAZOS (dono, 08/09: "ajustar prazos arrastando a barra para a
   // direita ou esquerda"). Corpo da barra move (marco leva as etapas junto); as pontas mudam
   // início/fim. Dias inteiros, prévia ao vivo sem gravar, grava ao soltar (regra em
@@ -178,14 +202,19 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const ignorarClique = useRef(false)
   function comecarArraste(e: React.PointerEvent, tipo: TipoArraste, marcoId: string, subId?: string) {
     if (!editavel || e.button !== 0) return
+    // Clique num BOTAO dentro da barra (recolher etapas, ver tarefas) nunca vira arraste
+    // — e a captura do ponteiro só começa depois que o dedo/mouse anda de verdade: com a
+    // captura ligada no pointerdown, o Chrome entrega o clique ao elemento capturador e o
+    // chevron parava de funcionar (dono, 08/09: "a seta de RECOLHER não está mais funcionando").
+    if ((e.target as HTMLElement)?.closest?.('button')) return
     e.stopPropagation()
-    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
     arrasteRef.current = { tipo, marcoId, subId, x0: e.clientX, dias: 0, moveu: false }
   }
   function moverArraste(e: React.PointerEvent) {
     const a = arrasteRef.current; if (!a) return
     const dx = e.clientX - a.x0
     if (!a.moveu && Math.abs(dx) < 4) return
+    if (!a.moveu) { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {} }
     a.moveu = true
     const largura = ganttEl ? ganttEl.getBoundingClientRect().width : 0
     const d = pxParaDias(dx, largura / diasRef.current)
@@ -468,7 +497,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         )}
 
         {clientesComMarcos.map(c => {
-          const marcosCliente = marcos.filter(m => m.clienteId === c.id)
+          const marcosCliente = ordenarPorDuracao(marcos.filter(m => m.clienteId === c.id), m => ({ ini: m.dataInicio, fim: fimEfetivoDoMarco(m, m.subetapas) || m.dataFim }))
           return (
             <div key={c.id} style={{ borderBottom: '1px solid var(--v2-surface1)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--v2-surface1)' }}>
@@ -494,12 +523,17 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     const pg = progressoMarco(m.subetapas)
                     const fimEf = fimEfetivoDoMarco(m, m.subetapas)
                     const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
-                    const subs = m.subetapas || []
+                    // Ordem estável durante o arraste: quem manda é o marco gravado (m0), não a prévia.
+                    const ordemIds = etapasOrdenadas(m0).map(x => x.id)
+                    const subs = (m.subetapas || []).slice().sort((a, b) => ordemIds.indexOf(a.id) - ordemIds.indexOf(b.id))
+                    const tarefasM = tarefasDoMarco(m.id)
+                    const tarM = progressoTarefas(tarefasM)
+                    const pctM = pctConclusaoMarco(m, id => tarefasDaEtapa(m.id, id), tarefasM)
                     const nivel = nivelDe(m.id)
                     const aberto = subs.length > 0 && nivel >= 1
-                    const tarefasM = tarefasDoMarco(m.id)
                     const mostraTarefas = nivel >= 2 && !somenteLeitura
                     const altura = alturaMarco(m)
+                    const tmpM = progressoTempo(m.dataInicio, fimEf || m.dataFim, Date.now())
                     const topMarco = topo
                     topo += altura
                     return (
@@ -507,11 +541,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                         <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
-                            background: corDoMarco(m), borderRadius: 6, cursor: editavel ? (arrastando(m.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
+                            background: 'transparent', borderRadius: 6, cursor: editavel ? (arrastando(m.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
                             border: m.status === 'atrasado' ? '2px solid var(--v2-hot)' : 'none',
                           }}>
-                          {pg.total > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pg.pct}%`, background: 'rgba(255,255,255,0.28)', borderRadius: 6, pointerEvents: 'none' }} />}
+                          {/* Barra inteira em tom mais claro + CONCLUSÃO na cor cheia (dono, 08/09) */}
+                          <div aria-hidden style={{ position: 'absolute', inset: 0, background: corDoMarco(m), opacity: 0.5, borderRadius: 6, pointerEvents: 'none' }} />
+                          {pctM > 0 && <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pctM}%`, background: corDoMarco(m), borderRadius: 6, pointerEvents: 'none' }} />}
                           {alcas(m.id)}
                           {arrastando(m.id) && etiquetaPrevia(m.dataInicio, fimEf || m.dataFim)}
                           {subs.length > 0 && (
@@ -520,14 +556,24 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
                             </button>
                           )}
-                          <span style={{ position: 'relative', fontSize: F_MARCO, fontWeight: 700, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
+                          <span style={{ position: 'relative', fontSize: F_MARCO, fontWeight: 700, color: 'var(--v2-surface)', textShadow: '0 1px 2px rgba(0,0,0,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
                           {!somenteLeitura && (
                             <button type="button" onClick={e => { e.stopPropagation(); alternarTarefas(m.id) }} title={mostraTarefas ? 'Esconder as tarefas deste marco' : `Ver as tarefas deste marco (${tarefasM.length})`} aria-label={mostraTarefas ? 'Esconder as tarefas do marco' : 'Ver as tarefas do marco'}
                               style={{ position: 'relative', marginLeft: 8, height: 18, padding: '0 6px', borderRadius: 5, border: 0, background: mostraTarefas ? 'var(--v2-surface)' : 'rgba(0,0,0,0.22)', color: mostraTarefas ? corDoMarco(m) : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 9.5, fontWeight: 800 }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>{tarefasM.length}
                             </button>
                           )}
-                          {pg.total > 0 && <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: 'var(--v2-surface)', background: pg.atrasadas.length ? 'var(--v2-hot)' : 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{pg.concluidas}/{pg.total}</span>}
+                          {/* CONCLUSÃO e TEMPO (dono, 08/09): tarefas feitas, % e quanto falta do prazo */}
+                          <span style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, color: 'var(--v2-surface)', background: 'rgba(0,0,0,0.3)', borderRadius: 999, padding: '1px 8px' }}>
+                            {width >= 20 && <span style={{ fontSize: 9.5, fontWeight: 700, opacity: 0.95, whiteSpace: 'nowrap' }}>{textoTempo(tmpM)}</span>}
+                            {tarM.total > 0 && width >= 10 && (
+                              <span title={`${tarM.feitas} de ${tarM.total} tarefas concluídas`} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{tarM.feitas}/{tarM.total}
+                              </span>
+                            )}
+                            {pg.total > 0 && width >= 8 && <span title={`${pg.concluidas} de ${pg.total} etapas concluídas`} style={{ fontSize: 10, fontWeight: 800, color: pg.atrasadas.length ? 'var(--v2-hot)' : 'inherit' }}>{pg.concluidas}/{pg.total}</span>}
+                            <span title="Conclusão" style={{ fontSize: 10, fontWeight: 900 }}>{pctM}%</span>
+                          </span>
                         </div>
                         {/* SUB-ETAPAS como linhas próprias, cada uma no seu período (simultâneas ao marco) */}
                         {aberto && subs.map((se, j) => {
@@ -538,40 +584,64 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           const atrasada = pg.atrasadas.some(a => a.id === se.id)
                           const corStatus = se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'
                           const k = kpiPct(se)
+                          const tarE = tarefasDaEtapa(m.id, se.id)
+                          const tarSE = progressoTarefas(tarE)
+                          const pctE = pctConclusaoEtapa(se, tarE)
+                          const tmpE = progressoTempo(ini, fim, Date.now())
+                          const corE = se.cor || corDoMarco(m)
                           return (
                             <div key={se.id} onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id, se.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste}
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
                                 position: 'absolute', top: topMarco + H_MARCO + j * H_SUB, left: `${l}%`, width: `${w}%`, height: H_SUBBARRA, minWidth: 22,
-                                background: se.cor || corDoMarco(m), opacity: se.status === 'concluido' ? 0.45 : arrastando(m.id, se.id) ? 1 : 0.7, borderRadius: 5, cursor: editavel ? (arrastando(m.id, se.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
+                                background: 'transparent', opacity: se.status === 'concluido' ? 0.6 : 1, borderRadius: 5, cursor: editavel ? (arrastando(m.id, se.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                                 borderLeft: `4px solid ${corStatus}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 7px', boxSizing: 'border-box',
                               }}>
-                              {k !== null && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${k}%`, background: 'rgba(255,255,255,0.22)', pointerEvents: 'none' }} />}
+                              <span aria-hidden style={{ position: 'absolute', inset: 0, background: corE, opacity: 0.5, borderRadius: 4, pointerEvents: 'none' }} />
+                              {pctE > 0 && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pctE}%`, background: corE, opacity: 0.92, borderRadius: 4, pointerEvents: 'none' }} />}
                               {alcas(m.id, se.id)}
                               {arrastando(m.id, se.id) && etiquetaPrevia(ini, fim)}
-                              <span style={{ position: 'relative', fontSize: F_SUB, fontWeight: 600, color: 'var(--v2-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
-                              {se.kpi && se.kpiMeta ? <span style={{ position: 'relative', marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: 'var(--v2-surface)', whiteSpace: 'nowrap', flexShrink: 0 }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
+                              <span style={{ position: 'relative', fontSize: F_SUB, fontWeight: 600, color: 'var(--v2-surface)', textShadow: '0 1px 2px rgba(0,0,0,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: se.status === 'concluido' ? 'line-through' : 'none' }}>{se.titulo}</span>
+                              <span style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, color: 'var(--v2-surface)', background: 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '0 6px' }}>
+                                {w >= 18 && <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.95, whiteSpace: 'nowrap' }}>{textoTempo(tmpE)}</span>}
+                                {tarSE.total > 0 && w >= 8 && (
+                                  <span title={`${tarSE.feitas} de ${tarSE.total} tarefas desta etapa concluídas`} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{tarSE.feitas}/{tarSE.total}
+                                  </span>
+                                )}
+                                {se.kpi && se.kpiMeta && w >= 12 ? <span title={se.kpi} style={{ fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap' }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
+                                <span title="Conclusão" style={{ fontSize: 9, fontWeight: 900 }}>{pctE}%</span>
+                              </span>
                             </div>
                           )
                         })}
                         {/* TAREFAS DO MARCO (nivel 2): abrir qualquer uma, ou criar ja com cliente + marco + responsavel do squad */}
                         {mostraTarefas && (
-                          <div style={{ position: 'absolute', top: topMarco + H_MARCO + (aberto ? H_SUB * subs.length : 0), left: 0, right: 0, height: alturaTarefas(tarefasM.length), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
+                          <div style={{ position: 'absolute', top: topMarco + H_MARCO + (aberto ? H_SUB * subs.length : 0), left: 0, right: 0, height: alturaPainel(m), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 22 }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Tarefas · {tarefasM.length}</span>
-                              {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Tarefa</button>}
+                              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Tarefas · {tarM.feitas}/{tarM.total} concluídas</span>
+                              {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Tarefa</button>}
                             </div>
                             {tarefasM.length === 0 && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: '26px' }}>Nenhuma tarefa neste marco.</p>}
-                            {tarefasM.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
+                            {gruposDeTarefas(m).map(g => (<div key={g.id || 'sem-etapa'}>
+                            {g.titulo && (() => { const pt = progressoTarefas(g.itens); return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 20 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 2, background: (m.subetapas || []).find(x => x.id === g.id)?.cor || corDoMarco(m), flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titulo}</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{pt.feitas}/{pt.total} · {pt.pct}%</span>
+                                {editavel && g.id && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(g.id); setNovaTarefaPara(m) }} title={`Nova tarefa nesta etapa (${g.titulo})`} style={{ marginLeft: 'auto', background: 'none', border: 0, color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>+ Tarefa</button>}
+                              </div>
+                            ) })()}
+                            {g.itens.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
                               <button key={t.id} type="button" onClick={e => { e.stopPropagation(); setTarefaAberta(t) }} title="Abrir a tarefa" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 26, background: 'none', border: 0, borderBottom: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
                                 <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
                                 <span style={{ flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
-                                {t.subetapaId && subs.some(x => x.id === t.subetapaId) && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }} title="Etapa do marco">› {subs.find(x => x.id === t.subetapaId)!.titulo}</span>}
                                 <span style={{ fontSize: 10.5, color: st.cor, whiteSpace: 'nowrap' }}>{st.label}</span>
                                 {t.responsavelNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{t.responsavelNome.split(' ')[0]}</span>}
                                 {t.prazo && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{fmtData(t.prazo)}</span>}
                               </button>
                             ) })}
+                            </div>))}
                           </div>
                         )}
                       </div>
@@ -592,7 +662,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         })}
       </div>
       {editavel && clientesComMarcos.length > 0 && (
-        <p style={{ margin: '8px 2px 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Arraste a barra para mover o prazo · puxe as pontas para mudar início e fim · Ctrl + scroll aproxima e afasta · alça no rodapé amplia · &quot;Ajustar&quot; mostra tudo</p>
+        <p style={{ margin: '8px 2px 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Os trabalhos mais longos ficam em cima · a parte cheia da barra é a conclusão (tarefas feitas) · arraste a barra para mover o prazo, puxe as pontas para mudar início e fim · Ctrl + scroll aproxima e afasta · alça no rodapé amplia · &quot;Ajustar&quot; mostra tudo</p>
       )}
       </>}
 
@@ -613,8 +683,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           com o cliente e o marco preenchidos e o responsavel do squad pelo tipo (lib/responsavelPorTipo). */}
       {(tarefaAberta || novaTarefaPara) && (
         <TarefaModal
-          key={tarefaAberta?.id || `nova-${novaTarefaPara?.id}`}
-          tarefa={(tarefaAberta || { clienteId: novaTarefaPara!.clienteId, clienteNome: novaTarefaPara!.clienteNome, marcoId: novaTarefaPara!.id, tipo: 'tarefa', status: 'a_fazer', prioridade: 'media' }) as any}
+          key={tarefaAberta?.id || `nova-${novaTarefaPara?.id}-${novaTarefaEtapa}`}
+          tarefa={(tarefaAberta || { clienteId: novaTarefaPara!.clienteId, clienteNome: novaTarefaPara!.clienteNome, marcoId: novaTarefaPara!.id, subetapaId: novaTarefaEtapa || undefined, tipo: 'tarefa', status: 'a_fazer', prioridade: 'media' }) as any}
           clientes={clientes as any}
           usuarios={usuarios as any}
           responsavelPorTipo={tipo => responsavelPorTipo(squadPapeis, tipo)}
