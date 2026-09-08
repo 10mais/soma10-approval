@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deslocarData, diasEntre, pxParaDias, aplicarArraste, janelaParaCaber, rotulosMeses, colunasFimDeSemana, rotuloPeriodo, MS_DIA } from '@/lib/ganttArraste'
+import { deslocarData, diasEntre, pxParaDias, aplicarArraste, janelaParaCaber, rotulosMeses, rotuloPeriodo, MS_DIA } from '@/lib/ganttArraste'
 
 const marco = {
   dataInicio: '2026-09-08T00:00:00.000Z', dataFim: '2026-09-30T00:00:00.000Z',
@@ -64,16 +64,12 @@ describe('ganttArraste — mover e redimensionar barras em dias inteiros', () =>
     expect(janelaParaCaber([]).dias).toBe(30)
   })
 
-  it('eixo: meses, fins de semana e rótulo do período', () => {
+  it('eixo: meses e rótulo do período', () => {
     const ini = new Date(2026, 8, 20).getTime() // 20/09/2026 (domingo)
     const meses = rotulosMeses(ini, 30)
     expect(meses.map(m => m.txt)).toEqual(['set/2026', 'out/2026'])
     expect(meses[0].pct).toBe(0)
     expect(meses[1].pct).toBeCloseTo((11 / 30) * 100, 5)
-    const fds = colunasFimDeSemana(ini, 14)
-    expect(fds.map(f => Math.round(f.pct))).toEqual([Math.round((6 / 14) * 100), Math.round((13 / 14) * 100)])
-    expect(fds[1].larguraPct).toBeCloseTo((1 / 14) * 100, 5)
-    expect(colunasFimDeSemana(ini, 200)).toEqual([])
     expect(rotuloPeriodo('2026-09-08', '2026-10-01T00:00:00.000Z')).toBe('08/09 – 01/10')
     expect(rotuloPeriodo('2026-09-08', '2026-09-08')).toBe('08/09')
   })

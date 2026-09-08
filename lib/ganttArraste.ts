@@ -1,7 +1,8 @@
 // GANTT do Playbook — regras puras de ARRASTAR barras (dono, 08/09/2026: "ajustar
 // prazos arrastando a barra para a direita ou esquerda, ajustando automaticamente
-// os prazos definidos") e do desenho de um Gantt completo (meses no eixo, fins de
-// semana, "ajustar à visão").
+// os prazos definidos") e do desenho de um Gantt completo (meses no eixo,
+// "ajustar à visão"). As faixas de fim de semana existiram e SAÍRAM em 08/09:
+// o dono não quis as listras de dia atrás das barras.
 //
 // Tudo em DIAS INTEIROS: o arraste em pixels vira dias (arredondado) e as datas
 // andam sem mexer na hora. Formatos preservados: o marco grava ISO completo
@@ -138,18 +139,6 @@ export function rotulosMeses(inicioMs: number, dias: number): { pct: number; txt
     const pct = Math.max(0, ((cursor - inicioMs) / (dias * MS_DIA)) * 100)
     out.push({ pct, txt: `${dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}/${dt.getFullYear()}` })
     cursor = new Date(dt.getFullYear(), dt.getMonth() + 1, 1).getTime()
-  }
-  return out
-}
-
-// Faixas de fim de semana (sáb+dom) em % da janela; só vale a pena até ~3 meses.
-export function colunasFimDeSemana(inicioMs: number, dias: number): { pct: number; larguraPct: number }[] {
-  if (dias > 92) return []
-  const out: { pct: number; larguraPct: number }[] = []
-  for (let i = 0; i < dias; i++) {
-    const dt = new Date(inicioMs + i * MS_DIA)
-    if (dt.getDay() !== 6) continue
-    out.push({ pct: (i / dias) * 100, larguraPct: (Math.min(2, dias - i) / dias) * 100 })
   }
   return out
 }

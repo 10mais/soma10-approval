@@ -10,7 +10,7 @@ import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 import AplicarModal, { type Template } from './AplicarModelo'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
-import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, colunasFimDeSemana, type TipoArraste } from '@/lib/ganttArraste'
+import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, type TipoArraste } from '@/lib/ganttArraste'
 import { ordenarPorDuracao, progressoTempo, textoTempo, progressoTarefas, pctConclusaoEtapa, pctConclusaoMarco } from '@/lib/progressoGantt'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
@@ -364,7 +364,6 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
   // Gera labels de datas no eixo
   const meses = rotulosMeses(inicio.getTime(), dias)
-  const fds = colunasFimDeSemana(inicio.getTime(), dias)
   const labels: { pct: number; txt: string }[] = []
   const step = dias <= 12 ? 1 : dias <= 45 ? 7 : dias <= 120 ? 15 : dias <= 240 ? 30 : 60
   for (let d = 0; d <= totalDias; d += step) {
@@ -464,7 +463,6 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       <div ref={setGanttEl} title="Ctrl + scroll do mouse (ou pinça no trackpad) aproxima e afasta a linha do tempo; a data sob o cursor fica parada" style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
         {/* Eixo de datas */}
         <div style={{ position: 'relative', height: 40, borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
-          {fds.map((f, i) => <div key={'f' + i} aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: `${f.pct}%`, width: `${f.larguraPct}%`, background: 'var(--v2-ink)', opacity: 0.045, pointerEvents: 'none' }} />)}
           {meses.map((l, i) => (
             <span key={'m' + i} style={{ position: 'absolute', left: `${l.pct}%`, top: 3, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--v2-ink2)', paddingLeft: 6, borderLeft: l.pct > 0 ? '1px solid var(--v2-rule2)' : 'none', lineHeight: '14px', whiteSpace: 'nowrap' }}>{l.txt}</span>
           ))}
@@ -508,7 +506,6 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{marcosCliente.length} marco(s)</span>
               </div>
               <div style={{ position: 'relative', minHeight: (marcosCliente.reduce((h, m) => h + alturaMarco(m), 0) + 4) || 36, padding: '4px 0' }}>
-                {fds.map((f, i) => <div key={'f' + i} aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: `${f.pct}%`, width: `${f.larguraPct}%`, background: 'var(--v2-ink)', opacity: 0.035, pointerEvents: 'none' }} />)}
                 {/* Linha de hoje */}
                 {(() => {
                   const hojePct = posicaoPct(new Date().toISOString())
