@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { labelFormato, seloFormato } from '@/lib/formatoPost'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
@@ -63,6 +64,22 @@ export default function AprovacoesPublicas() {
     setDados(d)
   }
   useEffect(() => { carregar() }, [token])
+
+  // ATUALIZA SOZINHO (dono, 09/09: "priorize e atualize automaticamente quando for alterado
+  // no Studio"). O que a equipe muda no Studio — formato, legenda, arte, novos materiais —
+  // aparece aqui sem o cliente precisar recarregar: relê ao voltar para a aba e a cada 2 min
+  // com a aba visível. Nada de polling em aba escondida, para não gastar bateria à toa.
+  useEffect(() => {
+    const aoVoltar = () => { if (document.visibilityState === 'visible') carregar() }
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', aoVoltar)
+    const t = setInterval(aoVoltar, 120000)
+    return () => {
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', aoVoltar)
+      clearInterval(t)
+    }
+  }, [token])
 
   // Decidiu: some da fila na hora (otimista) e recarrega em fundo — o material
   // aprovado REAPARECE na programação em cascata do painel.
@@ -149,7 +166,6 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const porDia = itens.reduce((acc: Record<string, ProgItem[]>, it) => { const k = ymd(new Date(it.dataAgendada)); (acc[k] = acc[k] || []).push(it); return acc }, {})
   const STATUS_ROTULO: Record<string, [string, string, string]> = { agendado: ['Agendado', '#166534', '#dcfce7'], publicando: ['Publicando', '#1d4ed8', '#eff6ff'], publicado: ['Publicado', '#475569', '#f1f5f9'] }
-  const FORMATO: Record<string, string> = { feed: 'Feed', reel: 'Reel', story: 'Story' }
 
   const Linha = ({ it, destaque }: { it: ProgItem; destaque?: boolean }) => {
     const [rot, cor, bg] = STATUS_ROTULO[it.status] || STATUS_ROTULO.agendado
@@ -164,7 +180,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>
             {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
-            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {FORMATO[it.formato] || it.formato}</span>
+            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {labelFormato(it.formato)}</span>
           </p>
           {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
           <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
@@ -254,7 +270,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
               <div style={{ padding: '12px 16px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{FORMATO[preview.formato] || preview.formato}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{labelFormato(preview.formato)}</span>
                   <span style={{ fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
                   <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
@@ -373,8 +389,8 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{handle}</span>
         {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>}
-        {post.formato && post.formato !== 'feed' && (
-          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{post.formato === 'reel' ? 'Reel' : 'Story'}</span>
+        {seloFormato(post.formato) && (
+          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{seloFormato(post.formato)}</span>
         )}
       </div>
 
@@ -585,7 +601,6 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
   const emAjuste = st.status === 'corrigir'
   const laminas = (post.laminas || []).filter(l => (l.texto || '').trim())
   const capa = (post.imagens || []).find(u => !ehVideoUrl(u)) || (post.capasVideo || {})[(post.imagens || [])[0] || ''] || ''
-  const FORMATO: Record<string, string> = { feed: 'Feed', reel: 'Reel', story: 'Story', carrossel: 'Carrossel' }
   const mudouAlgo = campos.headline !== st.headline || campos.subheadline !== st.subheadline || campos.textoImagem !== st.textoImagem || campos.cta !== st.cta || campos.legenda !== st.legenda
 
   function abrirAjuste() {
@@ -622,7 +637,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
       {/* Col 1 — IMAGEM */}
       <div>
         <span className="copy-cell-label">Imagem</span>
-        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {FORMATO[post.formato || 'feed'] || post.formato}</p>
+        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {labelFormato(post.formato)}</p>
         {capa
           ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface2)' }} />
           : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>

@@ -1,6 +1,7 @@
 'use client'
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
+import { FORMATOS as FORMATOS_LIB } from '@/lib/formatoPost'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -48,13 +49,8 @@ const TEMPLATES_ART: { key: string; label: string }[] = [
 ]
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-const FORMATOS = [
-  { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
-  { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
-  { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
-  { key: 'story', label: 'Story', cor: '#7c3aed' },
-  { key: 'grafico', label: 'Material Gráfico', cor: '#059669' },
-]
+// A lista vive em lib/formatoPost: o link do cliente mostra o MESMO rótulo (dono, 09/09).
+const FORMATOS = FORMATOS_LIB.map(f => ({ key: f.chave, label: f.label, cor: f.cor }))
 
 // Estado da linha e a ação natural seguinte (o "próximo passo" de cada pauta).
 function estadoStudio(p: Pauta): { label: string; cor: string; bg: string } {

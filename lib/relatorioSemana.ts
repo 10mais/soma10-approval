@@ -8,6 +8,7 @@
 // regras de classificação, que são o que pode errar.
 
 import { esperandoCliente } from './bolaDaVez'
+import { labelFormato } from './formatoPost'
 import { resumoProducao } from './producaoVinculo'
 
 export type PostRel = {
@@ -81,7 +82,6 @@ export type Relatorio = {
 }
 
 const DIA = 86400000
-const FORMATO_LABEL: Record<string, string> = { feed: 'Feed', reel: 'Reel', story: 'Story', carrossel: 'Carrossel', grafico: 'Material gráfico' }
 const ETAPA_LABEL: Record<string, string> = { briefing: 'Briefing', copy: 'Copy em produção', aprovacao_copy: 'Copy em aprovação', criativo: 'Criativo em produção', aprovacao_criativo: 'Criativo em aprovação', pronto: 'Pronto' }
 const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
 
@@ -125,7 +125,7 @@ export function tituloDoPost(p: PostRel): string {
 }
 
 function detalhePost(p: PostRel): string {
-  const partes = [FORMATO_LABEL[p.formato || ''] || '']
+  const partes = [p.formato ? labelFormato(p.formato) : '']
   if (p.redesPublicadas?.length) partes.push(p.redesPublicadas.map(r => r === 'instagram' ? 'Instagram' : r === 'facebook' ? 'Facebook' : r).join(' + '))
   return partes.filter(Boolean).join(' · ')
 }
