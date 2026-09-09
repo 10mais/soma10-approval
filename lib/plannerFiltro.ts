@@ -29,3 +29,29 @@ export function apareceNoPlanner(p: PostFiltravel): boolean {
   // que aparecer: o filtro "Aguardando" da Lista depende disso.
   return !et || et === 'pronto' || et === 'aprovacao_criativo'
 }
+
+// ---------------------------------------------------------------- ORDEM DO PLANNER
+// Dono, 09/09/2026: "organize o Planner por DATA DE POSTAGEM (independente se está
+// programado ou em aprovação)". A lista ordenava por `atualizadoEm` — qualquer toque numa
+// peça a jogava para o topo, e a grade do mês virava a ordem de quem foi mexido por último.
+//
+// A data que manda é a da POSTAGEM: `dataAgendada`. Quem ainda não tem data (pauta em
+// aprovação que ninguém agendou) entra pela data de criação, para não sumir do fim da lista
+// nem fingir uma data que não existe. `atualizadoEm` NUNCA entra: é ruído de edição.
+
+export type PostComData = { dataAgendada?: string; criadoEm?: string; atualizadoEm?: string }
+
+export function dataDePostagem(p: PostComData): string {
+  return p.dataAgendada || p.criadoEm || p.atualizadoEm || ''
+}
+
+/** Mais recente primeiro (o futuro programado no topo, o histórico embaixo). */
+export function ordenarPorPostagem<T extends PostComData>(posts: T[]): T[] {
+  return [...posts].sort((a, b) => {
+    const da = dataDePostagem(a), db = dataDePostagem(b)
+    if (!da && !db) return 0
+    if (!da) return 1 // sem data nenhuma vai para o fim
+    if (!db) return -1
+    return new Date(db).getTime() - new Date(da).getTime()
+  })
+}

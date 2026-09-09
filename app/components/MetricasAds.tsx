@@ -201,7 +201,16 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
           {podeEditar && (
             <p style={{ margin: '6px 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Cadastre a conta de anúncio, depois a campanha, e lance os números do período.</p>
           )}
-          {podeEditar && <button onClick={() => setNovaCampanha(true)} style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>+ Nova campanha</button>}
+          {podeEditar && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => setContasAbertas(true)} style={{ padding: '10px 18px', background: contas.length ? 'var(--v2-surface)' : 'var(--v2-ink)', color: contas.length ? 'var(--v2-ink)' : 'var(--v2-surface)', border: contas.length ? '1px solid var(--v2-rule)' : 0, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {contas.length ? 'Contas de anúncio' : '1. Cadastrar conta de anúncio'}
+              </button>
+              <button onClick={() => setNovaCampanha(true)} style={{ padding: '10px 18px', background: contas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface)', color: contas.length ? '#17150E' : 'var(--v2-ink2)', border: contas.length ? 0 : '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {contas.length ? '+ Nova campanha' : '2. Nova campanha'}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>

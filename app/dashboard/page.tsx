@@ -8,7 +8,7 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 // A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
-import { apareceNoPlanner } from '@/lib/plannerFiltro'
+import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -2620,15 +2620,14 @@ function Dashboard() {
                 if (isNaN(d.getTime())) return ''
                 return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
               }
-              const quando = (p: any) => p.atualizadoEm || p.dataAgendada || p.criadoEm || ''
-              const filtrados = postsView
+              // ORDEM POR DATA DE POSTAGEM (dono, 09/09): o que vale é `dataAgendada`, não a
+              // hora em que alguém mexeu na peça — regra e testes em lib/plannerFiltro.
+              const filtrados = ordenarPorPostagem(postsView
                 .filter(p =>
                   (!bibBusca || p.legenda?.toLowerCase().includes(bibBusca.toLowerCase())) &&
                   (!bibCliente || p.clienteNome === bibCliente) &&
                   (!bibStatus || p.status === bibStatus)
-                )
-                // Cronológico — mais recente primeiro
-                .sort((a, b) => new Date(quando(b)).getTime() - new Date(quando(a)).getTime())
+                ) as any[])
               if (filtrados.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>

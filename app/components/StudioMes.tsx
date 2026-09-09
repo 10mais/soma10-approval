@@ -2,6 +2,7 @@
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { FORMATOS as FORMATOS_LIB } from '@/lib/formatoPost'
+import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -25,6 +26,7 @@ type Plano = { id: string; clienteId: string; clienteNome: string; mes: number; 
 type Pauta = {
   id: string; clienteId: string; clienteNome: string; imagens: string[]; legenda: string
   status: string; formato?: string; etapa?: string; briefing?: string; headline?: string; planoId?: string
+  marcoId?: string; subetapaId?: string
   sugestaoImagem?: string; textoImagem?: string; sugestaoLegenda?: string
   subheadline?: string; cta?: string; anexos?: { nome: string; url: string; tipo: string }[]
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
@@ -195,6 +197,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     if (clienteFixo) return clienteFixo
     return typeof window !== 'undefined' ? (sessionStorage.getItem(`${chaveSel}:cli`) || '') : ''
   })
+  // ETAPA DO PLAYBOOK (dono, 09/09): "quando o criativo sai do Studio e enviamos para
+  // aprovação, ele vai SEM a etapa marcada. Precisamos adicionar isso sempre, antes de
+  // enviar para aprovação e/ou programar". A peça só avança com o vínculo preenchido.
+  const [marcosCliente, setMarcosCliente] = useState<MarcoOpcao[]>([])
+  const [pedirEtapa, setPedirEtapa] = useState<{ pauta: Pauta; seguir: (p: Pauta) => void } | null>(null)
   const [planoSel, setPlanoSel] = useState<string>(() => (typeof window !== 'undefined' ? (sessionStorage.getItem(`${chaveSel}:plano`) || '') : ''))
   const [pautas, setPautas] = useState<Pauta[]>([])
   const [carregando, setCarregando] = useState(false)
@@ -365,6 +372,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       .finally(() => setCarregando(false))
   }
   useEffect(() => { carregarPautas(planoSel) }, [planoSel])
+  const clienteDasPautas = clienteFixo || pautas[0]?.clienteId || ''
+  useEffect(() => {
+    if (!clienteDasPautas) { setMarcosCliente([]); return }
+    fetch(`/api/playbook?clienteId=${clienteDasPautas}`).then(r => r.ok ? r.json() : [])
+      .then(d => setMarcosCliente(Array.isArray(d) ? d : [])).catch(() => setMarcosCliente([]))
+  }, [clienteDasPautas])
+  // Portão: sem etapa do Playbook, a peça não sai do Studio. Com etapa, segue direto.
+  function comEtapa(p: Pauta, seguir: (p: Pauta) => void) {
+    if (p.marcoId) { seguir(p); return }
+    setPedirEtapa({ pauta: p, seguir })
+  }
 
   function ordenar(lista: Pauta[]) {
     // Sem data = pauta em construção (nova linha): fica NO TOPO, a mais recente
@@ -1336,7 +1354,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         </button>
                       ) })()}
                       {podeEnviar && !semMidia && podeEditar && podeEnviarCliente && podeEnviarAoCliente(p) && (
-                        <button className="st-btn" onClick={() => enviarAoCliente(p)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
+                        <button className="st-btn" onClick={() => comEtapa(p, enviarAoCliente)} style={{ padding: '8px 15px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Enviar</button>
                       )}
                       {p.status === 'aguardando_aprovacao' && (
                         <button className="st-btn" onClick={() => copiarLink(p.clienteId, p.clienteNome)} style={{ padding: '8px 13px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 500, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Compartilhar link</button>
@@ -1625,6 +1643,14 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             </div>
                           )
                         })()}
+                        {/* Vínculo com o Playbook, visível e editável ANTES de tentar enviar */}
+                        {podeEditar && (
+                          <button className="st-btn" onClick={() => setPedirEtapa({ pauta: p, seguir: () => {} })}
+                            title={p.marcoId ? 'Trocar a etapa do Playbook desta peça' : 'Sem etapa: a peça não sai do Studio'}
+                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: p.marcoId ? 'var(--v2-ink2)' : 'var(--v2-hot)', border: `1px solid ${p.marcoId ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.marcoId ? `Playbook: ${rotuloEtapa(marcosCliente, p.marcoId, p.subetapaId) || 'etapa removida'}` : 'Sem etapa do Playbook'}
+                          </button>
+                        )}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
                           <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
                             title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
@@ -1639,7 +1665,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           </button>
                         )}
                         {podeEditar && (p.etapa === 'aprovacao_criativo' || (p.status === 'reprovado' && p.etapa !== 'copy' && p.etapa !== 'briefing' && p.etapa !== 'aprovacao_copy')) && (
-                          <button className="st-btn" onClick={() => aprovarCriativoInterno(p)} disabled={acaoPauta === p.id}
+                          <button className="st-btn" onClick={() => comEtapa(p, aprovarCriativoInterno)} disabled={acaoPauta === p.id}
                             title={p.status === 'reprovado' ? 'Aprovação interna é soberana: tira a peça de Reprovado e agenda pela data' : 'Aprova o criativo sem esperar o cliente e agenda pela data'}
                             style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
                             Aprovar criativo internamente
@@ -1681,7 +1707,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                           </>
                         )}
                         {podeEditar && podeEnviar && !semMidia && podeEnviarCliente && podeEnviarAoCliente(p) && (
-                          <button className="st-btn st-cta" onClick={() => enviarAoCliente(p)} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
+                          <button className="st-btn st-cta" onClick={() => comEtapa(p, enviarAoCliente)} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Enviar ao cliente</button>
                         )}
                       </div>
                     </div>
@@ -2024,6 +2050,55 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           </div>
         </div>
       )}
+      {/* PORTÃO DA ETAPA: a peça não sai do Studio sem o vínculo com o Playbook (dono, 09/09) */}
+      {pedirEtapa && (() => {
+        const grupos = opcoesEtapas(marcosCliente)
+        const temEtapa = grupos.length > 0
+        return (
+          <div onClick={fecharFora(() => setPedirEtapa(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Em que etapa do Playbook entra?</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>
+                Toda peça que vai para aprovação ou para a grade precisa estar ligada ao plano do cliente. Assim o Playbook mostra o que a etapa entregou.
+              </p>
+              {!temEtapa ? (
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-hot)' }}>Este cliente ainda não tem marcos no Playbook. Crie um marco antes de enviar a peça.</p>
+              ) : (
+                <select autoFocus value={juntarValor(pedirEtapa.pauta.marcoId, pedirEtapa.pauta.subetapaId)}
+                  onChange={e => { const v = separarValor(e.target.value); setPedirEtapa(pe => pe && ({ ...pe, pauta: { ...pe.pauta, marcoId: v.marcoId, subetapaId: v.subetapaId } })) }}
+                  style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--v2-surface)', marginBottom: 16 }}>
+                  <option value="">Selecione a etapa...</option>
+                  {grupos.map(g => g.opcoes.length > 1 ? (
+                    <optgroup key={g.marcoId} label={g.titulo}>
+                      {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : `  └ ${o.rotulo}`}</option>)}
+                    </optgroup>
+                  ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
+                </select>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button disabled={!pedirEtapa.pauta.marcoId}
+                  onClick={async () => {
+                    const alvo = pedirEtapa.pauta
+                    const seguir = pedirEtapa.seguir
+                    setPedirEtapa(null)
+                    setPautas(ps => ps.map(x => x.id === alvo.id ? { ...x, marcoId: alvo.marcoId, subetapaId: alvo.subetapaId } : x))
+                    const r = await fetch('/api/posts', {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: alvo.id, marcoId: alvo.marcoId, subetapaId: alvo.subetapaId || '' }),
+                    }).catch(() => null)
+                    if (!r || !r.ok) { toast('Não foi possível gravar a etapa.', 'erro'); return }
+                    seguir(alvo)
+                  }}
+                  style={{ flex: 1, padding: '11px 0', background: pedirEtapa.pauta.marcoId ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: pedirEtapa.pauta.marcoId ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: pedirEtapa.pauta.marcoId ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                  Vincular e continuar
+                </button>
+                <button onClick={() => setPedirEtapa(null)} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 0, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {linkModal && (
         <div onClick={fecharFora(() => setLinkModal(null), { perguntar: false })} className="anim-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="anim-modal" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>

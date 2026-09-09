@@ -1,5 +1,6 @@
 'use client'
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
+import { opcoesEtapas, separarValor, juntarValor, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -16,6 +17,7 @@ type EmEnvio = { id: string; nome: string; progresso: number }
 export type ComposerValue = {
   clienteId: string
   marcoId?: string
+  subetapaId?: string
   legenda: string
   imagens: string[]
   anexosTarefa?: { nome: string; url: string; tipo: string }[] // espelho dos anexos da tarefa de produção (lib/producaoVinculo)
@@ -66,7 +68,8 @@ export default function PostComposer({
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
   const mobile = useIsMobile()
   const [marcoId, setMarcoId] = useState(valorInicial?.marcoId || '')
-  const [marcos, setMarcos] = useState<{ id: string; titulo: string }[]>([])
+  const [subetapaId, setSubetapaId] = useState((valorInicial as any)?.subetapaId || '')
+  const [marcos, setMarcos] = useState<MarcoOpcao[]>([])
   useEffect(() => {
     if (!clienteId) { setMarcos([]); return }
     fetch(`/api/playbook?clienteId=${clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
@@ -343,9 +346,9 @@ export default function PostComposer({
 
   // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
   useEffect(() => {
-    aoMudar?.({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}) })
+    aoMudar?.({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId, marcoId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil])
+  }, [clienteId, marcoId, subetapaId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil])
 
   async function submeter(acao: ComposerValue['acao']) {
     // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
@@ -369,7 +372,7 @@ export default function PostComposer({
         if (!ok) return
       }
     }
-    onSubmit({ clienteId, marcoId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}), acao })
+    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}), acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
@@ -398,10 +401,15 @@ export default function PostComposer({
         {clienteId && (
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Etapa do Playbook *</label>
-            <select value={marcoId} onChange={e => setMarcoId(e.target.value)}
+            <select value={juntarValor(marcoId, subetapaId)} onChange={e => { const v = separarValor(e.target.value); setMarcoId(v.marcoId); setSubetapaId(v.subetapaId) }}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
               <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
-              {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
+              {/* MARCO > ETAPA: as etapas de dentro também aparecem (dono, 09/09) — lib/etapaPlaybook */}
+              {opcoesEtapas(marcos).map(g => g.opcoes.length > 1 ? (
+                <optgroup key={g.marcoId} label={g.titulo}>
+                  {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : `  └ ${o.rotulo}`}</option>)}
+                </optgroup>
+              ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
             </select>
             {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
           </div>

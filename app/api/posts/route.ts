@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
-  const { clienteId, clienteNome, marcoId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
+  const { clienteId, clienteNome, marcoId, subetapaId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
   const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
     : ['instagram', 'facebook']
@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
     clienteId,
     clienteNome,
     ...(marcoId ? { marcoId } : {}),
+    ...(subetapaId ? { subetapaId } : {}),
     imagens,
     legenda,
     status: statusInicial === 'agendado' ? 'agendado' : statusInicial === 'aguardando_aprovacao' ? 'aguardando_aprovacao' : 'rascunho',

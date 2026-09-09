@@ -1037,7 +1037,8 @@ export type Post = {
   id: string
   clienteId: string
   clienteNome: string
-  marcoId?: string // etapa do Playbook a que o post pertence
+  marcoId?: string // marco do Playbook a que o post pertence
+  subetapaId?: string // etapa DENTRO do marco (lib/etapaPlaybook)
   imagens: string[]
   legenda: string
   status: PostStatus
