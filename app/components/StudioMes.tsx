@@ -1586,13 +1586,49 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         ) })()}
                         {/* CRIATIVO PRONTO vindo da tarefa (dono, 07/09): a arte entregue pelo designer.
                             Se a pauta ainda não tem mídia, um clique usa; se já tem, fica como referência. */}
-                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => { const mid = anexosCriativoPronto((p as any).anexosTarefa); const semMidia = !((p as any).imagens || []).length; const pode = podeEditar && semMidia && mid.length > 0; const entregue = (p as any).criativoEntregueEm as string | undefined; return (
-                          <button className="st-btn" disabled={!pode} onClick={() => salvarPatch(p.id, { imagens: mid.map(a => a.url) })}
-                            title={mid.length === 0 ? 'A tarefa tem anexos, mas nenhum marcado como criativo pronto' : semMidia ? 'Usa o criativo pronto da tarefa como mídia desta pauta' : 'A pauta já tem mídia; o criativo da tarefa fica como referência'}
-                            style={{ padding: '10px 14px', background: entregue ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: pode ? 'var(--v2-info)' : entregue ? 'var(--v2-ok)' : 'var(--v2-ink3)', border: `1px solid ${entregue ? 'var(--v2-ok-bg)' : 'var(--v2-rule)'}`, borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: pode ? 'pointer' : 'default' }}>
-                            {entregue ? `Criativo entregue pela tarefa em ${new Date(entregue).toLocaleDateString('pt-BR')}` : `${(p as any).anexosTarefa.length} anexo${(p as any).anexosTarefa.length > 1 ? 's' : ''} da tarefa`}{pode ? ' — usar como criativo' : ''}
-                          </button>
-                        ) })()}
+                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => {
+                          // CRIATIVO PRONTO vindo da tarefa (dono, 07/09 e 09/09): a arte entregue pelo
+                          // designer aparece AQUI, para a revisão interna acontecer olhando a peça.
+                          // Antes era só um botão de texto e, quando a pauta já tinha mídia, ele ficava
+                          // desabilitado — dava para saber que existia arte nova e não dava para vê-la.
+                          const mid = anexosCriativoPronto((p as any).anexosTarefa)
+                          const semMidia = !((p as any).imagens || []).length
+                          const entregue = (p as any).criativoEntregueEm
+                          if (!mid.length) return (
+                            <span style={{ padding: '10px 14px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
+                              {(p as any).anexosTarefa.length} anexo(s) na tarefa, nenhum marcado como criativo pronto
+                            </span>
+                          )
+                          return (
+                            <div style={{ width: '100%', padding: 12, borderRadius: 12, border: `1px solid ${entregue ? 'var(--v2-ok-bg)' : 'var(--v2-rule)'}`, background: entregue ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: entregue ? 'var(--v2-ok)' : 'var(--v2-ink2)' }}>
+                                  {entregue ? `Criativo entregue pela tarefa em ${new Date(entregue).toLocaleDateString('pt-BR')}` : `${mid.length} arquivo(s) de criativo na tarefa`}
+                                </span>
+                                {podeEditar && (
+                                  <button className="st-btn" style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 9, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}
+                                    title={semMidia ? 'Usa a arte entregue como mídia desta pauta' : 'Troca a mídia atual da pauta pela arte entregue na tarefa'}
+                                    onClick={async () => {
+                                      if (!semMidia && !(await confirmar('A pauta já tem mídia. Substituir pela arte entregue na tarefa?', { titulo: 'Substituir a mídia', okLabel: 'Substituir' }))) return
+                                      salvarPatch(p.id, { imagens: mid.map(a => a.url) })
+                                    }}>
+                                    {semMidia ? 'Usar como mídia da pauta' : 'Substituir a mídia da pauta'}
+                                  </button>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {mid.map((a, n) => (
+                                  <button key={n} type="button" onClick={() => window.open(a.url, '_blank', 'noopener')} title={`${a.nome || 'Criativo'} — abrir em outra aba`}
+                                    style={{ padding: 0, border: '1px solid var(--v2-rule)', borderRadius: 9, overflow: 'hidden', background: 'var(--v2-surface)', cursor: 'zoom-in', lineHeight: 0 }}>
+                                    {(a.tipo || '').startsWith('video') || /\.(mp4|mov|m4v)(\?|$)/i.test(a.url)
+                                      ? <video src={a.url} style={{ width: 92, height: 92, objectFit: 'cover' }} muted />
+                                      : <img src={a.url} alt={a.nome || ''} style={{ width: 92, height: 92, objectFit: 'cover' }} />}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {podeEditar && p.etapa && p.etapa !== 'pronto' && (
                           <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
                             title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}

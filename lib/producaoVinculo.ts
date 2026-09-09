@@ -114,3 +114,18 @@ export function avisoAoConcluir(t: { tipo?: string; origemPostId?: string; anexo
   if (anexosCriativoPronto(t.anexos || []).length) return null
   return 'Esta tarefa está vinculada a uma pauta e não tem criativo pronto anexado. Concluir assim devolve a pauta ao Studio SEM arte.'
 }
+
+/** A pauta deve RECEBER o criativo agora? (usado pelo PUT de /api/tarefas)
+ *  Duas portas: concluir a tarefa vinculada, OU vincular a pauta a uma tarefa que já estava
+ *  concluída — o vínculo só passou a ser editável em 09/09, e sem essa segunda porta o
+ *  designer teria de reabrir e concluir de novo só para a arte chegar ao Studio. */
+export function deveEntregarCriativo(
+  antes: { status?: string; origemPostId?: string },
+  depois: { status?: string; origemPostId?: string },
+): boolean {
+  if (!depois.origemPostId) return false
+  if (depois.status !== 'concluido') return false
+  const concluiuAgora = antes.status !== 'concluido'
+  const vinculouAgora = depois.origemPostId !== antes.origemPostId
+  return concluiuAgora || vinculouAgora
+}

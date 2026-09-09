@@ -983,15 +983,19 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
   // esteira) para criar a tarefa de produção já com briefing + copy + anexos.
   const [pautasCliente, setPautasCliente] = useState<any[]>([])
   useEffect(() => {
-    if (tarefa?.id || !form.clienteId) { setPautasCliente([]); return }
+    if (!form.clienteId) { setPautasCliente([]); return }
     let vivo = true
-    fetch(`/api/posts?clienteId=${form.clienteId}`).then(r => r.json()).then(d => {
+    // `esteira=1`: as pautas EM PRODUÇÃO (briefing/copy/criativo) só saem da rota com isso.
+    // Sem esse parâmetro a lista vinha praticamente vazia e não dava para vincular a pauta
+    // que estava justamente em produção — a raiz do "anexei o criativo e nada foi ao Studio".
+    fetch(`/api/posts?clienteId=${form.clienteId}&esteira=1`).then(r => r.json()).then(d => {
       if (!vivo) return
       const arr = Array.isArray(d) ? d : []
-      setPautasCliente(arr.filter((p: any) => p.etapa && p.etapa !== 'pronto'))
+      // Em produção OU já vinculada a esta tarefa (para o select mostrar o vínculo atual).
+      setPautasCliente(arr.filter((p: any) => (p.etapa && p.etapa !== 'pronto') || p.id === form.origemPostId))
     }).catch(() => { if (vivo) setPautasCliente([]) })
     return () => { vivo = false }
-  }, [form.clienteId, tarefa?.id])
+  }, [form.clienteId, form.origemPostId])
   const ROTULO_ETAPA: Record<string, string> = { briefing: 'Briefing', copy: 'Copy', aprovacao_copy: 'Aprovação de copy', criativo: 'Criativo', aprovacao_criativo: 'Aprovação de criativo' }
   function vincularPauta(id: string) {
     const p = pautasCliente.find((x: any) => x.id === id)
@@ -1011,6 +1015,8 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
       p.legenda && `<strong>Legenda:</strong> ${esc(p.legenda)}`,
     ].filter(Boolean).map(l => `<p>${l}</p>`).join('')
     const vazia = (v: string) => !v || v === '<p></p>' || v === '<br>'
+    // Tarefa que já existe só GANHA o vínculo: título e descrição de quem está tocando
+    // o trabalho não são reescritos (só preenchem se estiverem vazios).
     setForm(f => ({
       ...f, origemPostId: id,
       titulo: f.titulo.trim() || (p.briefing || p.headline || p.legenda || 'Pauta').slice(0, 80),
@@ -1605,9 +1611,9 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
               </div>
               )}
             </div>
-            {!PERFIL_CLINICA_TAREFAS && !tarefa?.id && form.clienteId && pautasCliente.length > 0 && (
+            {!PERFIL_CLINICA_TAREFAS && form.clienteId && (pautasCliente.length > 0 || !!form.origemPostId) && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Vincular pauta do Studio <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>(traz briefing, copy e anexos)</span></label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Pauta do Studio <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>{tarefa?.id ? '(o criativo pronto volta para ela)' : '(traz briefing, copy e anexos)'}</span></label>
                 <select value={form.origemPostId} onChange={e => vincularPauta(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.origemPostId ? 'var(--v2-info)' : 'var(--v2-rule)'}`, fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   <option value="">Nenhuma — tarefa avulsa</option>
@@ -1615,7 +1621,7 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     <option key={p.id} value={p.id}>{(p.briefing || p.headline || p.legenda || 'Pauta sem título').slice(0, 60)} · {ROTULO_ETAPA[p.etapa] || p.etapa}{p.tarefaId ? ' (já tem tarefa)' : ''}</option>
                   ))}
                 </select>
-                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — anexe o criativo pronto; ao concluir, a pauta volta ao Studio com ele para revisão e envio.</p>}
+                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — anexe o criativo pronto; ao concluir, a pauta volta ao Studio com ele para revisão interna e envio.</p>}
               </div>
             )}
             {!PERFIL_CLINICA_TAREFAS && (
@@ -1871,6 +1877,12 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                       onChange={e => { enviarAnexos(Array.from(e.target.files || []), 'criativo'); e.target.value = '' }} />
                   </label>
                 </div>
+                {!form.origemPostId && (
+                  <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>
+                    <strong>Sem pauta vinculada.</strong> O criativo fica só nesta tarefa: não volta ao Studio nem chega ao cliente.
+                    {pautasCliente.length > 0 ? ' Escolha a pauta no campo "Pauta do Studio", acima.' : form.clienteId ? ' Este cliente não tem pauta em produção no Studio.' : ' Escolha o cliente para listar as pautas.'}
+                  </p>
+                )}
                 {prontos.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {prontos.map(({ a, i }) => (

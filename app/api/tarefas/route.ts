@@ -7,7 +7,7 @@ import { notificar } from '@/lib/notificacoes'
 import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
-import { midiasParaPauta } from '@/lib/producaoVinculo'
+import { midiasParaPauta, deveEntregarCriativo } from '@/lib/producaoVinculo'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -286,9 +286,12 @@ export async function PUT(req: NextRequest) {
   // etapa 'criativo' — reabrir nunca regride, aprovações não são puladas). Do
   // Studio a equipe revisa e sobe para o cliente ou para o Planner. Falha no
   // gancho nunca bloqueia a conclusão da tarefa.
-  if (updates.status === 'concluido' && tarefa.status !== 'concluido' && tarefa.origemPostId) {
+  // VINCULAR DEPOIS também entrega: tarefa que já estava CONCLUÍDA e só agora recebeu a
+  // pauta (o vínculo não existia na tela até 09/09) precisa levar o criativo ao Studio do
+  // mesmo jeito — senão o designer teria de reabrir e concluir de novo só para destravar.
+  if (deveEntregarCriativo(tarefa, atualizado)) {
     try {
-      const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
+      const post = await redis.get<Post>(`post:${atualizado.origemPostId}`)
       const av = post ? aoConcluirTarefa(post.etapa) : null
       if (post && av) {
         // Pauta sem mídia recebe as imagens/vídeos anexados na tarefa como criativo (lib/producaoVinculo).

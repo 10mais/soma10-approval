@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
+import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, deveEntregarCriativo } from '@/lib/producaoVinculo'
 
 // O hub do cliente mostrava "0 em produção" com 10 tarefas de criativo abertas:
 // a pauta estava "pronta" no Studio enquanto a tarefa do designer seguia aberta.
@@ -94,5 +94,19 @@ describe('criativo pronto (anexo com papel) — dono 07/09', () => {
     expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref, arte] })).toBeNull()
     expect(avisoAoConcluir({ tipo: 'criativo', anexos: [] })).toBeNull()
     expect(avisoAoConcluir({ tipo: 'tarefa', origemPostId: 'p1', anexos: [] })).toBeNull()
+  })
+})
+
+describe('deveEntregarCriativo — quando a pauta recebe a arte', () => {
+  it('concluir a tarefa vinculada entrega', () => {
+    expect(deveEntregarCriativo({ status: 'em_andamento', origemPostId: 'p1' }, { status: 'concluido', origemPostId: 'p1' })).toBe(true)
+  })
+  it('vincular a pauta numa tarefa JÁ concluída também entrega', () => {
+    expect(deveEntregarCriativo({ status: 'concluido', origemPostId: '' }, { status: 'concluido', origemPostId: 'p1' })).toBe(true)
+  })
+  it('não entrega sem vínculo, sem conclusão, nem ao salvar a mesma tarefa concluída de novo', () => {
+    expect(deveEntregarCriativo({ status: 'em_andamento' }, { status: 'concluido' })).toBe(false)
+    expect(deveEntregarCriativo({ status: 'a_fazer', origemPostId: 'p1' }, { status: 'em_andamento', origemPostId: 'p1' })).toBe(false)
+    expect(deveEntregarCriativo({ status: 'concluido', origemPostId: 'p1' }, { status: 'concluido', origemPostId: 'p1' })).toBe(false)
   })
 })
