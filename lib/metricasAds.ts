@@ -244,3 +244,41 @@ export function normalizarPublicos(bruto: unknown): PublicoLimpo[] {
   })
   return saida
 }
+
+// ---------------------------------------------------------------- série do período
+// Para o gráfico de evolução: agrupa os lançamentos em blocos (semana ou mês) dentro do
+// período. Lançamento que cobre um intervalo entra no bloco da sua data de INÍCIO — não
+// espalha o número por dias que ninguém mediu.
+export type BlocoSerie = { inicio: string; rotulo: string; investimento: number; resultados: number }
+
+function segundaDe(iso: string): string {
+  const d = new Date(iso + 'T00:00:00Z')
+  const dia = d.getUTCDay() // 0 = domingo
+  d.setUTCDate(d.getUTCDate() - (dia === 0 ? 6 : dia - 1))
+  return d.toISOString().slice(0, 10)
+}
+const ddmm = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`
+
+export function serieDoPeriodo(
+  lancamentos: (LancamentoMetrica & { data: string })[],
+  de: string,
+  ate: string,
+): BlocoSerie[] {
+  const dentro = noPeriodo(lancamentos, de, ate)
+  if (!dentro.length) return []
+  const dias = Math.max(1, Math.round((new Date(ate + 'T00:00:00Z').getTime() - new Date(de + 'T00:00:00Z').getTime()) / MS_DIA_SERIE) + 1)
+  const porMes = dias > 92 // período longo: um bloco por mês
+  const mapa = new Map<string, BlocoSerie>()
+  for (const l of dentro) {
+    const chave = porMes ? l.data.slice(0, 7) + '-01' : segundaDe(l.data)
+    const rotulo = porMes
+      ? new Date(chave + 'T00:00:00Z').toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '')
+      : ddmm(chave)
+    const b = mapa.get(chave) || { inicio: chave, rotulo, investimento: 0, resultados: 0 }
+    b.investimento += Number(l.investimento) || 0
+    b.resultados += Number(l.resultados) || 0
+    mapa.set(chave, b)
+  }
+  return Array.from(mapa.values()).sort((a, b) => a.inicio.localeCompare(b.inicio))
+}
+const MS_DIA_SERIE = 24 * 60 * 60 * 1000

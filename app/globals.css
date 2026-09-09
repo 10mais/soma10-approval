@@ -171,3 +171,21 @@ aside,
   --v2-hot-bg:   rgba(242,109,91,0.12);
   color-scheme: dark;
 }
+
+/* IMPRESSÃO DA TELA DE MÉTRICAS (dono, 09/09/2026: a tela substitui o PPT de mensuração e
+   sai em PDF para enviar depois). O navegador gera o PDF; aqui só tiramos o que é controle
+   de edição e o cromo do sistema, para a folha ficar com o conteúdo. */
+@media print {
+  .metricas-oculto { display: none !important; }
+  .metricas-tela { padding: 0 !important; }
+  /* Cromo do sistema fora da folha: menus, barras e o botão flutuante de desfazer. */
+  .metricas-tela ~ *, nav, aside, header > button { display: none !important; }
+  body { background: #fff !important; }
+  .metricas-tela * { box-shadow: none !important; }
+  .metricas-tela textarea {
+    border: 0 !important; padding: 0 !important; resize: none !important;
+    height: auto !important; min-height: 0 !important; overflow: visible !important;
+  }
+  /* Nenhum cartão parte no meio entre uma página e outra. */
+  .metricas-tela > div > div { break-inside: avoid; page-break-inside: avoid; }
+}

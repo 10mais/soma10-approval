@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizarPublicos, somar, derivados, resultadoDoObjetivo, variacao, variacaoBoa, objetivoDe, objetivosDoCanal, cobreDia, noPeriodo, fmtDinheiro, fmtPct, OBJETIVOS } from '@/lib/metricasAds'
+import { normalizarPublicos, serieDoPeriodo, somar, derivados, resultadoDoObjetivo, variacao, variacaoBoa, objetivoDe, objetivosDoCanal, cobreDia, noPeriodo, fmtDinheiro, fmtPct, OBJETIVOS } from '@/lib/metricasAds'
 
 describe('metricasAds — o objetivo decide o nome do resultado e do custo', () => {
   it('campanha de MENSAGENS fala em conversas iniciadas e custo por mensagem', () => {
@@ -124,5 +124,30 @@ describe('normalizarPublicos — a estrutura da campanha entra limpa', () => {
     expect(r[0].id).toBe('p-abc')
     expect(r[0].anuncios![0]).toMatchObject({ id: 'a-xyz', status: 'pausado' })
     expect(normalizarPublicos(null)).toEqual([])
+  })
+})
+
+describe('serieDoPeriodo — o gráfico de evolução', () => {
+  it('agrupa por SEMANA (segunda a domingo) dentro do período', () => {
+    const s = serieDoPeriodo([
+      { data: '2026-09-01', investimento: 100, resultados: 5 },  // semana de 31/08
+      { data: '2026-09-03', investimento: 50, resultados: 2 },   // mesma semana
+      { data: '2026-09-08', investimento: 200, resultados: 9 },  // semana de 07/09
+      { data: '2026-08-30', investimento: 999, resultados: 99 }, // fora do período
+    ], '2026-09-01', '2026-09-30')
+    expect(s).toEqual([
+      { inicio: '2026-08-31', rotulo: '31/08', investimento: 150, resultados: 7 },
+      { inicio: '2026-09-07', rotulo: '07/09', investimento: 200, resultados: 9 },
+    ])
+  })
+
+  it('período longo agrupa por MÊS; sem lançamento devolve vazio', () => {
+    const s = serieDoPeriodo([
+      { data: '2026-07-10', investimento: 300, resultados: 10 },
+      { data: '2026-07-28', investimento: 200, resultados: 6 },
+      { data: '2026-09-02', investimento: 400, resultados: 20 },
+    ], '2026-07-01', '2026-10-31')
+    expect(s.map(b => [b.rotulo, b.investimento])).toEqual([['jul', 500], ['set', 400]])
+    expect(serieDoPeriodo([], '2026-09-01', '2026-09-30')).toEqual([])
   })
 })

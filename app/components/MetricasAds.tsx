@@ -8,7 +8,7 @@ import { registrarDesfazer } from '@/lib/desfazer'
 import {
   CANAIS, labelCanal, corCanal, LABEL_PUBLICO, TIPOS_GOOGLE, CORRESPONDENCIAS,
   objetivosDoCanal, objetivoDe, somar, derivados, resultadoDoObjetivo, variacao, variacaoBoa,
-  noPeriodo, fmtDinheiro, fmtNumero, fmtPct,
+  noPeriodo, serieDoPeriodo, fmtDinheiro, fmtNumero, fmtPct,
   type CanalAds, type Correspondencia,
 } from '@/lib/metricasAds'
 
@@ -38,11 +38,11 @@ const STATUS_CAMPANHA: Record<string, { label: string; cor: string; bg: string }
 }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-function periodoDoMes(ref: Date): { de: string; ate: string; rotulo: string } {
+function periodoDoMes(ref: Date): { de: string; ate: string; rotulo: string; chave: string } {
   const ini = new Date(ref.getFullYear(), ref.getMonth(), 1)
   const fim = new Date(ref.getFullYear(), ref.getMonth() + 1, 0)
   const mes = ini.toLocaleDateString('pt-BR', { month: 'long' })
-  return { de: ymd(ini), ate: ymd(fim), rotulo: `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${ini.getFullYear()}` }
+  return { de: ymd(ini), ate: ymd(fim), rotulo: `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${ini.getFullYear()}`, chave: ymd(ini).slice(0, 7) }
 }
 function periodoAnterior(de: string, ate: string): { de: string; ate: string } {
   const a = new Date(de + 'T00:00:00'), b = new Date(ate + 'T00:00:00')
@@ -84,7 +84,10 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
   const [campanhaAberta, setCampanhaAberta] = useState<Campanha | null>(null)
   const [novaCampanha, setNovaCampanha] = useState(false)
   const [contasAbertas, setContasAbertas] = useState(false)
-  const [lancarPara, setLancarPara] = useState<Campanha | null>(null)
+  const [gradeAberta, setGradeAberta] = useState(false)
+  // LEITURA DO PERÍODO: o texto do gestor, por cliente e mês. É o que transforma número em
+  // conversa, e vai junto no PDF que o cliente recebe depois.
+  const [leitura, setLeitura] = useState('')
 
   const periodo = useMemo(() => periodoDoMes(refMes), [refMes])
   const anterior = useMemo(() => periodoAnterior(periodo.de, periodo.ate), [periodo])
@@ -105,6 +108,19 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
     }).finally(() => setCarregando(false))
   }
   useEffect(carregar, [clienteId])
+  useEffect(() => {
+    if (!clienteId) return
+    let vivo = true
+    fetch(`/api/ads/leitura?clienteId=${clienteId}&periodo=${periodo.chave}`).then(r => r.ok ? r.json() : null)
+      .then(d => { if (vivo) setLeitura(d?.texto || '') }).catch(() => { if (vivo) setLeitura('') })
+    return () => { vivo = false }
+  }, [clienteId, periodo.chave])
+  async function salvarLeitura() {
+    await fetch('/api/ads/leitura', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clienteId, periodo: periodo.chave, texto: leitura }),
+    }).catch(() => null)
+  }
 
   // Números do período e do período anterior (mesmo tamanho), por campanha e no total.
   const doPeriodo = useMemo(() => noPeriodo(metricas, periodo.de, periodo.ate), [metricas, periodo])
@@ -174,23 +190,42 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
   }
 
   // ------------------------------------------------------------ TELA COMPLETA
+  // Esta tela É o material de reunião (dono, 09/09: "substituir os PPTs; mostramos a tela
+  // do sistema para o cliente perceber o que estamos fazendo"). Por isso: número grande,
+  // evolução visível, criativos que rodaram e uma leitura escrita. Os controles de edição
+  // ficam discretos e somem no PDF (@media print em globals.css, classe .metricas-oculto).
+  const serie = useMemo(() => serieDoPeriodo(soCampanha(doPeriodo) as any, periodo.de, periodo.ate), [doPeriodo, periodo])
+  const anunciosNoAr = useMemo(() => {
+    const out: { campanha: Campanha; publico: Publico; anuncio: Anuncio }[] = []
+    for (const c of campanhas) {
+      if (c.status === 'encerrada') continue
+      for (const pb of c.publicos || []) for (const an of pb.anuncios || []) out.push({ campanha: c, publico: pb, anuncio: an })
+    }
+    return out
+  }, [campanhas])
+
   return (
-    <div>
+    <div className="metricas-tela">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Métricas</h2>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Métricas{clienteNome ? ` · ${clienteNome}` : ''}</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Mídia paga em {periodo.rotulo.toLowerCase()}</p>
+        </div>
+        <div className="metricas-oculto" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button onClick={() => setRefMes(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Mês anterior" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>‹</button>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', minWidth: 130, textAlign: 'center' }}>{periodo.rotulo}</span>
+          <button onClick={() => setRefMes(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Mês atual</button>
           <button onClick={() => setRefMes(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Próximo mês" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>›</button>
         </div>
-        {podeEditar && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="metricas-oculto" style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => window.print()} title="Gera o PDF desta tela para enviar ao cliente" style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Exportar PDF</button>
+          {podeEditar && <>
             <button onClick={() => setContasAbertas(true)} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              Contas de anúncio {contas.length ? `(${contas.length})` : ''}
+              Contas {contas.length ? `(${contas.length})` : ''}
             </button>
-            <button onClick={() => setNovaCampanha(true)} style={{ padding: '9px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>+ Nova campanha</button>
-          </div>
-        )}
+            <button onClick={() => setNovaCampanha(true)} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>+ Campanha</button>
+            <button onClick={() => setGradeAberta(true)} disabled={!campanhas.length} style={{ padding: '9px 16px', background: campanhas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: campanhas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: campanhas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>Lançar números</button>
+          </>}
+        </div>
       </div>
 
       {carregando ? (
@@ -214,10 +249,49 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
         </div>
       ) : (
         <>
-          {/* Números do período */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 14 }}>
+          {/* O NÚMERO QUE ABRE A CONVERSA: investimento e o resultado de cada objetivo */}
+          <div style={{ ...cardStyle, marginBottom: 12, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ fontSize: 34, fontWeight: 300, color: 'var(--v2-ink)', letterSpacing: '-0.02em' }}>{fmtDinheiro(total.investimento)}</span>
+                <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--v2-ink3)' }}>investidos</span>
+                <Variacao pct={variacao(total.investimento, totalAnt.investimento)} campo="resultado" />
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+                {porObjetivo.map(o => {
+                  const r = resultadoDoObjetivo(o.objetivo, o.atual)
+                  const rAnt = resultadoDoObjetivo(o.objetivo, o.ant)
+                  return (
+                    <div key={o.objetivo}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 28, fontWeight: 300, color: 'var(--v2-ink)' }}>{fmtNumero(r.valor)}</span>
+                        <Variacao pct={variacao(r.valor, rAnt.valor)} campo="resultado" />
+                      </div>
+                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink2)' }}>{r.rotulo}</p>
+                      <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
+                        {r.custoLabel.toLowerCase()} {fmtDinheiro(r.custo)} <Variacao pct={variacao(r.custo || 0, rAnt.custo || 0)} campo="custo" />
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            {!porObjetivo.length && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Sem números lançados neste período.{podeEditar ? ' Use "Lançar números".' : ''}</p>}
+          </div>
+
+          {/* EVOLUÇÃO — a leitura visual do período */}
+          {serie.length > 1 && (
+            <div style={{ ...cardStyle, marginBottom: 12 }}>
+              <h3 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Evolução no período</h3>
+              {/* Resultado só entra na curva quando há UM objetivo no período: somar
+                  mensagem com visita ao perfil seria a mesma mentira que a tela evita em cima. */}
+              <Evolucao serie={serie} objetivoUnico={porObjetivo.length === 1 ? objetivoDe(porObjetivo[0].objetivo).resultado.plural : ''} />
+            </div>
+          )}
+
+          {/* Entrega detalhada: cliques, alcance e o custo do clique */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 12 }}>
             {[
-              { rotulo: 'Investimento', valor: fmtDinheiro(total.investimento), pct: variacao(total.investimento, totalAnt.investimento), campo: 'resultado' as const },
               { rotulo: 'Impressões', valor: fmtNumero(total.impressoes), pct: variacao(total.impressoes, totalAnt.impressoes), campo: 'resultado' as const },
               { rotulo: 'Alcance', valor: fmtNumero(total.alcance), pct: variacao(total.alcance, totalAnt.alcance), campo: 'resultado' as const },
               { rotulo: 'Cliques', valor: fmtNumero(total.cliques), pct: variacao(total.cliques, totalAnt.cliques), campo: 'resultado' as const },
@@ -226,7 +300,7 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
             ].map(k => (
               <div key={k.rotulo} style={cardStyle}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 22, fontWeight: 300, color: 'var(--v2-ink)' }}>{k.valor}</span>
+                  <span style={{ fontSize: 20, fontWeight: 300, color: 'var(--v2-ink)' }}>{k.valor}</span>
                   <Variacao pct={k.pct} campo={k.campo} />
                 </div>
                 <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{k.rotulo}</p>
@@ -234,36 +308,8 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
             ))}
           </div>
 
-          {/* Resultado POR OBJETIVO — cada objetivo com o nome certo do seu resultado */}
-          {porObjetivo.length > 0 && (
-            <div style={{ ...cardStyle, marginBottom: 14 }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Resultado por objetivo</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {porObjetivo.map(o => {
-                  const def = objetivoDe(o.objetivo)
-                  const r = resultadoDoObjetivo(o.objetivo, o.atual)
-                  const rAnt = resultadoDoObjetivo(o.objetivo, o.ant)
-                  const d = derivados(o.atual)
-                  return (
-                    <div key={o.objetivo} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 10, borderBottom: '1px solid var(--v2-rule)' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', minWidth: 150 }}>{def.label}</span>
-                      <span style={{ fontSize: 15, color: 'var(--v2-ink)' }}><strong>{fmtNumero(r.valor)}</strong> <span style={{ fontSize: 12.5, color: 'var(--v2-ink2)' }}>{r.rotulo}</span></span>
-                      <Variacao pct={variacao(r.valor, rAnt.valor)} campo="resultado" />
-                      <span style={{ fontSize: 12.5, color: 'var(--v2-ink2)', marginLeft: 'auto' }}>{r.custoLabel}: <strong style={{ color: 'var(--v2-ink)' }}>{fmtDinheiro(r.custo)}</strong></span>
-                      <Variacao pct={variacao(r.custo || 0, rAnt.custo || 0)} campo="custo" />
-                      {def.receita && o.atual.receita > 0 && (
-                        <span style={{ fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>ROAS {d.roas?.toFixed(2).replace('.', ',')}x</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Resultados de objetivos diferentes não se somam: mensagem e visita ao perfil não são a mesma entrega.</p>
-            </div>
-          )}
-
-          {/* Campanhas */}
-          <div style={cardStyle}>
+          {/* Campanha a campanha */}
+          <div style={{ ...cardStyle, marginBottom: 12 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Campanhas</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {campanhas.map(c => {
@@ -275,12 +321,12 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
                 return (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--v2-rule)', flexWrap: 'wrap' }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: corCanal(c.canal), flexShrink: 0 }} title={labelCanal(c.canal)} />
-                    <button onClick={() => setCampanhaAberta(c)} style={{ flex: 1, minWidth: 180, textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={() => podeEditar && setCampanhaAberta(c)} style={{ flex: 1, minWidth: 180, textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: podeEditar ? 'pointer' : 'default', fontFamily: 'inherit' }}>
                       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)' }}>{c.nome}</span>
                       <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
                         {labelCanal(c.canal)} · {objetivoDe(c.objetivo).label}
-                        {c.dataInicio ? ` · ${fmtDia(c.dataInicio)}${c.dataFim ? ' a ' + fmtDia(c.dataFim) : ''}` : ''}
-                        {marco ? ` · Playbook: ${marco.titulo}` : ''}
+                        {c.dataInicio ? ` · desde ${fmtDia(c.dataInicio)}` : ''}
+                        {marco ? ` · ${marco.titulo}` : ''}
                       </span>
                     </button>
                     <span style={{ fontSize: 10.5, fontWeight: 800, color: st.cor, background: st.bg, padding: '3px 9px', borderRadius: 999 }}>{st.label}</span>
@@ -290,13 +336,47 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
                     </span>
                     <span style={{ fontSize: 12.5, color: 'var(--v2-ink2)', minWidth: 110, textAlign: 'right' }}>{fmtDinheiro(r.custo)}</span>
                     <Variacao pct={variacao(r.custo || 0, rAnt.custo || 0)} campo="custo" />
-                    {podeEditar && (
-                      <button onClick={() => setLancarPara(c)} title="Lançar os números do período" style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Lançar</button>
-                    )}
                   </div>
                 )
               })}
             </div>
+          </div>
+
+          {/* CRIATIVOS que rodaram — o slide que o cliente mais olha, agora é uma seção */}
+          {anunciosNoAr.length > 0 && (
+            <div style={{ ...cardStyle, marginBottom: 12 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Criativos no ar</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 12 }}>
+                {anunciosNoAr.map(({ campanha, publico, anuncio }) => (
+                  <div key={`${campanha.id}-${anuncio.id}`}>
+                    {anuncio.criativoUrl ? (
+                      <button type="button" onClick={() => window.open(anuncio.criativoUrl, '_blank', 'noopener')} title="Abrir o criativo" style={{ padding: 0, border: '1px solid var(--v2-rule)', borderRadius: 10, overflow: 'hidden', background: 'var(--v2-surface)', cursor: 'zoom-in', lineHeight: 0, width: '100%' }}>
+                        {(anuncio.criativoTipo || '').startsWith('video')
+                          ? <video src={anuncio.criativoUrl} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} muted />
+                          : <img src={anuncio.criativoUrl} alt={anuncio.titulo} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }} />}
+                      </button>
+                    ) : (
+                      <div style={{ width: '100%', aspectRatio: '1', borderRadius: 10, border: '1px dashed var(--v2-rule2)', display: 'grid', placeItems: 'center', color: 'var(--v2-ink3)', fontSize: 11 }}>sem print</div>
+                    )}
+                    <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anuncio.titulo}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{publico.titulo} · {campanha.nome}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* LEITURA DO PERÍODO: o que o número não conta. Vai junto no PDF. */}
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Leitura do período</h3>
+            {podeEditar ? (
+              <textarea value={leitura} onChange={e => setLeitura(e.target.value)} onBlur={salvarLeitura} rows={4}
+                placeholder="O que aconteceu, o que explica os números e o que vamos fazer no próximo período. Some ao abrir a tela com o cliente."
+                style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)', resize: 'vertical', lineHeight: 1.55, boxSizing: 'border-box' }} />
+            ) : (
+              <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{leitura || 'Sem observações neste período.'}</p>
+            )}
+            {podeEditar && <p className="metricas-oculto" style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Salva sozinho ao sair do campo. Aparece no PDF.</p>}
           </div>
         </>
       )}
@@ -308,13 +388,12 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
           podeEditar={podeEditar}
           onClose={() => { setNovaCampanha(false); setCampanhaAberta(null) }}
           onSalvo={() => { setNovaCampanha(false); setCampanhaAberta(null); carregar() }}
-          onLancar={c => { setCampanhaAberta(null); setLancarPara(c) }}
+          onLancar={() => { setCampanhaAberta(null); setGradeAberta(true) }}
         />
       )}
-      {lancarPara && (
-        <LancamentoModal campanha={lancarPara} clienteId={clienteId} periodo={periodo}
-          metricas={metricas.filter(m => m.campanhaId === lancarPara.id)}
-          onClose={() => setLancarPara(null)} onSalvo={() => { setLancarPara(null); carregar() }} />
+      {gradeAberta && (
+        <GradeLancamento campanhas={campanhas} clienteId={clienteId} periodo={periodo} metricas={metricas}
+          onClose={() => setGradeAberta(false)} onSalvo={() => { setGradeAberta(false); carregar() }} />
       )}
       {contasAbertas && (
         <ContasModal contas={contas} clienteId={clienteId} clienteNome={clienteNome} onClose={() => setContasAbertas(false)} onSalvo={carregar} />
@@ -323,7 +402,146 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
   )
 }
 
-// ---------------------------------------------------------------- contas de anúncio
+// Gráfico de evolução: barras de investimento com a linha de resultado por cima.
+// SVG na mão — o sistema não carrega biblioteca de gráfico para desenhar cinco barras.
+function Evolucao({ serie, objetivoUnico }: { serie: { rotulo: string; investimento: number; resultados: number }[]; objetivoUnico?: string }) {
+  const maxInv = Math.max(...serie.map(b => b.investimento), 1)
+  const maxRes = Math.max(...serie.map(b => b.resultados), 1)
+  const L = 40, A = 150, GAP = 10
+  const larguraBarra = 46
+  const total = serie.length * (larguraBarra + GAP)
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <svg width={Math.max(total, 240)} height={A + 46} role="img" aria-label="Evolução do investimento e dos resultados no período">
+        {serie.map((b, i) => {
+          const x = i * (larguraBarra + GAP)
+          const h = Math.max(2, (b.investimento / maxInv) * (A - L))
+          const y = A - h
+          const yRes = A - Math.max(2, (b.resultados / maxRes) * (A - L))
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={larguraBarra} height={h} rx={5} fill="var(--v2-amber-on)" opacity={0.85} />
+              <text x={x + larguraBarra / 2} y={y - 6} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--v2-ink2)">{fmtDinheiro(b.investimento)}</text>
+              {objetivoUnico && <circle cx={x + larguraBarra / 2} cy={yRes} r={4} fill="var(--v2-ink)" />}
+              {objetivoUnico && <text x={x + larguraBarra / 2} y={yRes - 9} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--v2-ink)">{fmtNumero(b.resultados)}</text>}
+              <text x={x + larguraBarra / 2} y={A + 16} textAnchor="middle" fontSize="10" fill="var(--v2-ink3)">{b.rotulo}</text>
+            </g>
+          )
+        })}
+        <line x1={0} y1={A} x2={Math.max(total, 240)} y2={A} stroke="var(--v2-rule)" strokeWidth="1" />
+      </svg>
+      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 11, color: 'var(--v2-ink3)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--v2-amber-on)' }} />investimento</span>
+        {objetivoUnico
+          ? <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--v2-ink)' }} />{objetivoUnico}</span>
+          : <span>o resultado de cada objetivo está acima, sem somar objetivos diferentes</span>}
+      </div>
+    </div>
+  )
+}
+
+// GRADE DE LANÇAMENTO: todas as campanhas numa tela só (dono, 09/09: "não consegui usar de
+// forma prática" — era um modal por campanha). Preenche o que tiver, salva de uma vez.
+function GradeLancamento({ campanhas, clienteId, periodo, metricas, onClose, onSalvo }: {
+  campanhas: Campanha[]; clienteId: string; periodo: { de: string; ate: string; rotulo: string }
+  metricas: Metrica[]; onClose: () => void; onSalvo: () => void
+}) {
+  const [de, setDe] = useState(periodo.de)
+  const [ate, setAte] = useState(periodo.ate)
+  const [linhas, setLinhas] = useState<Record<string, Record<string, string>>>({})
+  const [salvando, setSalvando] = useState(false)
+  const set = (id: string, campo: string, v: string) => setLinhas(l => ({ ...l, [id]: { ...(l[id] || {}), [campo]: v } }))
+  const jaLancado = (id: string) => somar(noPeriodo(metricas.filter(m => m.campanhaId === id && m.nivel === 'campanha'), de, ate))
+  const ativas = campanhas.filter(c => c.status !== 'encerrada')
+  const preenchidas = ativas.filter(c => Object.values(linhas[c.id] || {}).some(v => String(v).trim() !== ''))
+
+  async function salvar() {
+    if (salvando || !preenchidas.length) return
+    setSalvando(true)
+    const criados: string[] = []
+    for (const c of preenchidas) {
+      const l = linhas[c.id] || {}
+      const r = await fetch('/api/ads/metricas', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clienteId, campanhaId: c.id, nivel: 'campanha', refId: c.id, data: de, ate, ...l }),
+      }).then(x => x.json()).catch(() => null)
+      if (r?.metrica?.id) criados.push(r.metrica.id)
+    }
+    setSalvando(false)
+    if (!criados.length) { toast('Não foi possível lançar os números.', 'erro'); return }
+    registrarDesfazer(`Lançamento de ${criados.length} campanha(s)`, async () => {
+      const rs = await Promise.all(criados.map(id => fetch(`/api/ads/metricas?id=${id}`, { method: 'DELETE' }).then(x => x.ok).catch(() => false)))
+      onSalvo()
+      return rs.every(Boolean)
+    })
+    toast(`${criados.length} campanha(s) lançada(s).`, 'sucesso')
+    onSalvo()
+  }
+
+  const colunas = (c: Campanha) => {
+    const o = objetivoDe(c.objetivo)
+    return [
+      { k: 'investimento', label: 'Investimento' },
+      { k: 'resultados', label: o.semResultado ? 'Alcance' : o.resultado.plural.charAt(0).toUpperCase() + o.resultado.plural.slice(1) },
+      { k: 'impressoes', label: 'Impressões' },
+      { k: 'alcance', label: 'Alcance' },
+      { k: 'cliques', label: 'Cliques' },
+      ...(o.receita ? [{ k: 'receita', label: 'Receita' }] : []),
+    ]
+  }
+
+  return (
+    <div onClick={fecharFora(onClose, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 900, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
+        <h3 style={{ margin: '0 0 3px', fontSize: 16, color: 'var(--v2-ink)' }}>Lançar números do período</h3>
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Preencha o que tiver, em qualquer linha, e salve de uma vez. O que já foi lançado no período aparece do lado.</p>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={labelStyle}>De</label>
+            <input type="date" value={de} onChange={e => setDe(e.target.value)} style={{ ...inputStyle, width: 160 }} />
+          </div>
+          <div>
+            <label style={labelStyle}>Até</label>
+            <input type="date" value={ate} onChange={e => setAte(e.target.value)} style={{ ...inputStyle, width: 160 }} />
+          </div>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>Um lançamento por campanha, cobrindo esse intervalo.</p>
+        </div>
+
+        {ativas.map(c => {
+          const ja = jaLancado(c.id)
+          const temAlgo = ja.investimento > 0 || ja.resultados > 0
+          return (
+            <div key={c.id} style={{ padding: '12px 0', borderTop: '1px solid var(--v2-rule)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: corCanal(c.canal), flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{objetivoDe(c.objetivo).label}</span>
+                {temAlgo && <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--v2-ok)' }}>já lançado no período: {fmtDinheiro(ja.investimento)} · {fmtNumero(ja.resultados)} {objetivoDe(c.objetivo).resultado.plural}</span>}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8 }}>
+                {colunas(c).map(col => (
+                  <div key={col.k}>
+                    <label style={{ ...labelStyle, marginBottom: 3 }}>{col.label}</label>
+                    <input type="number" min={0} step="0.01" value={(linhas[c.id] || {})[col.k] || ''} onChange={e => set(c.id, col.k, e.target.value)} placeholder="0" style={inputStyle} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+          <button onClick={salvar} disabled={salvando || !preenchidas.length} style={{ flex: 1, padding: '12px 0', background: preenchidas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: preenchidas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: preenchidas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+            {salvando ? 'Lançando…' : preenchidas.length ? `Lançar ${preenchidas.length} campanha(s)` : 'Preencha alguma linha'}
+          </button>
+          <button onClick={onClose} style={{ padding: '12px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ContasModal({ contas, clienteId, clienteNome, onClose, onSalvo }: {
   contas: Conta[]; clienteId: string; clienteNome?: string; onClose: () => void; onSalvo: () => void
 }) {
@@ -673,112 +891,3 @@ function CampanhaModal({ campanha, clienteId, clienteNome, contas, marcos, metri
 }
 
 // ---------------------------------------------------------------- lançamento de números
-function LancamentoModal({ campanha, clienteId, periodo, metricas, onClose, onSalvo }: {
-  campanha: Campanha; clienteId: string; periodo: { de: string; ate: string; rotulo: string }
-  metricas: Metrica[]; onClose: () => void; onSalvo: () => void
-}) {
-  const obj = objetivoDe(campanha.objetivo)
-  const hoje = new Date()
-  const [form, setForm] = useState({
-    data: periodo.de <= ymd(hoje) && ymd(hoje) <= periodo.ate ? ymd(hoje) : periodo.de,
-    ate: '',
-    investimento: '' as any, impressoes: '' as any, alcance: '' as any, cliques: '' as any, resultados: '' as any, receita: '' as any,
-    observacao: '',
-  })
-  const [salvando, setSalvando] = useState(false)
-  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
-
-  async function salvar() {
-    if (salvando) return
-    if (!form.data) { toast('Informe a data do lançamento.', 'erro'); return }
-    setSalvando(true)
-    const r = await fetch('/api/ads/metricas', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, clienteId, campanhaId: campanha.id, nivel: 'campanha', refId: campanha.id }),
-    }).then(x => x.json()).catch(() => null)
-    setSalvando(false)
-    if (!r?.ok) { toast('Não foi possível lançar os números.', 'erro'); return }
-    const idNovo = r.metrica?.id
-    if (idNovo) registrarDesfazer(`Lançamento de ${fmtDia(form.data)} em "${campanha.nome}"`, async () => {
-      const x = await fetch(`/api/ads/metricas?id=${idNovo}`, { method: 'DELETE' }).catch(() => null)
-      onSalvo()
-      return !!x?.ok
-    })
-    toast('Números lançados.', 'sucesso')
-    onSalvo()
-  }
-
-  async function excluir(m: Metrica) {
-    if (!(await confirmar(`Excluir o lançamento de ${fmtDia(m.data)}?`, { titulo: 'Excluir lançamento', okLabel: 'Excluir', perigo: true }))) return
-    await fetch(`/api/ads/metricas?id=${m.id}`, { method: 'DELETE' }).catch(() => null)
-    registrarDesfazer(`Exclusão do lançamento de ${fmtDia(m.data)}`, async () => {
-      const r = await fetch('/api/ads/metricas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, restaurar: true }) }).catch(() => null)
-      onSalvo()
-      return !!r?.ok
-    })
-    onSalvo()
-  }
-
-  const campos: { k: string; label: string; dica?: string }[] = [
-    { k: 'investimento', label: 'Investimento (R$)' },
-    { k: 'resultados', label: obj.resultado.plural.charAt(0).toUpperCase() + obj.resultado.plural.slice(1), dica: obj.semResultado ? 'Este objetivo mede alcance: preencha o alcance abaixo.' : undefined },
-    { k: 'impressoes', label: 'Impressões' },
-    { k: 'alcance', label: 'Alcance' },
-    { k: 'cliques', label: 'Cliques' },
-    ...(obj.receita ? [{ k: 'receita', label: 'Receita (R$)' }] : []),
-  ]
-
-  return (
-    <div onClick={fecharFora(onClose, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 620, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 3px', fontSize: 16, color: 'var(--v2-ink)' }}>Lançar números</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{campanha.nome} · {labelCanal(campanha.canal)} · {obj.label}. CTR, CPC e {obj.custoLabel.toLowerCase()} são calculados sozinhos.</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <div>
-            <label style={labelStyle}>Data *</label>
-            <input type="date" value={form.data} onChange={e => set('data', e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Até (se cobrir um período)</label>
-            <input type="date" value={form.ate} onChange={e => set('ate', e.target.value)} style={inputStyle} />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-          {campos.map(c => (
-            <div key={c.k}>
-              <label style={labelStyle}>{c.label}</label>
-              <input type="number" min={0} step="0.01" value={(form as any)[c.k]} onChange={e => set(c.k, e.target.value)} placeholder="0" style={inputStyle} />
-              {c.dica && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{c.dica}</p>}
-            </div>
-          ))}
-        </div>
-
-        <label style={{ ...labelStyle, marginTop: 10 }}>Observação</label>
-        <input value={form.observacao} onChange={e => set('observacao', e.target.value)} placeholder="Ex.: subimos o orçamento no dia 12" style={inputStyle} />
-
-        <button onClick={salvar} disabled={salvando} style={{ marginTop: 14, width: '100%', padding: '11px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-          {salvando ? 'Lançando…' : 'Lançar'}
-        </button>
-
-        {metricas.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            <h4 style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Lançamentos desta campanha</h4>
-            {metricas.slice(0, 20).map(m => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--v2-rule)', fontSize: 12.5, flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--v2-ink2)', minWidth: 90 }}>{fmtDia(m.data)}{m.ate ? ` a ${fmtDia(m.ate)}` : ''}</span>
-                <span style={{ color: 'var(--v2-ink)' }}>{fmtDinheiro(m.investimento || 0)}</span>
-                <span style={{ color: 'var(--v2-ink2)' }}>{fmtNumero(m.resultados || 0)} {obj.resultado.plural}</span>
-                <span style={{ color: 'var(--v2-ink3)' }}>{fmtNumero(m.cliques || 0)} cliques</span>
-                <button onClick={() => excluir(m)} title="Excluir lançamento" style={{ marginLeft: 'auto', background: 'none', border: 0, color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 15 }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <button onClick={onClose} style={{ marginTop: 16, width: '100%', padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Fechar</button>
-      </div>
-    </div>
-  )
-}
