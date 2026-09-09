@@ -6,6 +6,7 @@ import { resumoDoCliente, type ResumoCliente } from '@/lib/hubCliente'
 import { paragrafar, resumir } from '@/lib/textoBruto'
 import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 import ComunicacaoDiaria from '@/app/components/ComunicacaoDiaria'
+import MetricasAds from '@/app/components/MetricasAds'
 import { candidatosDoDia, diasUteisSemComunicar, type Comunicado } from '@/lib/comunicacao'
 
 // INÍCIO DO HUB: tudo o que está atribuído ao cliente, numa tela — bola da vez,
@@ -249,6 +250,11 @@ export default function HubCliente() {
               {cliente.postsMensais > 0 && <p style={{ margin: 0 }}><span style={{ color: 'var(--v2-ink3)' }}>Contrato: </span>{cliente.postsMensais} posts/mês</p>}
             </div>
           ) : <Vazio texto="Sem descrição. Preencha em Configurações → Clientes." />}
+        </Cartao>
+
+        {/* MÉTRICAS de mídia paga (dono, 09/09): o dashboard entra como bloco, do lado dos outros. */}
+        <Cartao titulo="Métricas de campanha" acao="Ver tudo" onAcao={() => router.push(`${base}/metricas`)}>
+          <MetricasAds clienteId={clienteId} clienteNome={cliente.nome} compacto podeEditar={ehEquipe} />
         </Cartao>
       </div>
 

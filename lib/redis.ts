@@ -799,6 +799,88 @@ export type ChatMensagem = {
 // Playbook — marcos/entregas por cliente
 export type MarcoStatus = 'planejado' | 'em_andamento' | 'concluido' | 'atrasado' | 'cancelado'
 export type MarcoCategoria = 'social_media' | 'trafego' | 'branding' | 'landing_page' | 'estrategia' | 'reuniao' | 'entrega' | 'outro'
+// ---------------------------------------------------------------- MÍDIA PAGA (Métricas)
+// Dono, 09/09/2026: o gestor de tráfego cadastra as contas e campanhas e LANÇA os números
+// (integração com Meta/Google entra depois, preenchendo os mesmos campos).
+// Público e anúncio vivem DENTRO da campanha (mesmo padrão de `marco.subetapas`): uma
+// escrita só, sem índice extra e sem órfão. As regras (objetivo -> resultado, derivados)
+// estão em lib/metricasAds.
+export type AnuncioAds = {
+  id: string
+  titulo: string
+  descricao?: string
+  textoPrincipal?: string // Meta: texto principal do anúncio
+  cta?: string
+  urlDestino?: string
+  criativoUrl?: string // print da arte (Blob)
+  criativoTipo?: string
+  status?: 'ativo' | 'pausado'
+}
+export type PublicoAds = {
+  id: string
+  titulo: string
+  descricao?: string
+  // Google (campanha de Pesquisa): as palavras e as negativas, que é onde o dinheiro vaza.
+  palavrasChave?: { termo: string; correspondencia: 'ampla' | 'frase' | 'exata' | 'negativa' }[]
+  anuncios?: AnuncioAds[]
+}
+export type ContaAds = {
+  id: string
+  clienteId: string
+  clienteNome?: string
+  canal: string // meta | google | linkedin | tiktok
+  nome: string
+  identificador?: string // act_123456789 (Meta) / 123-456-7890 (Google)
+  moeda?: string
+  observacao?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+  excluidoEm?: string
+}
+export type CampanhaAds = {
+  id: string
+  clienteId: string
+  clienteNome?: string
+  contaId: string
+  canal: string
+  nome: string
+  objetivo: string // chave do catálogo (lib/metricasAds) — decide o nome do resultado
+  tipoGoogle?: string // pesquisa | pmax | display | video | demand_gen | shopping
+  status: 'planejada' | 'ativa' | 'pausada' | 'encerrada'
+  dataInicio?: string
+  dataFim?: string
+  orcamento?: number
+  orcamentoTipo?: 'diario' | 'total'
+  marcoId?: string // etapa do Playbook a que a campanha pertence
+  subetapaId?: string
+  publicos?: PublicoAds[]
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+  excluidoEm?: string
+}
+export type MetricaAds = {
+  id: string
+  clienteId: string
+  campanhaId: string
+  nivel: 'campanha' | 'publico' | 'anuncio'
+  refId: string // id da campanha, do público ou do anúncio
+  data: string // YYYY-MM-DD (início do período coberto)
+  ate?: string // quando o lançamento cobre um intervalo (semana/mês fechado)
+  investimento?: number
+  impressoes?: number
+  alcance?: number
+  cliques?: number
+  resultados?: number // conforme o OBJETIVO da campanha
+  receita?: number
+  observacao?: string
+  criadoPor?: string
+  criadoEm: string
+  atualizadoEm: string
+  excluidoEm?: string
+}
+
 export type Marco = {
   id: string
   clienteId: string

@@ -28,6 +28,7 @@ const IC: Record<string, string> = {
   documentos: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6',
   listening: 'M3 12h4l3-8 4 16 3-8h4',
   analytics: 'M3 3v18h18M7 14l4-4 4 4 5-6',
+  metricas: 'M3 3v18h18M8 17V9M13 17v-5M18 17v-9',
   relatorio: 'M4 4h16v16H4zM8 12v5M12 9v8M16 14v3',
   conta: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   voltar: 'M19 12H5M12 19l-7-7 7-7',
@@ -56,6 +57,7 @@ const GRUPOS_EQUIPE: Grupo[] = [
     { key: '/documentos', label: 'Documentos', icone: 'documentos' },
     { key: '/listening', label: 'Social Listening', icone: 'listening' },
     { key: '/analytics', label: 'Analytics', icone: 'analytics' },
+    { key: '/metricas', label: 'Métricas', icone: 'metricas' },
   ] },
 ]
 
@@ -71,6 +73,7 @@ const GRUPOS_CLIENTE: Grupo[] = [
     { key: '/marca', label: 'Marca', icone: 'marca', modulo: 'marca' },
     { key: '/listening', label: 'Social Listening', icone: 'listening', modulo: 'listening' },
     { key: '/analytics', label: 'Analytics', icone: 'analytics', modulo: 'analytics' },
+    { key: '/metricas', label: 'Métricas', icone: 'metricas' },
     { key: '/conta', label: 'Minha conta', icone: 'conta' },
   ] },
 ]
