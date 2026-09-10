@@ -1,6 +1,6 @@
 'use client'
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
-import { opcoesEtapas, separarValor, juntarValor, type MarcoOpcao } from '@/lib/etapaPlaybook'
+import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -405,6 +405,7 @@ export default function PostComposer({
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
               <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
               {/* MARCO > ETAPA: as etapas de dentro também aparecem (dono, 09/09) — lib/etapaPlaybook */}
+              {(() => { const a = opcaoDoValorAtual(opcoesEtapas(marcos), juntarValor(marcoId, subetapaId)); return a ? <option value={a.valor}>{a.rotulo}</option> : null })()}
               {opcoesEtapas(marcos).map(g => g.opcoes.length > 1 ? (
                 <optgroup key={g.marcoId} label={g.titulo}>
                   {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : `  └ ${o.rotulo}`}</option>)}

@@ -25,7 +25,11 @@ export type GrupoOpcoes = {
 /** Monta os grupos do seletor: o marco inteiro e, dentro dele, cada etapa. */
 export function opcoesEtapas(marcos: MarcoOpcao[] = []): GrupoOpcoes[] {
   return marcos.map(m => {
-    const subs = (m.subetapas || []).filter(s => s && s.id && (s.titulo || '').trim())
+    // Etapa SEM id não some da lista: ganha o mesmo id por posição que lib/subetapas
+    // gera ao gravar (`se-N`). Some do seletor = a pessoa não consegue vincular o que vê.
+    const subs = (m.subetapas || [])
+      .map((s, i) => ({ ...s, id: (s?.id || '').trim() || `se-${i + 1}` }))
+      .filter(s => (s.titulo || '').trim())
     return {
       marcoId: m.id,
       titulo: m.titulo || 'Marco sem título',
@@ -55,4 +59,19 @@ export function rotuloEtapa(marcos: MarcoOpcao[] = [], marcoId?: string, subetap
   if (!m) return ''
   const s = subetapaId ? (m.subetapas || []).find(x => x.id === subetapaId) : undefined
   return s ? `${m.titulo} › ${s.titulo}` : m.titulo
+}
+
+/** Garante que o valor selecionado TENHA uma opção — se a etapa vinculada não estiver mais
+ *  na lista (marco trocado, etapa apagada, lista ainda carregando), o <select> pularia
+ *  sozinho para a primeira opção e a pessoa veria "voltou para o marco inteiro" sem ter
+ *  mexido em nada (dono, 10/09). Aqui ele mantém o que está gravado e diz o que houve. */
+export function opcaoDoValorAtual(
+  grupos: GrupoOpcoes[],
+  valor: string,
+  rotulo?: string,
+): { valor: string; rotulo: string } | null {
+  if (!valor) return null
+  const existe = grupos.some(g => g.opcoes.some(o => o.valor === valor))
+  if (existe) return null
+  return { valor, rotulo: rotulo || 'Etapa vinculada (não está mais na lista)' }
 }

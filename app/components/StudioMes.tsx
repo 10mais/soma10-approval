@@ -2,7 +2,7 @@
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { FORMATOS as FORMATOS_LIB } from '@/lib/formatoPost'
-import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa, type MarcoOpcao } from '@/lib/etapaPlaybook'
+import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -2068,6 +2068,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                   onChange={e => { const v = separarValor(e.target.value); setPedirEtapa(pe => pe && ({ ...pe, pauta: { ...pe.pauta, marcoId: v.marcoId, subetapaId: v.subetapaId } })) }}
                   style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit', background: 'var(--v2-surface)', marginBottom: 16 }}>
                   <option value="">Selecione a etapa...</option>
+                  {(() => { const a = opcaoDoValorAtual(grupos, juntarValor(pedirEtapa.pauta.marcoId, pedirEtapa.pauta.subetapaId)); return a ? <option value={a.valor}>{a.rotulo}</option> : null })()}
                   {grupos.map(g => g.opcoes.length > 1 ? (
                     <optgroup key={g.marcoId} label={g.titulo}>
                       {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : `  └ ${o.rotulo}`}</option>)}

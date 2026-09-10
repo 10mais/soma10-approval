@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa } from '@/lib/etapaPlaybook'
+import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa, opcaoDoValorAtual } from '@/lib/etapaPlaybook'
 
 const marcos = [
   { id: 'm1', titulo: 'Produção de conteúdo', subetapas: [
@@ -41,5 +41,21 @@ describe('etapaPlaybook — o seletor mostra o marco E as etapas de dentro', () 
     expect(rotuloEtapa(marcos, 'm1', 'apagada')).toBe('Produção de conteúdo')
     expect(rotuloEtapa(marcos, 'sumiu')).toBe('')
     expect(rotuloEtapa(marcos)).toBe('')
+  })
+})
+
+describe('o seletor não pula sozinho', () => {
+  it('etapa sem id ganha id por posição em vez de sumir da lista', () => {
+    const g = opcoesEtapas([{ id: 'm9', titulo: 'Marco', subetapas: [{ id: '', titulo: 'Sem id' } as any, { id: '  ', titulo: 'Outra' } as any] }])
+    expect(g[0].opcoes.map(o => o.valor)).toEqual(['m9', 'm9::se-1', 'm9::se-2'])
+  })
+
+  it('valor gravado que não está na lista vira opção própria, com aviso', () => {
+    const g = opcoesEtapas(marcos)
+    expect(opcaoDoValorAtual(g, 'm1::s1')).toBeNull()
+    expect(opcaoDoValorAtual(g, 'm1')).toBeNull()
+    expect(opcaoDoValorAtual(g, '')).toBeNull()
+    expect(opcaoDoValorAtual(g, 'm1::apagada')).toEqual({ valor: 'm1::apagada', rotulo: 'Etapa vinculada (não está mais na lista)' })
+    expect(opcaoDoValorAtual(g, 'm9::x', 'Marco antigo › Etapa antiga')).toEqual({ valor: 'm9::x', rotulo: 'Marco antigo › Etapa antiga' })
   })
 })

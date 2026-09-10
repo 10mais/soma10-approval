@@ -7,6 +7,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { registrarDesfazer } from '@/lib/desfazer'
 import { ehImagem as anexoEhImagem, ehVideo as anexoEhVideo } from '@/lib/anexoMidia'
 import LimiteDeErro from './LimiteDeErro'
+import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual } from '@/lib/etapaPlaybook'
 import { podeSerFilha, camposAoVincular, progressoDaMae, validarEmMassa } from '@/lib/hierarquiaTarefas'
 import RichText from './RichText'
 import OptImg from './OptImg'
@@ -1652,16 +1653,20 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                 {form.clienteId && !criandoEtapa && (<>
                   {/* MARCO > ETAPA (dono, 08/09): a tarefa pode apontar para o marco inteiro ou para uma etapa dentro dele.
                       Valor composto "marcoId::subetapaId" para a etapa; a tarefa guarda os dois campos. */}
-                  <select value={form.subetapaId ? `${form.marcoId}::${form.subetapaId}` : form.marcoId}
-                    onChange={e => { const v = e.target.value; if (v === '__nova__') { setCriandoEtapa(true) } else { const [mid, sid] = v.split('::'); setForm(f => ({ ...f, marcoId: mid || '', subetapaId: sid || '' })) } }}
+                  <select value={juntarValor(form.marcoId, form.subetapaId)}
+                    onChange={e => { const v = e.target.value; if (v === '__nova__') { setCriandoEtapa(true) } else { const pp = separarValor(v); setForm(f => ({ ...f, marcoId: pp.marcoId, subetapaId: pp.subetapaId })) } }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                     <option value="">{marcos.length === 0 ? 'Nenhum marco — crie um abaixo' : 'Selecione o marco ou a etapa...'}</option>
-                    {marcos.map(m => (m.subetapas && m.subetapas.length) ? (
-                      <optgroup key={m.id} label={m.titulo}>
-                        <option value={m.id}>{m.titulo} (o marco inteiro)</option>
-                        {m.subetapas.map(se => <option key={se.id} value={`${m.id}::${se.id}`}>{'\u00a0\u00a0\u2514 '}{se.titulo}</option>)}
-                      </optgroup>
-                    ) : <option key={m.id} value={m.id}>{m.titulo}</option>)}
+                    {(() => { const grupos = opcoesEtapas(marcos); const atual = opcaoDoValorAtual(grupos, juntarValor(form.marcoId, form.subetapaId)); return (<>
+                      {/* O vínculo GRAVADO sempre tem opção: sem isto o select pulava sozinho
+                          para o marco inteiro quando a etapa não estava na lista (dono, 10/09). */}
+                      {atual && <option value={atual.valor}>{atual.rotulo}</option>}
+                      {grupos.map(g => g.opcoes.length > 1 ? (
+                        <optgroup key={g.marcoId} label={g.titulo}>
+                          {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : '  └ ' + o.rotulo}</option>)}
+                        </optgroup>
+                      ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
+                    </>) })()}
                     <option value="__nova__">+ Criar novo marco...</option>
                   </select>
                   {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem marcos no Playbook. Clique em "+ Criar marco".</p>}

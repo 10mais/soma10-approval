@@ -217,23 +217,36 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const lista = marcosDoCliente(m.clienteId)
     return { marco: m, ids: lista.map(x => x.id), alturas: lista.map(alturaMarco), de: lista.findIndex(x => x.id === marcoId) }
   }
+  // O gesto vive na JANELA, não no elemento (dono, 10/09: "a barra de ajustar prazo buga
+  // completamente quando passo o mouse"). Antes, mover e soltar estavam presos à barra: se o
+  // ponteiro saísse dela antes do clique terminar, o pointerup caía fora, `arrasteRef` nunca
+  // era limpo e QUALQUER passada de mouse depois continuava arrastando. Com os listeners na
+  // janela, solte onde soltar, o arraste termina — e sem setPointerCapture, que era o que
+  // roubava o clique do chevron em 08/09.
   function comecarArraste(e: React.PointerEvent, tipo: TipoArraste, marcoId: string, subId?: string) {
     if (!editavel || e.button !== 0) return
-    // Clique num BOTAO dentro da barra (recolher etapas, ver tarefas) nunca vira arraste
-    // — e a captura do ponteiro só começa depois que o dedo/mouse anda de verdade: com a
-    // captura ligada no pointerdown, o Chrome entrega o clique ao elemento capturador e o
-    // chevron parava de funcionar (dono, 08/09: "a seta de RECOLHER não está mais funcionando").
+    if (arrasteRef.current) return // já há um gesto armado
+    // Clique num BOTAO dentro da barra (recolher etapas, ver tarefas) nunca vira arraste.
     if ((e.target as HTMLElement)?.closest?.('button')) return
     e.stopPropagation()
     // Puxar as PONTAS é sempre prazo; só o corpo da barra ("mover") pode virar reordenação.
     arrasteRef.current = { tipo, marcoId, subId, x0: e.clientX, y0: e.clientY, eixo: tipo === 'mover' ? null : 'x', dias: 0, dy: 0, moveu: false }
+    const mover = (ev: PointerEvent) => moverArraste(ev)
+    const soltar = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', mover)
+      window.removeEventListener('pointerup', soltar)
+      window.removeEventListener('pointercancel', soltar)
+      void soltarArraste(ev)
+    }
+    window.addEventListener('pointermove', mover)
+    window.addEventListener('pointerup', soltar)
+    window.addEventListener('pointercancel', soltar)
   }
-  function moverArraste(e: React.PointerEvent) {
+  function moverArraste(e: { clientX: number; clientY: number }) {
     const a = arrasteRef.current; if (!a) return
     const dx = e.clientX - a.x0, dy = e.clientY - a.y0
     if (!a.moveu && Math.abs(dx) < 4 && Math.abs(dy) < 4) return
     if (!a.moveu) {
-      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
       if (!a.eixo) a.eixo = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'
       a.moveu = true
     }
@@ -249,10 +262,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const d = pxParaDias(dx, largura / diasRef.current)
     if (d !== a.dias) { a.dias = d; setPrevia({ marcoId: a.marcoId, subId: a.subId, tipo: a.tipo, dias: d }) }
   }
-  async function soltarArraste(e: React.PointerEvent) {
+  async function soltarArraste(_e?: unknown) {
     const a = arrasteRef.current; if (!a) return
     arrasteRef.current = null
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch {}
     setPrevia(null); setPreviaV(null)
     if (!a.moveu) return
     ignorarClique.current = true; setTimeout(() => { ignorarClique.current = false }, 0)
@@ -334,9 +346,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
   const arrastando = (marcoId: string, subId?: string) => !!previa && previa.marcoId === marcoId && (previa.subId || undefined) === subId
   const alcas = (marcoId: string, subId?: string) => (editavel ? (<>
-    <div onPointerDown={e => comecarArraste(e, 'inicio', marcoId, subId)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} onClick={e => e.stopPropagation()} title="Puxe para mudar o início" aria-label="Mudar o início"
+    <div onPointerDown={e => comecarArraste(e, 'inicio', marcoId, subId)} onClick={e => e.stopPropagation()} title="Puxe para mudar o início" aria-label="Mudar o início"
       style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
-    <div onPointerDown={e => comecarArraste(e, 'fim', marcoId, subId)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} onClick={e => e.stopPropagation()} title="Puxe para mudar o fim" aria-label="Mudar o fim"
+    <div onPointerDown={e => comecarArraste(e, 'fim', marcoId, subId)} onClick={e => e.stopPropagation()} title="Puxe para mudar o fim" aria-label="Mudar o fim"
       style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
   </>) : null)
   const etiquetaPrevia = (ini: string, fim?: string) => (
@@ -590,7 +602,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     topo += altura
                     return (
                       <div key={m.id}>
-                        <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
+                        <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
                             ...(arrastandoV(m.id) ? { transform: `translateY(${previaV!.dy}px)`, zIndex: 6, boxShadow: '0 8px 20px rgba(0,0,0,0.3)' } : null),
@@ -647,7 +659,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           const tmpE = progressoTempo(ini, fim, Date.now())
                           const corE = se.cor || corDoMarco(m)
                           return (
-                            <div key={se.id} onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id, se.id)} onPointerMove={moverArraste} onPointerUp={soltarArraste} onPointerCancel={soltarArraste}
+                            <div key={se.id} onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id, se.id)}
                               title={`${m.titulo} › ${se.titulo}${se.dataInicio || se.dataFim ? ` (${fmtData(ini)}${se.dataFim ? ' - ' + fmtData(se.dataFim) : ''})` : ''}${se.kpi ? ` · ${se.kpi}: ${se.kpiAtual ?? 0}${se.kpiMeta ? '/' + se.kpiMeta : ''}` : ''}${atrasada ? ' · atrasada' : ''}`}
                               style={{
                                 position: 'absolute', top: topMarco + H_MARCO + j * H_SUB, left: `${l}%`, width: `${w}%`, height: H_SUBBARRA, minWidth: 22,
