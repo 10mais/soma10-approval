@@ -5,6 +5,8 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import { toast, confirmar } from '@/lib/toast'
 import { registrarDesfazer } from '@/lib/desfazer'
+import { ehImagem as anexoEhImagem, ehVideo as anexoEhVideo } from '@/lib/anexoMidia'
+import LimiteDeErro from './LimiteDeErro'
 import { podeSerFilha, camposAoVincular, progressoDaMae, validarEmMassa } from '@/lib/hierarquiaTarefas'
 import RichText from './RichText'
 import OptImg from './OptImg'
@@ -175,8 +177,9 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
   const [pendente, setPendente] = useState<{ x: number; y: number } | null>(null)
   const [textoAnotacao, setTextoAnotacao] = useState('')
   const [anotacaoHover, setAnotacaoHover] = useState<string | null>(null)
-  const ehImagem = anexo.tipo.startsWith('image')
-  const ehVideo = anexo.tipo.startsWith('video')
+  // Anexo antigo pode não ter `tipo`: a pergunta vive em lib/anexoMidia e nunca lança (10/09).
+  const ehImagem = anexoEhImagem(anexo)
+  const ehVideo = anexoEhVideo(anexo)
   const anotacoes = anexo.anotacoes || []
 
   function handleClickImagem(e: React.MouseEvent<HTMLDivElement>) {
@@ -948,7 +951,18 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   )
 }
 
-export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, responsavelPadrao, responsavelPorTipo, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+// O modal exportado vem embrulhado num LIMITE DE ERRO: se o conteúdo quebrar (anexo torto,
+// campo inesperado), a pessoa vê o aviso e o botão Fechar em vez da tela travada — foi o que
+// aconteceu em 10/09 com um anexo sem `tipo`.
+export function TarefaModal(props: Parameters<typeof TarefaModalInterno>[0]) {
+  return (
+    <LimiteDeErro onFechar={props.onClose} titulo="Não foi possível abrir esta tarefa">
+      <TarefaModalInterno {...props} />
+    </LimiteDeErro>
+  )
+}
+
+function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, responsavelPadrao, responsavelPorTipo, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]; responsavelPadrao?: string
   // Playbook: quem recebe a tarefa segundo o squad do cliente, por tipo (lib/responsavelPorTipo). So em tarefa NOVA.
   responsavelPorTipo?: (tipo: string) => string
@@ -1334,9 +1348,9 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {anexos.map((a, i) => (
                 <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
-                  {a.tipo.startsWith('image') ? (
+                  {anexoEhImagem(a) ? (
                     <img src={a.url} alt={a.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : a.tipo.startsWith('video') ? (
+                  ) : anexoEhVideo(a) ? (
                     <video src={a.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted preload="metadata" />
                   ) : (
                     <div style={{ width: '100%', height: '100%', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1887,7 +1901,7 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {prontos.map(({ a, i }) => (
                       <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '2px solid var(--v2-ok)', cursor: 'pointer' }}>
-                        {a.tipo.startsWith('video')
+                        {anexoEhVideo(a)
                           ? <video src={a.url} style={{ width: 96, height: 96, objectFit: 'cover' }} muted preload="metadata" />
                           : <img src={a.url} alt={a.nome} style={{ width: 96, height: 96, objectFit: 'cover' }} />}
                         <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} title="Remover" style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>×</button>
@@ -1907,9 +1921,9 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                 {anexos.map((a, i) => a.papel === 'criativo' ? null : (
                   <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
-                    {a.tipo.startsWith('video') ? (
+                    {anexoEhVideo(a) ? (
                       <video src={a.url} style={{ width: 80, height: 80, objectFit: 'cover' }} muted preload="metadata" />
-                    ) : a.tipo.startsWith('image') ? (
+                    ) : anexoEhImagem(a) ? (
                       <img src={a.url} alt={a.nome} style={{ width: 80, height: 80, objectFit: 'cover' }} />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80, height: 80, background: 'var(--v2-surface1)', fontSize: 10, color: 'var(--v2-ink2)', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>
@@ -1923,7 +1937,7 @@ export function TarefaModal({ tarefa: tarefaEntrada, clientes, usuarios, respons
                       title={`Baixar ${a.nome}`}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
-                    {(ehTarefaDeProducao({ tipo: form.tipo }) || !!form.origemPostId) && (a.tipo.startsWith('image') || a.tipo.startsWith('video')) && (
+                    {(ehTarefaDeProducao({ tipo: form.tipo }) || !!form.origemPostId) && (anexoEhImagem(a) || anexoEhVideo(a)) && (
                       <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'criativo' } : x)) }} title="Marcar como criativo pronto" style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>é a arte</button>
                     )}
                   </div>
