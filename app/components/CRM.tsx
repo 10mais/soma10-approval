@@ -134,13 +134,24 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // lib/autoScrollKanban (era daqui que ela vinha; virou hook para não existir
   // em duas versões, e o hook ainda limpa o timer se a tela sair no meio do arraste).
   const { ref: funilRef, aoArrastar: autoScrollDrag, parar: pararAutoScroll } = useAutoScrollKanban<HTMLDivElement>()
-  // Barra de rolagem horizontal fina e discreta ACIMA do funil: o scrollbar
-  // nativo fica no rodapé de colunas de altura cheia e é difícil de alcançar. A
-  // barra do topo e o funil sincronizam o scrollLeft nos dois sentidos.
-  const barraTopoRef = useRef<HTMLDivElement>(null)
-  const [larguraFunil, setLarguraFunil] = useState(0)
-  function aoRolarTopo(e: React.UIEvent<HTMLDivElement>) { if (funilRef.current) funilRef.current.scrollLeft = e.currentTarget.scrollLeft }
-  function aoRolarFunil(e: React.UIEvent<HTMLDivElement>) { if (barraTopoRef.current) barraTopoRef.current.scrollLeft = e.currentTarget.scrollLeft }
+  // IR PARA ETAPA (pedido da Deny, 10/09): o topo do funil era uma barrinha de
+  // rolagem fina — no toque ela é inalcançável e no mouse quase ninguém percebia
+  // que dava pra deslizar ali. O quadro CONTINUA kanban; o topo virou um menu
+  // suspenso que desliza o funil até a coluna escolhida.
+  const [etapaFoco, setEtapaFoco] = useState('')
+  function irParaEtapa(id: string) {
+    setEtapaFoco(id)
+    const cont = funilRef.current
+    if (!cont || !id) return
+    // Os filhos diretos do container SÃO as colunas, na mesma ordem da lista —
+    // por índice não dependemos de seletor por id (uuid não passa em CSS.escape
+    // antigo) nem de offsetParent (o container não é positioned).
+    const i = estagiosDoPipeline(pipelineSel).findIndex(e => e.id === id)
+    const col = i >= 0 ? (cont.children[i] as HTMLElement | undefined) : undefined
+    if (!col) return
+    const dx = col.getBoundingClientRect().left - cont.getBoundingClientRect().left
+    cont.scrollTo({ left: cont.scrollLeft + dx - 8, behavior: 'smooth' })
+  }
   // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
   // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
   // Sai dos contatos já carregados; nada de chamada extra.
@@ -172,19 +183,6 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; ordem: number }[]>([])
   const [pipelineSel, setPipelineSel] = useState('')
   const [pipelinesModal, setPipelinesModal] = useState(false)
-  // Mede a largura rolável do funil para a barra do topo. PRECISA remedir quando
-  // os DADOS mudam (negócios/etapas/pipeline): as colunas chegam depois do fetch
-  // e o ResizeObserver não dispara por conteúdo interno (o container não muda de
-  // caixa) — só com [vista] a barra ficava sem nada pra rolar e "sumia".
-  useEffect(() => {
-    const el = funilRef.current
-    if (vista !== 'funil' || !el) return
-    const medir = () => setLarguraFunil(el.scrollWidth)
-    medir()
-    const ro = new ResizeObserver(medir); ro.observe(el)
-    window.addEventListener('resize', medir)
-    return () => { ro.disconnect(); window.removeEventListener('resize', medir) }
-  }, [vista, negocios, estagios, pipelineSel])
   const [etapasModal, setEtapasModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
@@ -250,10 +248,22 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // este efeito, o seletor de viagem e os chips ficavam só com "Outro".
   useEffect(() => { if (perfilTurismo) carregarViagens() }, [perfilTurismo])
 
+  // Mover de etapa (arrastando ou pelo "Mover para" do card). O update é
+  // otimista, MAS o erro não pode ser silencioso: engolir o 403/500 e recarregar
+  // fazia o card voltar sozinho para a coluna de origem sem dizer nada — de
+  // fora isso parece "arrastar está desabilitado" (queixa da Deny, 10/09).
   async function moverEstagio(neg: Negocio, estagioId: string) {
     if (neg.estagioId === estagioId) return
+    const anterior = neg.estagioId
     setNegocios(ns => ns.map(n => n.id === neg.id ? { ...n, estagioId } : n))
-    await fetch('/api/crm/negocios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: neg.id, estagioId }) }).catch(() => {})
+    const r = await fetch('/api/crm/negocios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: neg.id, estagioId }) }).catch(() => null)
+    if (!r || !r.ok) {
+      setNegocios(ns => ns.map(n => n.id === neg.id ? { ...n, estagioId: anterior } : n))
+      toast(r?.status === 403
+        ? 'Seu acesso permite ver o CRM, mas não mover oportunidades. Um administrador libera em Configurações → Permissões (CRM → editar).'
+        : 'Não deu para mover a oportunidade. Confira a conexão e tente de novo.', 'erro')
+      return
+    }
     carregar()
   }
 
@@ -303,13 +313,16 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // Legenda por aba (perfil-aware). Fica FORA da linha das abas para não deslocá-las.
   const subtitulo = perfilClinica
     ? (({ painel: 'Visão geral dos agendamentos e da captação de pacientes.', funil: 'Arraste os pacientes entre as etapas do agendamento.', pacientes: 'Pacientes que já passaram por atendimento.', contatos: 'Leads e contatos ainda não atendidos.', mensagens: 'Conversas com pacientes e leads.', playbook: 'Roteiro de atendimento e cadência de mensagens.' } as Record<string, string>)[vista] || '')
-    : (vista === 'funil' ? 'Arraste os negócios entre as etapas. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.')
+    : (vista === 'funil' ? 'Arraste os negócios entre as etapas — ou use "Mover para" no card. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.')
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)', flexShrink: 0 }}>CRM</h2>
-        <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
+        {/* flexWrap: sem ele a linha de abas não encolhia e as últimas opções
+            (Mensagens, Biblioteca, "+ Nova oportunidade") saíam da área visível
+            em tela menor — existiam, mas ninguém alcançava pra clicar. */}
+        <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 3, flexWrap: 'wrap' }}>
           {((perfilClinica || perfilCidadania || perfilTelefonia
             ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
             : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
@@ -395,11 +408,17 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             })}
           </div>
         )}
-        <style>{`.crm-barra-topo::-webkit-scrollbar{height:9px}.crm-barra-topo::-webkit-scrollbar-thumb{background:var(--v2-rule);border-radius:999px}.crm-barra-topo::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-barra-topo::-webkit-scrollbar-track{background:transparent}.crm-barra-topo{scrollbar-width:thin;scrollbar-color:var(--v2-rule2) transparent}`}</style>
-        <div ref={barraTopoRef} onScroll={aoRolarTopo} className="crm-barra-topo" title="Deslizar o funil" style={{ overflowX: 'auto', overflowY: 'hidden', height: 12, marginBottom: 2 }}>
-          <div style={{ width: larguraFunil, height: 1 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+          <label htmlFor="crm-ir-etapa" style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ir para etapa</label>
+          <select id="crm-ir-etapa" value={etapaFoco} onChange={e => irParaEtapa(e.target.value)}
+            style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', maxWidth: 280 }}>
+            <option value="">Escolher…</option>
+            {estagiosDoPipeline(pipelineSel).map(est => (
+              <option key={est.id} value={est.id}>{est.nome} ({negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n)).length})</option>
+            ))}
+          </select>
         </div>
-        <div ref={funilRef} className="crm-kanban" onScroll={aoRolarFunil} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
+        <div ref={funilRef} className="crm-kanban" onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
           style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
@@ -447,6 +466,21 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                             </span>
                           )
                         })()}
+                        {/* Mover SEM arrastar: no celular/tablet o drag HTML5 não
+                            existe, e no mouse a coluna de destino costuma estar
+                            fora da tela. Um select nativo resolve os dois — e o
+                            stopPropagation impede que o clique abra a ficha. */}
+                        {podeEditar && (
+                          <select value="" draggable={false} title="Mover para outra etapa"
+                            onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+                            onChange={e => { const destino = e.target.value; if (destino) moverEstagio(n, destino) }}
+                            style={{ marginTop: 8, width: '100%', padding: '4px 6px', borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            <option value="">Mover para…</option>
+                            {estagiosDoPipeline(pipelineSel).filter(x => x.id !== est.id).map(x => (
+                              <option key={x.id} value={x.id}>{x.nome}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     )
                   })}
