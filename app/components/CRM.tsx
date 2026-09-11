@@ -12,6 +12,7 @@ import { formatarCnpj, cnpjValido, soDigitosCnpj, formatarDoc, docValido, tipoDo
 import { resumoLinhagem, ascendenteLinhagem, type PessoaLinhagem } from '@/lib/linhagem'
 import { sobrenomesOrdenados, temListaSobrenomes } from '@/lib/sobrenomesLinhagem'
 import { useAutoScrollKanban } from '@/lib/autoScrollKanban'
+import { metricasBarra, scrollDoCursor, esquerdaCentradaEm, pegouOCursor, type MetricasBarra } from '@/lib/barraArraste'
 import { perfilVendeParaPessoa } from '@/lib/perfisInstanciaCatalogo'
 import { parseContatosPlanilha } from '@/lib/contatosImport'
 
@@ -152,6 +153,58 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     const dx = col.getBoundingClientRect().left - cont.getBoundingClientRect().left
     cont.scrollTo({ left: cont.scrollLeft + dx - 8, behavior: 'smooth' })
   }
+  // A BARRA DE ARRASTAR DE LADO CONTINUA, e agora com CURSOR PRÓPRIO (dono,
+  // 11/09: "sumiu a barra para arrastar para o lado... é o cursor"). Ela e o
+  // menu suspenso não se substituem: o menu leva DIRETO a uma etapa, a barra é
+  // o gesto contínuo de varrer o funil. A versão anterior era um scrollbar
+  // NATIVO espelhado — e em sistema com barra sobreposta (Windows 11) o cursor
+  // só aparece enquanto se rola: a barra ficava vazia, sem nada para pegar.
+  // Matemática (tamanho, posição, clique no trilho) em lib/barraArraste.
+  const trilhoRef = useRef<HTMLDivElement>(null)
+  const [barra, setBarra] = useState<MetricasBarra>({ visivel: false, largura: 0, esquerda: 0 })
+  const arrasteBarra = useRef<{ x0: number; esq0: number } | null>(null)
+  const medidasBarra = () => {
+    const el = funilRef.current, tr = trilhoRef.current
+    return el && tr ? { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, trilho: tr.clientWidth } : null
+  }
+  const medirBarra = useCallback(() => {
+    const el = funilRef.current, tr = trilhoRef.current
+    if (!el || !tr) return
+    setBarra(metricasBarra({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, trilho: tr.clientWidth, scrollLeft: el.scrollLeft }))
+  }, [])
+  function pegarBarra(e: React.PointerEvent<HTMLDivElement>) {
+    const el = funilRef.current, tr = trilhoRef.current, med = medidasBarra()
+    if (!el || !tr || !med) return
+    const m = metricasBarra({ ...med, scrollLeft: el.scrollLeft })
+    if (!m.visivel) return
+    const px = e.clientX - tr.getBoundingClientRect().left
+    let esquerda = m.esquerda
+    // Clicar no trilho (fora do cursor) leva o funil para aquele ponto e já
+    // engata o arraste — é o que se espera de qualquer barra de rolagem.
+    if (!pegouOCursor(px, m)) {
+      esquerda = esquerdaCentradaEm(px, { trilho: med.trilho, largura: m.largura })
+      el.scrollLeft = scrollDoCursor(esquerda, { ...med, largura: m.largura })
+      medirBarra()
+    }
+    arrasteBarra.current = { x0: e.clientX, esq0: esquerda }
+  }
+  // O gesto vive na JANELA: soltar fora da barra TEM que terminar o arraste.
+  // Preso ao elemento, o pointerup cai fora e qualquer passada de mouse depois
+  // continua arrastando — o incidente do Gantt do Playbook em 10/09.
+  useEffect(() => {
+    function mover(ev: PointerEvent) {
+      const a = arrasteBarra.current, el = funilRef.current, med = medidasBarra()
+      if (!a || !el || !med) return
+      const m = metricasBarra({ ...med, scrollLeft: el.scrollLeft })
+      el.scrollLeft = scrollDoCursor(a.esq0 + (ev.clientX - a.x0), { ...med, largura: m.largura })
+      medirBarra()
+    }
+    function soltar() { arrasteBarra.current = null }
+    window.addEventListener('pointermove', mover)
+    window.addEventListener('pointerup', soltar)
+    window.addEventListener('pointercancel', soltar)
+    return () => { window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar); window.removeEventListener('pointercancel', soltar) }
+  }, [medirBarra])
   // PRÓXIMAS ABORDAGENS — os lembretes das fichas reunidos num lugar só.
   // Não é pipeline: é a agenda de quem precisa ser abordado (hoje / semana).
   // Sai dos contatos já carregados; nada de chamada extra.
@@ -183,6 +236,18 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [pipelines, setPipelines] = useState<{ id: string; nome: string; ordem: number }[]>([])
   const [pipelineSel, setPipelineSel] = useState('')
   const [pipelinesModal, setPipelinesModal] = useState(false)
+  // Remede a barra. PRECISA rodar quando os DADOS mudam (negócios/etapas/
+  // pipeline): as colunas chegam depois do fetch e o ResizeObserver não dispara
+  // por conteúdo interno (o container não muda de caixa) — só com [vista] a
+  // barra ficava sem nada pra rolar e "sumia".
+  useEffect(() => {
+    const el = funilRef.current
+    if (vista !== 'funil' || !el) return
+    medirBarra()
+    const ro = new ResizeObserver(medirBarra); ro.observe(el)
+    window.addEventListener('resize', medirBarra)
+    return () => { ro.disconnect(); window.removeEventListener('resize', medirBarra) }
+  }, [vista, negocios, estagios, pipelineSel, medirBarra])
   const [etapasModal, setEtapasModal] = useState(false)
 
   function csvEscape(v: any) { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
@@ -418,7 +483,16 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             ))}
           </select>
         </div>
-        <div ref={funilRef} className="crm-kanban" onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
+        {/* Trilho + cursor NOSSOS (lib/barraArraste): visível o tempo todo,
+            com largura mínima para caber o dedo. touchAction none para o dedo
+            arrastar a barra em vez de rolar a página. */}
+        <div ref={trilhoRef} onPointerDown={pegarBarra} title="Arraste para o lado para ver as outras etapas"
+          style={{ position: 'relative', height: barra.visivel ? 10 : 0, marginBottom: barra.visivel ? 8 : 0, borderRadius: 999, background: barra.visivel ? 'var(--v2-surface2)' : 'transparent', cursor: barra.visivel ? 'grab' : 'default', touchAction: 'none' }}>
+          {barra.visivel && (
+            <div style={{ position: 'absolute', top: 0, left: barra.esquerda, width: barra.largura, height: '100%', borderRadius: 999, background: 'var(--v2-ink3)' }} />
+          )}
+        </div>
+        <div ref={funilRef} className="crm-kanban" onScroll={medirBarra} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
           style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
