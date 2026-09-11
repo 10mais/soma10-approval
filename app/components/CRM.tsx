@@ -147,6 +147,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // Matemática (tamanho, posição, clique no trilho) em lib/barraArraste.
   const trilhoRef = useRef<HTMLDivElement>(null)
   const [barra, setBarra] = useState<MetricasBarra>({ visivel: false, largura: 0, esquerda: 0 })
+  const [alturaFunil, setAlturaFunil] = useState(0)
   const arrasteBarra = useRef<{ x0: number; esq0: number } | null>(null)
   const medidasBarra = () => {
     const el = funilRef.current, tr = trilhoRef.current
@@ -156,6 +157,16 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     const el = funilRef.current, tr = trilhoRef.current
     if (!el || !tr) return
     setBarra(metricasBarra({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, trilho: tr.clientWidth, scrollLeft: el.scrollLeft }))
+    // CABEÇALHO CONGELADO (dono, 11/09): para o topo da coluna ficar parado
+    // enquanto os cards correm, quem rola para baixo tem que ser O QUADRO, não
+    // a página — `position: sticky` gruda no ancestral que rola, e o quadro já
+    // é um (tem overflow-x). A altura não pode ser fixa em CSS: os chips de
+    // "Interessados em" quebram em 1, 2 ou 3 linhas e empurram o quadro para
+    // baixo. Então ela vem da MEDIDA: o que sobra da janela abaixo do topo do
+    // quadro, menos a barra inferior do celular.
+    const topo = el.getBoundingClientRect().top
+    const folga = 24 + (window.innerWidth < 768 ? 76 : 0)
+    setAlturaFunil(Math.max(320, Math.round(window.innerHeight - topo - folga)))
   }, [])
   function pegarBarra(e: React.PointerEvent<HTMLDivElement>) {
     const el = funilRef.current, tr = trilhoRef.current, med = medidasBarra()
@@ -461,6 +472,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         {/* Trilho + cursor NOSSOS (lib/barraArraste): visível o tempo todo,
             com largura mínima para caber o dedo. touchAction none para o dedo
             arrastar a barra em vez de rolar a página. */}
+        <style>{`.crm-coluna-cards::-webkit-scrollbar{width:8px}.crm-coluna-cards::-webkit-scrollbar-thumb{background:var(--v2-rule);border-radius:999px}.crm-coluna-cards::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-coluna-cards::-webkit-scrollbar-track{background:transparent}`}</style>
         <div ref={trilhoRef} onPointerDown={pegarBarra} title="Arraste para o lado para ver as outras etapas"
           style={{ position: 'relative', height: barra.visivel ? 10 : 0, marginBottom: barra.visivel ? 8 : 0, borderRadius: 999, background: barra.visivel ? 'var(--v2-surface2)' : 'transparent', cursor: barra.visivel ? 'grab' : 'default', touchAction: 'none' }}>
           {barra.visivel && (
@@ -468,7 +480,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
           )}
         </div>
         <div ref={funilRef} className="crm-kanban" onScroll={medirBarra} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
-          style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'stretch', minHeight: 'calc(100vh - 220px)' }}>
+          style={{ display: 'flex', gap: 12, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 12, alignItems: 'stretch', height: alturaFunil || 'calc(100vh - 260px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
             const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
             const cor = est.ganho ? 'var(--v2-ok)' : est.perdido ? 'var(--v2-hot)' : 'var(--v2-ink)'
@@ -476,13 +488,24 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
               <div key={est.id}
                 onDragOver={e => { e.preventDefault(); setOverCol(est.id) }}
                 onDrop={() => { const n = negocios.find(x => x.id === dragId); if (n) moverEstagio(n, est.id); setDragId(null); setOverCol(null); pararAutoScroll() }}
-                style={{ flex: '0 0 270px', width: 270, background: overCol === est.id ? '#fff8e1' : 'var(--v2-surface1)', borderRadius: 12, padding: 10, minHeight: 120, border: overCol === est.id ? '1.5px dashed var(--v2-amber-on)' : '1.5px solid transparent' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 10px' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{est.nome}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cards.length}</span>
+                style={{ flex: '0 0 270px', width: 270, display: 'flex', flexDirection: 'column', minHeight: 0, boxSizing: 'border-box', background: overCol === est.id ? '#fff8e1' : 'var(--v2-surface1)', borderRadius: 12, padding: 10, border: overCol === est.id ? '1.5px dashed var(--v2-amber-on)' : '1.5px solid transparent' }}>
+                {/* CABEÇALHO CONGELADO (dono, 11/09): nome, contagem e total
+                    ficam FORA da área que rola — não é `sticky`. Sticky gruda
+                    dentro da própria coluna, e a coluna curta (3 cards) sai da
+                    tela inteira levando o cabeçalho junto; o quadro ficava com
+                    metade dos títulos e metade não. Cada coluna rolando por
+                    dentro é o desenho do ClickUp/Trello e o único que mantém a
+                    LINHA INTEIRA de títulos parada. */}
+                <div style={{ flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px 10px' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{est.nome}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cards.length}</span>
+                  </div>
+                  {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{fmtR$(totalPorEstagio(est.id))}</p>}
                 </div>
-                {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{fmtR$(totalPorEstagio(est.id))}</p>}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* minHeight 0: sem isso o item flex se recusa a encolher abaixo
+                    do conteúdo e a lista não rola — ela estoura a coluna. */}
+                <div className="crm-coluna-cards" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 2 }}>
                   {cards.map(n => {
                     const ct = contatoDe(n.contatoId)
                     return (
