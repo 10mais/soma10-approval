@@ -135,24 +135,9 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // lib/autoScrollKanban (era daqui que ela vinha; virou hook para não existir
   // em duas versões, e o hook ainda limpa o timer se a tela sair no meio do arraste).
   const { ref: funilRef, aoArrastar: autoScrollDrag, parar: pararAutoScroll } = useAutoScrollKanban<HTMLDivElement>()
-  // IR PARA ETAPA (pedido da Deny, 10/09): o topo do funil era uma barrinha de
-  // rolagem fina — no toque ela é inalcançável e no mouse quase ninguém percebia
-  // que dava pra deslizar ali. O quadro CONTINUA kanban; o topo virou um menu
-  // suspenso que desliza o funil até a coluna escolhida.
-  const [etapaFoco, setEtapaFoco] = useState('')
-  function irParaEtapa(id: string) {
-    setEtapaFoco(id)
-    const cont = funilRef.current
-    if (!cont || !id) return
-    // Os filhos diretos do container SÃO as colunas, na mesma ordem da lista —
-    // por índice não dependemos de seletor por id (uuid não passa em CSS.escape
-    // antigo) nem de offsetParent (o container não é positioned).
-    const i = estagiosDoPipeline(pipelineSel).findIndex(e => e.id === id)
-    const col = i >= 0 ? (cont.children[i] as HTMLElement | undefined) : undefined
-    if (!col) return
-    const dx = col.getBoundingClientRect().left - cont.getBoundingClientRect().left
-    cont.scrollTo({ left: cont.scrollLeft + dx - 8, behavior: 'smooth' })
-  }
+  // NÃO existe menu suspenso de etapa aqui. Existiu por um dia (10/09) no lugar
+  // da barra de arrastar, e o dono mandou tirar: "isso não faz sentido nenhum
+  // existir". Quem navega o funil é a barra abaixo — um gesto só, contínuo.
   // A BARRA DE ARRASTAR DE LADO CONTINUA, e agora com CURSOR PRÓPRIO (dono,
   // 11/09: "sumiu a barra para arrastar para o lado... é o cursor"). Ela e o
   // menu suspenso não se substituem: o menu leva DIRETO a uma etapa, a barra é
@@ -473,16 +458,6 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             })}
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-          <label htmlFor="crm-ir-etapa" style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ir para etapa</label>
-          <select id="crm-ir-etapa" value={etapaFoco} onChange={e => irParaEtapa(e.target.value)}
-            style={{ padding: '7px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', maxWidth: 280 }}>
-            <option value="">Escolher…</option>
-            {estagiosDoPipeline(pipelineSel).map(est => (
-              <option key={est.id} value={est.id}>{est.nome} ({negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n)).length})</option>
-            ))}
-          </select>
-        </div>
         {/* Trilho + cursor NOSSOS (lib/barraArraste): visível o tempo todo,
             com largura mínima para caber o dedo. touchAction none para o dedo
             arrastar a barra em vez de rolar a página. */}
