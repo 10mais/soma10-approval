@@ -13,6 +13,7 @@ import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCa
 import { ordenarPorDuracao, progressoTempo, textoTempo, progressoTarefas, pctConclusaoEtapa, pctConclusaoMarco } from '@/lib/progressoGantt'
 import { reordenar, novaPosicao, ordenarMarcos } from '@/lib/ordemGantt'
 import { registrarDesfazer } from '@/lib/desfazer'
+import { foraDaJanela, inicioParaMostrar, etapasComTitulo, rotuloPeriodoLista } from '@/lib/playbookLista'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
 
@@ -245,9 +246,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   function moverArraste(e: { clientX: number; clientY: number }) {
     const a = arrasteRef.current; if (!a) return
     const dx = e.clientX - a.x0, dy = e.clientY - a.y0
-    if (!a.moveu && Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+    // 6px de folga antes de decidir; vertical só quando o gesto é CLARAMENTE vertical (um
+    // arraste em diagonal é quase sempre "mover o prazo", não "trocar a ordem").
+    if (!a.moveu && Math.abs(dx) < 6 && Math.abs(dy) < 6) return
     if (!a.moveu) {
-      if (!a.eixo) a.eixo = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'
+      if (!a.eixo) a.eixo = Math.abs(dy) > Math.abs(dx) * 1.3 ? 'y' : 'x'
       a.moveu = true
     }
     if (a.eixo === 'y') {
@@ -366,6 +369,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     if (!equipe.length) fetch('/api/usuarios').then(r => r.json()).then(d => setEquipe(Array.isArray(d) ? d : [])).catch(() => {})
   }
   const [refDate, setRefDate] = useState(new Date())
+  // DUAS VISÕES sobre os MESMOS dados (dono, 14/09: "lista e Gantt, 100% integrados"): as duas
+  // leem `marcos`/`tarefas` e disparam as mesmas ações (modal, ordem, status, prazos). O nível
+  // de abertura (etapas/tarefas) também é compartilhado. Lembrada por navegador.
+  const [view, setViewState] = useState<'gantt' | 'lista'>('gantt')
+  useEffect(() => { try { if (localStorage.getItem('soma10-playbook-view') === 'lista') setViewState('lista') } catch {} }, [])
+  const setView = (v: 'gantt' | 'lista') => { setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
 
   // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
   // marco abre um DETALHE, nunca o formulario de edicao da equipe.
@@ -388,9 +397,29 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     return (r * 299 + g * 587 + b * 114) / 1000 < 140 ? 'var(--v2-surface)' : 'var(--v2-ink)'
   })()
 
-  function carregar() {
+  // `enquadrar`: depois de criar/editar/aplicar modelo, se algum marco do cliente ficou FORA da
+  // janela do Gantt, a janela se ajusta para ele aparecer (dono, 14/09: "quando lanço, não
+  // aparece" — o marco existia, mas caía fora dos 30 dias visíveis).
+  function carregar(opts?: { enquadrar?: boolean }) {
     if (!clienteAtivo) { setMarcos([]); return }
-    fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
+    fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => {
+      const lista: Marco[] = Array.isArray(d) ? d : []
+      setMarcos(lista)
+      if (opts?.enquadrar) enquadrarSeFora(lista.filter(m => m.clienteId === clienteAtivo))
+    }).catch(() => {})
+  }
+  function enquadrarSeFora(lista: Marco[]) {
+    const ini0 = new Date(refDate); ini0.setHours(0, 0, 0, 0)
+    const jIni = ini0.getTime(), jFim = jIni + diasRef.current * 24 * 60 * 60 * 1000
+    if (!lista.some(m => foraDaJanela(m.dataInicio, fimEfetivoDoMarco(m, m.subetapas) || m.dataFim, jIni, jFim))) return
+    const j = janelaParaCaber(lista)
+    setRefDate(new Date(j.inicioMs)); setDias(j.dias)
+    const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a)
+    setPeriodo(perto.key)
+  }
+  function mostrarNoGantt(m: Marco) {
+    setView('gantt')
+    setRefDate(new Date(inicioParaMostrar(m.dataInicio, diasRef.current)))
   }
   useEffect(() => { carregar() }, [clienteAtivo])
   useEffect(() => {
@@ -468,11 +497,207 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) })
   }
 
+  // ---------- AÇÕES compartilhadas pela Lista (mesmas gravações do Gantt, com Ctrl+Z):
+  // patch no marco, status/prazo de etapa, ordem por botão, etapa nova em linha.
+  async function gravarMarco(m: Marco, patch: Partial<Marco>, rotulo: string) {
+    const antes: Record<string, any> = { id: m.id }
+    for (const k of Object.keys(patch)) antes[k] = (m as any)[k] ?? (k === 'subetapas' ? [] : k === 'ordem' ? null : '')
+    setMarcos(prev => prev.map(x => x.id === m.id ? { ...x, ...patch } : x))
+    const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, ...patch }) }).catch(() => null)
+    if (!r || !r.ok) { toast('Não foi possível gravar.', 'erro'); carregar(); return false }
+    registrarDesfazer(rotulo, async () => {
+      const rr = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
+      carregar()
+      return !!rr?.ok
+    })
+    return true
+  }
+  const gravarEtapa = (m: Marco, subId: string, patch: Partial<SubEtapa>, rotulo: string) =>
+    gravarMarco(m, { subetapas: (m.subetapas || []).map(se => se.id === subId ? { ...se, ...patch } : se) }, rotulo)
+  async function novaEtapaEmLinha(m: Marco, titulo: string) {
+    const t = titulo.trim(); if (!t) return
+    const ok = await gravarMarco(m, { subetapas: [...(m.subetapas || []), { id: uuid(), titulo: t, status: 'pendente' }] }, `Etapa "${t}" em "${m.titulo}"`)
+    if (ok) { setNivel(m.id, Math.max(1, nivelDe(m.id))); toast(`Etapa "${t}" criada.`, 'sucesso') }
+  }
+  async function moverEtapaPorBotao(m: Marco, subId: string, dir: 1 | -1) {
+    const lista = etapasOrdenadas(m); const de = lista.findIndex(x => x.id === subId); const para = de + dir
+    if (de < 0 || para < 0 || para >= lista.length) return
+    await gravarMarco(m, { subetapas: reordenar(lista, de, para), ordemEtapasManual: true }, `Ordem das etapas de "${m.titulo}"`)
+  }
+  async function moverMarcoPorBotao(m: Marco, dir: 1 | -1) {
+    const lista = marcosDoCliente(m.clienteId); const de = lista.findIndex(x => x.id === m.id); const para = de + dir
+    if (de < 0 || para < 0 || para >= lista.length) return
+    const nova = reordenar(lista, de, para)
+    const antesOrdem = lista.map(mm => ({ id: mm.id, ordem: typeof mm.ordem === 'number' ? mm.ordem : null }))
+    setMarcos(prev => prev.map(x => { const i = nova.findIndex(n => n.id === x.id); return i >= 0 ? { ...x, ordem: i } : x }))
+    const rs = await Promise.all(nova.map((mm, i) => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mm.id, ordem: i }) }).then(r => r.ok).catch(() => false)))
+    if (rs.some(ok => !ok)) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
+    registrarDesfazer('Ordem dos marcos', async () => {
+      const r2 = await Promise.all(antesOrdem.map(o => fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) }).then(r => r.ok).catch(() => false)))
+      carregar()
+      return r2.every(Boolean)
+    })
+  }
+  const [novaEtapaTexto, setNovaEtapaTexto] = useState<Record<string, string>>({})
+  const janelaIniMs = (() => { const d = new Date(refDate); d.setHours(0, 0, 0, 0); return d.getTime() })()
+  const janelaFimMs = janelaIniMs + dias * 24 * 60 * 60 * 1000
+
+  // ---------- LISTA: os mesmos marcos, etapas e tarefas do Gantt, em linhas. Prazos e status
+  // se editam na própria linha; título e o resto abrem o mesmo modal do Gantt.
+  const renderLista = () => {
+    const lista = clienteAtivo ? marcosDoCliente(clienteAtivo) : []
+    const cab: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }
+    const sel: React.CSSProperties = { padding: '4px 8px', borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontFamily: 'inherit' }
+    const dataInp: React.CSSProperties = { ...sel, padding: '3px 6px', width: 118 }
+    const GRADE = 'minmax(220px, 1.6fr) 250px 140px 130px 170px 110px 96px'
+    const btn: React.CSSProperties = { width: 24, height: 24, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-grid', placeItems: 'center', padding: 0, fontFamily: 'inherit', fontSize: 12 }
+    const linhaTarefas = (itens: TarefaLeve[], recuo: number) => itens.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
+      <div key={t.id} onClick={() => setTarefaAberta(t)} style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '6px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, cursor: 'pointer', alignItems: 'center', fontSize: 12, background: 'var(--v2-surface1)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: recuo, minWidth: 0 }}>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
+        </span>
+        <span style={{ color: 'var(--v2-ink3)' }}>{t.prazo ? fmtData(t.prazo) : '—'}</span>
+        <span style={{ color: st.cor, fontWeight: 600 }}>{st.label}</span>
+        <span style={{ color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.responsavelNome || '—'}</span>
+        <span style={{ color: 'var(--v2-ink3)', fontSize: 11 }}>tarefa</span><span /><span />
+      </div>
+    ) })
+    return (
+      <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080 }}>
+          <span style={cab}>Marco / etapa</span><span style={cab}>Início · fim</span><span style={cab}>Status</span><span style={cab}>Responsável</span><span style={cab}>Conclusão</span><span style={cab}>Tempo</span><span style={cab} />
+        </div>
+        {lista.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum marco ainda. Use "+ Novo marco" ou "Aplicar modelo".</div>}
+        {lista.map((m, idx) => {
+          const fimEf = fimEfetivoDoMarco(m, m.subetapas)
+          const subs = etapasOrdenadas(m)
+          const pg = progressoMarco(m.subetapas)
+          const tarefasM = tarefasDoMarco(m.id)
+          const tarM = progressoTarefas(tarefasM)
+          const pctM = pctConclusaoMarco(m, id => tarefasDaEtapa(m.id, id), tarefasM)
+          const tmpM = progressoTempo(m.dataInicio, fimEf || m.dataFim, Date.now())
+          const nivel = nivelDe(m.id)
+          const aberto = nivel >= 1
+          const mostraTarefas = nivel >= 2 && !somenteLeitura
+          const fora = foraDaJanela(m.dataInicio, fimEf || m.dataFim, janelaIniMs, janelaFimMs)
+          return (
+            <div key={m.id}>
+              <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, alignItems: 'center', fontSize: 13 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <button type="button" onClick={() => alternarGantt(m.id)} title={aberto ? 'Recolher etapas' : 'Mostrar etapas'} style={{ ...btn, border: 0, background: 'transparent', visibility: subs.length ? 'visible' : 'hidden' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
+                  </button>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: corDoMarco(m), flexShrink: 0 }} />
+                  <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title="Abrir o marco" style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{m.titulo}</button>
+                  {subs.length > 0 && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{pg.concluidas}/{pg.total} etapas</span>}
+                  {fora && <button type="button" onClick={() => mostrarNoGantt(m)} title="Este marco está fora da janela atual do Gantt — clique para vê-lo lá" style={{ marginLeft: 4, fontSize: 10, fontWeight: 600, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: 0, borderRadius: 999, padding: '2px 7px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{fora === 'antes' ? '← fora da janela' : 'fora da janela →'}</button>}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {editavel ? <>
+                    <input type="date" value={m.dataInicio ? m.dataInicio.slice(0, 10) : ''} onChange={e => { if (e.target.value) gravarMarco(m, { dataInicio: new Date(e.target.value + 'T12:00:00').toISOString() }, `Início de "${m.titulo}"`) }} style={dataInp} title="Início" />
+                    <input type="date" value={m.dataFim ? m.dataFim.slice(0, 10) : ''} onChange={e => gravarMarco(m, { dataFim: e.target.value ? new Date(e.target.value + 'T12:00:00').toISOString() : '' }, `Fim de "${m.titulo}"`)} style={dataInp} title="Fim" />
+                  </> : <span style={{ color: 'var(--v2-ink2)' }}>{rotuloPeriodoLista(m.dataInicio, fimEf || m.dataFim)}</span>}
+                </span>
+                <span>
+                  {editavel ? (
+                    <select value={m.status} onChange={e => gravarMarco(m, { status: e.target.value }, `Status de "${m.titulo}"`)} style={{ ...sel, color: STATUS_COR[m.status] === 'var(--v2-rule)' ? 'var(--v2-ink2)' : STATUS_COR[m.status], fontWeight: 600 }}>
+                      {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  ) : <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COR[m.status] }}>{STATUS_LABEL[m.status] || m.status}</span>}
+                </span>
+                <span style={{ color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.responsavelNome || '—'}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 70, height: 6, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', flexShrink: 0 }}><span style={{ display: 'block', width: `${pctM}%`, height: '100%', background: corDoMarco(m) }} /></span>
+                  <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{pctM}%</span>
+                  {tarM.total > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{tarM.feitas}/{tarM.total} tarefas</span>}
+                </span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{textoTempo(tmpM)}</span>
+                <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                  {editavel && <>
+                    <button type="button" onClick={() => moverMarcoPorBotao(m, -1)} disabled={idx === 0} title="Subir" style={{ ...btn, opacity: idx === 0 ? 0.35 : 1 }}>↑</button>
+                    <button type="button" onClick={() => moverMarcoPorBotao(m, 1)} disabled={idx === lista.length - 1} title="Descer" style={{ ...btn, opacity: idx === lista.length - 1 ? 0.35 : 1 }}>↓</button>
+                    {!somenteLeitura && <button type="button" onClick={() => alternarTarefas(m.id)} title={mostraTarefas ? 'Esconder tarefas' : `Ver tarefas (${tarefasM.length})`} style={{ ...btn, width: 'auto', padding: '0 7px', fontSize: 11, color: mostraTarefas ? corDoMarco(m) : 'var(--v2-ink3)', borderColor: mostraTarefas ? corDoMarco(m) : 'var(--v2-rule)' }}>{tarefasM.length} tar.</button>}
+                  </>}
+                </span>
+              </div>
+              {aberto && subs.map((se, j) => {
+                const ini = se.dataInicio || m.dataInicio
+                const fimE = se.dataFim || se.dataInicio || m.dataFim || m.dataInicio
+                const atrasada = pg.atrasadas.some(a => a.id === se.id)
+                const tarE = tarefasDaEtapa(m.id, se.id)
+                const tarSE = progressoTarefas(tarE)
+                const pctE = pctConclusaoEtapa(se, tarE)
+                const tmpE = progressoTempo(ini, fimE, Date.now())
+                const corE = se.cor || corDoMarco(m)
+                const corSt = se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber)' : 'var(--v2-ink3)'
+                return (
+                  <div key={se.id}>
+                    <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '7px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, alignItems: 'center', fontSize: 12.5 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 34, minWidth: 0 }}>
+                        <span style={{ width: 3, height: 16, borderRadius: 2, background: corE, flexShrink: 0 }} />
+                        <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title="Abrir no marco" style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: se.status === 'concluido' ? 'line-through' : 'none', opacity: se.status === 'concluido' ? 0.65 : 1 }}>{se.titulo}</button>
+                        {se.kpi && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{se.kpi}: {se.kpiAtual ?? 0}{se.kpiMeta ? `/${se.kpiMeta}` : ''}</span>}
+                        {atrasada && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--v2-hot)' }}>atrasada</span>}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {editavel ? <>
+                          <input type="date" value={se.dataInicio || ''} onChange={e => gravarEtapa(m, se.id, { dataInicio: e.target.value || undefined }, `Início de "${se.titulo}"`)} style={dataInp} title="Início" />
+                          <input type="date" value={se.dataFim || ''} onChange={e => gravarEtapa(m, se.id, { dataFim: e.target.value || undefined }, `Prazo de "${se.titulo}"`)} style={dataInp} title="Prazo" />
+                        </> : <span style={{ color: 'var(--v2-ink2)' }}>{rotuloPeriodoLista(se.dataInicio, se.dataFim)}</span>}
+                      </span>
+                      <span>
+                        {editavel ? (
+                          <select value={se.status} onChange={e => gravarEtapa(m, se.id, { status: e.target.value as SubEtapa['status'] }, `Status de "${se.titulo}"`)} style={{ ...sel, color: corSt, fontWeight: 600 }}>
+                            {SUBETAPA_STATUS.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
+                          </select>
+                        ) : <span style={{ fontSize: 12, fontWeight: 600, color: corSt }}>{SUBETAPA_STATUS.find(x => x.key === se.status)?.label || se.status}</span>}
+                      </span>
+                      <span style={{ color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{se.responsavelNome || '—'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 70, height: 5, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', flexShrink: 0 }}><span style={{ display: 'block', width: `${pctE}%`, height: '100%', background: corE }} /></span>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{pctE}%</span>
+                        {tarSE.total > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{tarSE.feitas}/{tarSE.total}</span>}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{textoTempo(tmpE)}</span>
+                      <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {editavel && <>
+                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, -1)} disabled={j === 0} title="Subir" style={{ ...btn, opacity: j === 0 ? 0.35 : 1 }}>↑</button>
+                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, 1)} disabled={j === subs.length - 1} title="Descer" style={{ ...btn, opacity: j === subs.length - 1 ? 0.35 : 1 }}>↓</button>
+                          {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(se.id); setNovaTarefaPara(m) }} title="Nova tarefa nesta etapa" style={{ ...btn, color: 'var(--v2-info)' }}>+</button>}
+                        </>}
+                      </span>
+                    </div>
+                    {mostraTarefas && linhaTarefas(tarE, 52)}
+                  </div>
+                )
+              })}
+              {mostraTarefas && linhaTarefas(tarefasM.filter(t => !t.subetapaId || !subs.some(x => x.id === t.subetapaId)), 34)}
+              {editavel && aberto && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 8px 50px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080 }}>
+                  <input value={novaEtapaTexto[m.id] || ''} onChange={e => setNovaEtapaTexto(v => ({ ...v, [m.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter' && (novaEtapaTexto[m.id] || '').trim()) { novaEtapaEmLinha(m, novaEtapaTexto[m.id]); setNovaEtapaTexto(v => ({ ...v, [m.id]: '' })) } }}
+                    placeholder="+ Nova etapa neste marco — Enter para criar" style={{ flex: 1, maxWidth: 420, padding: '6px 10px', borderRadius: 8, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                  {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} style={{ ...btn, width: 'auto', padding: '0 10px', fontSize: 11.5, color: 'var(--v2-info)' }}>+ tarefa no marco</button>}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Playbook</h2>
-        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label="Visualização">
+          {([['gantt', 'Gantt'], ['lista', 'Lista']] as const).map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>
+          ))}
+        </div>
+        {view === 'gantt' && <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {PERIODOS.map(p => (
             <button key={p.key} onClick={() => { setPeriodo(p.key); setDias(p.dias) }} style={{
               padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
@@ -480,7 +705,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
               boxShadow: periodo === p.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
             }}>{p.label}</button>
           ))}
-        </div>
+        </div>}
         {!clienteFixo && (
           <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
             <option value="">Selecione um cliente...</option>
@@ -488,13 +713,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           </select>
         )}
         {clienteAtivo && <>
-          <div style={{ display: 'flex', gap: 6 }}>
+          {view === 'gantt' && <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
             {editavel && temOrdemManual && <button onClick={voltarOrdemAutomatica} title="Voltar a ordenar automaticamente (trabalhos mais longos em cima)" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Ordem automática</button>}
             <button onClick={() => { const j = janelaParaCaber(marcos.filter(m => m.clienteId === clienteAtivo)); setRefDate(new Date(j.inicioMs)); setDias(j.dias); const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a); setPeriodo(perto.key) }} title="Ajustar a janela para caber todos os marcos e etapas do cliente" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Ajustar</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
-          </div>
+          </div>}
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
             <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
@@ -510,7 +735,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         </div>
       )}
 
-      {clienteAtivo && <>
+      {clienteAtivo && view === 'lista' && renderLista()}
+
+      {clienteAtivo && view === 'gantt' && <>
       {/* Legenda de categorias */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
@@ -587,6 +814,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     const pg = progressoMarco(m.subetapas)
                     const fimEf = fimEfetivoDoMarco(m, m.subetapas)
                     const width = larguraPct(m.dataInicio, fimEf || m.dataFim)
+                    // Fora da janela: a barra some (era uma lasca de 2% na borda) e entra um aviso clicável.
+                    const fora = foraDaJanela(m.dataInicio, fimEf || m.dataFim, inicio.getTime(), fim.getTime())
                     // Ordem estável durante o arraste: quem manda é o marco gravado (m0), não a prévia.
                     const ordemIds = etapasOrdenadas(m0).map(x => x.id)
                     const subs = (m.subetapas || []).slice().sort((a, b) => ordemIds.indexOf(a.id) - ordemIds.indexOf(b.id))
@@ -602,9 +831,16 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     topo += altura
                     return (
                       <div key={m.id}>
+                        {fora && (
+                          <button type="button" onClick={() => setRefDate(new Date(inicioParaMostrar(m.dataInicio, diasRef.current)))} title={`"${m.titulo}" está ${fora === 'antes' ? 'antes' : 'depois'} da janela — clique para ir até ele`}
+                            style={{ position: 'absolute', top: topMarco + 4, [fora === 'antes' ? 'left' : 'right']: 8, height: Math.max(18, H_BARRA - 8), display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 999, border: `1px dashed ${corDoMarco(m)}`, background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', zIndex: 3, maxWidth: '45%' } as React.CSSProperties}>
+                            {fora === 'antes' ? '←' : ''}<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>{fora === 'depois' ? '→' : ''}
+                          </button>
+                        )}
                         <div onClick={() => { if (ignorarClique.current) return; somenteLeitura ? setDetalheModal(m0) : setEditModal(m0) }} onPointerDown={e => comecarArraste(e, 'mover', m.id)} title={`${m.titulo} (${fmtData(m.dataInicio)}${fimEf ? ' - ' + fmtData(fimEf) : ''})${pg.total ? ` · ${pg.concluidas}/${pg.total} etapas` : ''}${pg.atrasadas.length ? ` · ${pg.atrasadas.length} atrasada(s)` : ''}`}
                           style={{
                             position: 'absolute', top: topMarco, left: `${left}%`, width: `${width}%`, height: H_BARRA,
+                            ...(fora ? { display: 'none' } : null),
                             ...(arrastandoV(m.id) ? { transform: `translateY(${previaV!.dy}px)`, zIndex: 6, boxShadow: '0 8px 20px rgba(0,0,0,0.3)' } : null),
                             background: 'transparent', borderRadius: 6, cursor: editavel ? (arrastando(m.id) ? 'grabbing' : 'grab') : 'pointer', touchAction: 'none',
                             display: 'flex', alignItems: 'center', padding: '0 8px', minWidth: 30, opacity: m.status === 'cancelado' ? 0.4 : m.status === 'concluido' ? 0.7 : 1,
@@ -645,7 +881,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: topMarco + H_MARCO + previaV.para * H_SUB, height: 3, background: 'var(--v2-amber-on)', borderRadius: 2, zIndex: 5 }} />
                         )}
                         {/* SUB-ETAPAS como linhas próprias, cada uma no seu período (simultâneas ao marco) */}
-                        {aberto && subs.map((se, j) => {
+                        {aberto && !fora && subs.map((se, j) => {
                           const ini = se.dataInicio || m.dataInicio
                           const fim = se.dataFim || se.dataInicio || m.dataFim || m.dataInicio
                           const l = posicaoPct(ini)
@@ -741,7 +977,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         <MarcoModal marco={editModal} clientes={clientes} clientePadrao={clienteAtivo} corMarca={corMarca} corMarcaTexto={corMarcaTexto}
           tarefasDoMarcoModal={editModal && !somenteLeitura ? tarefasDoMarco(editModal.id) : undefined} onAbrirTarefa={t => setTarefaAberta(t)} onNovaTarefa={editModal ? () => setNovaTarefaPara(editModal) : undefined}
           onClose={() => { setNovoModal(false); setEditModal(null) }}
-          onSalvo={() => { setNovoModal(false); setEditModal(null); carregar() }}
+          onSalvo={() => { setNovoModal(false); setEditModal(null); carregar({ enquadrar: true }) }}
           onExcluir={editModal && excluivel ? async () => {
             const apagado = editModal
             await fetch(`/api/playbook?id=${apagado.id}`, { method: 'DELETE' })
@@ -797,7 +1033,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {templateSel && (
         <AplicarModal template={templateSel} clientes={clientes as any} equipe={equipe} preSelecionados={clienteAtivo ? [clienteAtivo] : []}
           onClose={() => { setTemplateSel(null); setEscolhendoModelo(false) }}
-          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar(); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} marco(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
+          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar({ enquadrar: true }); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} marco(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
       )}
     </div>
   )
@@ -912,18 +1148,20 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   async function salvar() {
     setSalvando(true)
     const cli = clientes.find(c => c.id === form.clienteId)
-    const body = { ...form, cor: form.cor || '', subetapas: subs.filter(x => x.titulo.trim()), ...(reordenouSubs ? { ordemEtapasManual: true } : {}), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
+    const body = { ...form, cor: form.cor || '', subetapas: etapasComTitulo(subs), ...(reordenouSubs ? { ordemEtapasManual: true } : {}), clienteNome: cli?.nome || '', dataInicio: form.dataInicio ? new Date(form.dataInicio).toISOString() : '', dataFim: form.dataFim ? new Date(form.dataFim).toISOString() : '' }
     if (marco) {
       const antes: Record<string, any> = { id: marco.id }
       for (const k of Object.keys(body)) antes[k] = (marco as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
-      await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) })
+      const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) }).catch(() => null)
+      if (!r || !r.ok) { setSalvando(false); toast('Não foi possível salvar o marco. Tente de novo.', 'erro'); return }
       registrarDesfazer(`Edição do marco "${marco.titulo}"`, async () => {
         const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
         onSalvo() // recarrega a tela de trás (o modal já fechou quando o Ctrl+Z acontece)
         return !!r?.ok
       })
     } else {
-      await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const r = await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
+      if (!r || !r.ok) { setSalvando(false); toast('Não foi possível criar o marco. Tente de novo.', 'erro'); return }
     }
     setSalvando(false)
     onSalvo()
