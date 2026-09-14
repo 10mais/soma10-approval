@@ -549,10 +549,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     const cab: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }
     const sel: React.CSSProperties = { padding: '4px 8px', borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontFamily: 'inherit' }
     const dataInp: React.CSSProperties = { ...sel, padding: '3px 6px', width: 118 }
-    const GRADE = 'minmax(220px, 1.6fr) 250px 140px 130px 170px 110px 96px'
+    const GRADE = 'minmax(320px, 2fr) 236px 130px 120px 160px 110px 96px'
     const btn: React.CSSProperties = { width: 24, height: 24, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-grid', placeItems: 'center', padding: 0, fontFamily: 'inherit', fontSize: 12 }
     const linhaTarefas = (itens: TarefaLeve[], recuo: number) => itens.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
-      <div key={t.id} onClick={() => setTarefaAberta(t)} style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '6px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, cursor: 'pointer', alignItems: 'center', fontSize: 12, background: 'var(--v2-surface1)' }}>
+      <div key={t.id} onClick={() => setTarefaAberta(t)} style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '6px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170, cursor: 'pointer', alignItems: 'center', fontSize: 12, background: 'var(--v2-surface1)' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: recuo, minWidth: 0 }}>
           <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
@@ -565,7 +565,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     ) })
     return (
       <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170 }}>
           <span style={cab}>Marco / etapa</span><span style={cab}>Início · fim</span><span style={cab}>Status</span><span style={cab}>Responsável</span><span style={cab}>Conclusão</span><span style={cab}>Tempo</span><span style={cab} />
         </div>
         {lista.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum marco ainda. Use "+ Novo marco" ou "Aplicar modelo".</div>}
@@ -583,7 +583,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           const fora = foraDaJanela(m.dataInicio, fimEf || m.dataFim, janelaIniMs, janelaFimMs)
           return (
             <div key={m.id}>
-              <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170, alignItems: 'center', fontSize: 13 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <button type="button" onClick={() => alternarGantt(m.id)} title={aberto ? 'Recolher etapas' : 'Mostrar etapas'} style={{ ...btn, border: 0, background: 'transparent', visibility: subs.length ? 'visible' : 'hidden' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
@@ -633,7 +633,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 const corSt = se.status === 'concluido' ? 'var(--v2-ok)' : atrasada ? 'var(--v2-hot)' : se.status === 'em_andamento' ? 'var(--v2-amber)' : 'var(--v2-ink3)'
                 return (
                   <div key={se.id}>
-                    <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '7px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080, alignItems: 'center', fontSize: 12.5 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '7px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170, alignItems: 'center', fontSize: 12.5 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 34, minWidth: 0 }}>
                         <span style={{ width: 3, height: 16, borderRadius: 2, background: corE, flexShrink: 0 }} />
                         <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title="Abrir no marco" style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: se.status === 'concluido' ? 'line-through' : 'none', opacity: se.status === 'concluido' ? 0.65 : 1 }}>{se.titulo}</button>
@@ -674,7 +674,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
               })}
               {mostraTarefas && linhaTarefas(tarefasM.filter(t => !t.subetapaId || !subs.some(x => x.id === t.subetapaId)), 34)}
               {editavel && aberto && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 8px 50px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1080 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 8px 50px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170 }}>
                   <input value={novaEtapaTexto[m.id] || ''} onChange={e => setNovaEtapaTexto(v => ({ ...v, [m.id]: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter' && (novaEtapaTexto[m.id] || '').trim()) { novaEtapaEmLinha(m, novaEtapaTexto[m.id]); setNovaEtapaTexto(v => ({ ...v, [m.id]: '' })) } }}
                     placeholder="+ Nova etapa neste marco — Enter para criar" style={{ flex: 1, maxWidth: 420, padding: '6px 10px', borderRadius: 8, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12.5, fontFamily: 'inherit' }} />
