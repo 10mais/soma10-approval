@@ -1737,3 +1737,188 @@ Referência dondigital.com.br com as cores do 10+; fonte **Outfit** (`next/font`
 - Código: relatório automático de sexta (cron + canal); `explicaFalhaConexao` para o 404
   do Railway; limpar JSX morto do sub-account em `page.tsx`; páginas antigas do portal
   (planner/aprovacoes/marca) ainda com lógica `viewAs` inerte; CONTEXTO §41.7.
+
+## 44. Evolução 2026-09-07→15 — Estabilidade · Esteira fechada · Playbook/Gantt completo · Comunicação diária · Métricas · Ctrl+Z · PRÓXIMO: redesenho pelo Claude Design
+
+51 commits na `main` (`a60d22a` → `234df58`), cada um com `tsc` + `npm run test` verdes e
+READY confirmado na Vercel. Testes: 1027 → **1184** (90 arquivos). Tela foi verificada num
+**harness Vite** que monta os componentes REAIS com `fetch` simulado (receita na memória
+`feedback-overlay-verificar-no-navegador`; o harness mora no scratchpad da sessão e some
+entre sessões, então é preciso recriar). O bloco 44.9 e os dois últimos itens de 44.4 vieram de uma
+sessão paralela.
+
+### 44.1 Travamentos (três, todos de overlay)
+- **Splash** cobria a tela invisível e depois travava com a barra cheia (`a60d22a`,
+  `7909499`). Correção: relógio por intervalo lendo refs e teto de tempo.
+- **Tarefa com anexo antigo** deixava a tela "transparente" e parada (`c748fb1`):
+  `anexo.tipo.startsWith(...)` num anexo sem `tipo` gerava TypeError no render de um modal em
+  PORTAL, e sobrava só o fundo. Correção: `lib/anexoMidia.ts` (nunca lança e cai na extensão
+  da URL) e `app/components/LimiteDeErro.tsx` em volta do `TarefaModal`. **Regra: todo overlay
+  novo com conteúdo dinâmico vai dentro do `LimiteDeErro`; `a.tipo.startsWith` cru é
+  proibido.**
+- **Arraste de prazo preso** no Gantt (`31ba8fe`): mover e soltar estavam no ELEMENTO, e o
+  pointerup caía fora dele. O gesto agora vive na JANELA (pointermove, pointerup e
+  pointercancel na `window`), sem `setPointerCapture`, que roubava o clique do chevron.
+
+### 44.2 Cliente, hub, equipe
+- **Fase ONBOARDING → EM PRODUÇÃO**, obrigatória para cliente novo (`9bbe998`). As fases e
+  etapas são configuráveis em Configurações (`c35e897`). Também entraram os diálogos do
+  sistema (`1fee852`) e a edição das fases sem sair do cliente (`eeacf34`).
+- "Todos" da Home abre a vitrine de clientes (`f4d012b`). "Sobre o projeto" aparece em
+  parágrafos com "Ver mais" (`303036f`).
+- **"0 pautas" com 12 no Studio** (`bf0423a`): `GET /api/posts` aplicava o filtro do Planner a
+  todos. Agora as telas internas pedem `?esteira=1` (só para a equipe). É mais uma aparição do
+  gotcha do filtro.
+- Equipe: o card do colaborador substituiu o "Meu dia" (`3b7661d`). Há um bloco de notas à
+  direita, que abre com **Alt+N**, porque o Chrome reserva Ctrl+N (`a9608f8`, `6d6ef5a`, `5fa7d87`).
+- Analytics: a Meta descontinuou `impressions`/`plays`, então o sistema passou a usar `views`
+  (`449b27f`). Mais: cor do texto com espectro e hex (`4edf4cf`) e uma segunda passada de
+  cores no escuro (`14829f0`).
+
+### 44.3 Esteira: Studio → Tarefa → Revisão interna → Cliente → Planner
+- A solicitação do cliente vira checklist "atendido" (`9f3f192`). A aprovação interna é
+  SOBERANA e tira a peça de Reprovado (`554ff55`). O criativo passa por **revisão interna**
+  antes de ir ao cliente (`3c36fba`).
+- Tarefa de criativo aberta = pauta EM PRODUÇÃO (`7a95073`, `lib/producaoVinculo`).
+  "Criativo pronto" na tarefa; concluir devolve a pauta ao Studio (`0ee13c6`). O vínculo
+  pauta↔tarefa ficou **editável também em tarefa existente**, com a lista pedindo
+  `esteira=1`. O Studio mostra miniaturas do criativo com "Usar/Substituir a mídia da pauta"
+  (`1d96b48`, `deveEntregarCriativo`).
+- Subtarefas puxadas estilo ClickUp (`fcbfe41`, `lib/hierarquiaTarefas.ts`) e modais por
+  portal (`e94d5d8`).
+- **Etapa do Playbook obrigatória** antes de enviar ao cliente ou agendar, com portão no Studio
+  (`2c87f97`).
+- O link público escondia criativo em `aprovacao_criativo` (`4832056`); a correção criou a
+  regra única `esperandoCliente`.
+- **Carrossel aparecia como STORY** no link por causa de um ternário binário. Correção:
+  lista única em `lib/formatoPost.ts`. O link também se atualiza sozinho ao voltar à aba e a
+  cada 2 min (`a0fd75e`).
+
+### 44.4 Playbook / Gantt
+- Hierarquia **MARCO > ETAPA** (nunca renomear marco para etapa). "Aplicar modelo" ficou
+  dentro do Playbook (`28e51bd`). As etapas vivem dentro do marco, com prazo e KPI
+  (`4796ac9`, `lib/subetapas.ts`), e aparecem como linhas no Gantt (`90e2a03`).
+- **Zoom só com Ctrl+scroll** (o scroll puro rola a página), com listener nativo
+  `passive:false` e ref de callback (`d905fad`, `2ab0114`). A linha do tempo ganhou barra de
+  rolagem.
+- **Arrastar a barra move o prazo; as pontas mudam início e fim.** Entraram também o eixo com
+  meses e "Ajustar" (`30177de`, `lib/ganttArraste.ts`). As faixas de fim de semana saíram a
+  pedido do dono (`c4bab40`).
+- Ordem e progresso:
+  - o mais longo fica em cima;
+  - a conclusão vem das tarefas;
+  - barra cheia sobre tom claro, com o tempo que falta (`7526d7f`, `lib/progressoGantt.ts`);
+  - **ordem manual** arrastando para cima e para baixo, com "Ordem automática" (`b6ca0fa`,
+    `lib/ordemGantt.ts`, campos `ordem` e `ordemEtapasManual`).
+- Cor por marco e etapa; escala vertical por uma alça só; tarefas nascem e abrem no marco;
+  painel de tarefas agrupado por etapa (`6a79c57`, `2ab0114`). O aviso "de quem é a bola" saiu
+  do topo do Playbook (`d44fe3a`), mas continua no hub e na Home.
+- O seletor MARCO > ETAPA é o mesmo para tarefa, Planner e Studio (`lib/etapaPlaybook.ts`).
+  `opcaoDoValorAtual` e ids `se-N` impedem o `<select>` de pular sozinho (`31ba8fe`).
+- **Visão em LISTA integrada ao Gantt** e correção do "lancei e não aparece" (`595252d`,
+  `234df58`, sessão paralela). Ficou em `lib/playbookLista.ts`; detalhes na memória
+  `proj-playbook-lista-gantt`.
+
+### 44.5 Planner
+- Ordenado por **data de postagem** (`dataAgendada`, nunca `atualizadoEm`) em
+  `lib/plannerFiltro.ordenarPorPostagem` (`2c87f97`). As etapas dos marcos aparecem no seletor
+  da nova postagem (`Post.subetapaId`).
+
+### 44.6 Comunicação diária com o cliente
+- Painel "Comunicação diária" no hub (`cfaca0a`, `lib/comunicacao.ts`), com a semana de segunda
+  a sexta à vista e sugestões prontas a partir dos fatos.
+  - **O que conta:** ganhos, vitórias, informação do processo, questionamento relevante,
+    reunião com link e pauta, material para aprovação.
+  - **O que não conta:** saudação isolada, cobrança, frase motivacional.
+- Não repete: a chave é **assunto + estado**, então o mesmo assunto volta quando evolui. Só fato
+  dos últimos 7 dias vira sugestão (`bf0423a`). Fuso: dia de calendário LOCAL (`76539e3`).
+
+### 44.7 Métricas de campanha (mídia paga)
+- Menu **Métricas** abaixo de Analytics e bloco no card do cliente (`e5c2132`).
+  - **O objetivo decide o nome do resultado e do custo** ("12 conversas iniciadas · custo por
+    mensagem").
+  - Os derivados nunca são digitados, e objetivos diferentes não se somam (`lib/metricasAds.ts`).
+  - Rotas: `/api/ads/{contas,campanhas,metricas,leitura}`.
+- **A tela substitui o PPT de mensuração** (`d7f61d6`). A equipe mostra ao cliente e exporta em
+  PDF (`window.print` com `@media print`). Tem evolução em SVG, criativos no ar, leitura do
+  período e uma **grade única** para lançar os números de todas as campanhas. O preenchimento é
+  manual; a integração com Meta e Google está pendente.
+
+### 44.8 Sistema
+- **Ctrl+Z** (`6afe679`, `lib/desfazer.ts` e `app/components/Desfazer.tsx`): cada ação registra o
+  próprio inverso; texto continua com o navegador.
+- **Salvar automático**, nunca "sair sem salvar" (`lib/fecharModal.ts`).
+
+### 44.9 CRM (sessão paralela, 10–11/09)
+- Arrastar oportunidade avisa quando falha e o card ganhou "Mover para" (`fa1df9d`).
+- **A barra de arrastar o funil voltou**, com cursor desenhado (`eb5a611`, `lib/barraArraste`).
+- Saiu o menu suspenso "Ir para etapa" (`3271431`), e o cabeçalho da coluna fica fixo ao rolar
+  (`9737ce7`).
+- Lição na memória `feedback-nao-substituir-controle-existente`: **conserto SOMA, nunca troca o
+  gesto que o dono já usa.**
+
+### 44.10 Gotchas desta fase
+- O filtro do Planner dentro de `GET /api/posts` cega as telas internas. Usar `?esteira=1`.
+- Rótulo de domínio repetido em cada tela diverge. Usar lista única em lib, com teste.
+- Tela esmaecida em que nada responde = erro de render num overlay em portal. Olhar o console.
+- O build roda em UTC: teste com `Z` quebra. Usar dia de calendário local.
+- Arquivo de rota do Next só exporta handlers; helpers vão para `lib/`.
+- `setPointerCapture` no pointerdown entrega o CLIQUE ao capturador.
+- `const` que lê `clienteAtivo` antes da declaração = tela branca.
+- Listener nativo em elemento condicional precisa de ref de callback, não `useRef` com efeito
+  de dependência vazia.
+
+### 44.11 Pendências
+- **Dono:**
+  - O seletor "Conteúdos setembro → volta para o marco inteiro" não reproduziu com dado limpo.
+    Está blindado; se voltar, aparece "Etapa vinculada (não está mais na lista)".
+  - Comunicação diária: a tela geral no rail lista todos os clientes ou só os do responsável?
+  - App Review da Meta: reprovado de novo em 14/09. A v3 é um vídeo por grupo, com interface em
+    inglês e a permissão narrada.
+- **Código:**
+  - Métricas: integração Meta (depende do App Review) e Google Ads API (developer token, OAuth e
+    customer ID); lançamento por público e por anúncio.
+  - Comunicação: tela geral, ação "sugerir comunicado" nas Automações, modelos editáveis e
+    costura com o relatório de sexta.
+  - Ctrl+Z ainda não está ligado em aprovações, Planner, CRM, financeiro e configurações.
+  - Etapa fora da janela ainda vira lasca dentro de marco visível.
+
+### 44.12 PRÓXIMA SESSÃO — redesenho a partir do Claude Design: CRM e Playbook primeiro
+- **Decisão do dono (15/09):** o design foi criado no Claude Design e será aplicado ao Soma10
+  **começando por CRM e Playbook** ("talvez gere menos impacto"). Exigência literal: **"não quero
+  perder nenhuma informação, configuração, integração, função... NADA! Quero apenas melhorar o
+  meu uso e da minha equipe."**
+- **Método combinado:**
+  1. **Inventário antes de mexer.** Listar tudo que a tela faz hoje (botões, campos, filtros,
+     atalhos, arrastes) e mostrar ao dono a diferença para o design: o que é novo e o que o
+     design esqueceu. Nada do que existe sai. Função sem lugar no design fica, e o dono decide
+     onde.
+  2. **Só a camada visual.** Mudam cor, espaçamento, tipografia e disposição. Ações, rotas e
+     libs continuam as mesmas. Paleta e tipografia novas entram pelos **37 tokens `--v2-*` de
+     `app/globals.css`**, não tela por tela.
+  3. **Uma tela por vez**, verificada no harness com o componente real.
+  4. **Endereço de teste antes do oficial.** Proposta: redesenho num ramo com preview da Vercel;
+     a equipe aprova e só depois vai para a `main`. É exceção à regra de deploy direto, então
+     **confirmar com o dono no início da sessão**.
+  5. **Volta em um clique:** rollback da Vercel para a publicação anterior.
+- **Entrada do design**, por qualquer destes caminhos:
+  - arquivos exportados do Claude Design numa pasta local;
+  - prints das telas;
+  - leitura direta pela ferramenta DesignSync. Ela exige rodar `/design-login` uma vez num
+    `claude` interativo (pelo app ela devolveu erro de autorização).
+
+  Não usar o "importar Claude Design por URL" dos conectores Lovable/Vercel: ele cria um projeto
+  separado, fora deste repositório.
+- **Arquivos-alvo:** a tela do CRM e `app/components/Playbook.tsx`, mais o que eles usam:
+  `lib/barraArraste`, `lib/playbookLista`, `lib/ganttArraste`, `lib/ordemGantt`,
+  `lib/progressoGantt`, `lib/etapaPlaybook` e `lib/subetapas`.
+- **Não pode regredir no redesenho:**
+  - **CRM:** barra de arrastar do funil com cursor próprio, "Mover para" e cabeçalho fixo.
+  - **Playbook:**
+    - arrastar prazo e pontas com o gesto na janela;
+    - Ctrl+scroll para zoom e barra de rolagem;
+    - chevron de recolher e alça de escala;
+    - ordem manual e "Ordem automática";
+    - visões Lista e Gantt;
+    - cor por marco e etapa, tarefas por etapa, seletor MARCO > ETAPA e "Aplicar modelo".
+  - **Em tudo:** Ctrl+Z e salvar automático.
