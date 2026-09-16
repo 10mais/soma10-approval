@@ -8,9 +8,12 @@ import { registrarDesfazer } from '@/lib/desfazer'
 import {
   CANAIS, labelCanal, corCanal, LABEL_PUBLICO, TIPOS_GOOGLE, CORRESPONDENCIAS,
   objetivosDoCanal, objetivoDe, somar, derivados, resultadoDoObjetivo, variacao, variacaoBoa,
-  noPeriodo, serieDoPeriodo, fmtDinheiro, fmtNumero, fmtPct,
-  type CanalAds, type Correspondencia,
+  noPeriodo, serieDoPeriodo, fmtDinheiro, fmtNumero, fmtPct, fmtRoas,
+  funilDeVendas, camposDoLancamento, formatarEntradaInteiro, campoParaNumero,
+  numeroParaCampo, rotuloIntervalo, CAMPOS_NUMERICOS, lancamentosDoFunil, periodoDeComparacao,
+  type CanalAds, type Correspondencia, type CampoLancamento,
 } from '@/lib/metricasAds'
+import { formatarEntradaMoeda, parseMoeda, moedaParaCampo } from '@/lib/moeda'
 
 // MÉTRICAS (mídia paga) — dono, 09/09/2026. O gestor de tráfego cadastra conta, campanha,
 // público e anúncio, e LANÇA os números; o dashboard sai daí. O cliente vê tudo, inclusive
@@ -27,6 +30,7 @@ type Campanha = {
 type Metrica = {
   id: string; clienteId: string; campanhaId: string; nivel: string; refId: string; data: string; ate?: string
   investimento?: number; impressoes?: number; alcance?: number; cliques?: number; resultados?: number; receita?: number; observacao?: string
+  visualizacoesPagina?: number; adicoesCarrinho?: number; checkouts?: number; compras?: number
 }
 type MarcoLeve = { id: string; titulo: string }
 
@@ -44,14 +48,46 @@ function periodoDoMes(ref: Date): { de: string; ate: string; rotulo: string; cha
   const mes = ini.toLocaleDateString('pt-BR', { month: 'long' })
   return { de: ymd(ini), ate: ymd(fim), rotulo: `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${ini.getFullYear()}`, chave: ymd(ini).slice(0, 7) }
 }
-function periodoAnterior(de: string, ate: string): { de: string; ate: string } {
-  const a = new Date(de + 'T00:00:00'), b = new Date(ate + 'T00:00:00')
-  const dias = Math.max(1, Math.round((b.getTime() - a.getTime()) / 86400000) + 1)
-  const fimAnt = new Date(a.getTime() - 86400000)
-  const iniAnt = new Date(fimAnt.getTime() - (dias - 1) * 86400000)
-  return { de: ymd(iniAnt), ate: ymd(fimAnt) }
-}
 const fmtDia = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : '')
+
+// CAMPO NUMÉRICO do lançamento (dono, 16/09: "não aceita a vírgula para os centavos"). O
+// <input type="number"> do navegador recusa "12,50" em vários sistemas. Aqui é texto com
+// máscara: dinheiro em Real (R$ + ponto de milhar + vírgula de centavo) e contagem com ponto
+// de milhar. O número só nasce na hora de gravar (campoParaNumero).
+function CampoValor({ campo, valor, onChange, disabled }: { campo: CampoLancamento; valor: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const moeda = campo.tipo === 'moeda'
+  return (
+    <div>
+      <label style={{ ...labelStyle, marginBottom: 3 }}>{campo.label}</label>
+      <div style={{ position: 'relative' }}>
+        {moeda && <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--v2-ink3)', pointerEvents: 'none' }}>R$</span>}
+        <input type="text" inputMode={moeda ? 'decimal' : 'numeric'} disabled={disabled} value={valor}
+          onChange={e => onChange(moeda ? formatarEntradaMoeda(e.target.value) : formatarEntradaInteiro(e.target.value))}
+          placeholder={moeda ? '0,00' : '0'} aria-label={campo.label}
+          style={{ ...inputStyle, ...(moeda ? { paddingLeft: 34 } : {}) }} />
+      </div>
+    </div>
+  )
+}
+
+// Lançamento gravado -> textos dos campos, para editar.
+function camposDaMetrica(m: Metrica, objetivo: string): Record<string, string> {
+  const { principais, funil } = camposDoLancamento(objetivo)
+  const out: Record<string, string> = {}
+  for (const c of [...principais, ...funil]) out[c.k] = numeroParaCampo(c.tipo, (m as any)[c.k])
+  return out
+}
+// Textos dos campos -> números. `vazioComoNull` na edição: apagar o campo apaga o número.
+function numerosDosCampos(textos: Record<string, string>, objetivo: string, vazioComoNull: boolean): Record<string, number | null> {
+  const { principais, funil } = camposDoLancamento(objetivo)
+  const out: Record<string, number | null> = {}
+  for (const c of [...principais, ...funil]) {
+    if (!(c.k in textos)) continue
+    const v = campoParaNumero(c.tipo, textos[c.k])
+    if (v !== null || vazioComoNull) out[c.k] = v
+  }
+  return out
+}
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
@@ -85,12 +121,22 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
   const [novaCampanha, setNovaCampanha] = useState(false)
   const [contasAbertas, setContasAbertas] = useState(false)
   const [gradeAberta, setGradeAberta] = useState(false)
+  // Grade aberta A PARTIR de uma campanha: mostra só ela e o "Voltar" devolve à campanha.
+  const [gradeDaCampanha, setGradeDaCampanha] = useState<Campanha | null>(null)
   // LEITURA DO PERÍODO: o texto do gestor, por cliente e mês. É o que transforma número em
   // conversa, e vai junto no PDF que o cliente recebe depois.
   const [leitura, setLeitura] = useState('')
+  // Período PERSONALIZADO (semana, quinzena, trimestre). Ausente = o mês de `refMes`.
+  const [intervalo, setIntervalo] = useState<{ de: string; ate: string } | null>(null)
+  const [editandoPeriodo, setEditandoPeriodo] = useState(false)
 
-  const periodo = useMemo(() => periodoDoMes(refMes), [refMes])
-  const anterior = useMemo(() => periodoAnterior(periodo.de, periodo.ate), [periodo])
+  const periodo = useMemo(() => {
+    const mes = periodoDoMes(refMes)
+    if (!intervalo) return mes
+    // A leitura do período fica guardada no mês de início do intervalo.
+    return { de: intervalo.de, ate: intervalo.ate, rotulo: rotuloIntervalo(intervalo.de, intervalo.ate), chave: intervalo.de.slice(0, 7) }
+  }, [refMes, intervalo])
+  const anterior = useMemo(() => periodoDeComparacao(periodo.de, periodo.ate, !intervalo), [periodo, intervalo])
 
   function carregar() {
     if (!clienteId) return
@@ -153,6 +199,13 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
 
   const ativas = campanhas.filter(c => c.status === 'ativa')
 
+  // FUNIL DE VENDAS do período (e do anterior, para a variação). Em campanha de vendas a
+  // compra é o próprio resultado — lancamentosDoFunil faz essa ponte antes de somar.
+  const objetivoDaCampanha = (id: string) => campanhas.find(c => c.id === id)?.objetivo
+  // Só as campanhas que TÊM funil entram: gasto de campanha de mensagens não vira custo por venda.
+  const funil = useMemo(() => funilDeVendas(somar(lancamentosDoFunil(soCampanha(doPeriodo), objetivoDaCampanha))), [doPeriodo, campanhas])
+  const funilAnt = useMemo(() => funilDeVendas(somar(lancamentosDoFunil(soCampanha(doAnterior), objetivoDaCampanha))), [doAnterior, campanhas])
+
   // ------------------------------------------------------------ BLOCO (card do cliente)
   if (compacto) {
     const semNada = !campanhas.length
@@ -209,12 +262,29 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Métricas{clienteNome ? ` · ${clienteNome}` : ''}</h2>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Mídia paga em {periodo.rotulo.toLowerCase()}</p>
+          {/* PERÍODO DE ANÁLISE escrito por extenso (dono, 16/09): quem olha a tela ou o PDF
+              precisa saber de que datas são os números e com o que estão sendo comparados. */}
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink2)' }}>
+            Mídia paga · <strong style={{ color: 'var(--v2-ink)' }}>Período de análise: {rotuloIntervalo(periodo.de, periodo.ate)}</strong>
+          </p>
+          <p style={{ margin: '1px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Variações comparadas com {rotuloIntervalo(anterior.de, anterior.ate)}</p>
         </div>
-        <div className="metricas-oculto" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button onClick={() => setRefMes(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Mês anterior" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>‹</button>
-          <button onClick={() => setRefMes(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Mês atual</button>
-          <button onClick={() => setRefMes(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Próximo mês" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>›</button>
+        <div className="metricas-oculto" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => { setIntervalo(null); setEditandoPeriodo(false); setRefMes(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)) }} aria-label="Mês anterior" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>‹</button>
+          <button onClick={() => { setIntervalo(null); setEditandoPeriodo(false); setRefMes(new Date()) }} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Mês atual</button>
+          <button onClick={() => { setIntervalo(null); setEditandoPeriodo(false); setRefMes(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)) }} aria-label="Próximo mês" style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)' }}>›</button>
+          <button onClick={() => setEditandoPeriodo(v => !v)} aria-expanded={editandoPeriodo} style={{ padding: '0 12px', height: 30, border: `1px solid ${intervalo ? 'var(--v2-info)' : 'var(--v2-rule)'}`, background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: intervalo ? 'var(--v2-info)' : 'var(--v2-ink2)' }}>Personalizar período</button>
+          {editandoPeriodo && (
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="date" aria-label="Início do período" value={periodo.de} max={periodo.ate}
+                onChange={e => e.target.value && setIntervalo({ de: e.target.value, ate: e.target.value > periodo.ate ? e.target.value : periodo.ate })}
+                style={{ ...inputStyle, width: 150, padding: '5px 8px', height: 30 }} />
+              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>a</span>
+              <input type="date" aria-label="Fim do período" value={periodo.ate} min={periodo.de}
+                onChange={e => e.target.value && setIntervalo({ de: e.target.value < periodo.de ? e.target.value : periodo.de, ate: e.target.value })}
+                style={{ ...inputStyle, width: 150, padding: '5px 8px', height: 30 }} />
+            </span>
+          )}
         </div>
         <div className="metricas-oculto" style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => window.print()} title="Gera o PDF desta tela para enviar ao cliente" style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Exportar PDF</button>
@@ -223,7 +293,7 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
               Contas {contas.length ? `(${contas.length})` : ''}
             </button>
             <button onClick={() => setNovaCampanha(true)} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>+ Campanha</button>
-            <button onClick={() => setGradeAberta(true)} disabled={!campanhas.length} style={{ padding: '9px 16px', background: campanhas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: campanhas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: campanhas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>Lançar números</button>
+            <button onClick={() => setGradeAberta(true)} disabled={!campanhas.length} style={{ padding: '9px 16px', background: campanhas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: campanhas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: campanhas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>Lançar ou editar números</button>
           </>}
         </div>
       </div>
@@ -297,6 +367,8 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
               { rotulo: 'Cliques', valor: fmtNumero(total.cliques), pct: variacao(total.cliques, totalAnt.cliques), campo: 'resultado' as const },
               { rotulo: 'CTR', valor: fmtPct(der.ctr), pct: variacao(der.ctr || 0, derAnt.ctr || 0), campo: 'resultado' as const },
               { rotulo: 'Custo por clique', valor: fmtDinheiro(der.cpc), pct: variacao(der.cpc || 0, derAnt.cpc || 0), campo: 'custo' as const },
+              { rotulo: 'CPM (custo por mil impressões)', valor: fmtDinheiro(der.cpm), pct: variacao(der.cpm || 0, derAnt.cpm || 0), campo: 'custo' as const },
+              { rotulo: 'Frequência', valor: der.frequencia === null ? '—' : der.frequencia.toFixed(2).replace('.', ','), pct: null, campo: 'resultado' as const },
             ].map(k => (
               <div key={k.rotulo} style={cardStyle}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
@@ -307,6 +379,57 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
               </div>
             ))}
           </div>
+
+          {/* FUNIL DE VENDAS (dono, 16/09): do produto visto à compra, com a taxa de passagem
+              de cada etapa, custo por venda, ticket médio e ROAS. Só aparece quando há número
+              lançado — cliente sem e-commerce não vê um funil vazio. */}
+          {funil.temDados && (
+            <div style={{ ...cardStyle, marginBottom: 12 }}>
+              <h3 style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Funil de vendas</h3>
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {funil.etapas.filter(e => e.valor > 0).map((e, i) => {
+                  const ant = funilAnt.etapas.find(x => x.chave === e.chave)
+                  return (
+                    <div key={e.chave} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '1 1 150px' }}>
+                      {i > 0 && (
+                        <span title="Taxa de passagem da etapa anterior" style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)', whiteSpace: 'nowrap' }}>
+                          → {fmtPct(e.taxaDaAnterior)}
+                        </span>
+                      )}
+                      <div style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: 'var(--v2-surface1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 20, fontWeight: 300, color: 'var(--v2-ink)' }}>{fmtNumero(e.valor)}</span>
+                          <Variacao pct={variacao(e.valor, ant?.valor || 0)} campo="resultado" />
+                        </div>
+                        <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{e.label}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+                {[
+                  { rotulo: 'Receita', valor: fmtDinheiro(funil.receita), pct: variacao(funil.receita, funilAnt.receita), campo: 'resultado' as const },
+                  { rotulo: 'ROAS (retorno sobre o investimento)', valor: fmtRoas(funil.roas), pct: variacao(funil.roas || 0, funilAnt.roas || 0), campo: 'resultado' as const },
+                  { rotulo: 'Custo por venda', valor: fmtDinheiro(funil.custoPorVenda), pct: variacao(funil.custoPorVenda || 0, funilAnt.custoPorVenda || 0), campo: 'custo' as const },
+                  { rotulo: 'Ticket médio', valor: fmtDinheiro(funil.ticketMedio), pct: variacao(funil.ticketMedio || 0, funilAnt.ticketMedio || 0), campo: 'resultado' as const },
+                  { rotulo: 'Custo por adição ao carrinho', valor: fmtDinheiro(funil.custoPorCarrinho), pct: variacao(funil.custoPorCarrinho || 0, funilAnt.custoPorCarrinho || 0), campo: 'custo' as const },
+                  { rotulo: 'Carrinho → checkout', valor: fmtPct(funil.taxaCarrinhoCheckout), pct: null, campo: 'resultado' as const },
+                  { rotulo: 'Checkout → compra', valor: fmtPct(funil.taxaCheckoutCompra), pct: null, campo: 'resultado' as const },
+                  { rotulo: 'Carrinho → compra', valor: fmtPct(funil.taxaCarrinhoCompra), pct: null, campo: 'resultado' as const },
+                  { rotulo: 'Clique → compra', valor: fmtPct(funil.taxaCliqueCompra, 2), pct: null, campo: 'resultado' as const },
+                ].filter(k => k.valor !== '—').map(k => (
+                  <div key={k.rotulo} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 17, fontWeight: 400, color: 'var(--v2-ink)' }}>{k.valor}</span>
+                      <Variacao pct={k.pct} campo={k.campo} />
+                    </div>
+                    <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{k.rotulo}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Campanha a campanha */}
           <div style={{ ...cardStyle, marginBottom: 12 }}>
@@ -388,12 +511,15 @@ export default function MetricasAds({ clienteId, clienteNome, podeEditar = true,
           podeEditar={podeEditar}
           onClose={() => { setNovaCampanha(false); setCampanhaAberta(null) }}
           onSalvo={() => { setNovaCampanha(false); setCampanhaAberta(null); carregar() }}
-          onLancar={() => { setCampanhaAberta(null); setGradeAberta(true) }}
+          onLancar={c => { setCampanhaAberta(null); setGradeDaCampanha(c); setGradeAberta(true) }}
         />
       )}
       {gradeAberta && (
         <GradeLancamento campanhas={campanhas} clienteId={clienteId} periodo={periodo} metricas={metricas}
-          onClose={() => setGradeAberta(false)} onSalvo={() => { setGradeAberta(false); carregar() }} />
+          campanhaInicial={gradeDaCampanha}
+          onClose={() => { setGradeAberta(false); setGradeDaCampanha(null) }}
+          onRecarregar={carregar}
+          onVoltarCampanha={gradeDaCampanha ? () => { const c = campanhas.find(x => x.id === gradeDaCampanha.id) || gradeDaCampanha; setGradeAberta(false); setGradeDaCampanha(null); setCampanhaAberta(c) } : undefined} />
       )}
       {contasAbertas && (
         <ContasModal contas={contas} clienteId={clienteId} clienteNome={clienteNome} onClose={() => setContasAbertas(false)} onSalvo={carregar} />
@@ -442,101 +568,257 @@ function Evolucao({ serie, objetivoUnico }: { serie: { rotulo: string; investime
 
 // GRADE DE LANÇAMENTO: todas as campanhas numa tela só (dono, 09/09: "não consegui usar de
 // forma prática" — era um modal por campanha). Preenche o que tiver, salva de uma vez.
-function GradeLancamento({ campanhas, clienteId, periodo, metricas, onClose, onSalvo }: {
+//
+// Dono, 16/09, quatro ajustes nesta tela:
+// - "não conseguimos editar o valor lançado": cada campanha lista os lançamentos do período,
+//   com Editar (e Excluir) — a edição abre dentro da própria grade;
+// - "não aceita a vírgula dos centavos": campos com máscara de Real (CampoValor);
+// - "lançar métricas mais completas": funil de vendas (carrinho, checkout, compras, receita);
+// - "falta VOLTAR para não fechar o modal": barra fixa no topo com Voltar — da edição para a
+//   lista, da lista para a campanha de onde veio (ou para o painel).
+// Sair por qualquer caminho SALVA o que foi digitado (regra do sistema, lib/fecharModal).
+function GradeLancamento({ campanhas, clienteId, periodo, metricas, campanhaInicial, onClose, onRecarregar, onVoltarCampanha }: {
   campanhas: Campanha[]; clienteId: string; periodo: { de: string; ate: string; rotulo: string }
-  metricas: Metrica[]; onClose: () => void; onSalvo: () => void
+  metricas: Metrica[]; campanhaInicial?: Campanha | null
+  onClose: () => void; onRecarregar: () => void; onVoltarCampanha?: () => void
 }) {
   const [de, setDe] = useState(periodo.de)
   const [ate, setAte] = useState(periodo.ate)
   const [linhas, setLinhas] = useState<Record<string, Record<string, string>>>({})
+  const [funilAberto, setFunilAberto] = useState<Record<string, boolean>>({})
+  const [soUma, setSoUma] = useState(campanhaInicial?.id || '')
+  const [edicao, setEdicao] = useState<{ metrica: Metrica; de: string; ate: string; campos: Record<string, string>; original: string } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const set = (id: string, campo: string, v: string) => setLinhas(l => ({ ...l, [id]: { ...(l[id] || {}), [campo]: v } }))
-  const jaLancado = (id: string) => somar(noPeriodo(metricas.filter(m => m.campanhaId === id && m.nivel === 'campanha'), de, ate))
-  const ativas = campanhas.filter(c => c.status !== 'encerrada')
-  const preenchidas = ativas.filter(c => Object.values(linhas[c.id] || {}).some(v => String(v).trim() !== ''))
 
-  async function salvar() {
-    if (salvando || !preenchidas.length) return
+  // Lançamento que TOCA o intervalo da grade (não só o que começa dentro dele): um mês
+  // lançado inteiro aparece mesmo quando a grade está numa semana do meio.
+  const lancamentosDe = (id: string) => metricas
+    .filter(m => m.campanhaId === id && m.nivel === 'campanha' && m.data <= ate && (m.ate || m.data) >= de)
+    .sort((a, b) => b.data.localeCompare(a.data))
+  const jaLancado = (id: string) => somar(noPeriodo(metricas.filter(m => m.campanhaId === id && m.nivel === 'campanha'), de, ate))
+  const disponiveis = campanhas.filter(c => c.status !== 'encerrada' || c.id === soUma || lancamentosDe(c.id).length > 0)
+  const visiveis = soUma ? disponiveis.filter(c => c.id === soUma) : disponiveis
+  const preenchidas = disponiveis.filter(c => Object.values(linhas[c.id] || {}).some(v => String(v).trim() !== ''))
+  const periodoOk = !!de && !!ate && de <= ate
+
+  async function lancar(): Promise<boolean> {
+    if (!preenchidas.length) return true
+    if (salvando) return false
+    if (!periodoOk) { toast('Confira o período: a data inicial precisa vir antes da final.', 'erro'); return false }
     setSalvando(true)
     const criados: string[] = []
     for (const c of preenchidas) {
-      const l = linhas[c.id] || {}
+      const numeros = numerosDosCampos(linhas[c.id] || {}, c.objetivo, false)
+      if (!Object.keys(numeros).length) continue
       const r = await fetch('/api/ads/metricas', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clienteId, campanhaId: c.id, nivel: 'campanha', refId: c.id, data: de, ate, ...l }),
+        body: JSON.stringify({ clienteId, campanhaId: c.id, nivel: 'campanha', refId: c.id, data: de, ate, ...numeros }),
       }).then(x => x.json()).catch(() => null)
       if (r?.metrica?.id) criados.push(r.metrica.id)
     }
     setSalvando(false)
-    if (!criados.length) { toast('Não foi possível lançar os números.', 'erro'); return }
+    if (!criados.length) { toast('Não foi possível lançar os números.', 'erro'); return false }
     registrarDesfazer(`Lançamento de ${criados.length} campanha(s)`, async () => {
       const rs = await Promise.all(criados.map(id => fetch(`/api/ads/metricas?id=${id}`, { method: 'DELETE' }).then(x => x.ok).catch(() => false)))
-      onSalvo()
+      onRecarregar()
       return rs.every(Boolean)
     })
     toast(`${criados.length} campanha(s) lançada(s).`, 'sucesso')
-    onSalvo()
+    setLinhas({})
+    onRecarregar()
+    return true
   }
 
-  const colunas = (c: Campanha) => {
-    const o = objetivoDe(c.objetivo)
-    return [
-      { k: 'investimento', label: 'Investimento' },
-      { k: 'resultados', label: o.semResultado ? 'Alcance' : o.resultado.plural.charAt(0).toUpperCase() + o.resultado.plural.slice(1) },
-      { k: 'impressoes', label: 'Impressões' },
-      { k: 'alcance', label: 'Alcance' },
-      { k: 'cliques', label: 'Cliques' },
-      ...(o.receita ? [{ k: 'receita', label: 'Receita' }] : []),
-    ]
+  const campanhaDe = (m: Metrica) => campanhas.find(c => c.id === m.campanhaId)
+  function abrirEdicao(m: Metrica) {
+    const campos = camposDaMetrica(m, campanhaDe(m)?.objetivo || '')
+    const fim = m.ate || m.data
+    setEdicao({ metrica: m, de: m.data, ate: fim, campos, original: JSON.stringify({ de: m.data, ate: fim, campos }) })
   }
+
+  async function salvarEdicao(): Promise<boolean> {
+    if (!edicao) return true
+    if (JSON.stringify({ de: edicao.de, ate: edicao.ate, campos: edicao.campos }) === edicao.original) return true
+    if (!edicao.de || !edicao.ate || edicao.de > edicao.ate) { toast('Confira o período: a data inicial precisa vir antes da final.', 'erro'); return false }
+    if (salvando) return false
+    const m = edicao.metrica
+    const numeros = numerosDosCampos(edicao.campos, campanhaDe(m)?.objetivo || '', true)
+    setSalvando(true)
+    const r = await fetch('/api/ads/metricas', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: m.id, data: edicao.de, ate: edicao.ate, ...numeros }),
+    }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r?.ok) { toast('Não foi possível salvar a alteração.', 'erro'); return false }
+    const antes: Record<string, unknown> = { id: m.id, data: m.data, ate: m.ate || '' }
+    for (const c of CAMPOS_NUMERICOS) antes[c] = (m as any)[c] ?? null
+    registrarDesfazer('Edição do lançamento', async () => {
+      const x = await fetch('/api/ads/metricas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
+      onRecarregar()
+      return !!x?.ok
+    })
+    toast('Lançamento atualizado.', 'sucesso')
+    onRecarregar()
+    return true
+  }
+
+  async function excluirLancamento(m: Metrica) {
+    if (!(await confirmar(`Excluir o lançamento de ${rotuloIntervalo(m.data, m.ate || m.data)}?`, { titulo: 'Excluir lançamento', okLabel: 'Excluir', perigo: true }))) return
+    const r = await fetch(`/api/ads/metricas?id=${m.id}`, { method: 'DELETE' }).catch(() => null)
+    if (!r?.ok) { toast('Não foi possível excluir o lançamento.', 'erro'); return }
+    registrarDesfazer('Exclusão do lançamento', async () => {
+      const x = await fetch('/api/ads/metricas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, restaurar: true }) }).catch(() => null)
+      onRecarregar()
+      return !!x?.ok
+    })
+    setEdicao(null)
+    onRecarregar()
+  }
+
+  const sair = () => (onVoltarCampanha ? onVoltarCampanha() : onClose())
+  async function voltar() {
+    if (edicao) { if (await salvarEdicao()) setEdicao(null); return }
+    if (await lancar()) sair()
+  }
+  async function fecharTudo() {
+    if (edicao && !(await salvarEdicao())) return
+    if (await lancar()) onClose()
+  }
+
+  const rotuloVoltar = edicao ? 'Voltar aos lançamentos' : onVoltarCampanha ? 'Voltar para a campanha' : 'Voltar ao painel'
+  const resumo = (m: Metrica) => {
+    const c = campanhaDe(m)
+    const r = resultadoDoObjetivo(c?.objetivo, somar([m]))
+    return `${fmtDinheiro(m.investimento ?? 0)} · ${fmtNumero(r.valor)} ${r.rotulo}${m.receita ? ` · receita ${fmtDinheiro(m.receita)}` : ''}`
+  }
+  const botaoLink: React.CSSProperties = { background: 'none', border: 0, padding: 0, color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }
 
   return (
-    <div onClick={fecharFora(onClose, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 900, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 3px', fontSize: 16, color: 'var(--v2-ink)' }}>Lançar números do período</h3>
-        <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Preencha o que tiver, em qualquer linha, e salve de uma vez. O que já foi lançado no período aparece do lado.</p>
-
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={labelStyle}>De</label>
-            <input type="date" value={de} onChange={e => setDe(e.target.value)} style={{ ...inputStyle, width: 160 }} />
-          </div>
-          <div>
-            <label style={labelStyle}>Até</label>
-            <input type="date" value={ate} onChange={e => setAte(e.target.value)} style={{ ...inputStyle, width: 160 }} />
-          </div>
-          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>Um lançamento por campanha, cobrindo esse intervalo.</p>
+    <div onClick={fecharFora(() => { void fecharTudo() })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 900, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: '0 22px 22px' }}>
+        {/* Barra fixa: Voltar sempre à mão, mesmo com a lista rolada até o fim. */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--v2-surface)', margin: '0 -22px 14px', padding: '14px 22px 12px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={voltar} disabled={salvando} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px 7px 9px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: salvando ? 'wait' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>‹</span> {rotuloVoltar}
+          </button>
+          <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {edicao ? 'Editar lançamento' : 'Lançar números do período'}
+          </h3>
+          <button onClick={fecharTudo} aria-label="Fechar" title="Fechar" style={{ width: 32, height: 32, background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
-        {ativas.map(c => {
-          const ja = jaLancado(c.id)
-          const temAlgo = ja.investimento > 0 || ja.resultados > 0
+        {edicao ? (() => {
+          const c = campanhaDe(edicao.metrica)
+          const { principais, funil } = camposDoLancamento(c?.objetivo)
+          const setCampo = (k: string, v: string) => setEdicao(e => e && ({ ...e, campos: { ...e.campos, [k]: v } }))
           return (
-            <div key={c.id} style={{ padding: '12px 0', borderTop: '1px solid var(--v2-rule)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: corCanal(c.canal), flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
-                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{objetivoDe(c.objetivo).label}</span>
-                {temAlgo && <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--v2-ok)' }}>já lançado no período: {fmtDinheiro(ja.investimento)} · {fmtNumero(ja.resultados)} {objetivoDe(c.objetivo).resultado.plural}</span>}
+            <div>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--v2-ink2)' }}>
+                <strong style={{ color: 'var(--v2-ink)' }}>{c?.nome || 'Campanha'}</strong> · {objetivoDe(c?.objetivo).label}
+              </p>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div>
+                  <label style={labelStyle}>De</label>
+                  <input type="date" value={edicao.de} onChange={e => setEdicao(x => x && ({ ...x, de: e.target.value }))} style={{ ...inputStyle, width: 160 }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Até</label>
+                  <input type="date" value={edicao.ate} onChange={e => setEdicao(x => x && ({ ...x, ate: e.target.value }))} style={{ ...inputStyle, width: 160 }} />
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8 }}>
-                {colunas(c).map(col => (
-                  <div key={col.k}>
-                    <label style={{ ...labelStyle, marginBottom: 3 }}>{col.label}</label>
-                    <input type="number" min={0} step="0.01" value={(linhas[c.id] || {})[col.k] || ''} onChange={e => set(c.id, col.k, e.target.value)} placeholder="0" style={inputStyle} />
-                  </div>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 8 }}>
+                {principais.map(col => <CampoValor key={col.k} campo={col} valor={edicao.campos[col.k] || ''} onChange={v => setCampo(col.k, v)} />)}
+              </div>
+              <h4 style={{ margin: '16px 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Funil de vendas</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 8 }}>
+                {funil.map(col => <CampoValor key={col.k} campo={col} valor={edicao.campos[col.k] || ''} onChange={v => setCampo(col.k, v)} />)}
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Apagar um campo tira o número do lançamento. Ctrl+Z desfaz a alteração depois de salva.</p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
+                <button onClick={voltar} disabled={salvando} style={{ flex: 1, padding: '12px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {salvando ? 'Salvando…' : 'Salvar e voltar'}
+                </button>
+                <button onClick={() => excluirLancamento(edicao.metrica)} style={{ padding: '12px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Excluir lançamento</button>
               </div>
             </div>
           )
-        })}
+        })() : (
+          <>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Preencha o que tiver, em qualquer linha, e lance de uma vez. Valores em reais aceitam vírgula nos centavos. O que já foi lançado aparece embaixo de cada campanha, com Editar.</p>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !preenchidas.length} style={{ flex: 1, padding: '12px 0', background: preenchidas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: preenchidas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: preenchidas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
-            {salvando ? 'Lançando…' : preenchidas.length ? `Lançar ${preenchidas.length} campanha(s)` : 'Preencha alguma linha'}
-          </button>
-          <button onClick={onClose} style={{ padding: '12px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Fechar</button>
-        </div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={labelStyle}>De</label>
+                <input type="date" value={de} onChange={e => setDe(e.target.value)} style={{ ...inputStyle, width: 160 }} />
+              </div>
+              <div>
+                <label style={labelStyle}>Até</label>
+                <input type="date" value={ate} onChange={e => setAte(e.target.value)} style={{ ...inputStyle, width: 160 }} />
+              </div>
+              <p style={{ margin: 0, fontSize: 11.5, color: periodoOk ? 'var(--v2-ink3)' : 'var(--v2-hot)' }}>
+                {periodoOk ? `Um lançamento por campanha, cobrindo ${rotuloIntervalo(de, ate)}.` : 'A data inicial precisa vir antes da final.'}
+              </p>
+            </div>
+            {campanhaInicial && (
+              <p style={{ margin: '0 0 8px' }}>
+                {soUma
+                  ? <button onClick={() => setSoUma('')} style={botaoLink}>Mostrar todas as campanhas</button>
+                  : <button onClick={() => setSoUma(campanhaInicial.id)} style={botaoLink}>Mostrar só “{campanhaInicial.nome}”</button>}
+              </p>
+            )}
+
+            {visiveis.map(c => {
+              const ja = jaLancado(c.id)
+              const temAlgo = ja.investimento > 0 || ja.resultados > 0
+              const { principais, funil } = camposDoLancamento(c.objetivo)
+              const linha = linhas[c.id] || {}
+              const funilVisivel = funilAberto[c.id] ?? (!!objetivoDe(c.objetivo).receita || funil.some(f => (linha[f.k] || '').trim()))
+              const lancados = lancamentosDe(c.id)
+              return (
+                <div key={c.id} style={{ padding: '12px 0', borderTop: '1px solid var(--v2-rule)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: corCanal(c.canal), flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{objetivoDe(c.objetivo).label}</span>
+                    {temAlgo && <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--v2-ok)' }}>já lançado no período: {fmtDinheiro(ja.investimento)} · {fmtNumero(ja.resultados)} {objetivoDe(c.objetivo).resultado.plural}</span>}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8 }}>
+                    {principais.map(col => <CampoValor key={col.k} campo={col} valor={linha[col.k] || ''} onChange={v => set(c.id, col.k, v)} />)}
+                  </div>
+                  <button onClick={() => setFunilAberto(f => ({ ...f, [c.id]: !funilVisivel }))} aria-expanded={funilVisivel} style={{ ...botaoLink, marginTop: 9, fontSize: 11.5 }}>
+                    {funilVisivel ? '− Ocultar funil de vendas' : '+ Funil de vendas (carrinho, checkout, compras, receita)'}
+                  </button>
+                  {funilVisivel && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8, marginTop: 8, padding: 10, borderRadius: 10, background: 'var(--v2-surface1)' }}>
+                      {funil.map(col => <CampoValor key={col.k} campo={col} valor={linha[col.k] || ''} onChange={v => set(c.id, col.k, v)} />)}
+                    </div>
+                  )}
+                  {lancados.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>Lançamentos no período</span>
+                      {lancados.map(m => (
+                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px dashed var(--v2-rule)', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, color: 'var(--v2-ink2)', minWidth: 150 }}>{rotuloIntervalo(m.data, m.ate || m.data)}</span>
+                          <span style={{ fontSize: 12, color: 'var(--v2-ink)', flex: 1, minWidth: 160 }}>{resumo(m)}</span>
+                          <button onClick={() => abrirEdicao(m)} style={{ padding: '4px 11px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-rule)', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Editar</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {!visiveis.length && <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma campanha ativa para lançar.</p>}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button onClick={async () => { if (await lancar()) sair() }} disabled={salvando || !preenchidas.length} style={{ flex: 1, padding: '12px 0', background: preenchidas.length ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: preenchidas.length ? '#17150E' : 'var(--v2-ink3)', border: 0, borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: preenchidas.length ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                {salvando ? 'Lançando…' : preenchidas.length ? `Lançar ${preenchidas.length} campanha(s)` : 'Preencha alguma linha'}
+              </button>
+              <button onClick={voltar} disabled={salvando} style={{ padding: '12px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Voltar</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -633,7 +915,7 @@ function CampanhaModal({ campanha, clienteId, clienteNome, contas, marcos, metri
     status: campanha?.status || 'ativa',
     dataInicio: (campanha?.dataInicio || '').slice(0, 10),
     dataFim: (campanha?.dataFim || '').slice(0, 10),
-    orcamento: campanha?.orcamento ?? ('' as any),
+    orcamento: moedaParaCampo(campanha?.orcamento),
     orcamentoTipo: campanha?.orcamentoTipo || 'diario',
     marcoId: campanha?.marcoId || '',
   })
@@ -678,7 +960,7 @@ function CampanhaModal({ campanha, clienteId, clienteNome, contas, marcos, metri
     setSalvando(true)
     const corpo = {
       ...form, objetivo: objetivoOk, clienteId, clienteNome,
-      orcamento: form.orcamento === '' ? undefined : form.orcamento,
+      orcamento: form.orcamento.trim() === '' ? undefined : parseMoeda(form.orcamento),
       publicos: publicos.filter(p => p.titulo.trim()),
       ...(form.canal === 'google' ? {} : { tipoGoogle: '' }),
     }
@@ -771,7 +1053,10 @@ function CampanhaModal({ campanha, clienteId, clienteNome, contas, marcos, metri
           <div>
             <label style={labelStyle}>Orçamento</label>
             <div style={{ display: 'flex', gap: 6 }}>
-              <input disabled={!podeEditar} type="number" min={0} step="0.01" value={form.orcamento} onChange={e => setForm(f => ({ ...f, orcamento: e.target.value as any }))} placeholder="0,00" style={inputStyle} />
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--v2-ink3)', pointerEvents: 'none' }}>R$</span>
+                <input disabled={!podeEditar} type="text" inputMode="decimal" value={form.orcamento} onChange={e => setForm(f => ({ ...f, orcamento: formatarEntradaMoeda(e.target.value) }))} placeholder="0,00" aria-label="Orçamento" style={{ ...inputStyle, paddingLeft: 34 }} />
+              </div>
               <select disabled={!podeEditar} value={form.orcamentoTipo} onChange={e => setForm(f => ({ ...f, orcamentoTipo: e.target.value }))} style={{ ...inputStyle, width: 110 }}>
                 <option value="diario">por dia</option>
                 <option value="total">total</option>
@@ -869,7 +1154,7 @@ function CampanhaModal({ campanha, clienteId, clienteNome, contas, marcos, metri
               <span style={{ fontSize: 13, color: 'var(--v2-ink)' }}>{fmtDinheiro(soma.investimento)}</span>
               <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}><strong>{fmtNumero(res.valor)}</strong> {res.rotulo}</span>
               <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{res.custoLabel}: {fmtDinheiro(res.custo)}</span>
-              {podeEditar && <button onClick={() => onLancar(campanha)} style={{ marginLeft: 'auto', padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Lançar números</button>}
+              {podeEditar && <button onClick={async () => { if (alterado() && form.nome.trim()) await salvar(); onLancar(campanha) }} style={{ marginLeft: 'auto', padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 999, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Lançar ou editar números</button>}
             </div>
           </div>
         )}

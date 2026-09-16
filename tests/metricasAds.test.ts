@@ -49,7 +49,7 @@ describe('metricasAds — o objetivo decide o nome do resultado e do custo', () 
       { investimento: 100, impressoes: 10000, alcance: 4000, cliques: 200, resultados: 10, receita: 500 },
       { investimento: 50, impressoes: 5000, alcance: 2000, cliques: 50, resultados: 5, receita: 250 },
     ])
-    expect(s).toEqual({ investimento: 150, impressoes: 15000, alcance: 6000, cliques: 250, resultados: 15, receita: 750 })
+    expect(s).toEqual({ investimento: 150, impressoes: 15000, alcance: 6000, cliques: 250, resultados: 15, receita: 750, visualizacoesPagina: 0, adicoesCarrinho: 0, checkouts: 0, compras: 0 })
     const d = derivados(s)
     expect(d.ctr).toBeCloseTo(1.6667, 3)
     expect(d.cpc).toBe(0.6)
@@ -84,7 +84,7 @@ describe('metricasAds — o objetivo decide o nome do resultado e do custo', () 
   })
 
   it('formatação em pt-BR', () => {
-    expect(fmtDinheiro(1234.5)).toBe('R$ 1.235') // acima de 100 arredonda: centavo não muda decisão
+    expect(fmtDinheiro(1234.5)).toBe('R$ 1.234,50') // sempre em Real, com centavo (dono, 16/09)
     expect(fmtDinheiro(8.5)).toBe('R$ 8,50') // custo por resultado precisa do centavo
     expect(fmtDinheiro(null)).toBe('—')
     expect(fmtPct(1.6667)).toBe('1,7%')
@@ -149,5 +149,122 @@ describe('serieDoPeriodo — o gráfico de evolução', () => {
     ], '2026-07-01', '2026-10-31')
     expect(s.map(b => [b.rotulo, b.investimento])).toEqual([['jul', 500], ['set', 400]])
     expect(serieDoPeriodo([], '2026-09-01', '2026-09-30')).toEqual([])
+  })
+})
+
+// Dono, 16/09: vírgula nos centavos, editar o que foi lançado, funil de vendas e o período
+// de análise escrito no painel.
+import { funilDeVendas, comComprasDoObjetivo, camposDoLancamento, formatarEntradaInteiro, campoParaNumero, numeroParaCampo, rotuloIntervalo, fmtRoas, CAMPOS_NUMERICOS } from '@/lib/metricasAds'
+import { formatarEntradaMoeda } from '@/lib/moeda'
+
+describe('lançamento — a vírgula é o centavo', () => {
+  it('dinheiro digitado com vírgula vira o número certo (o bug de 16/09)', () => {
+    expect(campoParaNumero('moeda', formatarEntradaMoeda('1250,75'))).toBe(1250.75)
+    expect(campoParaNumero('moeda', '1.250,75')).toBe(1250.75)
+    expect(campoParaNumero('moeda', 'R$ 89,9')).toBe(89.9)
+    expect(campoParaNumero('moeda', '1200')).toBe(1200)
+    expect(campoParaNumero('moeda', '0,50')).toBe(0.5)
+  })
+
+  it('contagem ignora centavo e aceita o ponto de milhar', () => {
+    expect(formatarEntradaInteiro('12345')).toBe('12.345')
+    expect(formatarEntradaInteiro('12,7')).toBe('12')
+    expect(formatarEntradaInteiro('abc')).toBe('')
+    expect(campoParaNumero('inteiro', '12.345')).toBe(12345)
+  })
+
+  it('vazio é "não informado", não zero; zero digitado continua sendo zero', () => {
+    expect(campoParaNumero('moeda', '')).toBeNull()
+    expect(campoParaNumero('inteiro', '   ')).toBeNull()
+    expect(campoParaNumero('inteiro', '0')).toBe(0)
+  })
+
+  it('editar: o número gravado volta para o campo no formato do Real e ida-e-volta não muda o valor', () => {
+    expect(numeroParaCampo('moeda', 1234.5)).toBe('1.234,50')
+    expect(numeroParaCampo('moeda', 0.5)).toBe('0,50')
+    expect(numeroParaCampo('inteiro', 12345)).toBe('12.345')
+    expect(numeroParaCampo('moeda', undefined)).toBe('')
+    for (const v of [0.01, 9.9, 1234.56, 1000000]) expect(campoParaNumero('moeda', numeroParaCampo('moeda', v))).toBe(v)
+  })
+})
+
+describe('funil de vendas', () => {
+  it('taxas de carrinho→checkout e checkout→compra, custo por venda, ticket médio e ROAS', () => {
+    const f = funilDeVendas(somar([{ investimento: 1000, cliques: 2000, visualizacoesPagina: 1500, adicoesCarrinho: 200, checkouts: 80, compras: 40, receita: 6000 }]))
+    expect(f.temDados).toBe(true)
+    expect(f.taxaCarrinhoCheckout).toBe(40)
+    expect(f.taxaCheckoutCompra).toBe(50)
+    expect(f.taxaCarrinhoCompra).toBe(20)
+    expect(f.taxaCliqueCompra).toBe(2)
+    expect(f.custoPorVenda).toBe(25)
+    expect(f.ticketMedio).toBe(150)
+    expect(f.roas).toBe(6)
+    expect(f.custoPorCarrinho).toBe(5)
+    expect(f.etapas.map(e => e.taxaDaAnterior)).toEqual([null, (200 / 1500) * 100, 40, 50])
+  })
+
+  it('etapa sem número não vira 0%: a seguinte compara com a última preenchida', () => {
+    const f = funilDeVendas(somar([{ adicoesCarrinho: 100, compras: 25 }]))
+    expect(f.etapas.find(e => e.chave === 'checkouts')!.taxaDaAnterior).toBeNull()
+    expect(f.etapas.find(e => e.chave === 'compras')!.taxaDaAnterior).toBe(25)
+    expect(funilDeVendas(somar([{ investimento: 100, resultados: 5 }])).temDados).toBe(false)
+  })
+
+  it('campanha de VENDAS: o resultado é a compra (não se digita duas vezes)', () => {
+    expect(comComprasDoObjetivo({ resultados: 12 }, 'vendas').compras).toBe(12)
+    expect(comComprasDoObjetivo({ resultados: 12, compras: 10 }, 'vendas').compras).toBe(10)
+    expect(comComprasDoObjetivo({ resultados: 12 }, 'mensagens').compras).toBeUndefined()
+    expect(camposDoLancamento('vendas').funil.map(c => c.k)).not.toContain('compras')
+    expect(camposDoLancamento('trafego').funil.map(c => c.k)).toContain('compras')
+  })
+
+  it('campos: investimento e receita são dinheiro; o resto é contagem; reconhecimento não pede resultado', () => {
+    const { principais, funil } = camposDoLancamento('mensagens')
+    expect(principais.find(c => c.k === 'resultados')!.label).toBe('Conversas iniciadas')
+    expect([...principais, ...funil].filter(c => c.tipo === 'moeda').map(c => c.k)).toEqual(['investimento', 'receita'])
+    expect(camposDoLancamento('reconhecimento').principais.map(c => c.k)).not.toContain('resultados')
+    const todos = [...principais, ...funil].map(c => c.k)
+    expect(todos.every(k => (CAMPOS_NUMERICOS as readonly string[]).includes(k))).toBe(true)
+  })
+
+  it('soma inclui os campos do funil e o ROAS sai em "vezes"', () => {
+    expect(somar([{ checkouts: 3 }, { checkouts: '4' as any }]).checkouts).toBe(7)
+    expect(fmtRoas(4.256)).toBe('4,26x')
+    expect(fmtRoas(null)).toBe('—')
+  })
+})
+
+describe('período de análise escrito', () => {
+  it('"01/09/2026 a 30/09/2026"; um dia só não repete a data', () => {
+    expect(rotuloIntervalo('2026-09-01', '2026-09-30')).toBe('01/09/2026 a 30/09/2026')
+    expect(rotuloIntervalo('2026-09-15', '2026-09-15')).toBe('15/09/2026')
+    expect(rotuloIntervalo('', '2026-09-30')).toBe('')
+  })
+})
+
+import { lancamentosDoFunil, periodoDeComparacao } from '@/lib/metricasAds'
+
+describe('funil só com as campanhas que têm funil', () => {
+  it('gasto da campanha de mensagens fica fora do custo por venda e do ROAS', () => {
+    const objetivos: Record<string, string> = { loja: 'vendas', zap: 'mensagens' }
+    const lista = [
+      { campanhaId: 'loja', investimento: 1000, resultados: 40, adicoesCarrinho: 200, receita: 6000 },
+      { campanhaId: 'zap', investimento: 540, resultados: 21 },
+    ]
+    const f = funilDeVendas(somar(lancamentosDoFunil(lista, id => objetivos[id])))
+    expect(f.custoPorVenda).toBe(25)
+    expect(f.roas).toBe(6)
+    expect(lancamentosDoFunil([{ campanhaId: 'zap', investimento: 10 }], id => objetivos[id])).toEqual([])
+  })
+})
+
+describe('período de comparação', () => {
+  it('mês compara com o mês anterior inteiro, inclusive na virada do ano', () => {
+    expect(periodoDeComparacao('2026-09-01', '2026-09-30', true)).toEqual({ de: '2026-08-01', ate: '2026-08-31' })
+    expect(periodoDeComparacao('2026-03-01', '2026-03-31', true)).toEqual({ de: '2026-02-01', ate: '2026-02-28' })
+    expect(periodoDeComparacao('2026-01-01', '2026-01-31', true)).toEqual({ de: '2025-12-01', ate: '2025-12-31' })
+  })
+  it('intervalo personalizado compara com os mesmos dias logo antes', () => {
+    expect(periodoDeComparacao('2026-09-08', '2026-09-14', false)).toEqual({ de: '2026-09-01', ate: '2026-09-07' })
   })
 })

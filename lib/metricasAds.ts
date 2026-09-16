@@ -89,6 +89,13 @@ export type LancamentoMetrica = {
   cliques?: number
   resultados?: number
   receita?: number
+  // FUNIL DE VENDAS (dono, 16/09: "adição ao carrinho, compras, custo por venda, ROAS, taxa de
+  // carrinho para checkout, de checkout para compra"). Números crus; as taxas e os custos
+  // saem de `funilDeVendas`, nunca digitados.
+  visualizacoesPagina?: number
+  adicoesCarrinho?: number
+  checkouts?: number
+  compras?: number
 }
 
 export type SomaMetricas = Required<LancamentoMetrica>
@@ -98,15 +105,16 @@ const n = (v: unknown): number => {
   return Number.isFinite(x) ? x : 0
 }
 
+export const CAMPOS_NUMERICOS = ['investimento', 'impressoes', 'alcance', 'cliques', 'resultados', 'receita', 'visualizacoesPagina', 'adicoesCarrinho', 'checkouts', 'compras'] as const
+export type CampoNumerico = typeof CAMPOS_NUMERICOS[number]
+
 export function somar(lista: LancamentoMetrica[] = []): SomaMetricas {
-  return lista.reduce<SomaMetricas>((acc, m) => ({
-    investimento: acc.investimento + n(m.investimento),
-    impressoes: acc.impressoes + n(m.impressoes),
-    alcance: acc.alcance + n(m.alcance),
-    cliques: acc.cliques + n(m.cliques),
-    resultados: acc.resultados + n(m.resultados),
-    receita: acc.receita + n(m.receita),
-  }), { investimento: 0, impressoes: 0, alcance: 0, cliques: 0, resultados: 0, receita: 0 })
+  const zero = Object.fromEntries(CAMPOS_NUMERICOS.map(c => [c, 0])) as SomaMetricas
+  return lista.reduce<SomaMetricas>((acc, m) => {
+    const out = { ...acc }
+    for (const c of CAMPOS_NUMERICOS) out[c] = acc[c] + n(m?.[c])
+    return out
+  }, zero)
 }
 
 export type Derivados = {
@@ -175,9 +183,16 @@ export function noPeriodo<T extends { data: string }>(lista: T[], de: string, at
   return lista.filter(l => RE_YMD.test(l.data || '') && l.data >= de && l.data <= ate)
 }
 
+// Dinheiro sempre no formato do Real: R$ 1.234,56 (dono, 16/09). O valor lançado aparece
+// exatamente como foi digitado, centavo incluído.
 export function fmtDinheiro(v: number | null | undefined, moeda = 'BRL'): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return '—'
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: moeda, maximumFractionDigits: v < 100 ? 2 : 0 })
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: moeda, minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+/** ROAS em "vezes": 4,25x. */
+export function fmtRoas(v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return '—'
+  return `${v.toFixed(2).replace('.', ',')}x`
 }
 export function fmtNumero(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return '—'
@@ -282,3 +297,157 @@ export function serieDoPeriodo(
   return Array.from(mapa.values()).sort((a, b) => a.inicio.localeCompare(b.inicio))
 }
 const MS_DIA_SERIE = 24 * 60 * 60 * 1000
+
+// ---------------------------------------------------------------- funil de vendas
+// Numa campanha de VENDAS o resultado já É a compra: o gestor não digita o mesmo número duas
+// vezes. Nas outras (tráfego para a loja, por exemplo), a compra vem do campo próprio.
+export function comComprasDoObjetivo<T extends LancamentoMetrica>(l: T, objetivo?: string): T & { compras?: number } {
+  if (objetivoDe(objetivo).chave !== 'vendas') return l
+  if (n(l.compras) > 0) return l
+  return { ...l, compras: l.resultados }
+}
+
+const pct = (a: number, b: number): number | null => (a > 0 && b > 0 ? (a / b) * 100 : null)
+
+export type FunilVendas = {
+  temDados: boolean
+  etapas: { chave: CampoNumerico; label: string; valor: number; taxaDaAnterior: number | null }[]
+  receita: number
+  roas: number | null
+  custoPorVenda: number | null
+  ticketMedio: number | null
+  custoPorCarrinho: number | null
+  custoPorCheckout: number | null
+  taxaCarrinhoCheckout: number | null
+  taxaCheckoutCompra: number | null
+  taxaCarrinhoCompra: number | null
+  taxaCliqueCompra: number | null
+}
+
+export const ETAPAS_FUNIL: { chave: CampoNumerico; label: string }[] = [
+  { chave: 'visualizacoesPagina', label: 'Visualizações da página' },
+  { chave: 'adicoesCarrinho', label: 'Adições ao carrinho' },
+  { chave: 'checkouts', label: 'Checkouts iniciados' },
+  { chave: 'compras', label: 'Compras' },
+]
+
+/** Funil da soma: cada etapa com a taxa de passagem da etapa anterior que tem número.
+ *  Etapa vazia não vira "0%": fica sem taxa, e a seguinte compara com a última preenchida. */
+export function funilDeVendas(s: SomaMetricas): FunilVendas {
+  let anterior = 0
+  const etapas = ETAPAS_FUNIL.map(e => {
+    const valor = s[e.chave]
+    const taxaDaAnterior = pct(valor, anterior)
+    if (valor > 0) anterior = valor
+    return { ...e, valor, taxaDaAnterior }
+  })
+  return {
+    temDados: etapas.some(e => e.valor > 0) || s.receita > 0,
+    etapas,
+    receita: s.receita,
+    roas: div(s.receita, s.investimento),
+    custoPorVenda: div(s.investimento, s.compras),
+    ticketMedio: div(s.receita, s.compras),
+    custoPorCarrinho: div(s.investimento, s.adicoesCarrinho),
+    custoPorCheckout: div(s.investimento, s.checkouts),
+    taxaCarrinhoCheckout: pct(s.checkouts, s.adicoesCarrinho),
+    taxaCheckoutCompra: pct(s.compras, s.checkouts),
+    taxaCarrinhoCompra: pct(s.compras, s.adicoesCarrinho),
+    taxaCliqueCompra: pct(s.compras, s.cliques),
+  }
+}
+
+// ---------------------------------------------------------------- campos do lançamento
+// O que a grade pede para cada campanha. `tipo` decide a máscara: dinheiro em Real
+// (R$ 1.234,56, vírgula de centavo) ou contagem (1.234, sem centavo).
+export type CampoLancamento = { k: CampoNumerico; label: string; tipo: 'moeda' | 'inteiro' }
+
+const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+
+export function camposDoLancamento(objetivo?: string): { principais: CampoLancamento[]; funil: CampoLancamento[] } {
+  const o = objetivoDe(objetivo)
+  const vendas = o.chave === 'vendas'
+  const principais: CampoLancamento[] = [
+    { k: 'investimento', label: 'Investimento', tipo: 'moeda' },
+    ...(o.semResultado ? [] : [{ k: 'resultados' as CampoNumerico, label: maiuscula(o.resultado.plural), tipo: 'inteiro' as const }]),
+    { k: 'impressoes', label: 'Impressões', tipo: 'inteiro' },
+    { k: 'alcance', label: 'Alcance', tipo: 'inteiro' },
+    { k: 'cliques', label: 'Cliques', tipo: 'inteiro' },
+  ]
+  const funil: CampoLancamento[] = [
+    { k: 'visualizacoesPagina', label: 'Visualizações da página', tipo: 'inteiro' },
+    { k: 'adicoesCarrinho', label: 'Adições ao carrinho', tipo: 'inteiro' },
+    { k: 'checkouts', label: 'Checkouts iniciados', tipo: 'inteiro' },
+    // Em campanha de vendas a compra é o próprio resultado (campo de cima).
+    ...(vendas ? [] : [{ k: 'compras' as CampoNumerico, label: 'Compras', tipo: 'inteiro' as const }]),
+    { k: 'receita', label: 'Receita (valor das vendas)', tipo: 'moeda' },
+  ]
+  return { principais, funil }
+}
+
+/** Contagem digitada: só dígitos, ponto de milhar enquanto digita ("1234" -> "1.234"). */
+export function formatarEntradaInteiro(bruto: string): string {
+  const antesDaVirgula = String(bruto ?? '').split(',')[0]
+  const d = antesDaVirgula.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''
+}
+
+/** Texto do campo -> número a gravar. Vazio é "não informado" (null), não zero. */
+export function campoParaNumero(tipo: 'moeda' | 'inteiro', texto: string | undefined): number | null {
+  const t = String(texto ?? '').trim()
+  if (!t) return null
+  if (tipo === 'inteiro') {
+    const d = t.split(',')[0].replace(/\D/g, '')
+    return d ? Number(d) : null
+  }
+  const s = t.replace(/[^\d,]/g, '')
+  if (!/\d/.test(s)) return null
+  const i = s.indexOf(',')
+  const inteiro = (i >= 0 ? s.slice(0, i) : s).replace(/\D/g, '') || '0'
+  const dec = i >= 0 ? s.slice(i + 1).replace(/\D/g, '').slice(0, 2) : ''
+  const v = Number(`${inteiro}.${dec || '0'}`)
+  return Number.isFinite(v) ? v : null
+}
+
+/** Número gravado -> texto do campo, para EDITAR um lançamento: 1234.5 -> "1.234,50". */
+export function numeroParaCampo(tipo: 'moeda' | 'inteiro', v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(Number(v))) return ''
+  const x = Number(v)
+  if (tipo === 'inteiro') return formatarEntradaInteiro(String(Math.round(x)))
+  const [inteiro, dec] = x.toFixed(2).split('.')
+  return `${inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec}`
+}
+
+/** "01/09/2026 a 30/09/2026" — o período de análise escrito no painel e no PDF. */
+export function rotuloIntervalo(de: string, ate: string): string {
+  const f = (d: string) => (RE_YMD.test(d || '') ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '')
+  const a = f(de), b = f(ate)
+  if (!a) return ''
+  return !b || a === b ? a : `${a} a ${b}`
+}
+
+/** Lançamentos que entram no FUNIL: só os das campanhas que têm funil no conjunto. O gasto de
+ *  uma campanha de mensagens não pode virar "custo por venda" nem baixar o ROAS da loja. */
+export function lancamentosDoFunil<T extends LancamentoMetrica & { campanhaId: string }>(
+  lista: T[],
+  objetivoDaCampanha: (campanhaId: string) => string | undefined,
+): (T & { compras?: number })[] {
+  const comCompras = lista.map(l => comComprasDoObjetivo(l, objetivoDaCampanha(l.campanhaId)))
+  const ids = Array.from(new Set(comCompras.map(l => l.campanhaId)))
+    .filter(id => funilDeVendas(somar(comCompras.filter(l => l.campanhaId === id))).temDados)
+  return comCompras.filter(l => ids.includes(l.campanhaId))
+}
+
+/** Período de comparação. No MÊS, é o mês anterior inteiro (setembro compara com agosto, de 01
+ *  a 31); num intervalo personalizado, o mesmo número de dias logo antes. */
+export function periodoDeComparacao(de: string, ate: string, mesInteiro: boolean): { de: string; ate: string } {
+  const ymd = (d: Date) => d.toISOString().slice(0, 10)
+  const a = new Date(de + 'T00:00:00Z'), b = new Date(ate + 'T00:00:00Z')
+  if (mesInteiro) {
+    return { de: ymd(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() - 1, 1))), ate: ymd(new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 0))) }
+  }
+  const dia = 86400000
+  const dias = Math.max(1, Math.round((b.getTime() - a.getTime()) / dia) + 1)
+  const fim = new Date(a.getTime() - dia)
+  return { de: ymd(new Date(fim.getTime() - (dias - 1) * dia)), ate: ymd(fim) }
+}

@@ -3,13 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, MetricaAds } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
+import { CAMPOS_NUMERICOS } from '@/lib/metricasAds'
 
 export const runtime = 'nodejs'
 
 // LANÇAMENTOS de números (preenchimento MANUAL pelo gestor de tráfego — dono, 09/09/2026).
-// Só entram os números CRUS: investimento, impressões, alcance, cliques, resultados e
-// receita. CTR, CPC, CPM, custo por resultado e ROAS são derivados em lib/metricasAds e
-// nunca gravados — número derivado que se grava é número que diverge do cru.
+// Só entram os números CRUS: investimento, impressões, alcance, cliques, resultados,
+// receita e o funil de vendas (lib/metricasAds.CAMPOS_NUMERICOS). CTR, CPC, CPM, custo por
+// resultado, ROAS e as taxas do funil são derivados em lib/metricasAds e nunca gravados — número derivado que se grava é número que diverge do cru.
 const INDICE = 'ads_metricas'
 const NIVEIS = ['campanha', 'publico', 'anuncio']
 const RE_YMD = /^\d{4}-\d{2}-\d{2}$/
@@ -57,12 +58,7 @@ export async function POST(req: NextRequest) {
     refId: String(body?.refId || body.campanhaId).slice(0, 64),
     data,
     ...(ate && ate >= data ? { ate } : {}),
-    ...(num(body.investimento) !== undefined ? { investimento: num(body.investimento) } : {}),
-    ...(num(body.impressoes) !== undefined ? { impressoes: num(body.impressoes) } : {}),
-    ...(num(body.alcance) !== undefined ? { alcance: num(body.alcance) } : {}),
-    ...(num(body.cliques) !== undefined ? { cliques: num(body.cliques) } : {}),
-    ...(num(body.resultados) !== undefined ? { resultados: num(body.resultados) } : {}),
-    ...(num(body.receita) !== undefined ? { receita: num(body.receita) } : {}),
+    ...Object.fromEntries(CAMPOS_NUMERICOS.filter(c => num(body[c]) !== undefined).map(c => [c, num(body[c])])),
     observacao: String(body?.observacao || '').slice(0, 500),
     criadoPor: session.user?.name || '',
     criadoEm: agora,
@@ -73,7 +69,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, metrica })
 }
 
-const NUMEROS = ['investimento', 'impressoes', 'alcance', 'cliques', 'resultados', 'receita'] as const
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -83,7 +78,7 @@ export async function PUT(req: NextRequest) {
   const metrica = await redis.get<MetricaAds>(`ads_metrica:${id}`)
   if (!metrica) return NextResponse.json({ error: 'nao encontrada' }, { status: 404 })
   const atualizada = { ...metrica, atualizadoEm: new Date().toISOString() } as any
-  for (const c of NUMEROS) if (c in updates) atualizada[c] = num(updates[c])
+  for (const c of CAMPOS_NUMERICOS) if (c in updates) atualizada[c] = num(updates[c])
   if ('data' in updates && dia(updates.data)) atualizada.data = dia(updates.data)
   if ('ate' in updates) atualizada.ate = dia(updates.ate) || undefined
   if ('observacao' in updates) atualizada.observacao = String(updates.observacao || '').slice(0, 500)

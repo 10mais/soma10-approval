@@ -874,6 +874,11 @@ export type MetricaAds = {
   cliques?: number
   resultados?: number // conforme o OBJETIVO da campanha
   receita?: number
+  // funil de vendas (16/09) — taxas e custos são derivados em lib/metricasAds.funilDeVendas
+  visualizacoesPagina?: number
+  adicoesCarrinho?: number
+  checkouts?: number
+  compras?: number
   observacao?: string
   criadoPor?: string
   criadoEm: string
