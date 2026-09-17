@@ -1,6 +1,7 @@
 'use client'
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
+import { pendenciasDoPost, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -70,6 +71,7 @@ export default function PostComposer({
   const [marcoId, setMarcoId] = useState(valorInicial?.marcoId || '')
   const [subetapaId, setSubetapaId] = useState((valorInicial as any)?.subetapaId || '')
   const [marcos, setMarcos] = useState<MarcoOpcao[]>([])
+  const etapaRef = useRef<HTMLSelectElement>(null)
   useEffect(() => {
     if (!clienteId) { setMarcos([]); return }
     fetch(`/api/playbook?clienteId=${clienteId}`).then(r => r.json()).then(d => setMarcos(Array.isArray(d) ? d : [])).catch(() => {})
@@ -377,8 +379,11 @@ export default function PostComposer({
 
   const enviandoArquivo = emEnvio.length > 0
   const marcoOk = !clienteId || !!marcoId
-  const perfilOk = !multiPerfil || contaIds.length > 0
-  const podePublicar = !!clienteId && marcoOk && perfilOk && (ehStory || !!legenda.trim()) && midias.length > 0 && redes.length > 0 && (ehStory || videosSemCapa === 0) && !enviando && !enviandoArquivo
+  // O que falta, ESCRITO (lib/composerPendencias): botão apagado sem motivo foi o que travou a
+  // troca de data de um post agendado antes de a etapa do Playbook virar obrigatória (17/09).
+  const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo })
+  const faltaEtapa = pendencias.some(p => p.chave === 'etapa')
+  const podePublicar = pendencias.length === 0 && !enviando
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
@@ -401,8 +406,8 @@ export default function PostComposer({
         {clienteId && (
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Etapa do Playbook *</label>
-            <select value={juntarValor(marcoId, subetapaId)} onChange={e => { const v = separarValor(e.target.value); setMarcoId(v.marcoId); setSubetapaId(v.subetapaId) }}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
+            <select ref={etapaRef} value={juntarValor(marcoId, subetapaId)} onChange={e => { const v = separarValor(e.target.value); setMarcoId(v.marcoId); setSubetapaId(v.subetapaId) }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${faltaEtapa ? '#ea580c' : 'var(--v2-rule)'}`, fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
               <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
               {/* MARCO > ETAPA: as etapas de dentro também aparecem (dono, 09/09) — lib/etapaPlaybook */}
               {(() => { const a = opcaoDoValorAtual(opcoesEtapas(marcos), juntarValor(marcoId, subetapaId)); return a ? <option value={a.valor}>{a.rotulo}</option> : null })()}
@@ -412,6 +417,7 @@ export default function PostComposer({
                 </optgroup>
               ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
             </select>
+            {faltaEtapa && marcos.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Escolha a etapa para salvar, agendar ou enviar para aprovação.</p>}
             {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
           </div>
         )}
@@ -714,7 +720,7 @@ export default function PostComposer({
           <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: `1.5px solid ${dataAgendada ? 'var(--v2-ink)' : 'var(--v2-rule)'}`, borderRadius: 10, padding: '0 6px 0 14px', background: 'var(--v2-surface)', minWidth: 0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 8 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-              <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={new Date().toISOString().slice(0, 16)}
+              <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={minimoDatetimeLocal()}
                 style={{ flex: 1, padding: '14px 0', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
             </div>
             {dataAgendada && (
@@ -746,6 +752,17 @@ export default function PostComposer({
               : (dataAgendada ? 'Agendar' : 'Publicar agora')}
           </button>
         </div>
+        {pendencias.length > 0 && !enviando && (
+          <p role="status" style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 600, color: '#ea580c', lineHeight: 1.45 }}>
+            {frasePendencias(pendencias)}
+            {faltaEtapa && (
+              <button type="button" onClick={() => { etapaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); etapaRef.current?.focus() }}
+                style={{ marginLeft: 6, padding: 0, background: 'none', border: 0, color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+                Ir para a etapa
+              </button>
+            )}
+          </p>
+        )}
         <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
           "Enviar para aprovação" gera um link para o cliente. Ao aprovar, {dataAgendada ? 'agenda para a data escolhida' : 'publica na hora'}.
         </p>

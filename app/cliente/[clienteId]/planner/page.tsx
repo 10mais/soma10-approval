@@ -6,6 +6,7 @@ import PostComposer from '@/app/components/PostComposer'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
+import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -142,10 +143,14 @@ export default function PlannerPage() {
     const updates: any = {
       id: editPost.id, legenda: valor.legenda, imagens: valor.imagens, formato: valor.formato,
       capasVideo: valor.capasVideo, redes: valor.redes, colaboradores: valor.colaboradores, dataAgendada: dataISO,
+      // A etapa do Playbook e os perfis escolhidos na edição também são gravados (antes a
+      // etapa escolhida aqui se perdia ao salvar).
+      marcoId: valor.marcoId || '', subetapaId: valor.subetapaId || '',
+      ...(valor.contaIds ? { contaIds: valor.contaIds } : {}),
     }
-    if (acao === 'agendar') updates.status = 'agendado'
-    else if (acao === 'salvar') updates.status = 'rascunho'
-    else if (acao === 'aprovacao') { updates.status = 'aguardando_aprovacao'; updates.etapa = 'aprovacao_criativo' } // etapa faz aparecer nas Aprovações do portal (que filtram por etapa)
+    // Salvar NÃO desagenda (dono, 17/09): agendado com data nova continua agendado.
+    if (acao === 'agendar' || acao === 'salvar' || acao === 'aprovacao') updates.status = statusAoSalvarEdicao(editPost.status, acao, !!dataISO)
+    if (acao === 'aprovacao') updates.etapa = 'aprovacao_criativo' // etapa faz aparecer nas Aprovações do portal (que filtram por etapa)
     const res = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }).then(r => r.json()).catch(() => null)
     if (acao === 'aprovacao') { toast('Reenviado para aprovação!', 'sucesso'); setEnviando(false); setEditPost(null); carregar(); return }
     if (acao === 'publicar' && res?.post?.id) {
@@ -250,6 +255,8 @@ export default function PlannerPage() {
                 clienteId: editPost.clienteId,
                 anexosTarefa: (editPost as any).anexosTarefa || [],
                 marcoId: editPost.marcoId || '',
+                subetapaId: editPost.subetapaId || '',
+                ...(editPost.contaIds ? { contaIds: editPost.contaIds } : {}),
                 legenda: editPost.legenda || '',
                 dataAgendada: paraDatetimeLocal(editPost.dataAgendada),
                 imagens: editPost.imagens || [],

@@ -1206,6 +1206,7 @@ function Dashboard() {
     setComposerPrefill({
       clienteId: cliente?.id || post.clienteId || '',
       marcoId: (post as any).marcoId || '',
+      subetapaId: (post as any).subetapaId || '', // sem isto, salvar a edição apagava a etapa do post
       anexosTarefa: (post as any).anexosTarefa || [], // anexos da tarefa de produção vinculada (viram mídia com um clique)
       legenda: post.legenda || '',
       dataAgendada: paraDatetimeLocal(post.dataAgendada),
