@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendenciasDoPost, frasePendencias, statusAoSalvarEdicao, minimoDatetimeLocal } from '@/lib/composerPendencias'
+import { pendenciasDoPost, pendenciasDaAcao, frasePendencias, statusAoSalvarEdicao, minimoDatetimeLocal } from '@/lib/composerPendencias'
 
 const completo = { clienteId: 'c1', marcoId: 'm1', legenda: 'Texto', totalMidias: 1, redes: ['instagram'], videosSemCapa: 0 }
 
@@ -51,5 +51,24 @@ describe('salvar a edição não desagenda o post', () => {
 describe('mínimo do campo de data', () => {
   it('usa a hora LOCAL, não UTC', () => {
     expect(minimoDatetimeLocal(new Date(2026, 8, 17, 9, 5))).toBe('2026-09-17T09:05')
+  })
+})
+
+describe('cada botão com a sua regra — trocar a data de um post que já existe', () => {
+  const semEtapa = pendenciasDoPost({ ...completo, marcoId: '' })
+  it('EDIÇÃO: salvar e agendar liberam sem a etapa (o pedido de 17/09); aprovação continua pedindo', () => {
+    expect(pendenciasDaAcao(semEtapa, 'salvar', true)).toEqual([])
+    expect(pendenciasDaAcao(semEtapa, 'agendar', true)).toEqual([])
+    expect(pendenciasDaAcao(semEtapa, 'aprovacao', true).map(x => x.chave)).toEqual(['etapa'])
+    expect(frasePendencias(pendenciasDaAcao(semEtapa, 'aprovacao', true), 'Para enviar ao cliente')).toBe('Para enviar ao cliente: escolher a etapa do Playbook.')
+  })
+  it('POST NOVO: a etapa segue obrigatória para tudo', () => {
+    expect(pendenciasDaAcao(semEtapa, 'agendar', false).map(x => x.chave)).toEqual(['etapa'])
+    expect(pendenciasDaAcao(semEtapa, 'salvar', false).map(x => x.chave)).toEqual(['etapa'])
+  })
+  it('EDIÇÃO: agendar ainda exige conteúdo publicável; salvar só espera o upload', () => {
+    const semLegenda = pendenciasDoPost({ ...completo, marcoId: '', legenda: '', enviandoArquivo: true })
+    expect(pendenciasDaAcao(semLegenda, 'agendar', true).map(x => x.chave)).toEqual(['legenda', 'upload'])
+    expect(pendenciasDaAcao(semLegenda, 'salvar', true).map(x => x.chave)).toEqual(['upload'])
   })
 })

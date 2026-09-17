@@ -9,6 +9,7 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
+import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -1408,6 +1409,10 @@ function Dashboard() {
     let status = postAtual?.status
     if (paraAprovacao) {
       status = 'aguardando_aprovacao'
+    } else if (valor.acao === 'salvar') {
+      // "Salvar alterações" mantém o estado do post (lib/composerPendencias): agendado com data
+      // nova segue agendado. Ele libera sem a etapa, então não pode AGENDAR um rascunho sozinho.
+      status = statusAoSalvarEdicao(postAtual?.status, 'salvar', !!valor.dataAgendada) as any
     } else if (postAtual?.status !== 'publicado') {
       status = valor.dataAgendada ? 'agendado' : 'rascunho'
     }

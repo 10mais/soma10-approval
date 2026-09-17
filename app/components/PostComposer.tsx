@@ -1,7 +1,7 @@
 'use client'
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
-import { pendenciasDoPost, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
+import { pendenciasDoPost, pendenciasDaAcao, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -358,7 +358,8 @@ export default function PostComposer({
       setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
       return
     }
-    if (clienteId && !marcoId) {
+    // Post que já existe pode trocar data e salvar/agendar sem etapa (lib/composerPendencias.pendenciasDaAcao).
+    if (clienteId && !marcoId && (!modoEdicao || acao === 'aprovacao')) {
       setErroUpload('Vincule o post a uma etapa do Playbook do cliente antes de continuar.')
       return
     }
@@ -383,7 +384,17 @@ export default function PostComposer({
   // troca de data de um post agendado antes de a etapa do Playbook virar obrigatória (17/09).
   const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo })
   const faltaEtapa = pendencias.some(p => p.chave === 'etapa')
-  const podePublicar = pendencias.length === 0 && !enviando
+  // Cada botão com a SUA regra: editar a data de um post que já existe não trava pela etapa.
+  const acaoPrincipal = dataAgendada ? 'agendar' as const : 'publicar' as const
+  const pendSalvar = pendenciasDaAcao(pendencias, 'salvar', modoEdicao)
+  const pendPrincipal = pendenciasDaAcao(pendencias, acaoPrincipal, modoEdicao)
+  const pendAprovacao = pendenciasDaAcao(pendencias, 'aprovacao', modoEdicao)
+  const podeSalvarEdicao = pendSalvar.length === 0 && !enviando
+  const podePrincipal = pendPrincipal.length === 0 && !enviando
+  const podeAprovacao = pendAprovacao.length === 0 && !enviando
+  const avisoPendencia = enviando ? '' : pendPrincipal.length
+    ? frasePendencias(pendPrincipal, dataAgendada ? 'Para agendar' : 'Para publicar')
+    : pendAprovacao.length ? frasePendencias(pendAprovacao, 'Para enviar ao cliente') : ''
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
@@ -417,7 +428,7 @@ export default function PostComposer({
                 </optgroup>
               ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
             </select>
-            {faltaEtapa && marcos.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Escolha a etapa para salvar, agendar ou enviar para aprovação.</p>}
+            {faltaEtapa && marcos.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>{modoEdicao ? 'Escolha a etapa para enviar para aprovação.' : 'Escolha a etapa para salvar, agendar ou enviar para aprovação.'}</p>}
             {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
           </div>
         )}
@@ -737,24 +748,24 @@ export default function PostComposer({
 
         {/* Acoes: Rascunho · Enviar para aprovacao · Publicar/Agendar */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podePublicar : !podeRascunho} type="button"
-            style={{ flex: '1 1 110px', padding: '14px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podePublicar : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podePublicar : podeRascunho) ? 1 : 0.5 }}>
+          <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podeSalvarEdicao : !podeRascunho} type="button"
+            style={{ flex: '1 1 110px', padding: '14px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 1 : 0.5 }}>
             {modoEdicao ? (enviando ? 'Salvando...' : 'Salvar alterações') : (salvandoRascunho ? 'Salvando...' : 'Rascunho')}
           </button>
-          <button onClick={() => submeter('aprovacao')} disabled={!podePublicar} type="button"
-            style={{ flex: '1 1 150px', padding: '14px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+          <button onClick={() => submeter('aprovacao')} disabled={!podeAprovacao} type="button"
+            style={{ flex: '1 1 150px', padding: '14px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podeAprovacao ? 'pointer' : 'not-allowed', opacity: podeAprovacao ? 1 : 0.5 }}>
             {enviando ? 'Enviando...' : 'Enviar para aprovação'}
           </button>
-          <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePublicar} type="button"
-            style={{ flex: '1.3 1 150px', padding: '14px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePublicar ? 'pointer' : 'not-allowed', opacity: podePublicar ? 1 : 0.5 }}>
+          <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePrincipal} type="button"
+            style={{ flex: '1.3 1 150px', padding: '14px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePrincipal ? 'pointer' : 'not-allowed', opacity: podePrincipal ? 1 : 0.5 }}>
             {enviando
               ? (dataAgendada ? 'Agendando...' : 'Publicando...')
               : (dataAgendada ? 'Agendar' : 'Publicar agora')}
           </button>
         </div>
-        {pendencias.length > 0 && !enviando && (
+        {avisoPendencia && (
           <p role="status" style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 600, color: '#ea580c', lineHeight: 1.45 }}>
-            {frasePendencias(pendencias)}
+            {avisoPendencia}
             {faltaEtapa && (
               <button type="button" onClick={() => { etapaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); etapaRef.current?.focus() }}
                 style={{ marginLeft: 6, padding: 0, background: 'none', border: 0, color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>

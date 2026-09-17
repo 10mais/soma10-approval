@@ -38,11 +38,26 @@ export function pendenciasDoPost(e: EstadoComposer): Pendencia[] {
 }
 
 /** "Para liberar os botões: escolher a etapa do Playbook e escrever a legenda." */
-export function frasePendencias(p: Pendencia[]): string {
+export function frasePendencias(p: Pendencia[], prefixo = 'Para liberar os botões'): string {
   if (!p.length) return ''
   const textos = p.map(x => x.texto)
   const lista = textos.length === 1 ? textos[0] : `${textos.slice(0, -1).join(', ')} e ${textos[textos.length - 1]}`
-  return `Para liberar os botões: ${lista}.`
+  return `${prefixo}: ${lista}.`
+}
+
+/** O que bloqueia CADA botão. Dono, 17/09, depois de ver o aviso: "não ativa o botão de
+ *  agendar quando edito a data. Faça isso acontecer."
+ *  - Post NOVO: tudo bloqueia tudo, como antes (a etapa é obrigatória para nascer vinculado).
+ *  - Post que JÁ EXISTE (edição): trocar a data e salvar/agendar não trava pela etapa do
+ *    Playbook — post agendado antes de a etapa virar obrigatória precisa poder mudar de dia.
+ *    "Salvar alterações" só espera o envio de arquivos terminar: salvar mantém o status do post
+ *    (statusAoSalvarEdicao), então não é por ele que conteúdo incompleto vai ao ar.
+ *  - Enviar para aprovação continua exigindo a etapa (o cliente vê o material pela etapa). */
+export function pendenciasDaAcao(p: Pendencia[], acao: 'salvar' | 'agendar' | 'publicar' | 'aprovacao', modoEdicao: boolean): Pendencia[] {
+  if (!modoEdicao) return p
+  if (acao === 'salvar') return p.filter(x => x.chave === 'cliente' || x.chave === 'upload')
+  if (acao === 'aprovacao') return p
+  return p.filter(x => x.chave !== 'etapa')
 }
 
 /** Status do post ao SALVAR uma edição. Salvar não muda o estado do post: agendado continua
