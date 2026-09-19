@@ -433,6 +433,13 @@ export type Viagem = {
   inclusos?: string[]
   despesas?: DespesaViagem[]  // despesas previstas → break-even da viagem (lib/precificacaoViagem)
   paradas?: ParadaRoteiro[]   // itinerário dia-a-dia (timeline)
+  // A viagem SAI? (§7 da especificação da Deny). Excursão só fecha com gente
+  // suficiente, e a decisão tem data: passado o prazo sem atingir o mínimo, a
+  // operadora devolve o dinheiro ou remarca. Os dois são OPCIONAIS — viagem
+  // antiga não tem e continua funcionando igual; a regra nova não trava item
+  // antigo. Quem lê isso e vira alerta: lib/proximoPasso.
+  minimoPassageiros?: number  // abaixo disso a viagem não se paga
+  prazoConfirmacao?: string   // YYYY-MM-DD — data limite para confirmar ou cancelar
   status: StatusViagem
   observacoes?: string
   criadoPor?: string
