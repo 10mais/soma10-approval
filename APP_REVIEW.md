@@ -236,6 +236,33 @@ próprio dono da Página deu no login do Facebook.
 Se travar em alguma etapa, **não corte**: respire e siga. Vídeo com corte foi reprovado duas
 vezes.
 
+##### 3.1-A.1 Legendas e narração do vídeo de `pages_manage_posts` (EN + tradução)
+
+Uma linha por cena, na ordem do take. **Legenda** = texto curto, queimado na tela (o que o
+revisor lê). **Narração** = o que você fala por cima, se for narrar; se não for narrar, use a
+narração como legenda mesmo, dividida em duas linhas. A tradução é só para você conferir o
+que está dizendo — **não entra no vídeo**.
+
+| # | Legenda (queimar na tela) | Narração (falar) | Tradução (só para conferência) |
+|---|---|---|---|
+| 1 | Soma10 — social media management for marketing agencies | "This is Soma10, a tool marketing agencies use to publish content for their clients." | "Este é o Soma10, uma ferramenta que agências de marketing usam para publicar o conteúdo dos clientes." |
+| 2 | The agency signs in to its own account | "The agency signs in to its own Soma10 account." | "A agência entra na conta dela no Soma10." |
+| 3 | Each client is a separate profile — no Facebook Page connected yet | "Each client of the agency is a separate profile. This client has no Facebook Page connected yet." | "Cada cliente da agência é um perfil separado. Este cliente ainda não tem Página do Facebook conectada." |
+| 4 | The agency clicks "Connect Facebook" | "To publish on this client's Page, the agency clicks Connect Facebook. This starts the Facebook Login flow." | "Para publicar na Página do cliente, a agência clica em Conectar Facebook. Isso inicia o login do Facebook." |
+| 5 | Facebook Login — the Page owner signs in | "This is the Facebook login. The Page owner signs in with their own credentials — the agency never has the client's password." | "Este é o login do Facebook. O dono da Página entra com as credenciais dele — a agência nunca tem a senha do cliente." |
+| 6 | The Page owner chooses which Page the agency may manage | "The Page owner chooses which Page the agency may manage." | "O dono da Página escolhe qual Página a agência pode gerenciar." |
+| 7 | Granting pages_manage_posts — permission to create posts on this Page | "Here the Page owner is granting pages_manage_posts: permission for Soma10 to create posts on this Page." | "Aqui o dono da Página está concedendo pages_manage_posts: permissão para o Soma10 criar publicações nesta Página." |
+| 8 | The Page is now connected to this client's profile | "The Page is now connected to this client's profile inside Soma10." | "A Página agora está conectada ao perfil deste cliente dentro do Soma10." |
+| 9 | The agency creates the client's post: image and caption | "The agency creates the client's post — image and caption — and selects the Facebook Page as the destination." | "A agência cria o post do cliente — imagem e legenda — e escolhe a Página do Facebook como destino." |
+| 10 | "Publish now" posts to the Page using pages_manage_posts | "Publish now sends this post to the Page through the Graph API, using pages_manage_posts. This is the only permission that allows it." | "Publicar agora envia este post para a Página pela Graph API, usando pages_manage_posts. É a única permissão que permite isso." |
+| 11 | Soma10 confirms: Published | "Soma10 confirms the post was published." | "O Soma10 confirma que o post foi publicado." |
+| 12 | The same post, live on the client's Facebook Page | "And here is the same post live on the client's Facebook Page — created by Soma10 with pages_manage_posts." | "E aqui está o mesmo post publicado na Página do Facebook do cliente — criado pelo Soma10 com pages_manage_posts." |
+| 13 | The Page owner can disconnect at any time | "The Page owner authorizes this connection and can disconnect it at any time, which revokes the access." | "O dono da Página autoriza essa conexão e pode desconectar quando quiser, o que revoga o acesso." |
+
+**Como usar:** a legenda entra quando a cena começa e some quando a próxima entra. A 7 e a 10
+são as duas que decidem a aprovação (consentimento e uso) — deixe cada uma no mínimo 4
+segundos na tela.
+
 ##### Justificativa da permissão (cole no campo dela, em inglês)
 
 > Soma10 is a social media management tool for marketing agencies. Each agency client is a
