@@ -10,8 +10,8 @@ import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
 // Nome de cada área vem do dicionário (lib/i18n), no idioma de quem está usando.
-import { TEXTOS } from '@/lib/i18n'
-import { useArea } from '@/app/components/Idioma'
+import { TEXTOS, t as traduz } from '@/lib/i18n'
+import { useArea, useT, useIdioma } from '@/app/components/Idioma'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
@@ -432,6 +432,10 @@ function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const area = useArea()
+  const tr = useT()
+  const { idioma } = useIdioma()
+  // Título de grupo do menu pelo dicionário (lib/i18n) quando a chave existe; senão, o que veio.
+  const tituloGrupo = (grupo: string, titulo: string) => (TEXTOS[`grupo.${grupo}`] ? traduz(`grupo.${grupo}`, idioma) : titulo)
   const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
@@ -2012,7 +2016,7 @@ function Dashboard() {
               // Prever a visão de um PAPEL (colaborador) — só muda a navegação, não as capacidades
               if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
             }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoPapel ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
-              <option value="">Visualizar como...</option>
+              <option value="">{tr('topo.ver-como')}</option>
               {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
               <optgroup label="Colaboradores (papel)">
                 <option value="papel:gerente">Como Gerente</option>
@@ -2029,7 +2033,7 @@ function Dashboard() {
             {!mobile && <span style={{ fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600 }}>{session?.user?.name}</span>}
           </button>
           {!mobile && <span style={{ background: 'var(--v2-amber-on)', color: '#17150E', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{role}</span>}
-          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid var(--v2-rule)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Sair</button>
+          <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid var(--v2-rule)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>{tr('topo.sair')}</button>
         </div>
       </div>
 
@@ -2229,7 +2233,7 @@ function Dashboard() {
                 { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{tituloGrupo(grupo.grupo, grupo.titulo)}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} onClick={a === 'meu-card' ? () => router.push('/equipe/me') : a === 'equipe' ? () => router.push('/equipe') : undefined} />)}
                 </nav>
               ))}
@@ -2269,7 +2273,7 @@ function Dashboard() {
                 { titulo: 'Vendas', grupo: 'crm', itens: (perfilTelefonia ? [] : [['crm', 'CRM'], ...(perfilClinica ? [['metas', 'Metas']] : []), ['conversao', 'Conversão & Retenção']]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => podeGrupo(g.grupo) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo) => (
                 <nav key={grupo.grupo} style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{grupo.titulo}</span>}
+                  {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{tituloGrupo(grupo.grupo, grupo.titulo)}</span>}
                   {grupo.itens.map(([a, label]) => <NavBtn key={a} chave={a} label={label} onClick={a === 'meu-card' ? () => router.push('/equipe/me') : a === 'equipe' ? () => router.push('/equipe') : undefined} />)}
                 </nav>
               ))}
@@ -3501,10 +3505,10 @@ function Dashboard() {
         {aba === 'novo-post' && (
           <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <button onClick={fecharComposer} title="Volta salvando o que já foi preenchido" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <IconBack size={14} /> Voltar
+              <IconBack size={14} /> {tr('comum.voltar')}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editandoPostId ? 'Editar post' : 'Criar novo post'}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr(editandoPostId ? 'composer.titulo-editar' : 'composer.titulo-novo')}</h2>
               {editandoPostId && (
                 <button onClick={cancelarEdicaoPost} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
                   Cancelar edição

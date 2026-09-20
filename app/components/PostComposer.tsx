@@ -2,6 +2,7 @@
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { pendenciasDoPost, pendenciasDaAcao, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
+import { useT } from '@/app/components/Idioma'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -66,6 +67,7 @@ export default function PostComposer({
   travarCliente?: boolean
   modoEdicao?: boolean
 }) {
+  const tr = useT()
   const [clienteId, setClienteId] = useState(valorInicial?.clienteId || '')
   const mobile = useIsMobile()
   const [marcoId, setMarcoId] = useState(valorInicial?.marcoId || '')
@@ -392,9 +394,10 @@ export default function PostComposer({
   const podeSalvarEdicao = pendSalvar.length === 0 && !enviando
   const podePrincipal = pendPrincipal.length === 0 && !enviando
   const podeAprovacao = pendAprovacao.length === 0 && !enviando
+  const textoPend = (lista: typeof pendencias) => lista.map(x => tr(`pend.${x.chave}`))
   const avisoPendencia = enviando ? '' : pendPrincipal.length
-    ? frasePendencias(pendPrincipal, dataAgendada ? 'Para agendar' : 'Para publicar')
-    : pendAprovacao.length ? frasePendencias(pendAprovacao, 'Para enviar ao cliente') : ''
+    ? frasePendencias(textoPend(pendPrincipal), tr(dataAgendada ? 'pend.prefixo-agendar' : 'pend.prefixo-publicar'), tr('comum.e'))
+    : pendAprovacao.length ? frasePendencias(textoPend(pendAprovacao), tr('pend.prefixo-cliente'), tr('comum.e')) : ''
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
   return (
@@ -404,10 +407,10 @@ export default function PostComposer({
         {/* Cliente — dropdown na agência; travado na visão de cliente */}
         {!travarCliente && (
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Cliente</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('comum.cliente')}</label>
             <select value={clienteId} onChange={e => { setClienteId(e.target.value); setMarcoId('') }}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-              <option value="">Selecione o cliente...</option>
+              <option value="">{tr('composer.escolha-cliente')}</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.nome} (@{c.instagram?.replace(/^@/, '')})</option>)}
             </select>
           </div>
@@ -416,27 +419,27 @@ export default function PostComposer({
         {/* Etapa do Playbook — vinculo obrigatorio */}
         {clienteId && (
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Etapa do Playbook *</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.etapa')} *</label>
             <select ref={etapaRef} value={juntarValor(marcoId, subetapaId)} onChange={e => { const v = separarValor(e.target.value); setMarcoId(v.marcoId); setSubetapaId(v.subetapaId) }}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${faltaEtapa ? '#ea580c' : 'var(--v2-rule)'}`, fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-              <option value="">{marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
+              <option value="">{marcos.length === 0 ? tr('composer.etapa-vazia') : tr('composer.etapa-escolha')}</option>
               {/* MARCO > ETAPA: as etapas de dentro também aparecem (dono, 09/09) — lib/etapaPlaybook */}
-              {(() => { const a = opcaoDoValorAtual(opcoesEtapas(marcos), juntarValor(marcoId, subetapaId)); return a ? <option value={a.valor}>{a.rotulo}</option> : null })()}
-              {opcoesEtapas(marcos).map(g => g.opcoes.length > 1 ? (
+              {(() => { const a = opcaoDoValorAtual(opcoesEtapas(marcos, tr('etapa.marco-inteiro')), juntarValor(marcoId, subetapaId)); return a ? <option value={a.valor}>{a.rotulo}</option> : null })()}
+              {opcoesEtapas(marcos, tr('etapa.marco-inteiro')).map(g => g.opcoes.length > 1 ? (
                 <optgroup key={g.marcoId} label={g.titulo}>
                   {g.opcoes.map(o => <option key={o.valor} value={o.valor}>{o.ehMarco ? o.rotulo : `  └ ${o.rotulo}`}</option>)}
                 </optgroup>
               ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
             </select>
-            {faltaEtapa && marcos.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>{modoEdicao ? 'Escolha a etapa para enviar para aprovação.' : 'Escolha a etapa para salvar, agendar ou enviar para aprovação.'}</p>}
-            {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de publicar/agendar.</p>}
+            {faltaEtapa && marcos.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>{tr(modoEdicao ? 'composer.etapa-aviso-edicao' : 'composer.etapa-aviso-novo')}</p>}
+            {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ea580c' }}>{tr('composer.etapa-sem-playbook')}</p>}
           </div>
         )}
 
         {/* Perfis de destino — só aparece quando o cliente tem mais de um */}
         {multiPerfil && (
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Perfis</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.perfis')}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {contas.map(conta => {
                 const ativo = contaIds.includes(conta.id)
@@ -459,14 +462,14 @@ export default function PostComposer({
                 )
               })}
             </div>
-            {contaIds.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>Selecione ao menos um perfil.</p>}
+            {contaIds.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>{tr('composer.perfis-vazio')}</p>}
             <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>O mesmo conteúdo vai para os perfis marcados. As redes abaixo valem para cada um.</p>
           </div>
         )}
 
         {/* Redes onde publicar */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Publicar em</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.publicar-em')}</label>
           <div style={{ display: 'flex', gap: 10 }}>
             {([
               { key: 'instagram' as const, nome: 'Instagram', cor: '#dc2743' },
@@ -494,19 +497,19 @@ export default function PostComposer({
               )
             })}
           </div>
-          {redes.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>Selecione ao menos uma rede.</p>}
+          {redes.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>{tr('composer.redes-vazio')}</p>}
         </div>
 
         {/* Upload de mídia */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Mídia (imagens ou vídeos)</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.midia')}</label>
           {(() => {
             // Anexos que o designer subiu na TAREFA vinculada: um clique e viram mídia do post.
             const at = anexosParaCriativo(valorInicial?.anexosTarefa || []).filter(a => !midias.some(m => m.url === a.url))
             if (!at.length) return null
             return (
               <div style={{ margin: '0 0 10px', padding: '10px 12px', borderRadius: 10, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface1)' }}>
-                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>Anexos da tarefa de produção</p>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>{tr('composer.anexos-tarefa')}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {at.map(a => <button key={a.url} type="button" onClick={() => setMidias(m => [...m, { url: a.url, tipo: (/\.(mp4|mov|m4v)(\?|$)/i.test(a.url) || (a.tipo || '').startsWith('video/')) ? 'video' as const : 'imagem' as const }])}
                     style={{ fontSize: 12, padding: '5px 10px', borderRadius: 999, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-info)', cursor: 'pointer', fontFamily: 'inherit' }}>+ {a.nome}</button>)}
@@ -532,19 +535,19 @@ export default function PostComposer({
             <input ref={inputRef} type="file" multiple accept="image/*,video/*" style={{ display: 'none' }}
               onChange={e => { if (e.target.files?.length) enviarArquivos(e.target.files); e.target.value = '' }} />
             <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>
-              {enviandoArquivo ? 'Enviando arquivo...' : 'Arraste arquivos aqui ou clique para selecionar'}
+              {tr(enviandoArquivo ? 'composer.enviando-arquivo' : 'composer.arraste')}
             </p>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>JPG, PNG, WEBP, GIF, MP4, MOV — até 500MB</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('composer.formatos-aceitos')}</p>
           </div>
 
           {/* Importar do Google Drive (Picker nativo — navega no Drive da conta) */}
           <div style={{ marginTop: 12, padding: 12, border: '1.5px solid var(--v2-rule)', borderRadius: 12, background: 'var(--v2-surface1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)' }}>Importar mídias do Google Drive</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('composer.drive')}</span>
             </div>
             <DriveButton onArquivos={enviarArquivos} />
-            <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>As lâminas entram na ordem da numeração (1, 2, 3...).</p>
+            <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>{tr('composer.drive-ordem')}</p>
           </div>
 
           {emEnvio.length > 0 && (
@@ -597,13 +600,13 @@ export default function PostComposer({
                     <span style={{ position: 'absolute', top: 4, left: 4, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                   )}
                   {midias.length > 1 && i > 0 && (
-                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i - 1) }} title="Mover para a esquerda"
+                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i - 1) }} title={tr('composer.mover-esquerda')}
                       style={{ position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                     </button>
                   )}
                   {midias.length > 1 && i < midias.length - 1 && (
-                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i + 1) }} title="Mover para a direita"
+                    <button onClick={(e) => { e.stopPropagation(); moverMidia(i, i + 1) }} title={tr('composer.mover-direita')}
                       style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                     </button>
@@ -614,11 +617,11 @@ export default function PostComposer({
                   }}>×</button>
                   {m.tipo === 'video' && (
                     <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                      <button onClick={() => { setErroUpload(''); setFrameModal({ idx: i, url: m.url }) }} title="Escolher um frame do vídeo como capa"
+                      <button onClick={() => { setErroUpload(''); setFrameModal({ idx: i, url: m.url }) }} title={tr('composer.frame-capa')}
                         style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: 'var(--v2-surface)', fontSize: 9, fontWeight: 700, border: 'none', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 3v18M17 3v18M3 12h18" /></svg> Frame
                       </button>
-                      <label title="Enviar uma imagem de capa"
+                      <label title={tr('composer.enviar-capa')}
                         style={{ flex: 1, background: 'rgba(0,0,0,0.65)', color: 'var(--v2-surface)', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '4px 0', cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         {enviandoCapa === i ? '...' : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L5 21" /></svg> Capa</>}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={enviandoCapa !== null}
@@ -632,21 +635,21 @@ export default function PostComposer({
           )}
           {!ehStory && videosSemCapa > 0 && (
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '8px 12px' }}>
-              {videosSemCapa > 1 ? `${videosSemCapa} vídeos estão` : 'Um vídeo está'} sem capa. Defina a capa pelo botão "Frame" ou "Capa" para poder publicar ou agendar.
+              {videosSemCapa > 1 ? `${videosSemCapa} ${tr('composer.videos-varios')}` : tr('composer.video-um')} {tr('composer.video-sem-capa')}
             </p>
           )}
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Legenda{ehStory && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>(opcional no Story)</span>}</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.legenda')}{ehStory && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>{tr('composer.legenda-story')}</span>}</label>
           <textarea lang="pt-BR" value={legenda} onChange={e => setLegenda(e.target.value)}
-            placeholder="Escreva a legenda do post..."
+            placeholder={tr('composer.legenda-placeholder')}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 130, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>
 
         {/* Formato */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Formato</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.formato')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {FORMATOS.map(f => (
               <button key={f.key} onClick={() => setFormato(f.key)} type="button" style={{
@@ -665,7 +668,7 @@ export default function PostComposer({
         {!ehStory && (
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>
-            Marcar em colab com outro perfil
+            {tr('composer.colab')}
             <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>({colaboradores.length}/{MAX_COLAB})</span>
           </label>
 
@@ -686,7 +689,7 @@ export default function PostComposer({
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--v2-rule)', borderRadius: 10, background: 'var(--v2-surface)', padding: '0 14px', boxSizing: 'border-box' }}>
                 <span style={{ fontSize: 14, color: 'var(--v2-ink3)' }}>@</span>
                 <input value={colabBusca} onChange={e => buscarColab(e.target.value)} onKeyDown={onColabKeyDown}
-                  placeholder="Buscar perfil no Instagram..."
+                  placeholder={tr('composer.colab-buscar')}
                   style={{ flex: 1, padding: '12px 8px', border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }} />
                 {colabBuscando && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>buscando…</span>}
               </div>
@@ -727,7 +730,7 @@ export default function PostComposer({
 
         {/* Data e horario — sempre visivel */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Data e horário da publicação <span style={{ color: 'var(--v2-ink3)', fontWeight: 400 }}>(opcional)</span></label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.data')} <span style={{ color: 'var(--v2-ink3)', fontWeight: 400 }}>({tr('comum.opcional')})</span></label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: `1.5px solid ${dataAgendada ? 'var(--v2-ink)' : 'var(--v2-rule)'}`, borderRadius: 10, padding: '0 6px 0 14px', background: 'var(--v2-surface)', minWidth: 0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 8 }}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
@@ -735,14 +738,14 @@ export default function PostComposer({
                 style={{ flex: 1, padding: '14px 0', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
             </div>
             {dataAgendada && (
-              <button type="button" onClick={() => setDataAgendada('')} title="Remover data e horário"
+              <button type="button" onClick={() => setDataAgendada('')} title={tr('composer.data-remover')}
                 style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, background: 'transparent', color: 'var(--v2-ink3)', border: 'none', cursor: 'pointer' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             )}
           </div>
           <p style={{ margin: '6px 0 0', fontSize: 11, color: dataAgendada ? 'var(--v2-info)' : 'var(--v2-ink3)' }}>
-            {dataAgendada ? 'Com data preenchida, o botão publica no horário escolhido (Agendar).' : 'Em branco, o botão publica imediatamente (Publicar agora).'}
+            {tr(dataAgendada ? 'composer.data-com' : 'composer.data-sem')}
           </p>
         </div>
 
@@ -750,17 +753,17 @@ export default function PostComposer({
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podeSalvarEdicao : !podeRascunho} type="button"
             style={{ flex: '1 1 110px', padding: '14px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 1 : 0.5 }}>
-            {modoEdicao ? (enviando ? 'Salvando...' : 'Salvar alterações') : (salvandoRascunho ? 'Salvando...' : 'Rascunho')}
+            {modoEdicao ? tr(enviando ? 'comum.salvando' : 'composer.salvar-alteracoes') : tr(salvandoRascunho ? 'comum.salvando' : 'composer.rascunho')}
           </button>
           <button onClick={() => submeter('aprovacao')} disabled={!podeAprovacao} type="button"
             style={{ flex: '1 1 150px', padding: '14px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podeAprovacao ? 'pointer' : 'not-allowed', opacity: podeAprovacao ? 1 : 0.5 }}>
-            {enviando ? 'Enviando...' : 'Enviar para aprovação'}
+            {tr(enviando ? 'comum.enviando' : 'composer.enviar-aprovacao')}
           </button>
           <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePrincipal} type="button"
             style={{ flex: '1.3 1 150px', padding: '14px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePrincipal ? 'pointer' : 'not-allowed', opacity: podePrincipal ? 1 : 0.5 }}>
             {enviando
-              ? (dataAgendada ? 'Agendando...' : 'Publicando...')
-              : (dataAgendada ? 'Agendar' : 'Publicar agora')}
+              ? tr(dataAgendada ? 'composer.agendando' : 'composer.publicando')
+              : tr(dataAgendada ? 'composer.agendar' : 'composer.publicar-agora')}
           </button>
         </div>
         {avisoPendencia && (
@@ -769,20 +772,20 @@ export default function PostComposer({
             {faltaEtapa && (
               <button type="button" onClick={() => { etapaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); etapaRef.current?.focus() }}
                 style={{ marginLeft: 6, padding: 0, background: 'none', border: 0, color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-                Ir para a etapa
+                {tr('pend.ir-etapa')}
               </button>
             )}
           </p>
         )}
         <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
-          "Enviar para aprovação" gera um link para o cliente. Ao aprovar, {dataAgendada ? 'agenda para a data escolhida' : 'publica na hora'}.
+          {tr(dataAgendada ? 'composer.rodape-agendar' : 'composer.rodape-publicar')}
         </p>
       </div>
 
       {/* Coluna direita: preview ao vivo */}
       <div style={{ position: 'sticky', top: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Pré-visualização
+          {tr('composer.previa')}
         </p>
         <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
@@ -811,7 +814,7 @@ export default function PostComposer({
               }}>
                 {midias.length === 0 ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                    Suas imagens/vídeos aparecerão aqui
+                    {tr('composer.previa-vazia')}
                   </div>
                 ) : m.tipo === 'video'
                   ? <video src={m.url} poster={m.capa} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted controls />
@@ -850,7 +853,7 @@ export default function PostComposer({
           <div style={{ padding: 14 }}>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               <strong>{cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}</strong>{' '}
-              {legenda || <span style={{ color: 'var(--v2-ink3)' }}>Sua legenda aparecerá aqui...</span>}
+              {legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.legenda-previa')}</span>}
             </p>
             {dataAgendada && (
               <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>

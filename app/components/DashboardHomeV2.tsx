@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useT } from '@/app/components/Idioma'
 
 // HOME NOVA (Soma10 Noturno) — perfil agência.
 //
@@ -52,6 +53,7 @@ function prazoCurto(iso?: string) {
 const memoria: Record<string, Dados> = {}
 
 export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: { tema: 'claro' | 'escuro'; meuEmail: string; onIr: (aba: string) => void; onVerCliente: (id: string) => void }) {
+  const tr = useT()
   const [como, setComo] = useState('')
   const chave = (c: string) => `${meuEmail.toLowerCase()}|${c}`
   const [dados, setDados] = useState<Dados | null>(() => memoria[chave('')] || null)
@@ -244,7 +246,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
         <div className="v2-top v2-a">
           <button className="v2-busca" type="button" onClick={() => { setPaleta(true); setQ(''); setSel(0) }} aria-label="Buscar ou executar um comando">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-            Buscar cliente, tarefa… ou digitar um comando
+            {tr('topo.busca')}
             <kbd>Ctrl K</kbd>
           </button>
           {dados?.ehAdmin && dados.equipe.length > 0 && (

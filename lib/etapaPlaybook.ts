@@ -23,7 +23,7 @@ export type GrupoOpcoes = {
 }
 
 /** Monta os grupos do seletor: o marco inteiro e, dentro dele, cada etapa. */
-export function opcoesEtapas(marcos: MarcoOpcao[] = []): GrupoOpcoes[] {
+export function opcoesEtapas(marcos: MarcoOpcao[] = [], sufixoMarco = 'o marco inteiro'): GrupoOpcoes[] {
   return marcos.map(m => {
     // Etapa SEM id não some da lista: ganha o mesmo id por posição que lib/subetapas
     // gera ao gravar (`se-N`). Some do seletor = a pessoa não consegue vincular o que vê.
@@ -34,7 +34,7 @@ export function opcoesEtapas(marcos: MarcoOpcao[] = []): GrupoOpcoes[] {
       marcoId: m.id,
       titulo: m.titulo || 'Marco sem título',
       opcoes: [
-        { valor: m.id, rotulo: subs.length ? `${m.titulo} (o marco inteiro)` : m.titulo, ehMarco: true },
+        { valor: m.id, rotulo: subs.length ? `${m.titulo} (${sufixoMarco})` : m.titulo, ehMarco: true },
         ...subs.map(s => ({ valor: `${m.id}::${s.id}`, rotulo: s.titulo, ehMarco: false })),
       ],
     }

@@ -21,27 +21,31 @@ export type EstadoComposer = {
   enviandoArquivo?: boolean
 }
 
-export type Pendencia = { chave: 'cliente' | 'etapa' | 'perfil' | 'legenda' | 'midia' | 'rede' | 'capa' | 'upload'; texto: string }
+// A pendência devolve só a CHAVE; o texto sai do dicionário (lib/i18n, 'pend.<chave>'), para
+// a tela falar o idioma de quem está usando.
+export type ChavePendencia = 'cliente' | 'etapa' | 'perfil' | 'legenda' | 'midia' | 'rede' | 'capa' | 'capa-varias' | 'upload'
+export type Pendencia = { chave: ChavePendencia }
 
 /** Tudo o que impede publicar, agendar ou enviar para aprovação, na ordem em que aparece na tela. */
 export function pendenciasDoPost(e: EstadoComposer): Pendencia[] {
   const out: Pendencia[] = []
-  if (!e.clienteId) { out.push({ chave: 'cliente', texto: 'escolher o cliente' }); return out }
-  if (!e.marcoId) out.push({ chave: 'etapa', texto: 'escolher a etapa do Playbook' })
-  if (e.multiPerfil && !(e.contaIds || []).length) out.push({ chave: 'perfil', texto: 'marcar ao menos um perfil de destino' })
-  if (e.totalMidias <= 0) out.push({ chave: 'midia', texto: 'adicionar ao menos uma mídia' })
-  if (!e.ehStory && !String(e.legenda || '').trim()) out.push({ chave: 'legenda', texto: 'escrever a legenda' })
-  if (!e.redes.length) out.push({ chave: 'rede', texto: 'marcar Instagram ou Facebook' })
-  if (!e.ehStory && e.videosSemCapa > 0) out.push({ chave: 'capa', texto: e.videosSemCapa > 1 ? 'definir a capa de cada vídeo' : 'definir a capa do vídeo' })
-  if (e.enviandoArquivo) out.push({ chave: 'upload', texto: 'esperar o envio dos arquivos terminar' })
+  if (!e.clienteId) { out.push({ chave: 'cliente' }); return out }
+  if (!e.marcoId) out.push({ chave: 'etapa' })
+  if (e.multiPerfil && !(e.contaIds || []).length) out.push({ chave: 'perfil' })
+  if (e.totalMidias <= 0) out.push({ chave: 'midia' })
+  if (!e.ehStory && !String(e.legenda || '').trim()) out.push({ chave: 'legenda' })
+  if (!e.redes.length) out.push({ chave: 'rede' })
+  if (!e.ehStory && e.videosSemCapa > 0) out.push({ chave: e.videosSemCapa > 1 ? 'capa-varias' : 'capa' })
+  if (e.enviandoArquivo) out.push({ chave: 'upload' })
   return out
 }
 
-/** "Para liberar os botões: escolher a etapa do Playbook e escrever a legenda." */
-export function frasePendencias(p: Pendencia[], prefixo = 'Para liberar os botões'): string {
-  if (!p.length) return ''
-  const textos = p.map(x => x.texto)
-  const lista = textos.length === 1 ? textos[0] : `${textos.slice(0, -1).join(', ')} e ${textos[textos.length - 1]}`
+/** Junta o que falta numa frase: "Para agendar: escolher a etapa e escrever a legenda."
+ *  Recebe os textos JÁ traduzidos (a tela pega cada um em lib/i18n) e a conjunção do idioma. */
+export function frasePendencias(textos: string[], prefixo: string, conjuncao = 'e'): string {
+  const limpos = textos.filter(Boolean)
+  if (!limpos.length) return ''
+  const lista = limpos.length === 1 ? limpos[0] : `${limpos.slice(0, -1).join(', ')} ${conjuncao} ${limpos[limpos.length - 1]}`
   return `${prefixo}: ${lista}.`
 }
 
