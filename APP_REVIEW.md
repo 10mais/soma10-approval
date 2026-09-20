@@ -193,6 +193,91 @@ o resultado aparecendo **dentro do Instagram** — não só dentro do nosso pain
 - 2 a 4 minutos cada, `.mp4` H.264, menos de 1 GB, subido em **janela anônima** (o uploader do
   painel dá "Ocorreu um erro" em janela normal — ver CONTEXTO-TECNICO.md:392).
 
+#### 3.1-A `pages_manage_posts` — folha de gravação (envio individual, 20/09)
+
+Dono, 20/09: "quero fazer agora um por um, comece com esse". Este bloco é o vídeo desta
+permissão SOZINHA. Um vídeo, um take, 2 a 3 minutos. As regras gerais do §3.1 valem todas
+(inglês, sem corte, janela anônima, dica do botão, consentimento parado 4s).
+
+**O caso de uso em uma frase (é isto que o vídeo tem que provar):** a agência publica na
+Página do Facebook do cliente o conteúdo que o cliente aprovou, usando a autorização que o
+próprio dono da Página deu no login do Facebook.
+
+##### Antes de gravar
+
+1. Cliente de teste **"Soma10 Demo"** existe e está **sem Facebook conectado** (card do
+   cliente → Conexões → se houver "Facebook", clique em desconectar).
+2. Página do Facebook de teste do 10+ existe, e a conta que vai logar é **admin dela**.
+3. **Conta do Facebook com idioma English** (Settings → Language → English). É ela que faz a
+   tela de consentimento sair em inglês.
+4. **Chrome em inglês** e **janela anônima**; no painel, botão direito → *Translate to English*.
+5. Imagem e legenda do post prontas na área de trabalho.
+6. Notificações do sistema desligadas; nada de e-mail/WhatsApp aparecendo na tela.
+7. App **Live** e 2FA global **desligado**.
+
+##### O take, momento a momento (fala em inglês entre aspas)
+
+| Tempo | O que você faz na tela | O que você fala / a legenda |
+|---|---|---|
+| 0:00 | Janela anônima em `approval.soma10.com.br`, barra de endereço visível | "This is Soma10, a social media management tool used by marketing agencies to publish content for their clients." |
+| 0:10 | Login da agência (usuário e senha), entra no painel | "The agency signs in to its own Soma10 account." |
+| 0:20 | Aba **Clients** → abre o card de **Soma10 Demo** → seção **Connections** mostrando que não há Página | "This is one of the agency's clients. No Facebook Page is connected to this client yet." |
+| 0:35 | **Mouse parado sobre "Connect Facebook"** até a dica aparecer; então clica | "To publish on this client's Page, the agency clicks Connect Facebook. This starts the Facebook Login flow." |
+| 0:45 | **Tela de login do Facebook**: digita e-mail e senha da conta dona da Página | "This is the Facebook login. The Page owner signs in with their own credentials — the agency never has the client's password." |
+| 1:05 | **Escolha de Páginas** ("Which Pages do you want to use?"), parado 4s, seleciona a Página | "The Page owner chooses which Page the agency may manage." |
+| 1:20 | **Tela de permissões**, parada 4s, com zoom na linha de publicar | "Here the Page owner is granting **pages_manage_posts**: permission for Soma10 to create posts on this Page." |
+| 1:35 | Volta ao painel com a Página conectada no card do cliente | "The Page is now connected to this client's profile inside Soma10." |
+| 1:45 | **New post**: sobe a imagem, escreve a legenda, marca **Facebook** em "Publish to" | "The agency creates the client's post: image and caption, with the Facebook Page as the destination." |
+| 2:05 | **Mouse parado sobre "Publish now"** até a dica aparecer; clica | "Publish now sends this post to the Page through the Graph API, using **pages_manage_posts**. This is the only permission that allows it." |
+| 2:15 | Status vira **Published** no painel | "Soma10 confirms the post was published." |
+| 2:25 | **Abre a Página no Facebook** (nova aba, mesma janela) e mostra o post no feed dela | "And here is the same post live on the client's Facebook Page — created by Soma10 with pages_manage_posts." |
+| 2:40 | Volta ao painel, card do cliente, mostra o botão de desconectar | "The Page owner authorizes this connection and can disconnect it at any time, which revokes the access." |
+
+Se travar em alguma etapa, **não corte**: respire e siga. Vídeo com corte foi reprovado duas
+vezes.
+
+##### Justificativa da permissão (cole no campo dela, em inglês)
+
+> Soma10 is a social media management tool for marketing agencies. Each agency client is a
+> separate profile inside the panel, and the client's Facebook Page is connected by its own
+> owner through Facebook Login.
+>
+> pages_manage_posts is used for one thing: publishing the content the client approved to that
+> client's Facebook Page. The agency writes the caption and uploads the image in Soma10, the
+> client approves it, and Soma10 creates the post on the Page — immediately or at the scheduled
+> time chosen by the agency. Without this permission the agency would have to share the Page
+> password or post manually, which is exactly what this product exists to avoid.
+>
+> In the screencast: the Page owner signs in with Facebook Login, chooses the Page and grants
+> pages_manage_posts; the agency then creates a post and publishes it, and the same post is
+> shown live on the Facebook Page.
+
+##### Instruções para o analista (cole no campo de instruções)
+
+> Test account for the panel: revisor.meta@grupo10mais.com.br (password in the submission
+> form). There is no paywall and no geographic restriction.
+>
+> How to reproduce: sign in, open the Clients tab, open a client profile, click "Connect
+> Facebook" (Facebook Login), select a Page and grant the permissions, then open "New post",
+> upload an image, write a caption, select the Facebook Page as the destination and click
+> "Publish now". The post appears on the Page.
+>
+> Soma10 is not a server-to-server integration and does not use a System User token. Every Page
+> token comes from the front-end Facebook Login consent shown in the screencast. Scheduled
+> publishing runs later with that same user access token, and disconnecting the Page in the
+> panel revokes it.
+>
+> The panel interface is Portuguese by product decision; in the screencast it is shown in
+> English (browser translation) and the narration names the permission at the moment it is
+> granted and at the moment it is used.
+
+##### Depois de subir
+
+- Suba o `.mp4` **em janela anônima** (o uploader do painel dá "Ocorreu um erro" na normal).
+- Envie **só esta permissão** nesta rodada. As outras quatro ficam para os próximos vídeos,
+  com a mesma folha (troque a permissão, a tela provada e a frase do momento do uso).
+- Não ligue o 2FA global enquanto houver análise aberta.
+
 #### VÍDEO 1 — Instagram: publicar e medir
 *(sobe em `instagram_business_content_publish` e `instagram_business_manage_insights`)*
 
