@@ -195,73 +195,87 @@ o resultado aparecendo **dentro do Instagram** — não só dentro do nosso pain
 
 #### 3.1-A `pages_manage_posts` — folha de gravação (envio individual, 20/09)
 
-Dono, 20/09: "quero fazer agora um por um, comece com esse". Este bloco é o vídeo desta
-permissão SOZINHA. Um vídeo, um take, 2 a 3 minutos. As regras gerais do §3.1 valem todas
-(inglês, sem corte, janela anônima, dica do botão, consentimento parado 4s).
+Dono, 20/09: "quero fazer agora um por um, comece com esse" e, em seguida, "além da página do
+Facebook, adicione a conexão com o Instagram antes de fazer a postagem". Um vídeo, um take,
+3 a 4 minutos, com **as duas conexões e uma publicação que sai nas duas redes** — que é como o
+sistema é usado de verdade. As regras gerais do §3.1 valem todas (inglês, sem corte, janela
+anônima, dica do botão, consentimento parado 4s).
 
-**O caso de uso em uma frase (é isto que o vídeo tem que provar):** a agência publica na
-Página do Facebook do cliente o conteúdo que o cliente aprovou, usando a autorização que o
-próprio dono da Página deu no login do Facebook.
+**O caso de uso em uma frase:** a agência conecta a Página do Facebook e a conta do Instagram
+do cliente, cada uma autorizada pelo próprio dono, e publica nas duas o conteúdo aprovado.
+
+> **Este take serve para DOIS envios.** A permissão em foco é `pages_manage_posts`, mas o mesmo
+> vídeo mostra o consentimento e o uso de `instagram_business_content_publish`. Dá para subir o
+> mesmo arquivo nas duas permissões, trocando só a justificativa. Se preferir seguir "um por
+> um", envie agora só `pages_manage_posts` e guarde o arquivo para a próxima.
 
 ##### Antes de gravar
 
-1. Cliente de teste **"Soma10 Demo"** existe e está **sem Facebook conectado** (card do
-   cliente → Conexões → se houver "Facebook", clique em desconectar).
+1. Cliente de teste **"Soma10 Demo"** existe e está **sem Facebook e sem Instagram conectados**
+   (card do cliente → Conexões → desconectar o que estiver ligado).
 2. Página do Facebook de teste do 10+ existe, e a conta que vai logar é **admin dela**.
-3. **Conta do Facebook com idioma English** (Settings → Language → English). É ela que faz a
-   tela de consentimento sair em inglês.
-4. **Chrome em inglês** e **janela anônima**; no painel, botão direito → *Translate to English*.
-5. Imagem e legenda do post prontas na área de trabalho.
-6. Notificações do sistema desligadas; nada de e-mail/WhatsApp aparecendo na tela.
-7. App **Live** e 2FA global **desligado**.
+3. Conta do **Instagram profissional** (comercial ou criador) pronta para logar.
+4. **Contas do Facebook e do Instagram com idioma English** (Settings → Language). São elas que
+   fazem a tela de consentimento sair em inglês.
+5. **Chrome em inglês**, janela anônima e, no painel, botão direito → *Translate to English*.
+6. Imagem e legenda do post prontas na área de trabalho.
+7. Notificações do sistema desligadas; nada de e-mail/WhatsApp aparecendo na tela.
+8. App **Live** e 2FA global **desligado**.
 
-##### O take, momento a momento (fala em inglês entre aspas)
+##### O take, momento a momento
 
-| Tempo | O que você faz na tela | O que você fala / a legenda |
+| Tempo | O que você faz na tela | O que fala / a legenda diz |
 |---|---|---|
-| 0:00 | Janela anônima em `approval.soma10.com.br`, barra de endereço visível | "This is Soma10, a social media management tool used by marketing agencies to publish content for their clients." |
-| 0:10 | Login da agência (usuário e senha), entra no painel | "The agency signs in to its own Soma10 account." |
-| 0:20 | Aba **Clients** → abre o card de **Soma10 Demo** → seção **Connections** mostrando que não há Página | "This is one of the agency's clients. No Facebook Page is connected to this client yet." |
-| 0:35 | **Mouse parado sobre "Connect Facebook"** até a dica aparecer; então clica | "To publish on this client's Page, the agency clicks Connect Facebook. This starts the Facebook Login flow." |
-| 0:45 | **Tela de login do Facebook**: digita e-mail e senha da conta dona da Página | "This is the Facebook login. The Page owner signs in with their own credentials — the agency never has the client's password." |
-| 1:05 | **Escolha de Páginas** ("Which Pages do you want to use?"), parado 4s, seleciona a Página | "The Page owner chooses which Page the agency may manage." |
-| 1:20 | **Tela de permissões**, parada 4s, com zoom na linha de publicar | "Here the Page owner is granting **pages_manage_posts**: permission for Soma10 to create posts on this Page." |
-| 1:35 | Volta ao painel com a Página conectada no card do cliente | "The Page is now connected to this client's profile inside Soma10." |
-| 1:45 | **New post**: sobe a imagem, escreve a legenda, marca **Facebook** em "Publish to" | "The agency creates the client's post: image and caption, with the Facebook Page as the destination." |
-| 2:05 | **Mouse parado sobre "Publish now"** até a dica aparecer; clica | "Publish now sends this post to the Page through the Graph API, using **pages_manage_posts**. This is the only permission that allows it." |
-| 2:15 | Status vira **Published** no painel | "Soma10 confirms the post was published." |
-| 2:25 | **Abre a Página no Facebook** (nova aba, mesma janela) e mostra o post no feed dela | "And here is the same post live on the client's Facebook Page — created by Soma10 with pages_manage_posts." |
-| 2:40 | Volta ao painel, card do cliente, mostra o botão de desconectar | "The Page owner authorizes this connection and can disconnect it at any time, which revokes the access." |
+| 0:00 | Janela anônima em `approval.soma10.com.br`, barra de endereço visível | Soma10, ferramenta de agência |
+| 0:10 | Login da agência | a agência entra na conta dela |
+| 0:20 | Aba **Clients** → card de **Soma10 Demo** → **Connections** vazio | nenhuma rede conectada ainda |
+| 0:35 | Mouse parado em **"Connect Facebook"** até a dica, clica | começa o login do Facebook |
+| 0:45 | **Login do Facebook** (digitando de verdade) | o dono da Página entra com a senha dele |
+| 1:05 | **Escolha de Páginas**, parada 4s, seleciona a Página | o dono escolhe a Página |
+| 1:20 | **Tela de permissões**, parada 4s, zoom | concedendo **pages_manage_posts** |
+| 1:35 | Volta ao painel, Página conectada no card | Página ligada ao perfil do cliente |
+| 1:45 | Mouse parado em **"Connect Instagram"** até a dica, clica | agora a conta do Instagram |
+| 1:55 | **Login do Instagram** (digitando de verdade) | o dono da conta entra com a senha dele |
+| 2:10 | **Tela de permissões do Instagram**, parada 4s, zoom | concedendo **instagram_business_content_publish** |
+| 2:25 | Volta ao painel: Página **e** @ do Instagram no card | as duas redes conectadas |
+| 2:35 | **New post**: imagem, legenda e **Facebook + Instagram** marcados | um post, duas redes |
+| 2:55 | Mouse parado em **"Publish now"** até a dica, clica | publica com pages_manage_posts e instagram_business_content_publish |
+| 3:05 | Status **Published** | o sistema confirma |
+| 3:15 | **Página no Facebook**, post no feed dela | prova no Facebook |
+| 3:30 | **Instagram da conta**, post no feed | prova no Instagram |
+| 3:45 | Volta ao painel, mostra o botão de desconectar | o cliente revoga quando quiser |
 
 Se travar em alguma etapa, **não corte**: respire e siga. Vídeo com corte foi reprovado duas
 vezes.
 
-##### 3.1-A.1 Legendas e narração do vídeo de `pages_manage_posts` (EN + tradução)
+##### 3.1-A.1 Legendas e narração (EN + tradução)
 
-Uma linha por cena, na ordem do take. **Legenda** = texto curto, queimado na tela (o que o
-revisor lê). **Narração** = o que você fala por cima, se for narrar; se não for narrar, use a
-narração como legenda mesmo, dividida em duas linhas. A tradução é só para você conferir o
-que está dizendo — **não entra no vídeo**.
+**Legenda** = texto curto queimado na tela. **Narração** = o que você fala. A tradução é só
+para conferência — **não entra no vídeo**.
 
-| # | Legenda (queimar na tela) | Narração (falar) | Tradução (só para conferência) |
+| # | Legenda (queimar na tela) | Narração (falar) | Tradução (conferência) |
 |---|---|---|---|
 | 1 | Soma10 — social media management for marketing agencies | "This is Soma10, a tool marketing agencies use to publish content for their clients." | "Este é o Soma10, uma ferramenta que agências de marketing usam para publicar o conteúdo dos clientes." |
 | 2 | The agency signs in to its own account | "The agency signs in to its own Soma10 account." | "A agência entra na conta dela no Soma10." |
-| 3 | Each client is a separate profile — no Facebook Page connected yet | "Each client of the agency is a separate profile. This client has no Facebook Page connected yet." | "Cada cliente da agência é um perfil separado. Este cliente ainda não tem Página do Facebook conectada." |
+| 3 | Each client is a separate profile — no account connected yet | "Each client of the agency is a separate profile. This client has no Facebook Page and no Instagram account connected yet." | "Cada cliente é um perfil separado. Este cliente ainda não tem Página do Facebook nem conta do Instagram conectada." |
 | 4 | The agency clicks "Connect Facebook" | "To publish on this client's Page, the agency clicks Connect Facebook. This starts the Facebook Login flow." | "Para publicar na Página do cliente, a agência clica em Conectar Facebook. Isso inicia o login do Facebook." |
 | 5 | Facebook Login — the Page owner signs in | "This is the Facebook login. The Page owner signs in with their own credentials — the agency never has the client's password." | "Este é o login do Facebook. O dono da Página entra com as credenciais dele — a agência nunca tem a senha do cliente." |
 | 6 | The Page owner chooses which Page the agency may manage | "The Page owner chooses which Page the agency may manage." | "O dono da Página escolhe qual Página a agência pode gerenciar." |
 | 7 | Granting pages_manage_posts — permission to create posts on this Page | "Here the Page owner is granting pages_manage_posts: permission for Soma10 to create posts on this Page." | "Aqui o dono da Página está concedendo pages_manage_posts: permissão para o Soma10 criar publicações nesta Página." |
 | 8 | The Page is now connected to this client's profile | "The Page is now connected to this client's profile inside Soma10." | "A Página agora está conectada ao perfil deste cliente dentro do Soma10." |
-| 9 | The agency creates the client's post: image and caption | "The agency creates the client's post — image and caption — and selects the Facebook Page as the destination." | "A agência cria o post do cliente — imagem e legenda — e escolhe a Página do Facebook como destino." |
-| 10 | "Publish now" posts to the Page using pages_manage_posts | "Publish now sends this post to the Page through the Graph API, using pages_manage_posts. This is the only permission that allows it." | "Publicar agora envia este post para a Página pela Graph API, usando pages_manage_posts. É a única permissão que permite isso." |
-| 11 | Soma10 confirms: Published | "Soma10 confirms the post was published." | "O Soma10 confirma que o post foi publicado." |
-| 12 | The same post, live on the client's Facebook Page | "And here is the same post live on the client's Facebook Page — created by Soma10 with pages_manage_posts." | "E aqui está o mesmo post publicado na Página do Facebook do cliente — criado pelo Soma10 com pages_manage_posts." |
-| 13 | The Page owner can disconnect at any time | "The Page owner authorizes this connection and can disconnect it at any time, which revokes the access." | "O dono da Página autoriza essa conexão e pode desconectar quando quiser, o que revoga o acesso." |
+| 9 | Now the client's Instagram account | "The same client also publishes on Instagram, so the agency clicks Connect Instagram." | "O mesmo cliente também publica no Instagram, então a agência clica em Conectar Instagram." |
+| 10 | Instagram Login — the account owner signs in | "This is the Instagram login. The account owner signs in with their own credentials." | "Este é o login do Instagram. O dono da conta entra com as credenciais dele." |
+| 11 | Granting instagram_business_content_publish | "Here the account owner is granting instagram_business_content_publish, so Soma10 can publish to this Instagram account." | "Aqui o dono da conta está concedendo instagram_business_content_publish, para o Soma10 publicar nesta conta do Instagram." |
+| 12 | Both accounts connected to the same client | "Both the Facebook Page and the Instagram account are now connected to this client's profile." | "Agora a Página do Facebook e a conta do Instagram estão conectadas ao perfil deste cliente." |
+| 13 | One post, two networks: image, caption, destinations | "The agency creates the client's post — image and caption — and selects both the Facebook Page and Instagram as destinations." | "A agência cria o post do cliente — imagem e legenda — e escolhe a Página do Facebook e o Instagram como destinos." |
+| 14 | "Publish now" — pages_manage_posts and instagram_business_content_publish | "Publish now sends this post to the Page using pages_manage_posts, and to Instagram using instagram_business_content_publish." | "Publicar agora envia este post para a Página usando pages_manage_posts, e para o Instagram usando instagram_business_content_publish." |
+| 15 | Soma10 confirms: Published | "Soma10 confirms the post was published." | "O Soma10 confirma que o post foi publicado." |
+| 16 | The same post, live on the client's Facebook Page | "Here is the post live on the client's Facebook Page — created by Soma10 with pages_manage_posts." | "Aqui está o post publicado na Página do Facebook do cliente — criado pelo Soma10 com pages_manage_posts." |
+| 17 | And live on the client's Instagram feed | "And here it is on the client's Instagram feed, published with instagram_business_content_publish." | "E aqui está ele no feed do Instagram do cliente, publicado com instagram_business_content_publish." |
+| 18 | The client can disconnect at any time | "The client authorizes both connections and can disconnect them at any time, which revokes the access." | "O cliente autoriza as duas conexões e pode desconectar quando quiser, o que revoga o acesso." |
 
-**Como usar:** a legenda entra quando a cena começa e some quando a próxima entra. A 7 e a 10
-são as duas que decidem a aprovação (consentimento e uso) — deixe cada uma no mínimo 4
-segundos na tela.
+As cenas **7** e **14** (consentimento e uso do `pages_manage_posts`) e as **11** e **17**
+(as do Instagram) são as que decidem a aprovação: mínimo 4 segundos cada.
 
 ##### Justificativa da permissão (cole no campo dela, em inglês)
 
@@ -276,8 +290,9 @@ segundos na tela.
 > password or post manually, which is exactly what this product exists to avoid.
 >
 > In the screencast: the Page owner signs in with Facebook Login, chooses the Page and grants
-> pages_manage_posts; the agency then creates a post and publishes it, and the same post is
-> shown live on the Facebook Page.
+> pages_manage_posts; the client's Instagram account is connected in the same flow, because the
+> agency publishes one post to both networks; and the same post is then shown live on the
+> Facebook Page.
 
 ##### Instruções para o analista (cole no campo de instruções)
 
@@ -285,13 +300,14 @@ segundos na tela.
 > form). There is no paywall and no geographic restriction.
 >
 > How to reproduce: sign in, open the Clients tab, open a client profile, click "Connect
-> Facebook" (Facebook Login), select a Page and grant the permissions, then open "New post",
-> upload an image, write a caption, select the Facebook Page as the destination and click
-> "Publish now". The post appears on the Page.
+> Facebook" (Facebook Login), select a Page and grant the permissions; click "Connect
+> Instagram" to link the client's Instagram professional account; then open "New post", upload
+> an image, write a caption, select the Facebook Page and Instagram as destinations and click
+> "Publish now". The post appears on the Page and on the Instagram account.
 >
 > Soma10 is not a server-to-server integration and does not use a System User token. Every Page
 > token comes from the front-end Facebook Login consent shown in the screencast. Scheduled
-> publishing runs later with that same user access token, and disconnecting the Page in the
+> publishing runs later with that same user access token, and disconnecting the account in the
 > panel revokes it.
 >
 > The panel interface is Portuguese by product decision; in the screencast it is shown in
@@ -301,8 +317,9 @@ segundos na tela.
 ##### Depois de subir
 
 - Suba o `.mp4` **em janela anônima** (o uploader do painel dá "Ocorreu um erro" na normal).
-- Envie **só esta permissão** nesta rodada. As outras quatro ficam para os próximos vídeos,
-  com a mesma folha (troque a permissão, a tela provada e a frase do momento do uso).
+- Nesta rodada, envie `pages_manage_posts`. O mesmo arquivo serve para
+  `instagram_business_content_publish` quando você quiser mandar a próxima — só troque a
+  justificativa.
 - Não ligue o 2FA global enquanto houver análise aberta.
 
 #### VÍDEO 1 — Instagram: publicar e medir
