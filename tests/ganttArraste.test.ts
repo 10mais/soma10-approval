@@ -68,6 +68,8 @@ describe('ganttArraste — mover e redimensionar barras em dias inteiros', () =>
     const ini = new Date(2026, 8, 20).getTime() // 20/09/2026 (domingo)
     const meses = rotulosMeses(ini, 30)
     expect(meses.map(m => m.txt)).toEqual(['set/2026', 'out/2026'])
+    // o rótulo NÃO pode depender do idioma da máquina: o build da Vercel roda em inglês
+    expect(rotulosMeses(ini, 30, 'en-US').map(m => m.txt)).toEqual(['Sep/2026', 'Oct/2026'])
     expect(meses[0].pct).toBe(0)
     expect(meses[1].pct).toBeCloseTo((11 / 30) * 100, 5)
     expect(rotuloPeriodo('2026-09-08', '2026-10-01T00:00:00.000Z')).toBe('08/09 – 01/10')

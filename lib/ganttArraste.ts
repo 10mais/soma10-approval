@@ -127,9 +127,11 @@ export function janelaParaCaber(marcos: MarcoDatas[], hoje: number = Date.now())
   return { inicioMs: a - folga * MS_DIA, dias: Math.max(7, Math.min(730, span + folga * 2)) }
 }
 
-// Eixo superior: um rótulo por mês dentro da janela ("set/2026"), na posição do dia 1
+// Eixo superior: um rótulo por mês dentro da janela ("set/2026"), na posição do dia 1.
+// O `locale` vem de quem chama (o idioma da pessoa); o padrão é pt-BR PORQUE o build da
+// Vercel roda em inglês — locale implícito faz o teste passar aqui e reprovar lá.
 // (ou no início da janela, para o mês que já começou).
-export function rotulosMeses(inicioMs: number, dias: number, locale?: string): { pct: number; txt: string }[] {
+export function rotulosMeses(inicioMs: number, dias: number, locale = 'pt-BR'): { pct: number; txt: string }[] {
   const out: { pct: number; txt: string }[] = []
   const fimMs = inicioMs + dias * MS_DIA
   const d = new Date(inicioMs)

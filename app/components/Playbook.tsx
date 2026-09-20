@@ -21,6 +21,10 @@ import { TEXTOS } from '@/lib/i18n'
 
 // Mês e dia no eixo do Gantt seguem o idioma de quem lê.
 const LOCALE_IDIOMA: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
+// fmtData roda fora do componente (função de módulo): lê o idioma gravado neste navegador.
+function localeAtual(): string {
+  try { return LOCALE_IDIOMA[localStorage.getItem('soma10-idioma') || 'pt'] || 'pt-BR' } catch { return 'pt-BR' }
+}
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -91,7 +95,7 @@ function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (c
 function fmtData(iso: string) {
   if (!iso) return ''
   const soDia = /^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z)?$/.test(iso)
-  return new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', ...(soDia ? { timeZone: 'UTC' } : {}) })
+  return new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso).toLocaleDateString(localeAtual(), { day: '2-digit', month: '2-digit', ...(soDia ? { timeZone: 'UTC' } : {}) })
 }
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
@@ -513,7 +517,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const step = dias <= 12 ? 1 : dias <= 45 ? 7 : dias <= 120 ? 15 : dias <= 240 ? 30 : 60
   for (let d = 0; d <= totalDias; d += step) {
     const dt = new Date(inicio.getTime() + d * 24 * 60 * 60 * 1000)
-    labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' }) })
+    labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString(LOCALE_IDIOMA[idioma], { day: '2-digit', month: '2-digit' }) })
   }
 
   // ---------- AÇÕES compartilhadas pela Lista (mesmas gravações do Gantt, com Ctrl+Z):
