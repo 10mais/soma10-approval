@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { t, nomeDaArea, normalizarIdioma, idiomasDisponiveis, TEXTOS, IDIOMAS } from '@/lib/i18n'
+import { t, nomeDaArea, normalizarIdioma, idiomasDisponiveis, localeDe, TEXTOS, IDIOMAS } from '@/lib/i18n'
 import { ABAS_PERM } from '@/lib/permissoesGranular'
 
 describe('i18n — o português vira um só', () => {
@@ -69,5 +69,20 @@ describe('i18n — nenhuma aba fica sem nome', () => {
   it('o rótulo do catálogo é o mesmo nome do dicionário (uma fonte só)', () => {
     const divergentes = ABAS_PERM.filter(a => a.label !== nomeDaArea(a.key)).map(a => `${a.key}: ${a.label}`)
     expect(divergentes).toEqual([])
+  })
+})
+
+describe('i18n — data e número seguem o idioma de quem lê', () => {
+  it('cada idioma tem o seu locale (nunca o da máquina que roda o build)', () => {
+    expect(localeDe('pt')).toBe('pt-BR')
+    expect(localeDe('en')).toBe('en-US')
+    expect(localeDe('es')).toBe('es-ES')
+    expect(localeDe()).toBe('pt-BR')
+  })
+
+  it('o mês sai no idioma pedido', () => {
+    const d = new Date(Date.UTC(2026, 8, 20))
+    expect(d.toLocaleDateString(localeDe('pt'), { month: 'long', timeZone: 'UTC' })).toBe('setembro')
+    expect(d.toLocaleDateString(localeDe('en'), { month: 'long', timeZone: 'UTC' })).toBe('September')
   })
 })

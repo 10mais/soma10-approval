@@ -12,6 +12,7 @@ import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
 // Nome de cada área vem do dicionário (lib/i18n), no idioma de quem está usando.
 import { TEXTOS, t as traduz } from '@/lib/i18n'
 import { useArea, useT, useIdioma } from '@/app/components/Idioma'
+import { localeDe } from '@/lib/i18n'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
@@ -72,14 +73,14 @@ const TarefaModalNotif = dynamic(() => import('../components/GestaoTarefas').the
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
-async function acompanharPublicacao(id: string): Promise<{ ok: boolean; error?: string }> {
+async function acompanharPublicacao(id: string): Promise<{ ok: boolean; error?: string; chaveErro?: string }> {
   for (let i = 0; i < 75; i++) { // ~5 min (75 x 4s)
     await new Promise(r => setTimeout(r, 4000))
     const p = await fetch(`/api/posts?id=${id}`).then(r => r.json()).catch(() => null)
     if (p?.status === 'publicado') return { ok: true }
     if (p?.status === 'falha_publicacao') return { ok: false, error: p.erroPublicacao || 'falha na publicação' }
   }
-  return { ok: false, error: 'A publicação está demorando mais que o normal (Reels podem demorar). Aguarde alguns instantes e confira se o post foi publicado antes de tentar de novo.' }
+  return { ok: false, chaveErro: 'dash.publicacao-demorando' }
 }
 
 function LoadingPlaceholder() {
@@ -106,17 +107,10 @@ type Cliente = { id: string; nome: string; instagram: string; metaConectado?: bo
 type ConfigAgencia = { nomeAgencia: string; emailContato?: string; logo?: string; corPrimaria?: string; corSecundaria?: string; recrutamentoLogo?: string; recrutamentoTitulo?: string; recrutamentoSubtitulo?: string; recrutamentoDescricao?: string; recrutamentoMensagemFinalTitulo?: string; recrutamentoMensagemFinal?: string; recrutamentoVagas?: string[] }
 type MetaPage = { pageId: string; pageName: string; pageToken: string | null; igToken?: string; igUserId?: string; instagram: { id: string; username: string; profilePic?: string } | null }
 
-const STATUS_LABEL: Record<string, string> = {
-  rascunho: 'Rascunho',
-  agendado: 'Agendado',
-  aguardando_aprovacao: 'Aguardando',
-  aprovado: 'Aprovado',
-  corrigir: 'Corrigir',
-  reprovado: 'Reprovado',
-  publicando: 'Publicando...',
-  publicado: 'Publicado',
-  falha_publicacao: 'Falha ao publicar',
-}
+// O rótulo do status vive no dicionário (lib/i18n, 'status.post.*'); aqui fica só a lista
+// de estados, na ordem em que aparecem no filtro. A CHAVE gravada no post não muda.
+const STATUS_ORDEM = ['rascunho', 'agendado', 'aguardando_aprovacao', 'aprovado', 'corrigir', 'reprovado', 'publicando', 'publicado', 'falha_publicacao']
+const rotuloStatus = (s: string, tr: (c: string) => string) => (STATUS_ORDEM.includes(s) ? tr(`status.post.${s}`) : s)
 
 // Cor de fundo (clara) do selo / bolinha
 const STATUS_COLOR: Record<string, string> = {
@@ -145,16 +139,16 @@ const STATUS_TEXT: Record<string, string> = {
 }
 
 const ENTREGAVEIS_OPCOES = [
-  { key: 'social_media', label: 'Social Media' },
-  { key: 'trafego_meta', label: 'Trafego pago Meta Ads' },
-  { key: 'trafego_google', label: 'Trafego pago Google Ads' },
-  { key: 'landing_page', label: 'Landing Page(s)' },
-  { key: 'branding', label: 'Branding / Identidade visual' },
-  { key: 'email_marketing', label: 'E-mail marketing' },
-  { key: 'consultoria', label: 'Consultoria' },
-  { key: 'crm', label: 'Sistema CRM' },
-  { key: 'google_meu_negocio', label: 'Google Meu Negócio' },
-  { key: 'hospedagem', label: 'Hospedagem / servidor de páginas' },
+  { key: 'social_media', rotulo: 'dash.social-media' },
+  { key: 'trafego_meta', rotulo: 'dash.trafego-meta' },
+  { key: 'trafego_google', rotulo: 'dash.trafego-google' },
+  { key: 'landing_page', rotulo: 'dash.landing-pages' },
+  { key: 'branding', rotulo: 'dash.branding' },
+  { key: 'email_marketing', rotulo: 'dash.email-marketing' },
+  { key: 'consultoria', rotulo: 'dash.consultoria' },
+  { key: 'crm', rotulo: 'dash.sistema-crm' },
+  { key: 'google_meu_negocio', rotulo: 'dash.google-negocio' },
+  { key: 'hospedagem', rotulo: 'dash.hospedagem' },
 ]
 
 // Ícones de contorno (substituem emojis por um visual mais profissional)
@@ -268,6 +262,7 @@ function ImagemComFallback({ src }: { src: string }) {
 
 // Área de aprovações do cliente (fila simples com os 2 portões)
 function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; clientes: any[]; onAtualizado: () => void }) {
+  const tr = useT()
   const [enviando, setEnviando] = useState<string | null>(null)
   const [comentario, setComentario] = useState<Record<string, string>>({})
   const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
@@ -279,8 +274,8 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
     const r = await fetch('/api/esteira/aprovar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
-    if (r?.semData) { toast('Defina a data e horario da postagem antes de aprovar o criativo.', 'erro'); setEnviando(null); return }
+    }).then(x => x.json()).catch(() => ({ error: tr('dash.erro-conexao') }))
+    if (r?.semData) { toast(tr('dash.av-defina-data'), 'erro'); setEnviando(null); return }
     if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
     setEnviando(null)
     onAtualizado()
@@ -288,10 +283,10 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>Minhas aprovações</h2>
+      <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.minhas-aprovacoes')}</h2>
       {pendentes.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
-          <p>Nenhuma pendência de aprovação no momento.</p>
+          <p>{tr('dash.nenhuma-pendencia-aprovacao-mo')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -317,7 +312,7 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
                       )}
                       <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{p.clienteNome}</span>
                       <span style={{ background: ehCopy ? 'var(--v2-info-bg)' : 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? 'var(--v2-info)' : 'var(--v2-amber)' }}>
-                        {ehCopy ? 'Aprovar copy' : 'Aprovar criativo'}
+                        {ehCopy ? tr('dash.aprovar-copy') : tr('dash.aprovar-criativo')}
                       </span>
                     </div>
                     {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--v2-ink3)' }}>Briefing: {p.briefing}</p>}
@@ -359,11 +354,11 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
         <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-hot)' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>Informe o motivo da rejeição. O criativo voltará para a equipe com esta justificativa.</p>
-            <textarea lang="pt-BR" value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder="Motivo da rejeição..."
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.informe-motivo-rejeicao-criati')}</p>
+            <textarea lang="pt-BR" value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder={tr('dash.motivo-rejeicao')}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-hot-bg)', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
               <button disabled={!motivoRejeicao.trim() || enviando === rejeitar.id} onClick={async () => {
                 await agir(rejeitar.id, rejeitar.ehCopy ? 'ajuste_copy' : 'ajuste_criativo', `REJEITADO: ${motivoRejeicao}`)
                 setRejeitar(null)
@@ -517,12 +512,12 @@ function Dashboard() {
   })
   const [resyncFotos, setResyncFotos] = useState(false)
   async function ressincronizarFotos() {
-    if (!(await confirmar('Rebuscar as fotos de perfil dos clientes conectados e salvá-las de forma permanente? Corrige as imagens que quebram por expirarem no Instagram.', { titulo: 'Re-sincronizar fotos', okLabel: 'Re-sincronizar' }))) return
+    if (!(await confirmar(tr('dash.dlg-resync-fotos'), { titulo: tr('dash.tit-resync-fotos'), okLabel: tr('dash.ok-resync') }))) return
     setResyncFotos(true)
     const r = await fetch('/api/clientes/resync-fotos', { method: 'POST' }).then(x => x.json()).catch(() => null)
     setResyncFotos(false)
     if (r?.ok) {
-      toast(`${r.atualizados} foto(s) atualizada(s)${r.falhas ? ` · ${r.falhas} falha(s)` : ''}.`, 'sucesso')
+      toast(tr('dash.fotos-atualizadas', { n: r.atualizados }) + (r.falhas ? tr('dash.falhas-extra', { n: r.falhas }) : '') + '.', 'sucesso')
       fetch('/api/clientes').then(x => x.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})
     } else toast(r?.error || 'Falha ao re-sincronizar.', 'erro')
   }
@@ -614,7 +609,7 @@ function Dashboard() {
     const r = await fetch(`/api/resumo-semanal?${q}`).then(x => x.json()).catch(() => null)
     setResumoCarregando(false)
     if (r?.texto !== undefined) { setResumoTexto(r.texto); setResumoInfo({ publicados: r.publicados, aguardando: r.aguardando, proximos: r.proximos, emailCliente: r.emailCliente || '' }) }
-    else setResumoMsg('Não foi possível gerar o resumo.')
+    else setResumoMsg(tr('dash.falha-resumo'))
   }
   async function abrirResumo(clienteId: string) {
     setResumoCliente(clienteId); setResumoTexto(''); setResumoInfo(null); setResumoMsg('')
@@ -629,8 +624,8 @@ function Dashboard() {
     setSalvandoPresets(true)
     const r = await fetch('/api/resumo-templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates: resumoTemplates }) }).then(x => x.json()).catch(() => null)
     setSalvandoPresets(false)
-    if (r?.ok) { setResumoTemplates(r.templates); setResumoMsg('Predefinições salvas.') }
-    else setResumoMsg('Falha ao salvar predefinições.')
+    if (r?.ok) { setResumoTemplates(r.templates); setResumoMsg(tr('dash.predefinicoes-salvas')) }
+    else setResumoMsg(tr('dash.falha-salvar-predef'))
   }
   async function enviarResumoEmail() {
     if (!resumoCliente || enviandoResumo) return
@@ -862,14 +857,14 @@ function Dashboard() {
     if (erro) {
       setAba('clientes')
       const erros: Record<string, string> = {
-        acesso_negado: 'Acesso negado. Você cancelou a autorização.',
-        token_falhou: 'Não foi possível obter o token de acesso.',
-        sem_paginas: 'Nenhuma Página do Facebook encontrada. Verifique se você é administrador de alguma página.',
-        sem_conta_ig: 'Não foi possível identificar a conta do Instagram. Use uma conta Profissional (Business/Criador).',
-        ig_nao_configurado: 'Integração do Instagram não configurada (faltam INSTAGRAM_APP_ID/SECRET na Vercel).',
-        erro_interno: 'Erro interno. Tente novamente.',
+        acesso_negado: tr('dash.acesso-negado'),
+        token_falhou: tr('dash.falha-token'),
+        sem_paginas: tr('dash.sem-pagina-facebook'),
+        sem_conta_ig: tr('dash.falha-conta-instagram'),
+        ig_nao_configurado: tr('dash.instagram-nao-configurado'),
+        erro_interno: tr('dash.erro-interno'),
       }
-      setMetaErro(erros[erro] || 'Erro desconhecido.')
+      setMetaErro(erros[erro] || tr('dash.erro-desconhecido-ponto'))
     }
     // Consome os params UMA vez. Sem isto a URL segue com ?meta_pages/?meta_error
     // e todo refresh re-dispara este efeito, jogando de volta em Clientes.
@@ -961,7 +956,7 @@ function Dashboard() {
     )
   }
   // Usado nos forms de criar/editar usuário (override do próprio usuário)
-  const renderPermissoes = (r: string, perm: any, onChange: (p: any) => void) => matrizNiveis(r, perm, onChange, 'usuario', 'Permissões deste usuário')
+  const renderPermissoes = (r: string, perm: any, onChange: (p: any) => void) => matrizNiveis(r, perm, onChange, 'usuario', tr('dash.permissoes-usuario'))
 
   // Override DETALHADO por usuário (por aba + por ação). Começa no padrão do papel
   // (config:permissoesGranular) e o admin refina só o que quiser deste usuário.
@@ -982,8 +977,8 @@ function Dashboard() {
     const cats = Array.from(new Set(abasVisiveis.map(a => a.categoria)))
     return (
       <div style={{ width: '100%', marginTop: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: 12 }}>
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Permissões detalhadas (telas e ações)</label>
-        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ações</p>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('dash.permissoes-detalhadas-telas-ac')}</label>
+        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('dash.acoes')}</p>
         {ACOES_PERM.map(a => {
           const on = podeAcaoGranular(r, a.key, perm, permGranular)
           return (
@@ -993,7 +988,7 @@ function Dashboard() {
             </div>
           )
         })}
-        <p style={{ margin: '10px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Telas</p>
+        <p style={{ margin: '10px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('dash.telas')}</p>
         {cats.map(cat => (
           <div key={cat} style={{ marginBottom: 6 }}>
             <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cat}</p>
@@ -1008,7 +1003,7 @@ function Dashboard() {
             })}
           </div>
         ))}
-        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{escopo === 'papel' ? 'Vale para todo mundo com este papel. Salva na hora.' : 'Começa no padrão do papel; ajuste só o que for específico deste usuário.'}</p>
+        <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{escopo === 'papel' ? tr('dash.vale-para-papel') : tr('dash.comeca-no-padrao')}</p>
       </div>
     )
   }
@@ -1035,8 +1030,8 @@ function Dashboard() {
     const atualizado = { ...permGranular, [papel]: novoPerm }
     setPermGranular(atualizado)
     fetch('/api/permissoes-granular', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(atualizado) })
-      .then(r => r.json()).then(d => { if (!d?.ok) toast(d?.error || 'Não foi possível salvar as permissões.', 'erro') })
-      .catch(() => toast('Falha de conexão ao salvar as permissões.', 'erro'))
+      .then(r => r.json()).then(d => { if (!d?.ok) toast(d?.error || tr('dash.falha-salvar-permissoes'), 'erro') })
+      .catch(() => toast(tr('dash.av-falha-permissoes'), 'erro'))
   }
 
   // Quando estamos numa area travada de cliente, o Analytics deve sempre se referir a ele
@@ -1049,7 +1044,7 @@ function Dashboard() {
   }, [verComoClienteId, ehCliente, session])
 
   async function buscarAnalytics() {
-    if (!analyticsClienteId) { setAnalyticsErro('Selecione um cliente para ver o desempenho.'); return }
+    if (!analyticsClienteId) { setAnalyticsErro(tr('dash.selecione-cliente-desempenho')); return }
     setAnalyticsLoading(true)
     setAnalyticsErro('')
     setAnalyticsData(null)
@@ -1058,14 +1053,14 @@ function Dashboard() {
       const res = await fetch(`/api/analytics?${params.toString()}`)
       const data = await res.json()
       if (!res.ok || data?.error) {
-        setAnalyticsErro(data?.error || 'Não foi possível carregar os dados de desempenho.')
+        setAnalyticsErro(data?.error || tr('dash.falha-carregar-desempenho'))
       } else if (data?.conectado === false) {
-        setAnalyticsErro(data?.error || 'Este cliente ainda não tem a conta do Instagram conectada via Meta.')
+        setAnalyticsErro(data?.error || tr('dash.sem-instagram-meta'))
       } else {
         setAnalyticsData(data)
       }
     } catch (e) {
-      setAnalyticsErro('Erro de comunicação ao buscar os dados de desempenho.')
+      setAnalyticsErro(tr('dash.erro-buscar-desempenho'))
     }
     setAnalyticsLoading(false)
   }
@@ -1081,15 +1076,15 @@ function Dashboard() {
       const totais = analyticsData.totais || {}
 
       doc.setFontSize(16)
-      doc.text(`Relatório de desempenho — ${cliente?.nome || analyticsData.instagramUsername || 'Cliente'}`, 14, 18)
+      doc.text(tr('dash.pdf-relatorio', { nome: cliente?.nome || analyticsData.instagramUsername || tr('dash.cliente') }), 14, 18)
       doc.setFontSize(10)
       doc.setTextColor(120)
       doc.text(`Período: ${analyticsDesde} a ${analyticsAte}${analyticsData.instagramUsername ? '  ·  @' + analyticsData.instagramUsername : ''}`, 14, 25)
-      doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 30)
+      doc.text(tr('dash.gerado-em', { quando: new Date().toLocaleString(localeDe(idioma)) }), 14, 30)
 
       autoTable(doc, {
         startY: 38,
-        head: [['Posts', 'Curtidas', 'Comentários', 'Alcance', 'Visualizações', 'Salvamentos', 'Compartilhamentos']],
+        head: [[tr('dash.card-posts-curto'), tr('dash.card-curtidas'), tr('dash.card-comentarios'), tr('dash.card-alcance'), tr('dash.card-visualizacoes'), tr('dash.card-salvamentos'), tr('dash.card-compartilhamentos')]],
         body: [[
           totais.posts ?? 0, totais.curtidas ?? 0, totais.comentarios ?? 0,
           totais.alcance ?? 0, totais.impressoes ?? 0, totais.salvamentos ?? 0, totais.compartilhamentos ?? 0,
@@ -1101,9 +1096,9 @@ function Dashboard() {
       const posts: any[] = analyticsData.posts || []
       autoTable(doc, {
         startY: ((doc as any).lastAutoTable?.finalY || 38) + 12,
-        head: [['Data', 'Tipo', 'Legenda', 'Curtidas', 'Comentários', 'Alcance', 'Visualizações']],
+        head: [[tr('dash.pdf-data'), tr('comum.tipo'), tr('dash.legenda'), tr('dash.card-curtidas'), tr('dash.card-comentarios'), tr('dash.card-alcance'), tr('dash.card-visualizacoes')]],
         body: posts.map(p => [
-          p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : '—',
+          p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString(localeDe(idioma)) : '—',
           p.tipo || '—',
           (p.legenda || '').slice(0, 60) + ((p.legenda || '').length > 60 ? '…' : ''),
           p.curtidas ?? 0, p.comentarios ?? 0, p.alcance ?? 0, p.impressoes ?? 0,
@@ -1117,7 +1112,7 @@ function Dashboard() {
       doc.save(`analytics-${(cliente?.nome || 'cliente').toLowerCase().replace(/\s+/g, '-')}-${analyticsDesde}-a-${analyticsAte}.pdf`)
     } catch (e: any) {
       console.error('[pdf] erro:', e)
-      toast(`Não foi possível gerar o PDF: ${e?.message || 'erro desconhecido'}`, 'erro')
+      toast(tr('dash.falha-pdf', { erro: e?.message || tr('dash.erro-desconhecido') }), 'erro')
     }
     setExportandoPdf(false)
   }
@@ -1139,13 +1134,13 @@ function Dashboard() {
         if (p.status === 'agendado') return ehDoMes(p.dataAgendada)
         return false
       }).length
-      const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+      const MESES = Array.from({ length: 12 }, (_, i) => tr(`mes.${i + 1}`))
       const { montarModeloRelatorio } = await import('@/lib/relatorioMensal')
       const modelo = montarModeloRelatorio(cliente, analyticsData, entregue, `${MESES[mes]}/${ano}`)
       setRelatorioEditor({ cliente, modelo }) // abre o editor; exporta lá dentro
     } catch (e: any) {
       console.error('[relatorio] erro:', e)
-      toast(`Não foi possível gerar o relatório: ${e?.message || 'erro desconhecido'}`, 'erro')
+      toast(tr('dash.falha-relatorio', { erro: e?.message || tr('dash.erro-desconhecido') }), 'erro')
     }
     setGerandoRelatorio(false)
   }
@@ -1154,7 +1149,7 @@ function Dashboard() {
     const acao = valor.acao || 'publicar'
     if (!valor.clienteId) return
     setCriandoPost(true)
-    setRascunhoMsg(acao === 'publicar' ? 'Publicando nas redes selecionadas...' : acao === 'agendar' ? 'Agendando a postagem...' : acao === 'aprovacao' ? 'Enviando para aprovação...' : 'Salvando rascunho...')
+    setRascunhoMsg(acao === 'publicar' ? tr('dash.publicando-redes') : acao === 'agendar' ? tr('dash.agendando') : acao === 'aprovacao' ? tr('dash.enviando-aprovacao') : tr('dash.salvando-rascunho'))
     // Fecha o compositor e volta ao Planner enquanto processa/carrega
     setEditandoPostId(null)
     setComposerPrefill(null)
@@ -1180,9 +1175,9 @@ function Dashboard() {
         body: JSON.stringify({ id: res.post.id }),
       }).catch(() => {})
       const pub = await acompanharPublicacao(res.post.id)
-      setRascunhoMsg(pub.ok ? 'Publicado com sucesso nas redes selecionadas!' : `Falha ao publicar: ${pub.error}`)
+      setRascunhoMsg(pub.ok ? tr('dash.publicado-sucesso') : tr('dash.falha-publicar-erro', { erro: pub.chaveErro ? tr(pub.chaveErro) : pub.error || '' }))
     } else if (acao === 'agendar') {
-      setRascunhoMsg(`Post agendado para ${new Date(valor.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`)
+      setRascunhoMsg(tr('dash.post-agendado-para', { quando: new Date(valor.dataAgendada).toLocaleString(localeDe(idioma), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }))
     } else if (acao === 'aprovacao') {
       // Link ÚNICO do cliente (mostra TODOS os materiais aguardando aprovação dele)
       const tk = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: valor.clienteId }) }).then(x => x.json()).catch(() => null)
@@ -1191,9 +1186,9 @@ function Dashboard() {
         if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
         setLinkAprovModal({ url, cliente: cliente?.nome || 'cliente' })
       }
-      setRascunhoMsg(url ? 'Enviado para aprovação! Link pronto para compartilhar.' : 'Enviado para aprovação. Pegue o link em Configurações › Clientes › "Link de aprovação".')
+      setRascunhoMsg(url ? tr('dash.av-enviado-link') : 'Enviado para aprovação. Pegue o link em Configurações › Clientes › "Link de aprovação".')
     } else {
-      setRascunhoMsg('Rascunho salvo — visível apenas para a equipe.')
+      setRascunhoMsg(tr('dash.rascunho-salvo'))
     }
 
     // insere o novo post localmente; ao publicar, o status muda no servidor -> recarrega só ele
@@ -1279,11 +1274,11 @@ function Dashboard() {
   // (aprovado com data ainda NÃO entra no índice `agendados` que o cron lê).
   async function reprogramarPost(post: Post, valorLocal: string) {
     const d = new Date(valorLocal)
-    if (!valorLocal || isNaN(d.getTime())) { toast('Escolha uma data e hora válidas.', 'erro'); return }
+    if (!valorLocal || isNaN(d.getTime())) { toast(tr('dash.av-data-invalida'), 'erro'); return }
     const novaISO = d.toISOString()
     const status = post.status === 'aprovado' ? 'agendado' : post.status
     if (d.getTime() < Date.now() && status === 'agendado') {
-      if (!(await confirmar('Essa data já passou. Com o material agendado, o robô de publicação vai postar na próxima verificação (até 1 minuto). Confirma?', { titulo: 'Data no passado', okLabel: 'Programar mesmo assim' }))) return
+      if (!(await confirmar(tr('dash.dlg-data-passada'), { titulo: tr('dash.tit-data-passado'), okLabel: tr('dash.ok-programar-assim') }))) return
     }
     setSalvandoReprog(true)
     const antes = post.dataAgendada
@@ -1298,13 +1293,13 @@ function Dashboard() {
       // Desfaz o otimismo: melhor a data velha na tela do que uma mentira.
       setPosts(ps => ps.map(x => x && x.id === post.id ? { ...x, dataAgendada: antes, status: post.status } as any : x))
       setPostPreview(x => x && x.id === post.id ? { ...x, dataAgendada: antes, status: post.status } as any : x)
-      toast('Não foi possível reprogramar. Tente novamente.', 'erro')
+      toast(tr('dash.av-falha-reprogramar'), 'erro')
       return
     }
     setReprogramandoId(null)
     toast(status === 'agendado'
-      ? `Programado para ${d.toLocaleString('pt-BR')}.`
-      : `Data remarcada para ${d.toLocaleString('pt-BR')}. Entra na fila de publicação quando o cliente aprovar.`, 'sucesso')
+      ? tr('dash.programado-para', { quando: d.toLocaleString(localeDe(idioma)) })
+      : tr('dash.data-remarcada', { quando: d.toLocaleString(localeDe(idioma)) }), 'sucesso')
   }
 
   // Vindo das Solicitações, o post PRECISA vir do servidor: `posts` foi carregado
@@ -1337,18 +1332,18 @@ function Dashboard() {
       const link = `${window.location.origin}/status/${r.token}`
       navigator.clipboard?.writeText(link).catch(() => {})
       window.open(link, '_blank')
-    } else toast('Não foi possível gerar o link de status.', 'erro')
+    } else toast(tr('dash.av-falha-link-status'), 'erro')
   }
 
   // Revoga o link de status atual (para de funcionar) e gera um novo.
   async function revogarLinkStatus(clienteId: string) {
-    if (!(await confirmar('Revogar o link de status atual? O link que você já enviou vai PARAR de funcionar e um novo será gerado no lugar.', { titulo: 'Revogar link de status', okLabel: 'Revogar e gerar novo', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-revogar-status'), { titulo: tr('dash.tit-revogar-status'), okLabel: tr('dash.ok-revogar'), perigo: true }))) return
     const r = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, rotacionar: true }) }).then(x => x.json()).catch(() => null)
     if (r?.token) {
       const link = `${window.location.origin}/status/${r.token}`
       navigator.clipboard?.writeText(link).catch(() => {})
-      toast('Link de status antigo revogado. Novo link gerado e copiado.', 'sucesso')
-    } else toast('Não foi possível revogar o link de status.', 'erro')
+      toast(tr('dash.av-link-status-revogado'), 'sucesso')
+    } else toast(tr('dash.av-falha-revogar-status'), 'erro')
   }
 
   // Link ÚNICO de aprovação do cliente (todos os materiais aguardando aprovação)
@@ -1356,21 +1351,21 @@ function Dashboard() {
     const r = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
     if (r?.token) {
       const link = `${window.location.origin}/aprovacoes/${r.token}`
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(() => toast('Link único de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(link, 'info'))
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(() => toast(tr('dash.av-link-unico-copiado'), 'sucesso')).catch(() => toast(link, 'info'))
       else toast(link, 'info')
-    } else toast('Não foi possível gerar o link de aprovação.', 'erro')
+    } else toast(tr('dash.av-falha-link-aprovacao'), 'erro')
   }
 
   // Revoga o link de aprovação atual (para de funcionar) e gera um novo.
   async function revogarLinkAprovacao(clienteId: string, nome: string) {
-    if (!(await confirmar('Revogar o link de aprovação atual? O link que você já enviou vai PARAR de funcionar e um novo será gerado no lugar.', { titulo: 'Revogar link', okLabel: 'Revogar e gerar novo', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-revogar-link'), { titulo: tr('dash.tit-revogar-link'), okLabel: tr('dash.ok-revogar'), perigo: true }))) return
     const r = await fetch('/api/aprovacao-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId, rotacionar: true }) }).then(x => x.json()).catch(() => null)
     if (r?.token) {
       const url = `${window.location.origin}/aprovacoes/${r.token}`
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
       setLinkAprovModal({ url, cliente: nome })
-      toast('Link antigo revogado. Novo link gerado e copiado.', 'sucesso')
-    } else toast('Não foi possível revogar o link.', 'erro')
+      toast(tr('dash.av-link-revogado'), 'sucesso')
+    } else toast(tr('dash.av-falha-revogar'), 'erro')
   }
 
   // Reaproveitamento (1 vira 3): duplica o post como rascunho em outro formato
@@ -1380,8 +1375,8 @@ function Dashboard() {
     if (res?.ok) {
       if (res.post) setPosts(ps => [res.post, ...ps])
       setPostPreview(null)
-      toast(`Cópia criada como rascunho (${formato}). Ajuste a mídia/legenda no Planner.`, 'sucesso')
-    } else toast('Não foi possível reaproveitar o post.', 'erro')
+      toast(tr('dash.copia-criada', { formato }), 'sucesso')
+    } else toast(tr('dash.av-falha-reaproveitar'), 'erro')
   }
 
   // Fechar o compositor NUNCA joga trabalho fora (pedido do dono, 16/07): salva
@@ -1399,7 +1394,7 @@ function Dashboard() {
     if (!v.clienteId) {
       // Sem cliente não há onde guardar: o rascunho ficaria órfão, invisível no
       // Planner. Melhor segurar aqui do que "salvar" no vazio.
-      toast('Escolha o cliente para eu salvar seu rascunho — sem ele o material se perde.', 'erro')
+      toast(tr('dash.av-escolha-cliente'), 'erro')
       return
     }
     if (editandoPostId) salvarEdicaoPost({ ...v, acao: 'salvar' })
@@ -1448,7 +1443,7 @@ function Dashboard() {
         if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
         setLinkAprovModal({ url, cliente: cliente.nome || 'cliente' })
       }
-      toast('Enviado para aprovação do cliente!', 'sucesso')
+      toast(tr('dash.av-enviado-aprovacao'), 'sucesso')
     }
   }
 
@@ -1475,16 +1470,16 @@ function Dashboard() {
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).catch(() => {})
       setLinkAprovModal({ url, cliente: cliente?.nome || 'cliente' })
     }
-    toast('Reenviado para aprovação! Link pronto para compartilhar.', 'sucesso')
+    toast(tr('dash.av-reenviado'), 'sucesso')
   }
 
   async function excluirPost(post: Post) {
-    if (!(await confirmar(`Excluir definitivamente este post${post.clienteNome ? ' de ' + post.clienteNome : ''}? Esta ação não pode ser desfeita.`, { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-excluir-post-de', { de: post.clienteNome ? tr('dash.de-cliente', { nome: post.clienteNome }) : '' }), { titulo: tr('dash.excluir-post'), okLabel: tr('comum.excluir'), perigo: true }))) return
     setPosts(ps => ps.filter(p => p!.id !== post.id))
     const res = await fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' })
     if (!res.ok) {
       fetch('/api/posts').then(r => r.json()).then(setPosts)
-      toast('Não foi possível excluir o post.', 'erro')
+      toast(tr('dash.av-falha-excluir-post'), 'erro')
     }
   }
 
@@ -1505,8 +1500,8 @@ function Dashboard() {
     setRepublicandoId(null)
     const atual = await fetch(`/api/posts?id=${post.id}`).then(x => x.json()).catch(() => null)
     if (atual && !atual.error) setPosts(ps => ps.map(p => p && p.id === post.id ? atual : p))
-    if (!r.ok) toast(`Ainda não foi possível publicar: ${r.error}. Dica: edite o post e verifique a mídia (vídeos em MP4/MOV; imagens em JPG/PNG até 10 MB) antes de tentar de novo.`, 'erro')
-    else { setPostPreview(null); toast('Publicado com sucesso!', 'sucesso') }
+    if (!r.ok) toast(tr('dash.publicar-demorou', { erro: r.chaveErro ? tr(r.chaveErro) : r.error || '' }), 'erro')
+    else { setPostPreview(null); toast(tr('dash.av-publicado'), 'sucesso') }
   }
 
   function alternarSelecaoPost(id: string) {
@@ -1517,13 +1512,13 @@ function Dashboard() {
     setPosts(ps => ps.filter(p => p!.id !== id))
     setBibSelecionados(lista => lista.filter(x => x !== id))
     const res = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' })
-    if (!res.ok) { fetch('/api/posts').then(r => r.json()).then(setPosts); toast('Não foi possível excluir o post.', 'erro') }
+    if (!res.ok) { fetch('/api/posts').then(r => r.json()).then(setPosts); toast(tr('dash.av-falha-excluir-post'), 'erro') }
   }
 
   async function excluirSelecionados() {
     const ids = [...bibSelecionados]
     if (ids.length === 0) return
-    if (!(await confirmar(`Mover ${ids.length} post(s) para a Lixeira? Você pode restaurar em até 30 dias.`, { titulo: 'Excluir posts', okLabel: 'Mover para a Lixeira', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-mover-lixeira', { n: ids.length }), { titulo: tr('dash.tit-excluir-posts'), okLabel: tr('dash.ok-lixeira'), perigo: true }))) return
     setPosts(ps => ps.filter(p => !ids.includes(p!.id)))
     setBibSelecionados([])
     const resultados = await Promise.all(ids.map(id => fetch(`/api/posts?id=${id}`, { method: 'DELETE' })))
@@ -1598,7 +1593,7 @@ function Dashboard() {
   async function criarCliente() {
     setErroCliente('')
     setCredenciaisGeradas(null)
-    if (novoCliente.nome.trim().length < 2) { setErroCliente('Informe o nome do cliente.'); return }
+    if (novoCliente.nome.trim().length < 2) { setErroCliente(tr('dash.informe-nome-cliente')); return }
     if (novoCliente.instagram.trim().length < 2) { setErroCliente('Informe o @instagram do cliente.'); return }
     if (novoCliente.loginEmail.trim() && !emailValido(novoCliente.loginEmail)) { setErroCliente('O e-mail de acesso informado não é válido.'); return }
     const res = await fetch('/api/clientes', {
@@ -1608,7 +1603,7 @@ function Dashboard() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setErroCliente(data?.error || 'Erro ao criar cliente.')
+      setErroCliente(data?.error || tr('dash.erro-criar-cliente'))
       return
     }
     if (data?.cliente?.loginEmail && data?.senhaGerada) {
@@ -1627,10 +1622,10 @@ function Dashboard() {
 
   async function criarUsuario() {
     setErroUsuario('')
-    if (novoUsuario.nome.trim().length < 2) { setErroUsuario('Informe o nome do colaborador.'); return }
+    if (novoUsuario.nome.trim().length < 2) { setErroUsuario(tr('dash.informe-nome-colaborador')); return }
     if (!emailValido(novoUsuario.email)) { setErroUsuario('Informe um e-mail válido.'); return }
-    if (novoUsuario.senha.trim().length < 6) { setErroUsuario('A senha deve ter pelo menos 6 caracteres.'); return }
-    if (!novoUsuario.role) { setErroUsuario('Selecione o nível de acesso.'); return }
+    if (novoUsuario.senha.trim().length < 6) { setErroUsuario(tr('dash.senha-curta')); return }
+    if (!novoUsuario.role) { setErroUsuario(tr('dash.selecione-nivel')); return }
     const res = await fetch('/api/usuarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1638,7 +1633,7 @@ function Dashboard() {
     })
     if (!res.ok) {
       const data = await res.json().catch(() => null)
-      setErroUsuario(data?.error || 'Erro ao adicionar colaborador.')
+      setErroUsuario(data?.error || tr('dash.erro-add-colaborador'))
       return
     }
     fetch('/api/usuarios').then(r => r.json()).then(setUsuarios)
@@ -1676,10 +1671,10 @@ function Dashboard() {
     })
     setSalvandoConfig(false)
     if (res.ok) {
-      setConfigMsg('Configurações salvas com sucesso!')
+      setConfigMsg(tr('dash.config-salvas'))
       setTimeout(() => setConfigMsg(''), 3000)
     } else {
-      setConfigMsg('Erro ao salvar configurações.')
+      setConfigMsg(tr('dash.erro-salvar-config'))
     }
   }
 
@@ -1691,8 +1686,8 @@ function Dashboard() {
     })
     const d = await res.json().catch(() => null)
     setSalvandoSaldoIA(false)
-    if (res.ok && d) { setSaldoIA(d); setSaldoIAMsg('Saldo atualizado!'); setTimeout(() => setSaldoIAMsg(''), 3000) }
-    else setSaldoIAMsg('Erro ao salvar.')
+    if (res.ok && d) { setSaldoIA(d); setSaldoIAMsg(tr('dash.saldo-atualizado')); setTimeout(() => setSaldoIAMsg(''), 3000) }
+    else setSaldoIAMsg(tr('dash.erro-salvar'))
   }
 
   async function uploadLogoAgencia(arquivo: File) {
@@ -1703,9 +1698,9 @@ function Dashboard() {
   }
 
   async function resetarSenhaCliente(clienteId: string, nome: string) {
-    if (!(await confirmar('Gerar uma NOVA senha de acesso para este cliente? A senha atual deixa de funcionar.', { titulo: 'Resetar senha do cliente', okLabel: 'Resetar senha' }))) return
+    if (!(await confirmar(tr('dash.dlg-nova-senha'), { titulo: tr('dash.tit-resetar-senha-cliente'), okLabel: tr('dash.ok-resetar-senha') }))) return
     const r = await fetch('/api/clientes/senha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
-    if (!r || r.error) { toast(r?.error || 'Não foi possível resetar a senha.', 'erro'); return }
+    if (!r || r.error) { toast(r?.error || tr('dash.falha-resetar-senha'), 'erro'); return }
     setCredenciaisGeradas({ nome, email: r.email, senha: r.senha })
   }
 
@@ -1751,7 +1746,7 @@ function Dashboard() {
   async function cobrarStripe(clienteId: string) {
     const r = await fetch('/api/stripe/cobrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId }) }).then(x => x.json()).catch(() => null)
     if (r?.url) window.open(r.url, '_blank')
-    else toast(r?.error || 'Não foi possível iniciar a cobrança.', 'erro')
+    else toast(r?.error || tr('dash.falha-cobranca'), 'erro')
   }
 
   // ---- Brands Board ----
@@ -1763,7 +1758,7 @@ function Dashboard() {
     const clienteAtual: any = clientes.find(c => c.id === verComoClienteId)
     const tinhaDados = !!(clienteAtual && (clienteAtual.segmento || clienteAtual.palavrasChave || clienteAtual.descricao || clienteAtual.publicoAlvo || clienteAtual.tomDeVoz || clienteAtual.preferencias || clienteAtual.documentoMarca))
     if (formVazio && tinhaDados) {
-      if (!(await confirmar('O Brand Board está vazio e este cliente já tinha dados salvos. Salvar vai APAGAR o Brand Board. Tem certeza?', { titulo: 'Brand Board vazio', okLabel: 'Salvar mesmo assim', perigo: true }))) return
+      if (!(await confirmar(tr('dash.dlg-brand-vazio'), { titulo: tr('dash.tit-brand-vazio'), okLabel: tr('dash.ok-salvar-assim'), perigo: true }))) return
     }
     setSalvandoBrand(true); setBrandMsg('')
     const r = await fetch('/api/clientes', {
@@ -1771,17 +1766,17 @@ function Dashboard() {
       body: JSON.stringify({ id: verComoClienteId, ...brandForm }),
     }).then(x => x.json()).catch(() => null)
     setSalvandoBrand(false)
-    if (!r || r.error) { setBrandMsg(r?.error ? `Erro ao salvar: ${r.error}` : 'Erro ao salvar. Tente novamente.'); setTimeout(() => setBrandMsg(''), 6000); return }
+    if (!r || r.error) { setBrandMsg(r?.error ? `Erro ao salvar: ${r.error}` : tr('dash.erro-salvar-tente')); setTimeout(() => setBrandMsg(''), 6000); return }
     // Atualiza a lista local imediatamente (nao depende do cache) para nao "sumir"
     setClientes(cs => cs.map((c: any) => c.id === verComoClienteId ? { ...c, ...brandForm } : c))
-    setBrandMsg('Identidade da marca salva!')
+    setBrandMsg(tr('dash.identidade-salva'))
     setBrandModo('card')
     setTimeout(() => setBrandMsg(''), 4000)
   }
 
   async function excluirBrand() {
     if (!verComoClienteId) return
-    if (!(await confirmar('Excluir o Brand Board deste cliente? As informações e o DNA da marca serão apagados.', { titulo: 'Excluir Brand Board', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-excluir-brand'), { titulo: tr('dash.excluir-brand-board'), okLabel: tr('comum.excluir'), perigo: true }))) return
     const vazio = { segmento: '', palavrasChave: '', descricao: '', publicoAlvo: '', tomDeVoz: '', preferencias: '', documentos: [], documentoMarca: '', documentoMarcaGeradoEm: '' }
     await fetch('/api/clientes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1802,23 +1797,23 @@ function Dashboard() {
   async function gerarDocumentoIA() {
     if (!verComoClienteId) return
     // Regenerar consome créditos da IA — confirmar antes
-    if (brandForm.documentoMarca && !(await confirmar('Regenerar o documento vai consumir créditos da IA e substituir o documento atual. Deseja continuar?', { titulo: 'Regenerar documento', okLabel: 'Continuar' }))) return
+    if (brandForm.documentoMarca && !(await confirmar(tr('dash.dlg-regerar-doc'), { titulo: tr('dash.tit-regerar-doc'), okLabel: tr('dash.ok-continuar') }))) return
     // Garante que o Brand Board atual está salvo antes de gerar
     await salvarBrand()
-    setGerandoDocIA(true); setDocIAMsg('Pesquisando o nicho e gerando o documento... (pode levar até 1 minuto)')
+    setGerandoDocIA(true); setDocIAMsg(tr('dash.pesquisando-nicho'))
     try {
       const r = await fetch('/api/brand/gerar-documento', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clienteId: verComoClienteId }),
       })
       const data = await r.json()
-      if (!r.ok) { setDocIAMsg(data?.error || 'Falha ao gerar o documento.'); return }
+      if (!r.ok) { setDocIAMsg(data?.error || tr('dash.falha-gerar-doc')); return }
       setBrandForm((b: any) => ({ ...b, documentoMarca: data.documentoMarca, documentoMarcaGeradoEm: data.documentoMarcaGeradoEm }))
       await fetch('/api/clientes').then(res => res.json()).then(setClientes)
-      setDocIAMsg('Documento de marca gerado!')
+      setDocIAMsg(tr('dash.doc-gerado'))
       setTimeout(() => setDocIAMsg(''), 5000)
     } catch {
-      setDocIAMsg('Erro de conexão ao gerar o documento.')
+      setDocIAMsg(tr('dash.erro-conexao-doc'))
     } finally {
       setGerandoDocIA(false)
     }
@@ -1837,7 +1832,7 @@ function Dashboard() {
   }
 
   async function excluirCliente(id: string, nome: string) {
-    if (!(await confirmar(`Tem certeza que deseja excluir o cliente "${nome}"? Essa ação não pode ser desfeita.`, { titulo: 'Excluir cliente', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-excluir-cliente', { nome }), { titulo: tr('dash.tit-excluir-cliente'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch('/api/clientes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -1850,12 +1845,12 @@ function Dashboard() {
   // (o servidor esconde o conteúdo de cliente arquivado) + corta o acesso ao portal.
   // Reversível — restaurar traz tudo de volta. Nada é apagado.
   async function arquivarCliente(id: string, nome: string, arquivar: boolean) {
-    if (arquivar && !(await confirmar(`Arquivar "${nome}"? Ele some das listas, dos seletores e do Planner/Studio/Tarefas, e o acesso ao portal dele é cortado. Você pode restaurar depois — nada é apagado.`, { titulo: 'Arquivar cliente', okLabel: 'Arquivar' }))) return
+    if (arquivar && !(await confirmar(`Arquivar "${nome}"? Ele some das listas, dos seletores e do Planner/Studio/Tarefas, e o acesso ao portal dele é cortado. Você pode restaurar depois — nada é apagado.`, { titulo: tr('dash.tit-arquivar-cliente'), okLabel: tr('dash.ok-arquivar') }))) return
     await fetch('/api/clientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, arquivado: arquivar, arquivadoEm: arquivar ? new Date().toISOString() : '' }) })
     setEditandoCliente(null)
     fetch('/api/clientes').then(r => r.json()).then(setClientes)
     fetch('/api/clientes?arquivados=1').then(r => r.json()).then(d => setClientesArquivados(Array.isArray(d) ? d : [])).catch(() => {})
-    toast(arquivar ? 'Cliente arquivado. O conteúdo dele saiu das telas.' : 'Cliente restaurado.', 'sucesso')
+    toast(arquivar ? tr('dash.cliente-arquivado') : tr('dash.cliente-restaurado'), 'sucesso')
   }
 
   function iniciarEdicaoUsuario(u: any) {
@@ -1875,7 +1870,7 @@ function Dashboard() {
   }
 
   async function excluirUsuario(email: string, nome: string) {
-    if (!(await confirmar(`Tem certeza que deseja excluir o colaborador "${nome}"?`, { titulo: 'Excluir colaborador', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('dash.dlg-excluir-colaborador', { nome }), { titulo: tr('dash.tit-excluir-colaborador'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch('/api/usuarios', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -1926,7 +1921,7 @@ function Dashboard() {
 
   if (status === 'loading') return splash
     ? <SplashRegra pronto={false} onFim={() => setSplash(false)} tema={tema} />
-    : <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>Carregando...</p></div>
+    : <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}><p>{tr('conta.carregando')}</p></div>
 
   // RAIZ DO PAINEL — tema escuro de VERDADE (tokens), sem o antigo filter:invert.
   // O filtro criava containing block para ~80 elementos position:fixed e estourava
@@ -1951,7 +1946,7 @@ function Dashboard() {
       <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Alternar modo claro/escuro */}
-          <button onClick={alternarTema} title={tema === 'escuro' ? 'Mudar para modo claro' : 'Mudar para modo escuro'} style={{
+          <button onClick={alternarTema} title={tema === 'escuro' ? tr('dash.mudar-claro') : tr('dash.mudar-escuro')} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink2)',
             width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -1960,7 +1955,7 @@ function Dashboard() {
 
           {/* Sininho de notificações — popup dropdown */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title="Notificações" style={{
+            <button onClick={() => setInboxAberto(v => { const novo = !v; if (novo && notificacoes.some(n => !n.lida)) marcarTodasNotificacoesLidas(); return novo })} title={tr('dash.notificacoes')} style={{
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--v2-ink2)',
               width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -1980,11 +1975,11 @@ function Dashboard() {
                 <div onClick={fecharFora(() => setInboxAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 360, maxHeight: 460, overflowY: 'auto', background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 12px 36px rgba(0,0,0,0.18)', border: '1px solid var(--v2-rule)', zIndex: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--v2-rule)', position: 'sticky', top: 0, background: 'var(--v2-surface)' }}>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)' }}>Notificações</span>
-                    <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Ver todas</button>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)' }}>{tr('dash.notificacoes')}</span>
+                    <button onClick={() => { setInboxAberto(false); setAba('inbox' as any) }} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{tr('dash.ver-todas')}</button>
                   </div>
                   {notificacoes.length === 0 ? (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma notificação.</div>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('dash.nenhuma-notificacao')}</div>
                   ) : (
                     notificacoes.slice(0, 12).map(n => (
                       <div key={n.id} onClick={() => {
@@ -1998,9 +1993,9 @@ function Dashboard() {
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</p>
                           <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>{n.mensagem}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString(localeDe(idioma), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
-                        <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
+                        <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title={tr('comum.excluir')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 2, flexShrink: 0 }}>×</button>
                       </div>
                     ))
                   )}
@@ -2017,14 +2012,14 @@ function Dashboard() {
               if (v.startsWith('papel:')) { setVerComoPapel(v.replace('papel:', '') as any); setAba('home'); return }
             }} style={{ padding: '4px 8px', borderRadius: 8, border: `1px solid ${verComoPapel ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoPapel ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, cursor: 'pointer' }}>
               <option value="">{tr('topo.ver-como')}</option>
-              {(verComoPapel || verComoClienteId) && <option value="_reset">Voltar à minha visão</option>}
+              {(verComoPapel || verComoClienteId) && <option value="_reset">{tr('dash.voltar-minha-visao')}</option>}
               <optgroup label="Colaboradores (papel)">
-                <option value="papel:gerente">Como Gerente</option>
-                <option value="papel:usuario">Como Usuário</option>
+                <option value="papel:gerente">{tr('dash.como-gerente')}</option>
+                <option value="papel:usuario">{tr('dash.como-usuario')}</option>
               </optgroup>
             </select>
           )}
-          <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Minha conta">
+          <button onClick={() => setAba('minha-conta' as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title={tr('dash.minha-conta')}>
             <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: minhaFoto ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {minhaFoto
                 ? <img src={minhaFoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2039,7 +2034,7 @@ function Dashboard() {
 
       {/* Menu hamburguer (mobile) — abre o drawer da sidebar */}
       {mobile && !menuMobile && (
-        <button onClick={() => setMenuMobile(true)} aria-label="Menu" className="soma10-no-invert"
+        <button onClick={() => setMenuMobile(true)} aria-label={tr('dash.menu')} className="soma10-no-invert"
           style={{ position: 'fixed', top: 'calc(12px + env(safe-area-inset-top))', left: 12, zIndex: 120, width: 40, height: 40, borderRadius: 12, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink)" strokeWidth="2.2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         </button>
@@ -2062,7 +2057,7 @@ function Dashboard() {
           height: '100vh', overflowY: 'auto', padding: recolhida ? '22px 10px' : '24px 16px', boxSizing: 'border-box', transition: 'width 0.18s', scrollbarWidth: 'none',
         }}>
           {/* Logo no topo — wordmark quando expandida, ícone quando recolhida */}
-          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid var(--v2-surface1)' }} title="Ir para o início">
+          <div onClick={() => { if (!ehCliente) setVerComoClienteId(''); setAba(ehCliente ? 'aprovacoes' : 'home'); setPostPreview(null); setInboxAberto(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'flex-start', cursor: 'pointer', padding: '4px 6px 16px', marginBottom: 4, borderBottom: '1px solid var(--v2-surface1)' }} title={tr('dash.ir-inicio')}>
             {recolhida
               ? <div style={{ background: 'var(--v2-ink)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}><img src="/logo.svg" alt="Soma10" style={{ width: 24, height: 24, objectFit: 'contain' }} /></div>
               : <img src={tema === 'escuro' ? '/soma10-logo-dark.png' : '/soma10-logo.png'} alt="Soma10" style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain' }} />}
@@ -2076,7 +2071,7 @@ function Dashboard() {
                 </span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao.nome}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Painel do cliente</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.painel-cliente')}</p>
                 </div>
               </div>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2086,7 +2081,7 @@ function Dashboard() {
                     fontWeight: aba === a ? 500 : 400, color: aba === a ? 'var(--v2-amber)' : 'var(--v2-ink2)',
                     background: aba === a ? 'var(--v2-amber-bg)' : 'transparent', fontSize: 14, fontFamily: 'var(--v2-font)',
                   }}>
-                    {a === 'aprovacoes' ? 'Aprovações' : 'Playbook'}
+                    {area(a === 'aprovacoes' ? 'aprovacoes' : 'playbook')}
                   </button>
                 ))}
               </nav>
@@ -2102,9 +2097,9 @@ function Dashboard() {
               Reaproveita o lugar do sub-account; operador travado não tem seletor. */}
           {podeTrocarLoja && !recolhida && (
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>Ver loja</label>
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>{tr('dash.ver-loja')}</label>
               <select value={verComoLojaId} onChange={e => setVerComoLojaId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${verComoLojaId ? 'var(--v2-amber-on)' : 'var(--v2-rule)'}`, background: verComoLojaId ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                <option value="">Todas (rede)</option>
+                <option value="">{tr('dash.todas-rede')}</option>
                 {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
               </select>
             </div>
@@ -2114,7 +2109,7 @@ function Dashboard() {
               outros caminhos; aqui só fica o cartão de SAÍDA quando ele está ativo. */}
           {!!verComoClienteId && !ehCliente && !ehVendas && !recolhida && !perfilTurismo && !perfilClinica && !perfilCidadania && !perfilTelefonia && <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6, padding: '0 10px' }}>
-              {verComoClienteId ? 'Vendo como cliente' : 'Cliente'}
+              {verComoClienteId ? tr('dash.vendo-como-cliente') : tr('dash.cliente')}
             </label>
             {verComoClienteId ? (
               // Cliente travado: cada cliente é único, sem opção de trocar para outro
@@ -2124,7 +2119,7 @@ function Dashboard() {
                     <AvatarCliente logo={clienteEmVisualizacao?.logo} nome={clienteEmVisualizacao?.nome} />
                   </span>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--v2-ink)' }}>
-                    {clienteEmVisualizacao?.nome || 'Cliente'}
+                    {clienteEmVisualizacao?.nome || tr('dash.cliente')}
                   </p>
                 </div>
                 <button onClick={() => { setVerComoClienteId('') }} style={{
@@ -2155,7 +2150,7 @@ function Dashboard() {
                       <input
                         value={buscaCliente}
                         onChange={e => setBuscaCliente(e.target.value)}
-                        placeholder="Buscar cliente..."
+                        placeholder={tr('dash.buscar-cliente')}
                         autoFocus
                         style={{
                           width: '100%', padding: '10px 12px 10px 34px', borderRadius: 10, border: '1.5px solid var(--v2-rule)',
@@ -2190,7 +2185,7 @@ function Dashboard() {
                           </button>
                         ))}
                       {buscaCliente && clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && (
-                        <p style={{ margin: '4px 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum cliente encontrado.</p>
+                        <p style={{ margin: '4px 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.nenhum-cliente-encontrado')}</p>
                       )}
                     </div>
                   </>
@@ -2204,7 +2199,7 @@ function Dashboard() {
           {/* NIVEL VENDAS — papel isolado: so CRM, Meu dia, Personal list, Mensagens */}
           {ehVendas && (
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Vendas</span>}
+              {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.vendas')}</span>}
               <NavBtn chave="crm" label="CRM" />
               {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
@@ -2229,8 +2224,8 @@ function Dashboard() {
                 </nav>
               )}
               {([
-                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', 'Meu perfil'], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
-                { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', 'Mapas mentais']]) as [string, string][] },
+                { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', tr('dash.meu-perfil')], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
+                { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{tituloGrupo(grupo.grupo, grupo.titulo)}</span>}
@@ -2240,7 +2235,7 @@ function Dashboard() {
               {/* Operação (turismo) — viagens, ônibus, reservas (adicionadas por brick) */}
               {perfilTurismo && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Operação</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.operacao')}</span>}
                   <NavBtn chave="viagens" label="Viagens" />
                   <NavBtn chave="calendario-viagens" label="Calendário" />
                   <NavBtn chave="reservas" label="Reservas" />
@@ -2250,20 +2245,20 @@ function Dashboard() {
               {/* Clínica — catálogo de procedimentos e métodos (brick do perfil clínica) */}
               {perfilClinica && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Clínica</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.clinica')}</span>}
                   <NavBtn chave="procedimentos" label="Procedimentos e Métodos" />
                 </nav>
               )}
               {/* Assessoria (cidadania) — esteira de processos (brick do perfil cidadania) */}
               {perfilCidadania && podeGrupo('crm') && (
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Assessoria</span>}
+                  {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.assessoria')}</span>}
                   <NavBtn chave="processos" label="Processos" />
                 </nav>
               )}
               {/* Comunicação — acima de Estratégia */}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 12 }}>
-                {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Comunicação</span>}
+                {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.comunicacao')}</span>}
                 <NavBtn chave="inbox" label="Inbox" onClick={() => { setAba('inbox' as any); marcarTodasNotificacoesLidas() }} badge={notificacoes.filter(n => !n.lida).length} />
                 <NavBtn chave="mensagens" label="Chat interno" onClick={() => { setAba('mensagens' as any); setChatNaoLidas(0) }} badge={chatNaoLidas} />
                 <NavBtn chave="solicitacoes" label="Solicitações do cliente" onClick={() => setAba('solicitacoes' as any)} />
@@ -2283,19 +2278,19 @@ function Dashboard() {
                   {podeGrupo('financeiro') && <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />}
                   {roleView === 'admin' && (<>
                     <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
-                    <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                    <NavBtn chave="usuarios" label={tr('dash.colaboradores')} fontSize={13} />
                     <NavBtn chave="reunioes" label="Reuniões internas" fontSize={13} />
                     <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
                     <NavBtn chave="recrutamento" label="Trabalhe Conosco" fontSize={13} />
                   </>)}
-                  {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
+                  {podeGrupo('clientes') && <NavBtn chave="clientes" label={tr('dash.clientes')} fontSize={13} />}
                   {roleView === 'admin' && <NavBtn chave="config" label="Configurações" fontSize={13} />}
                 </>
               ) : (
                 <>
                   {podeGrupo('financeiro') && (<>
                     <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Gestão</span>
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.gestao')}</span>
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
                       <NavBtn chave="rentabilidade" label="Financeiro" fontSize={13} />
                     </nav>
@@ -2303,13 +2298,13 @@ function Dashboard() {
                   {roleView === 'admin' && (<>
                     {/* Pessoas e Cultura (inclui Carga da equipe) */}
                     <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '12px 0' }} />
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>Pessoas e Cultura</span>
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.pessoas-cultura')}</span>
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <NavBtn chave="carga" label="Carga da equipe" fontSize={13} />
-                      <NavBtn chave="usuarios" label="Colaboradores" fontSize={13} />
+                      <NavBtn chave="usuarios" label={tr('dash.colaboradores')} fontSize={13} />
                       <NavBtn chave="reunioes" label="Reuniões internas" fontSize={13} />
                       <NavBtn chave="candidaturas" label="Candidaturas" fontSize={13} />
-                      <NavBtn chave="recrutamento" label="Página Trabalhe Conosco" fontSize={13} />
+                      <NavBtn chave="recrutamento" label={tr('dash.pagina-trabalhe-conosco')} fontSize={13} />
                     </nav>
                   </>)}
                   {(roleView === 'admin' || podeGrupo('clientes')) && (<>
@@ -2319,13 +2314,13 @@ function Dashboard() {
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', margin: '0 0 6px',
                       background: 'none', border: 'none', cursor: 'pointer',
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tr('nav.config')}</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: configAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
                     </button>
                     {configAberto && (
                     <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {roleView === 'admin' && <NavBtn chave="config" label="Geral" fontSize={13} />}
-                      {podeGrupo('clientes') && <NavBtn chave="clientes" label="Clientes" fontSize={13} />}
+                      {podeGrupo('clientes') && <NavBtn chave="clientes" label={tr('dash.clientes')} fontSize={13} />}
                     </nav>
                     )}
                   </>)}
@@ -2338,7 +2333,7 @@ function Dashboard() {
           {verComoClienteId && !ehCliente && (
             <div>
               {!recolhida && <>
-                <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente</p>
+                <p style={{ margin: '0 0 4px', padding: '0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tr('dash.cliente')}</p>
                 <p style={{ margin: '0 0 8px', padding: '0 4px', fontSize: 11, color: 'var(--v2-ok)' }}>Vendo como: {clienteEmVisualizacao?.nome}</p>
               </>}
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -2353,7 +2348,7 @@ function Dashboard() {
 
         {/* Botão recolher/expandir — flutuante (desktop; no mobile o menu é o hamburguer) */}
         {!ehCliente && !mobile && (
-          <button onClick={alternarRecolhida} title={recolhida ? 'Expandir menu' : 'Recolher menu'} className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'}
+          <button onClick={alternarRecolhida} title={recolhida ? tr('dash.expandir-menu') : tr('dash.recolher-menu')} className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'}
             style={{ position: 'fixed', left: recolhida ? 17 : 196, bottom: 18, zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '8px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', transition: 'left 0.18s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: recolhida ? 'none' : 'rotate(180deg)' }}><path d="M9 18l6-6-6-6" /></svg>
           </button>
@@ -2362,7 +2357,7 @@ function Dashboard() {
         {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
         {mobile && !ehCliente && (
           <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-            {[{ k: 'home', label: 'Início' }, { k: 'meu-card', label: 'Meu perfil' }, { k: 'mensagens', label: 'Chat' }].map(it => {
+            {[{ k: 'home', label: tr('dash.inicio') }, { k: 'meu-card', label: tr('dash.meu-perfil') }, { k: 'mensagens', label: tr('dash.chat') }].map(it => {
               const ativo = aba === it.k && !menuMobile
               return (
                 <button key={it.k} onClick={() => { if (it.k === 'meu-card') { router.push('/equipe/me'); return } setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
@@ -2373,7 +2368,7 @@ function Dashboard() {
             })}
             <button onClick={() => setMenuMobile(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: menuMobile ? 'var(--v2-ink)' : '#9aa0a6' }}>
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
-              <span style={{ fontSize: 10.5, fontWeight: menuMobile ? 700 : 500 }}>Menu</span>
+              <span style={{ fontSize: 10.5, fontWeight: menuMobile ? 700 : 500 }}>{tr('dash.menu')}</span>
             </button>
           </nav>
         )}
@@ -2387,9 +2382,9 @@ function Dashboard() {
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-amber)' }}>Visualizando como <b>{verComoPapel === 'gerente' ? 'Gerente' : 'Usuário'}</b> — você vê o menu que esse papel enxerga. Suas permissões reais não mudam.</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-amber)' }}>{tr('dash.vendo-como-papel', { papel: tr(verComoPapel === 'gerente' ? 'dash.gerente' : 'dash.usuario') })}</span>
             <span style={{ flex: 1 }} />
-            <button onClick={() => setVerComoPapel('')} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Voltar à minha visão</button>
+            <button onClick={() => setVerComoPapel('')} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('dash.voltar-minha-visao')}</button>
           </div>
         )}
 
@@ -2415,7 +2410,7 @@ function Dashboard() {
         {aba === 'posts' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : 'Todos os Posts'}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{clienteEmVisualizacao ? `Posts de ${clienteEmVisualizacao.nome}` : tr('dash.todos-posts')}</h2>
               <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 4 }}>
                 {(['lista', 'calendario', 'fluxo'] as const).map(v => (
                   <button key={v} onClick={() => setVisualizacaoPosts(v)} style={{
@@ -2425,7 +2420,7 @@ function Dashboard() {
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                   }}>
                     {v === 'lista' ? <IconList size={14} /> : v === 'calendario' ? <IconCalendar size={14} /> : <IconFlow size={14} />}
-                    {v === 'lista' ? 'Lista' : v === 'calendario' ? 'Calendário' : 'Fluxo'}
+                    {tr(v === 'lista' ? 'dash.lista' : v === 'calendario' ? 'dash.calendario' : 'dash.fluxo')}
                   </button>
                 ))}
               </div>
@@ -2437,10 +2432,10 @@ function Dashboard() {
                 <span style={{ color: 'var(--v2-hot)', display: 'flex' }}><IconAlert size={18} /></span>
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-hot)', flex: 1 }}>
                   {postsView.filter(p => p.status === 'falha_publicacao').length === 1
-                    ? 'Há 1 post que falhou ao publicar. Verifique e tente novamente.'
+                    ? tr('dash.post-falhou')
                     : `Há ${postsView.filter(p => p.status === 'falha_publicacao').length} posts que falharam ao publicar. Verifique e tente novamente.`}
                 </p>
-                <button onClick={() => setAvisoFalhaOculto(true)} title="Dispensar" style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
+                <button onClick={() => setAvisoFalhaOculto(true)} title={tr('dash.dispensar')} style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 2 }}>×</button>
               </div>
             )}
 
@@ -2459,13 +2454,13 @@ function Dashboard() {
                       <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>
                           <span style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[st] || 'var(--v2-surface2)', display: 'inline-block', border: '1px solid rgba(0,0,0,0.08)' }} />
-                          {STATUS_LABEL[st]}
+                          {rotuloStatus(st, tr)}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 999, padding: '2px 8px', border: '1px solid var(--v2-rule)' }}>{itens.length}</span>
                       </div>
                       <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
                         {itens.length === 0 ? (
-                          <p style={{ margin: '8px 4px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>Nenhum post</p>
+                          <p style={{ margin: '8px 4px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>{tr('dash.nenhum-post')}</p>
                         ) : itens.map(post => (
                           <div key={post.id} onClick={() => router.push(`/aprovar/${post.id}`)} style={{
                             background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10, cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
@@ -2497,7 +2492,7 @@ function Dashboard() {
                         </span>
                         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{post.clienteNome}</span>
                         <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700, color: STATUS_TEXT[post.status] || 'var(--v2-ink2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {post.status === 'falha_publicacao' && <IconAlert size={12} />}{STATUS_LABEL[post.status] || post.status}
+                          {post.status === 'falha_publicacao' && <IconAlert size={12} />}{rotuloStatus(post.status, tr)}
                         </span>
                         {(post as any).rascunhoInterno && (
                           <span style={{ background: 'var(--v2-info-bg)', color: '#4338ca', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -2506,7 +2501,7 @@ function Dashboard() {
                         )}
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.legenda}</p>
-                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(post.dataAgendada).toLocaleDateString('pt-BR')}</p>}
+                      {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(post.dataAgendada).toLocaleDateString(localeDe(idioma))}</p>}
                       {post.status === 'falha_publicacao' && post.erroPublicacao && (
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>Erro: {post.erroPublicacao}</p>
                       )}
@@ -2516,7 +2511,7 @@ function Dashboard() {
                         <button onClick={() => republicarPost(post)} disabled={republicandoId === post.id} style={{
                           padding: '8px 14px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, color: '#17150E', cursor: republicandoId === post.id ? 'not-allowed' : 'pointer',
                         }}>
-                          {republicandoId === post.id ? 'Publicando...' : 'Tentar novamente'}
+                          {republicandoId === post.id ? tr('dash.publicando') : tr('dash.tentar-novamente')}
                         </button>
                       )}
                       <button onClick={() => iniciarEdicaoPost(post)} style={{
@@ -2532,16 +2527,16 @@ function Dashboard() {
                       {role !== 'cliente' && (
                         <button onClick={() => {
                           const url = `${window.location.origin}/aprovar/${post.id}${(post as any).codigo ? `?c=${(post as any).codigo}` : ''}`
-                          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast('Link de aprovação copiado! Envie ao cliente.', 'sucesso')).catch(() => toast(url, 'info'))
+                          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast(tr('dash.av-link-aprovacao-copiado'), 'sucesso')).catch(() => toast(url, 'info'))
                           else toast(url, 'info')
-                        }} title="Copiar o link público de aprovação (sem login) para enviar ao cliente" style={{
+                        }} title={tr('dash.copiar-link-publico-aprovacao')} style={{
                           padding: '8px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)', cursor: 'pointer',
                         }}>
                           Copiar link
                         </button>
                       )}
                       {role !== 'cliente' && (
-                        <button onClick={() => excluirPost(post)} title="Excluir post" style={{
+                        <button onClick={() => excluirPost(post)} title={tr('dash.excluir-post')} style={{
                           padding: '8px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, color: 'var(--v2-hot)', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -2567,7 +2562,7 @@ function Dashboard() {
                     padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                     background: plannerView === v ? 'var(--v2-surface)' : 'transparent', color: plannerView === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                     boxShadow: plannerView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                  }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
+                  }}>{tr(v === 'lista' ? 'dash.lista' : 'dash.calendario')}</button>
                 ))}
               </div>
               <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
@@ -2582,7 +2577,7 @@ function Dashboard() {
           <div style={{ background: 'var(--v2-info-bg)', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 18, fontSize: 13, color: 'var(--v2-info)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {criandoPost && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: 'var(--v2-info)', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
-              <span>{rascunhoMsg || 'Processando...'}</span>
+              <span>{rascunhoMsg || tr('dash.processando')}</span>
             </div>
             {criandoPost && (
               <div style={{ position: 'relative', height: 4, borderRadius: 999, background: 'var(--v2-info-bg)', overflow: 'hidden', marginTop: 10 }}>
@@ -2596,12 +2591,12 @@ function Dashboard() {
         {/* CALENDÁRIO (avulso ou dentro do Planner) */}
         {(aba === 'calendario' || (aba === 'planner' && plannerView === 'calendario')) && (
           <div>
-            {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>Calendário de Conteúdo</h2>}
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.calendario-conteudo')}</h2>}
             {/* Filtro de cliente — mesma seleção da Lista (persiste ao atualizar) */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
               <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
                 style={{ minWidth: 220, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                <option value="">Todos os clientes</option>
+                <option value="">{tr('dash.todos-clientes')}</option>
                 {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               </select>
             </div>
@@ -2612,21 +2607,21 @@ function Dashboard() {
         {/* BIBLIOTECA / LISTA do Planner */}
         {(aba === 'biblioteca' || (aba === 'planner' && plannerView === 'lista')) && (
           <div>
-            {aba !== 'planner' && <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>Biblioteca de Conteúdo</h2>}
+            {aba !== 'planner' && <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.biblioteca-conteudo')}</h2>}
 
             {/* Filtros */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-              <input value={bibBusca} onChange={e => setBibBusca(e.target.value)} placeholder="Buscar por legenda..."
+              <input value={bibBusca} onChange={e => setBibBusca(e.target.value)} placeholder={tr('dash.buscar-por-legenda')}
                 style={{ flex: 1.5, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               <select value={bibCliente} onChange={e => setBibCliente(e.target.value)}
                 style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Todos os clientes</option>
+                <option value="">{tr('dash.todos-clientes')}</option>
                 {clientes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               </select>
               <select value={bibStatus} onChange={e => setBibStatus(e.target.value)}
                 style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Todos os status</option>
-                {Object.keys(STATUS_LABEL).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                <option value="">{tr('dash.todos-status')}</option>
+                {STATUS_ORDEM.map(s => <option key={s} value={s}>{rotuloStatus(s, tr)}</option>)}
               </select>
             </div>
 
@@ -2635,7 +2630,7 @@ function Dashboard() {
                 if (!iso) return ''
                 const d = new Date(iso)
                 if (isNaN(d.getTime())) return ''
-                return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                return d.toLocaleString(localeDe(idioma), { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
               }
               // ORDEM POR DATA DE POSTAGEM (dono, 09/09): o que vale é `dataAgendada`, não a
               // hora em que alguém mexeu na peça — regra e testes em lib/plannerFiltro.
@@ -2648,7 +2643,7 @@ function Dashboard() {
               if (filtrados.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
-                    <p>Nenhum conteúdo encontrado com esses filtros.</p>
+                    <p>{tr('dash.nenhum-conteudo-encontrado-ess')}</p>
                   </div>
                 )
               }
@@ -2657,9 +2652,9 @@ function Dashboard() {
                 {bibSelecionados.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 16px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{bibSelecionados.length} selecionado(s)</span>
-                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Selecionar todos</button>
-                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
-                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} /> Apagar selecionados</button>
+                    <button onClick={() => setBibSelecionados(filtrados.map(p => p.id))} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('dash.selecionar-todos')}</button>
+                    <button onClick={() => setBibSelecionados([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('dash.limpar')}</button>
+                    <button onClick={excluirSelecionados} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconTrash size={13} />{tr('dash.apagar-selecionados')}</button>
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
@@ -2693,7 +2688,7 @@ function Dashboard() {
                           }}>{bibSelecionados.includes(post.id) ? <IconCheck size={13} /> : null}</span>
 
                         {/* Lixeira — canto inferior direito */}
-                        <button onClick={async (e) => { e.stopPropagation(); if (await confirmar('Excluir este post? Esta ação não pode ser desfeita.', { titulo: 'Excluir post', okLabel: 'Excluir', perigo: true })) excluirPostDireto(post.id) }} title="Excluir"
+                        <button onClick={async (e) => { e.stopPropagation(); if (await confirmar(tr('dash.dlg-excluir-post'), { titulo: tr('dash.excluir-post'), okLabel: tr('comum.excluir'), perigo: true })) excluirPostDireto(post.id) }} title={tr('comum.excluir')}
                           style={{
                             position: 'absolute', bottom: 6, right: 6, width: 24, height: 24, borderRadius: '50%', cursor: 'pointer',
                             background: 'rgba(0,0,0,0.6)', border: 'none', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
@@ -2719,7 +2714,7 @@ function Dashboard() {
                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
                           </span>
                           <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', color: STATUS_TEXT[post.status] || 'var(--v2-ink2)', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                            {STATUS_LABEL[post.status] || post.status}
+                            {rotuloStatus(post.status, tr)}
                           </span>
                         </div>
                         <p style={{ margin: '0 0 5px', fontSize: 10, color: 'var(--v2-ink3)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -2758,9 +2753,9 @@ function Dashboard() {
                     </div>
                     <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)' }}>{postPreview.clienteNome}</span>
                     <span style={{ marginLeft: 'auto', background: STATUS_COLOR[postPreview.status] || 'var(--v2-surface2)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: STATUS_TEXT[postPreview.status] || 'var(--v2-ink)', cursor: postPreview.erroPublicacao ? 'pointer' : 'default' }}
-                      onClick={() => { if (postPreview.erroPublicacao) toast(postPreview.erroPublicacao, 'erro', 'Motivo da falha') }}
+                      onClick={() => { if (postPreview.erroPublicacao) toast(postPreview.erroPublicacao, 'erro', tr('dash.motivo-falha-titulo')) }}
                       title={postPreview.erroPublicacao || ''}>
-                      {STATUS_LABEL[postPreview.status] || postPreview.status}
+                      {rotuloStatus(postPreview.status, tr)}
                     </span>
                   </div>
                   ) })()}
@@ -2768,7 +2763,7 @@ function Dashboard() {
                   {/* Motivo da falha */}
                   {postPreview.erroPublicacao && (
                     <div style={{ padding: '10px 16px', background: 'var(--v2-hot-bg)', borderBottom: '1px solid var(--v2-hot-bg)', fontSize: 12, color: 'var(--v2-hot)', lineHeight: 1.5 }}>
-                      <strong style={{ display: 'block', marginBottom: 4 }}>Motivo da falha:</strong>
+                      <strong style={{ display: 'block', marginBottom: 4 }}>{tr('dash.motivo-falha-titulo')}</strong>
                       {postPreview.erroPublicacao}
                     </div>
                   )}
@@ -2790,13 +2785,13 @@ function Dashboard() {
                         {imgs.length > 1 && (
                           <>
                             {sidx > 0 && (
-                              <button type="button" onClick={() => setPostPreviewSlide(sidx - 1)} aria-label="Anterior"
+                              <button type="button" onClick={() => setPostPreviewSlide(sidx - 1)} aria-label={tr('dash.anterior')}
                                 style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                               </button>
                             )}
                             {sidx < imgs.length - 1 && (
-                              <button type="button" onClick={() => setPostPreviewSlide(sidx + 1)} aria-label="Próxima"
+                              <button type="button" onClick={() => setPostPreviewSlide(sidx + 1)} aria-label={tr('dash.proxima')}
                                 style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.85)', color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                               </button>
@@ -2831,13 +2826,13 @@ function Dashboard() {
                           <strong>{postPreview.clienteNome}</strong>{' '}{postPreview.legenda}
                         </p>
                         {(postPreview.legenda || '').length > 80 && (
-                          <button onClick={() => setPostLegendaExpandida(true)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 2, color: '#8e8e8e', fontSize: 13.5, cursor: 'pointer' }}>... mais</button>
+                          <button onClick={() => setPostLegendaExpandida(true)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 2, color: '#8e8e8e', fontSize: 13.5, cursor: 'pointer' }}>{tr('dash.mais')}</button>
                         )}
                       </div>
                     )}
                     {postPreview.dataAgendada && (
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>
-                        Agendado para {new Date(postPreview.dataAgendada).toLocaleString('pt-BR')}
+                        {tr('dash.agendado-para', { quando: new Date(postPreview.dataAgendada).toLocaleString(localeDe(idioma)) })}
                       </p>
                     )}
                     {/* PROGRAMAR NOVAMENTE — remarca data/hora aqui mesmo. O caminho
@@ -2846,20 +2841,20 @@ function Dashboard() {
                     {role !== 'cliente' && !['publicado', 'publicando'].includes(postPreview.status) && (
                       reprogramandoId === postPreview.id ? (
                         <div style={{ margin: '0 0 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule2)', borderRadius: 10, padding: '10px 12px' }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Nova data e hora</label>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{tr('dash.nova-data-hora')}</label>
                           <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
                             style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }} />
                           <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', lineHeight: 1.45 }}>
                             {postPreview.status === 'aprovado'
-                              ? 'O material já está aprovado — salvar coloca ele na fila de publicação nesta data.'
+                              ? tr('dash.material-aprovado-fila')
                               : postPreview.status === 'agendado'
-                              ? 'Já está na fila de publicação: salvar só muda o horário em que vai ao ar.'
-                              : 'Remarcar só muda a data. O material entra na fila de publicação quando o cliente aprovar — nada é publicado sem aprovação.'}
+                              ? tr('dash.ja-na-fila')
+                              : tr('dash.remarcar-ajuda')}
                           </p>
                           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                             <button onClick={() => reprogramarPost(postPreview, novaDataReprog)} disabled={salvandoReprog} className="soma10-no-invert"
                               style={{ flex: 1, padding: '9px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: salvandoReprog ? 'not-allowed' : 'pointer' }}>
-                              {salvandoReprog ? 'Salvando...' : 'Salvar programação'}
+                              {salvandoReprog ? tr('dash.salvando') : tr('dash.salvar-programacao')}
                             </button>
                             <button onClick={() => setReprogramandoId(null)} disabled={salvandoReprog}
                               style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
@@ -2869,10 +2864,10 @@ function Dashboard() {
                         </div>
                       ) : (
                         <button onClick={() => { setNovaDataReprog(paraDatetimeLocal(postPreview.dataAgendada)); setReprogramandoId(postPreview.id) }}
-                          title="Remarcar a data e a hora sem abrir o editor"
+                          title={tr('dash.remarcar-data-hora-sem-abrir-e')}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 0 10px', padding: '7px 13px', background: 'var(--v2-info-bg)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                          {postPreview.dataAgendada ? 'Programar novamente' : 'Programar'}
+                          {postPreview.dataAgendada ? tr('dash.programar-novamente') : tr('dash.programar')}
                         </button>
                       )
                     )}
@@ -2893,10 +2888,10 @@ function Dashboard() {
                       return (
                         <div style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <strong>{postPreview.status === 'reprovado' ? 'Motivo da reprovação (cliente):' : 'Ajuste solicitado (cliente):'}</strong>
+                            <strong>{postPreview.status === 'reprovado' ? tr('dash.motivo-reprovacao') : tr('dash.ajuste-solicitado')}</strong>
                             {total > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: tudo ? 'var(--v2-ok)' : 'var(--v2-amber)', whiteSpace: 'nowrap' }}>{feitos}/{total} resolvido{total > 1 ? 's' : ''}</span>}
                           </div>
-                          <p style={{ margin: '2px 0 6px', fontSize: 10.5, color: '#b98a2e' }}>Marque cada item ao resolver. Ao concluir tudo, libera o reenvio para aprovação.</p>
+                          <p style={{ margin: '2px 0 6px', fontSize: 10.5, color: '#b98a2e' }}>{tr('dash.marque-cada-item-ao-resolver-a')}</p>
                           {temMotivo && (
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
                               <span onClick={() => aplicarPatchPostPreview(postPreview.id, { motivoResolvido: !(postPreview as any).motivoResolvido })}><Check on={!!(postPreview as any).motivoResolvido} /></span>
@@ -2909,15 +2904,15 @@ function Dashboard() {
                             return (
                               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
                                 <span onClick={() => marcarAnotacaoResolvida(postPreview, i, !done)}><Check on={done} /></span>
-                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? 'Ver ponto na imagem' : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? 'var(--v2-amber-on)' : '#e5d5a8', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
+                                <span onClick={() => temPonto && setPostPreviewSlide(a.img ?? 0)} title={temPonto ? tr('dash.ver-ponto-imagem') : ''} style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', background: temPonto ? 'var(--v2-amber-on)' : '#e5d5a8', color: 'var(--v2-ink)', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1, cursor: temPonto ? 'pointer' : 'default' }}>{i + 1}</span>
                                 <span style={{ flex: 1, textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.55 : 1 }}>{a.text || a.texto}{temPonto && (postPreview.imagens?.length || 0) > 1 ? <em style={{ color: '#c99a3a' }}> · slide {(a.img ?? 0) + 1}</em> : null}</span>
                               </div>
                             )
                           })}
                           {podeReenviar && (
-                            <button onClick={() => reenviarAprovacao(postPreview)} className="soma10-no-invert" style={{ marginTop: 10, width: '100%', padding: '10px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Tudo resolvido — Reenviar para aprovação</button>
+                            <button onClick={() => reenviarAprovacao(postPreview)} className="soma10-no-invert" style={{ marginTop: 10, width: '100%', padding: '10px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{tr('dash.tudo-resolvido-reenviar-aprova')}</button>
                           )}
-                          {tudo && !podeReenviar && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 700 }}>Todas as alterações resolvidas ✓</div>}
+                          {tudo && !podeReenviar && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 700 }}>{tr('dash.todas-alteracoes-resolvidas')}</div>}
                         </div>
                       )
                     })()}
@@ -2926,12 +2921,12 @@ function Dashboard() {
                     )}
                     {postPreview.status === 'falha_publicacao' && (
                       <button onClick={() => republicarPost(postPreview)} disabled={republicandoId === postPreview.id} className="soma10-no-invert" style={{ width: '100%', padding: '11px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: republicandoId === postPreview.id ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
-                        {republicandoId === postPreview.id ? 'Publicando...' : 'Tentar publicar novamente'}
+                        {republicandoId === postPreview.id ? tr('dash.publicando') : tr('dash.tentar-publicar')}
                       </button>
                     )}
                     {role !== 'cliente' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 600 }}>Reaproveitar como:</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 600 }}>{tr('dash.reaproveitar-como')}</span>
                         {(['feed', 'reel', 'story'] as const).map(f => (
                           <button key={f} onClick={() => reaproveitar(postPreview, f)} style={{ padding: '6px 12px', background: 'var(--v2-info-bg)', color: 'var(--v2-info)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textTransform: 'capitalize' }}>{f}</button>
                         ))}
@@ -2942,13 +2937,13 @@ function Dashboard() {
                         dono, 13/08: nunca no link público). Mesma rota do Studio. */}
                     {role !== 'cliente' && (postPreview.status === 'aguardando_aprovacao' || postPreview.status === 'corrigir' || (postPreview as any).etapa === 'aprovacao_copy' || (postPreview as any).etapa === 'aprovacao_criativo') && (
                       <button onClick={async () => {
-                        if (!(await confirmar('Tirar este material da aprovação do cliente e voltar para a produção? Ele some do link/portal do cliente — o post continua aqui, nada é excluído.', { titulo: 'Voltar para produção', okLabel: 'Voltar para produção' }))) return
+                        if (!(await confirmar(tr('dash.dlg-voltar-producao'), { titulo: tr('dash.tit-voltar-producao'), okLabel: tr('dash.ok-voltar-producao') }))) return
                         const r = await fetch('/api/posts/voltar-aprovacao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: postPreview.id }) }).then(x => x.json()).catch(() => null)
-                        if (!r?.ok) { toast(r?.error || 'Não foi possível voltar o material.', 'erro'); return }
-                        toast('Material fora da aprovação — de volta à produção.', 'sucesso')
+                        if (!r?.ok) { toast(r?.error || tr('dash.falha-voltar-material'), 'erro'); return }
+                        toast(tr('dash.av-fora-aprovacao'), 'sucesso')
                         setPostPreview(null)
                         fetch('/api/posts').then(x => x.json()).then(setPosts)
-                      }} title="Tira da aprovação do cliente sem excluir o material"
+                      }} title={tr('dash.tira-aprovacao-cliente-sem-exc')}
                         style={{ width: '100%', marginTop: 12, padding: '10px 0', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px dashed #fcd34d', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                         Voltar da aprovação (tirar do cliente)
                       </button>
@@ -2961,7 +2956,7 @@ function Dashboard() {
                         Fechar
                       </button>
                       {role !== 'cliente' && (
-                        <button onClick={() => { excluirPost(postPreview); setPostPreview(null) }} title="Excluir post" style={{
+                        <button onClick={() => { excluirPost(postPreview); setPostPreview(null) }} title={tr('dash.excluir-post')} style={{
                           padding: '10px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, color: 'var(--v2-hot)', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -2978,7 +2973,7 @@ function Dashboard() {
         {aba === 'marca' && (
           <div style={{ maxWidth: 820 }}>
             <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--v2-ink)' }}>{area('marca')}{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
-            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.identidade-dna-cliente-isso-al')}</p>
 
             {/* BLOCO FECHADO */}
             {brandModo === 'card' && (
@@ -2989,13 +2984,13 @@ function Dashboard() {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
-                    {brandForm.segmento || 'Identidade preenchida'}{brandForm.documentoMarca ? ' · Documento gerado' : ''}
+                    {brandForm.segmento || tr('dash.identidade-preenchida')}{brandForm.documentoMarca ? ' · Documento gerado' : ''}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={excluirBrand} title="Excluir Brand Board" style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
+                  <button onClick={() => setBrandModo('ver')} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('dash.abrir')}</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '9px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.editar')}</button>
+                  <button onClick={excluirBrand} title={tr('dash.excluir-brand-board')} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><IconTrash size={14} /></button>
                 </div>
               </div>
             )}
@@ -3019,16 +3014,16 @@ function Dashboard() {
               <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1 }}>Brand Board · {clienteEmVisualizacao?.nome || ''}</h3>
-                  <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                  <button onClick={() => setBrandModo('editar')} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('comum.editar')}</button>
+                  <button onClick={() => setBrandModo('card')} style={{ padding: '8px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
                 </div>
                 {([
-                  ['Segmento / Nicho', brandForm.segmento],
-                  ['Palavras-chave', brandForm.palavrasChave],
-                  ['Descrição da empresa', brandForm.descricao],
-                  ['Público-alvo', brandForm.publicoAlvo],
-                  ['Tom de voz', brandForm.tomDeVoz],
-                  ['Preferências / O que evitar', brandForm.preferencias],
+                  [tr('dash.segmento-nicho'), brandForm.segmento],
+                  [tr('dash.palavras-chave'), brandForm.palavrasChave],
+                  [tr('dash.descricao-empresa'), brandForm.descricao],
+                  [tr('dash.publico-alvo'), brandForm.publicoAlvo],
+                  [tr('dash.tom-voz'), brandForm.tomDeVoz],
+                  [tr('dash.preferencias-que-evitar'), brandForm.preferencias],
                 ] as [string, string][]).map(([l, v]) => v ? (
                   <div key={l}>
                     <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{l}</p>
@@ -3037,7 +3032,7 @@ function Dashboard() {
                 ) : null)}
                 {(brandForm.documentos || []).length > 0 && (
                   <div>
-                    <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Documentos</p>
+                    <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('dash.documentos')}</p>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
                       <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--v2-info)' }}><IconDoc size={14} /> {d.nome}</a>
                     ))}
@@ -3045,19 +3040,19 @@ function Dashboard() {
                 )}
                 <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)', flex: 1, minWidth: 200 }}>Documento de marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)', flex: 1, minWidth: 200 }}>{tr('dash.documento-marca-ia')}</h3>
                     <button onClick={gerarDocumentoIA} disabled={gerandoDocIA} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
-                      {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
+                      {gerandoDocIA ? tr('dash.gerando') : (brandForm.documentoMarca ? tr('dash.tit-regerar-doc') : tr('dash.gerar-doc'))}
                     </button>
                   </div>
                   {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
                   {brandForm.documentoMarca ? (
                     <div>
-                      {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}</p>}
+                      {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>{tr('dash.gerado-em', { quando: new Date(brandForm.documentoMarcaGeradoEm).toLocaleString(localeDe(idioma)) })}</p>}
                       <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
                     </div>
                   ) : (
-                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)', margin: 0 }}>Ainda não há documento gerado. Clique em "Gerar documento completo" para a IA estudar o cliente e pesquisar o nicho na internet.</p>
+                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)', margin: 0 }}>{tr('dash.ainda-nao-ha-documento-gerado')}</p>
                   )}
                 </div>
               </div>
@@ -3068,45 +3063,45 @@ function Dashboard() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Segmento / Nicho</label>
-                  <input value={brandForm.segmento || ''} onChange={e => setBrandForm((b: any) => ({ ...b, segmento: e.target.value }))} placeholder="Ex.: Cardiologia, Restaurante, Turismo..."
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.segmento-nicho')}</label>
+                  <input value={brandForm.segmento || ''} onChange={e => setBrandForm((b: any) => ({ ...b, segmento: e.target.value }))} placeholder={tr('dash.ex-cardiologia-restaurante-tur')}
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Palavras-chave (vírgula)</label>
-                  <input value={brandForm.palavrasChave || ''} onChange={e => setBrandForm((b: any) => ({ ...b, palavrasChave: e.target.value }))} placeholder="saúde do coração, exames, prevenção..."
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.palavras-chave-virgula')}</label>
+                  <input value={brandForm.palavrasChave || ''} onChange={e => setBrandForm((b: any) => ({ ...b, palavrasChave: e.target.value }))} placeholder={tr('dash.saude-coracao-exames-prevencao')}
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Descrição da empresa</label>
-                <textarea lang="pt-BR" value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder="O que a empresa faz, diferenciais, serviços..."
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.descricao-empresa')}</label>
+                <textarea lang="pt-BR" value={brandForm.descricao || ''} onChange={e => setBrandForm((b: any) => ({ ...b, descricao: e.target.value }))} placeholder={tr('dash.que-empresa-faz-diferenciais-s')}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Público-alvo</label>
-                  <textarea lang="pt-BR" value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder="Quem é o cliente ideal..."
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.publico-alvo')}</label>
+                  <textarea lang="pt-BR" value={brandForm.publicoAlvo || ''} onChange={e => setBrandForm((b: any) => ({ ...b, publicoAlvo: e.target.value }))} placeholder={tr('dash.quem-cliente-ideal')}
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Tom de voz</label>
-                  <textarea lang="pt-BR" value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder="Formal, acolhedor, descontraído..."
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.tom-voz')}</label>
+                  <textarea lang="pt-BR" value={brandForm.tomDeVoz || ''} onChange={e => setBrandForm((b: any) => ({ ...b, tomDeVoz: e.target.value }))} placeholder={tr('dash.formal-acolhedor-descontraido')}
                     style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Preferências / O que evitar</label>
-                <textarea lang="pt-BR" value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder="Hashtags padrão, temas a evitar, regras da marca..."
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.preferencias-que-evitar')}</label>
+                <textarea lang="pt-BR" value={brandForm.preferencias || ''} onChange={e => setBrandForm((b: any) => ({ ...b, preferencias: e.target.value }))} placeholder={tr('dash.hashtags-padrao-temas-evitar-r')}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
 
               {/* Documentos */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>Documentos (briefing, manual da marca, etc.)</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('dash.documentos-briefing-manual-mar')}</label>
                 {(brandForm.documentos || []).length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                     {(brandForm.documentos || []).map((d: any, i: number) => (
@@ -3119,7 +3114,7 @@ function Dashboard() {
                   </div>
                 )}
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)' }}>
-                  {enviandoDoc ? 'Enviando...' : '+ Adicionar documento'}
+                  {enviandoDoc ? tr('dash.enviando') : '+ Adicionar documento'}
                   <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,audio/*" style={{ display: 'none' }} disabled={enviandoDoc}
                     onChange={e => { if (e.target.files?.[0]) enviarDocBrand(e.target.files[0]); e.target.value = '' }} />
                 </label>
@@ -3128,7 +3123,7 @@ function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <button onClick={salvarBrand} disabled={salvandoBrand}
                   style={{ padding: '12px 28px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: salvandoBrand ? 0.6 : 1 }}>
-                  {salvandoBrand ? 'Salvando...' : 'Salvar identidade'}
+                  {salvandoBrand ? tr('dash.salvando') : tr('dash.salvar-identidade')}
                 </button>
                 <button onClick={() => setBrandModo('card')}
                   style={{ padding: '12px 22px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -3141,7 +3136,7 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Playbook da marca</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.playbook-marca')}</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                       Regras de operação (o que funciona, do&apos;s &amp; don&apos;ts, restrições) que os agentes de IA seguem ao produzir para este cliente.
                     </p>
@@ -3155,14 +3150,14 @@ function Dashboard() {
               <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 18, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Documento de marca (IA)</h3>
+                    <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.documento-marca-ia')}</h3>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
                       A IA estuda todas as informações e pesquisa o nicho na internet para gerar uma referência editorial completa.
                     </p>
                   </div>
                   <button onClick={gerarDocumentoIA} disabled={gerandoDocIA}
                     style={{ padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoDocIA ? 0.6 : 1 }}>
-                    {gerandoDocIA ? 'Gerando...' : (brandForm.documentoMarca ? 'Regenerar documento' : 'Gerar documento completo')}
+                    {gerandoDocIA ? tr('dash.gerando') : (brandForm.documentoMarca ? tr('dash.tit-regerar-doc') : tr('dash.gerar-doc'))}
                   </button>
                 </div>
                 {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}
@@ -3170,7 +3165,7 @@ function Dashboard() {
                   <div>
                     {brandForm.documentoMarcaGeradoEm && (
                       <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>
-                        Gerado em {new Date(brandForm.documentoMarcaGeradoEm).toLocaleString('pt-BR')}
+                        {tr('dash.gerado-em', { quando: new Date(brandForm.documentoMarcaGeradoEm).toLocaleString(localeDe(idioma)) })}
                       </p>
                     )}
                     <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{brandForm.documentoMarca}</pre>
@@ -3189,34 +3184,34 @@ function Dashboard() {
               <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('listening')}{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
               <button onClick={carregarListening} disabled={listeningLoading}
                 style={{ background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {listeningLoading ? 'Buscando...' : (<><IconRefresh size={14} /> Atualizar</>)}
+                {listeningLoading ? tr('dash.buscando') : (<><IconRefresh size={14} />{tr('dash.atualizar')}</>)}
               </button>
             </div>
-            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>Tendências e conteúdos em alta sobre o nicho do cliente (definido no Brand Board).</p>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.tendencias-conteudos-alta-sobr')}</p>
 
-            {listeningLoading && <div style={{ padding: 50, textAlign: 'center', color: 'var(--v2-ink3)' }}>Buscando tendências do nicho...</div>}
+            {listeningLoading && <div style={{ padding: 50, textAlign: 'center', color: 'var(--v2-ink3)' }}>{tr('dash.buscando-tendencias-nicho')}</div>}
 
             {!listeningLoading && listeningData?.semNicho && (
               <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 12, padding: 20, color: 'var(--v2-amber)', fontSize: 14 }}>
-                {listeningData.mensagem} <button onClick={() => setAba('marca')} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Ir para o Brand Board</button>
+                {listeningData.mensagem} <button onClick={() => setAba('marca')} style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>{tr('dash.ir-brand-board')}</button>
               </div>
             )}
 
             {!listeningLoading && listeningData && !listeningData.semNicho && (
               <>
-                <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Termos do nicho: <strong style={{ color: 'var(--v2-ink2)' }}>{(listeningData.termos || []).join(', ')}</strong></p>
+                <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.termos-nicho')}<strong style={{ color: 'var(--v2-ink2)' }}>{(listeningData.termos || []).join(', ')}</strong></p>
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }}>
                   {/* YouTube */}
                   <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                      YouTube Shorts — mais vistos do nicho (5k+ views)
+                      {tr('dash.youtube-shorts')}
                     </h3>
                     {!listeningData.youtubeConfigurado && (
-                      <p style={{ fontSize: 13, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: 12 }}>A chave do YouTube (YOUTUBE_API_KEY) ainda não está ativa na Vercel.</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: 12 }}>{tr('dash.chave-youtube-youtube-api-key')}</p>
                     )}
                     {listeningData.youtubeConfigurado && (listeningData.youtube || []).length === 0 && (
-                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum vídeo encontrado para esses termos.</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.nenhum-video-encontrado-esses')}</p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {(listeningData.youtube || []).map((v: any) => (
@@ -3225,7 +3220,7 @@ function Dashboard() {
                           <div style={{ minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.titulo}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{v.canal}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{v.views.toLocaleString('pt-BR')} views · {v.curtidas.toLocaleString('pt-BR')} curtidas</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.views-curtidas', { views: v.views.toLocaleString(idioma === 'pt' ? 'pt-BR' : idioma === 'es' ? 'es-ES' : 'en-US'), curtidas: v.curtidas.toLocaleString(idioma === 'pt' ? 'pt-BR' : idioma === 'es' ? 'es-ES' : 'en-US') })}</p>
                           </div>
                         </a>
                       ))}
@@ -3238,7 +3233,7 @@ function Dashboard() {
                       <span style={{ fontWeight: 800, color: '#4285f4' }}>G</span> Google Trends — em alta (BR, 7 dias)
                     </h3>
                     {(listeningData.trends || []).length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Sem buscas relacionadas em alta no momento (o Google Trends pode limitar consultas automáticas).</p>
+                      <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.sem-buscas-relacionadas-alta-m')}</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {(listeningData.trends || []).map((t: any, i: number) => (
@@ -3257,11 +3252,11 @@ function Dashboard() {
                   <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--v2-ink)"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
                     TikTok — hashtags em alta (Brasil)
-                    <span style={{ fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 500 }}>· Creative Center</span>
+                    <span style={{ fontSize: 11, color: 'var(--v2-ink3)', fontWeight: 500 }}>{tr('dash.creative-center')}</span>
                   </h3>
-                  <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>Tendências gerais do Brasil. Os <strong style={{ color: 'var(--v2-ok)' }}>verdes</strong> casam com o nicho do cliente.</p>
+                  <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.tiktok-ajuda', { verdes: tr('dash.verdes') })}</p>
                   {!listeningData.tiktokOk ? (
-                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Não foi possível carregar as tendências do TikTok agora (a fonte não-oficial pode estar bloqueando consultas automáticas). O restante do Social Listening segue funcionando.</p>
+                    <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.nao-foi-possivel-carregar-tend')}</p>
                   ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {(listeningData.tiktok || []).map((h: any, i: number) => (
@@ -3269,7 +3264,7 @@ function Dashboard() {
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 20, textDecoration: 'none',
                             background: h.relevante ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: h.relevante ? '1px solid var(--v2-ok-bg)' : '1px solid var(--v2-surface2)' }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: h.relevante ? 'var(--v2-ok)' : 'var(--v2-ink)' }}>#{h.nome}</span>
-                          {h.posts > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{h.posts.toLocaleString('pt-BR')} posts</span>}
+                          {h.posts > 0 && <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{h.posts.toLocaleString(localeDe(idioma))} posts</span>}
                         </a>
                       ))}
                     </div>
@@ -3292,21 +3287,21 @@ function Dashboard() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
               {!clienteEmVisualizacao && role !== 'cliente' && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.cliente')}</label>
                   <select value={analyticsClienteId} onChange={e => { setAnalyticsClienteId(e.target.value); setAnalyticsData(null); setAnalyticsErro('') }}
                     style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}>
-                    <option value="">Selecione...</option>
+                    <option value="">{tr('dash.selecione')}</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
               )}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>De</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.de')}</label>
                 <input type="date" value={analyticsDesde} onChange={e => setAnalyticsDesde(e.target.value)}
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Até</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.ate')}</label>
                 <input type="date" value={analyticsAte} onChange={e => setAnalyticsAte(e.target.value)}
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               </div>
@@ -3314,14 +3309,14 @@ function Dashboard() {
                 padding: '11px 22px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
                 cursor: (analyticsLoading || !analyticsClienteId) ? 'not-allowed' : 'pointer', opacity: (analyticsLoading || !analyticsClienteId) ? 0.5 : 1,
               }}>
-                {analyticsLoading ? 'Carregando...' : 'Buscar dados'}
+                {analyticsLoading ? tr('conta.carregando') : tr('dash.buscar-dados')}
               </button>
               {analyticsData && (
                 <button onClick={exportarAnalyticsPdf} disabled={exportandoPdf} style={{
                   padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13,
                   cursor: exportandoPdf ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
-                  <IconDownload size={14} /> {exportandoPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+                  <IconDownload size={14} /> {exportandoPdf ? tr('dash.gerando-pdf') : tr('dash.exportar-pdf')}
                 </button>
               )}
               {analyticsData && (
@@ -3329,7 +3324,7 @@ function Dashboard() {
                   padding: '11px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13,
                   cursor: gerandoRelatorio ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
-                  <IconDownload size={14} /> {gerandoRelatorio ? 'Gerando...' : 'Relatório mensal'}
+                  <IconDownload size={14} /> {tr(gerandoRelatorio ? 'dash.gerando' : 'dash.relatorio-mensal')}
                 </button>
               )}
             </div>
@@ -3343,7 +3338,7 @@ function Dashboard() {
             {!analyticsData && !analyticsErro && !analyticsLoading && (
               <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>
                 <IconChart size={32} />
-                <p style={{ marginTop: 10 }}>Selecione um cliente e um período, depois clique em "Buscar dados" para ver o desempenho real do Instagram (via API do Meta).</p>
+                <p style={{ marginTop: 10 }}>{tr('dash.selecione-cliente-periodo-depo')}</p>
               </div>
             )}
 
@@ -3354,13 +3349,13 @@ function Dashboard() {
                   {(() => {
                     const ant = analyticsData.totaisAnterior || {}
                     return [
-                      { label: 'Posts no período', valor: analyticsData.totais?.posts, anterior: ant.posts },
-                      { label: 'Curtidas', valor: analyticsData.totais?.curtidas, anterior: ant.curtidas },
-                      { label: 'Comentários', valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
-                      { label: 'Alcance', valor: analyticsData.totais?.alcance, anterior: ant.alcance },
-                      { label: 'Visualizações', valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
-                      { label: 'Salvamentos', valor: analyticsData.totais?.salvamentos, anterior: ant.salvamentos },
-                      { label: 'Compartilhamentos', valor: analyticsData.totais?.compartilhamentos, anterior: ant.compartilhamentos },
+                      { label: tr('dash.card-posts'), valor: analyticsData.totais?.posts, anterior: ant.posts },
+                      { label: tr('dash.card-curtidas'), valor: analyticsData.totais?.curtidas, anterior: ant.curtidas },
+                      { label: tr('dash.card-comentarios'), valor: analyticsData.totais?.comentarios, anterior: ant.comentarios },
+                      { label: tr('dash.card-alcance'), valor: analyticsData.totais?.alcance, anterior: ant.alcance },
+                      { label: tr('dash.card-visualizacoes'), valor: analyticsData.totais?.impressoes, anterior: ant.impressoes },
+                      { label: tr('dash.card-salvamentos'), valor: analyticsData.totais?.salvamentos, anterior: ant.salvamentos },
+                      { label: tr('dash.card-compartilhamentos'), valor: analyticsData.totais?.compartilhamentos, anterior: ant.compartilhamentos },
                     ].map(card => {
                       const v = card.valor ?? 0
                       const a = card.anterior ?? 0
@@ -3369,22 +3364,22 @@ function Dashboard() {
                         <div key={card.label} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                           <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</p>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                            <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{v.toLocaleString('pt-BR')}</p>
+                            <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{v.toLocaleString(localeDe(idioma))}</p>
                             {a > 0 && (
                               <span style={{ fontSize: 12, fontWeight: 700, color: diff > 0 ? 'var(--v2-ok)' : diff < 0 ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>
                                 {diff > 0 ? '+' : ''}{diff}%
                               </span>
                             )}
                           </div>
-                          {a > 0 && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>Anterior: {a.toLocaleString('pt-BR')}</p>}
+                          {a > 0 && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>Anterior: {a.toLocaleString(localeDe(idioma))}</p>}
                         </div>
                       )
                     })
                   })()}
                   {analyticsData.perfil?.followers_count != null && (
                     <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seguidores</p>
-                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{Number(analyticsData.perfil.followers_count).toLocaleString('pt-BR')}</p>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('dash.seguidores')}</p>
+                      <p style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--v2-ink)' }}>{Number(analyticsData.perfil.followers_count).toLocaleString(localeDe(idioma))}</p>
                     </div>
                   )}
                 </div>
@@ -3392,18 +3387,18 @@ function Dashboard() {
                 {/* Série de alcance/visitas ao perfil por dia */}
                 {Array.isArray(analyticsData.insightsConta) && analyticsData.insightsConta.length > 0 && (
                   <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
-                    <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Evolução diária</p>
+                    <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('dash.evolucao-diaria')}</p>
                     {analyticsData.insightsConta.map((serie: any) => {
                       const valores = (serie.values || []).map((v: any) => Number(v.value) || 0)
                       const max = Math.max(1, ...valores)
                       return (
                         <div key={serie.name} style={{ marginBottom: 16 }}>
                           <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'capitalize' }}>
-                            {serie.name === 'reach' ? 'Alcance' : serie.name === 'profile_views' ? 'Visitas ao perfil' : serie.name}
+                            {serie.name === 'reach' ? tr('dash.card-alcance') : serie.name === 'profile_views' ? tr('dash.visitas-perfil') : serie.name}
                           </p>
                           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 70 }}>
                             {(serie.values || []).map((v: any, i: number) => (
-                              <div key={i} title={`${new Date(v.end_time).toLocaleDateString('pt-BR')}: ${v.value}`} style={{
+                              <div key={i} title={`${new Date(v.end_time).toLocaleDateString(localeDe(idioma))}: ${v.value}`} style={{
                                 flex: 1, minWidth: 4, borderRadius: '3px 3px 0 0', background: 'var(--v2-amber-on)',
                                 height: `${Math.max(4, (Number(v.value) / max) * 100)}%`,
                               }} />
@@ -3426,7 +3421,7 @@ function Dashboard() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
                     {analyticsData.demografia.genero && (
                       <div style={{ flex: '1 1 260px', background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Gênero dos seguidores</p>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('dash.genero-seguidores')}</p>
                         {analyticsData.demografia.genero.map((g: any) => {
                           const total = analyticsData.demografia.genero.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
                           const pct = Math.round((Number(g.value) / total) * 100)
@@ -3446,7 +3441,7 @@ function Dashboard() {
                     )}
                     {analyticsData.demografia.idade && (
                       <div style={{ flex: '1 1 260px', background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Faixa etária dos seguidores</p>
+                        <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('dash.faixa-etaria-seguidores')}</p>
                         {analyticsData.demografia.idade.map((g: any) => {
                           const total = analyticsData.demografia.idade.reduce((a: number, x: any) => a + (Number(x.value) || 0), 0) || 1
                           const pct = Math.round((Number(g.value) / total) * 100)
@@ -3473,7 +3468,7 @@ function Dashboard() {
                     Posts por relevancia — melhor desempenho no topo ({analyticsData.posts?.length || 0})
                   </p>
                   {(!analyticsData.posts || analyticsData.posts.length === 0) ? (
-                    <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum post encontrado no período selecionado.</p>
+                    <p style={{ margin: 0, padding: '30px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('dash.nenhum-post-encontrado-periodo')}</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {analyticsData.posts.map((p: any) => (
@@ -3483,13 +3478,13 @@ function Dashboard() {
                           <PostThumb src={p.midiaUrl} size={48} radius={8} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.legenda || '(sem legenda)'}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString('pt-BR') : ''}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{p.publicadoEm ? new Date(p.publicadoEm).toLocaleDateString(localeDe(idioma)) : ''}</p>
                           </div>
                           <div style={{ display: 'flex', gap: 16, flexShrink: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>
-                            <span><strong>{p.curtidas}</strong> curtidas</span>
-                            <span><strong>{p.comentarios}</strong> coment.</span>
-                            <span><strong>{p.alcance}</strong> alcance</span>
-                            <span><strong>{p.impressoes}</strong> views</span>
+                            <span>{tr('dash.n-curtidas', { n: p.curtidas })}</span>
+                            <span>{tr('dash.n-comentarios', { n: p.comentarios })}</span>
+                            <span>{tr('dash.n-alcance', { n: p.alcance })}</span>
+                            <span>{tr('dash.n-views', { n: p.impressoes })}</span>
                           </div>
                         </a>
                       ))}
@@ -3504,7 +3499,7 @@ function Dashboard() {
         {/* NOVO POST */}
         {aba === 'novo-post' && (
           <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <button onClick={fecharComposer} title="Volta salvando o que já foi preenchido" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={fecharComposer} title={tr('dash.volta-salvando-que-ja-foi-pree')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={14} /> {tr('comum.voltar')}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -3532,7 +3527,7 @@ function Dashboard() {
               enviando={criandoPost}
               travarCliente={!!verComoClienteId}
               modoEdicao={!!editandoPostId}
-              textoBotao={editandoPostId ? 'Salvar alterações' : 'Salvar'}
+              textoBotao={tr(editandoPostId ? 'dash.salvar-alteracoes' : 'comum.salvar')}
             />
           </div>
         )}
@@ -3626,14 +3621,14 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('inbox')}</h2>
               {notificacoes.length > 0 && (
-                <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Limpar todas</button>
+                <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>{tr('dash.limpar-todas')}</button>
               )}
             </div>
             {notificacoes.length === 0 ? (
               <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--v2-rule2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)', fontWeight: 500 }}>Nenhuma notificação por enquanto.</p>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Você será notificado sobre tarefas, aprovações, mensagens e prazos.</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)', fontWeight: 500 }}>{tr('dash.nenhuma-notificacao-por-enquan')}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.voce-sera-notificado-sobre-tar')}</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -3677,9 +3672,9 @@ function Dashboard() {
                           {!n.lida && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--v2-amber-on)', flexShrink: 0 }} />}
                         </div>
                         <p style={{ margin: '0 0 4px', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.4 }}>{n.mensagem}</p>
-                        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{new Date(n.criadoEm).toLocaleString(localeDe(idioma), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title="Excluir" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>x</button>
+                      <button onClick={e => { e.stopPropagation(); excluirNotificacao(n.id) }} title={tr('comum.excluir')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, flexShrink: 0 }}>x</button>
                     </div>
                   )
                 })}
@@ -3697,11 +3692,11 @@ function Dashboard() {
                 <button onClick={() => setNotifAberta(null)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
               </div>
               <p style={{ margin: '0 0 14px', fontSize: 14, color: 'var(--v2-ink2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notifAberta.mensagem}</p>
-              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(notifAberta.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{new Date(notifAberta.criadoEm).toLocaleString(localeDe(idioma), { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               {(notifAberta.tarefaId || notifAberta.postId || notifAberta.tipo?.startsWith('tarefa_') || notifAberta.tipo === 'mensagem_privada') && (
                 <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
                   <button onClick={() => abrirItemNotificacao(notifAberta)} className="soma10-no-invert" style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-                    {notifAberta.tarefaId ? 'Abrir tarefa →' : 'Abrir item relacionado →'}
+                    {notifAberta.tarefaId ? tr('dash.abrir-tarefa') : tr('dash.abrir-relacionado')}
                   </button>
                 </div>
               )}
@@ -3712,7 +3707,7 @@ function Dashboard() {
         {/* Carregando a tarefa de uma notificação */}
         {carregandoTarefaNotif && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: 'var(--v2-surface)', borderRadius: 12, padding: '16px 22px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>Abrindo tarefa...</div>
+            <div style={{ background: 'var(--v2-surface)', borderRadius: 12, padding: '16px 22px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>{tr('dash.abrindo-tarefa')}</div>
           </div>
         )}
 
@@ -3727,20 +3722,20 @@ function Dashboard() {
                 </span>
                 <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Link de aprovação — {linkAprovModal.cliente}</h3>
               </div>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Compartilhe este link com o cliente. Ele lista todos os materiais aguardando aprovação, sem precisar de login.</p>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('dash.compartilhe-este-link-cliente')}</p>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <input readOnly value={linkAprovModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', fontFamily: 'inherit' }} />
-                <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkAprovModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
-                  style={{ padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>Copiar</button>
+                <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkAprovModal.url).then(() => toast(tr('dash.av-link-copiado'), 'sucesso')).catch(() => {}) }}
+                  style={{ padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('dash.copiar')}</button>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkAprovModal.url)}`, '_blank')}
+                <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(tr('dash.mensagem-aprovacao') + linkAprovModal.url)}`, '_blank')}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.4c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.6 0a6.6 6.6 0 0 1-2-1.2 7.4 7.4 0 0 1-1.3-1.7c-.2-.3 0-.4.1-.5l.4-.5.3-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3 1 2.6 1.1 2.7s1.9 3 4.6 4.1c2.3 1 2.3.6 2.7.6.4 0 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1z" /></svg>
                   WhatsApp
                 </button>
-                <button onClick={() => window.open(linkAprovModal.url, '_blank')} style={{ padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Abrir</button>
-                <button onClick={() => setLinkAprovModal(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                <button onClick={() => window.open(linkAprovModal.url, '_blank')} style={{ padding: '11px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('dash.abrir')}</button>
+                <button onClick={() => setLinkAprovModal(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
               </div>
             </div>
           </div>
@@ -3778,7 +3773,7 @@ function Dashboard() {
                 const url = `${window.location.origin}/trabalhe-conosco`
                 const nav: any = navigator
                 if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
-                else { navigator.clipboard?.writeText(url); toast('Link copiado para a área de transferência.', 'sucesso') }
+                else { navigator.clipboard?.writeText(url); toast(tr('dash.av-link-copiado-area'), 'sucesso') }
               }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                 Compartilhar link da candidatura
@@ -3803,7 +3798,7 @@ function Dashboard() {
         {aba === 'clientes' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Clientes</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.clientes')}</h2>
               {role === 'admin' && (
                 <button onClick={() => setConectarRedesCliente('')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                   <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
@@ -3829,12 +3824,12 @@ function Dashboard() {
                       <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>
                         Vincular ao cliente {clientes.find(c => c.id === metaClienteAlvo)?.nome || ''}
                       </p>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Escolha qual Página do Facebook e conta do Instagram pertencem a este cliente.</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.escolha-qual-pagina-facebook-c')}</p>
                     </>
                   ) : (
                     <>
                       <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{metaPages.length} {metaPages.length === 1 ? 'conta encontrada' : 'contas encontradas'}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Selecione a qual cliente cada conta pertence e clique em Salvar.</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.selecione-qual-cliente-cada-co')}</p>
                     </>
                   )}
                 </div>
@@ -3849,14 +3844,14 @@ function Dashboard() {
                         {page.instagram ? (
                           <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{page.instagram.username}</p>
                         ) : (
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-amber-on)' }}>Sem Instagram vinculado</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-amber-on)' }}>{tr('dash.sem-instagram-vinculado')}</p>
                         )}
                       </div>
                       {page.instagram && (
                         metaClienteAlvo ? (
                           <button onClick={() => vincularPaginaACliente(page, metaClienteAlvo)} disabled={!!vinculandoPagina}
                             style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: vinculandoPagina ? 0.6 : 1, flexShrink: 0 }}>
-                            {vinculandoPagina === page.pageId ? 'Vinculando...' : 'Vincular'}
+                            {vinculandoPagina === page.pageId ? tr('dash.vinculando') : tr('dash.vincular')}
                           </button>
                         ) : (
                           <select
@@ -3864,7 +3859,7 @@ function Dashboard() {
                             onChange={e => setVinculos(v => ({ ...v, [page.pageId]: e.target.value }))}
                             style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit', minWidth: 180 }}
                           >
-                            <option value="">Selecionar cliente...</option>
+                            <option value="">{tr('dash.selecionar-cliente')}</option>
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                           </select>
                         )
@@ -3880,7 +3875,7 @@ function Dashboard() {
                   {!metaClienteAlvo && (
                     <button onClick={salvarVinculos} disabled={vinculando || Object.values(vinculos).every(v => !v)}
                       style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: vinculando ? 0.6 : 1 }}>
-                      {vinculando ? 'Salvando...' : 'Salvar vínculos'}
+                      {vinculando ? tr('dash.salvando') : tr('dash.salvar-vinculos')}
                     </button>
                   )}
                 </div>
@@ -3890,44 +3885,44 @@ function Dashboard() {
             {role === 'admin' && (
               <div style={{ marginBottom: 20 }}>
                 <button onClick={() => setMostrarFormCliente(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
-                  {mostrarFormCliente ? 'Fechar' : '+ Cadastrar novo cliente'}
+                  {tr(mostrarFormCliente ? 'comum.fechar' : 'dash.cadastrar-cliente')}
                 </button>
                 {mostrarFormCliente && (
                 <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, marginTop: 12, border: '1px solid var(--v2-rule)' }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do cliente"
+                  <input value={novoCliente.nome} onChange={e => setNovoCliente(p => ({ ...p, nome: e.target.value }))} placeholder={tr('dash.nome-cliente')}
                     style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
-                  <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
+                  <input value={novoCliente.instagram} onChange={e => setNovoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder={tr('crm.arroba-cliente')}
                     style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   <select value={novoCliente.tipo || 'cliente'} onChange={e => setNovoCliente(p => ({ ...p, tipo: e.target.value }))}
                     style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="cliente">Cliente</option>
-                    <option value="interno">Projeto interno</option>
+                    <option value="cliente">{tr('dash.cliente')}</option>
+                    <option value="interno">{tr('dash.projeto-interno')}</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Entregaveis</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>{tr('dash.entregaveis')}</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {ENTREGAVEIS_OPCOES.map(op => {
                       const ativo = (novoCliente.entregaveis || []).includes(op.key)
                       return (
                         <button key={op.key} type="button" onClick={() => setNovoCliente(p => ({ ...p, entregaveis: ativo ? (p.entregaveis || []).filter(e => e !== op.key) : [...(p.entregaveis || []), op.key] }))}
                           style={{ padding: '6px 12px', borderRadius: 8, border: ativo ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: ativo ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', fontSize: 12, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', cursor: 'pointer' }}>
-                          {op.label}
+                          {tr(op.rotulo)}
                         </button>
                       )
                     })}
                   </div>
                   {(novoCliente.entregaveis || []).includes('social_media') && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Posts mensais:</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('dash.posts-mensais')}</label>
                       <input type="number" min="0" value={novoCliente.postsMensais || 12} onChange={e => setNovoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
                         style={{ width: 70, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                     </div>
                   )}
                   {/* Contrato */}
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Contrato (opcional)</label>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>{tr('dash.contrato-opcional')}</label>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <input type="number" min="0" placeholder="Valor (R$)" value={novoCliente.contratoValor ?? ''} onChange={e => setNovoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
                         style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
@@ -3939,21 +3934,21 @@ function Dashboard() {
                           style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                       <select value={novoCliente.contratoCiclo || ''} onChange={e => setNovoCliente(p => ({ ...p, contratoCiclo: e.target.value }))}
                         style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                        <option value="">Ciclo...</option>
-                        <option value="mensal">Mensal</option>
-                        <option value="trimestral">Trimestral</option>
-                        <option value="semestral">Semestral</option>
-                        <option value="anual">Anual</option>
+                        <option value="">{tr('dash.ciclo')}</option>
+                        <option value="mensal">{tr('dash.mensal')}</option>
+                        <option value="trimestral">{tr('dash.trimestral')}</option>
+                        <option value="semestral">{tr('dash.semestral')}</option>
+                        <option value="anual">{tr('dash.anual')}</option>
                       </select>
                     </div>
                     {/* Cobranças avulsas / modulares */}
                     <div style={{ marginTop: 12, width: '100%' }}>
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.cobrancas-avulsas-modulares-po')}</label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
                         <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                         <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-                        <input placeholder="Descrição" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-                        <button type="button" onClick={() => { if (!avMes || !(Number(avValor) > 0)) return; const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }; setNovoCliente(p => ({ ...p, receitasAvulsas: [...((p.receitasAvulsas) || []), nova] })); setAvValor(''); setAvDesc('') }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                        <input placeholder={tr('dash.descricao')} value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                        <button type="button" onClick={() => { if (!avMes || !(Number(avValor) > 0)) return; const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }; setNovoCliente(p => ({ ...p, receitasAvulsas: [...((p.receitasAvulsas) || []), nova] })); setAvValor(''); setAvDesc('') }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('dash.adicionar-2')}</button>
                       </div>
                       {((novoCliente.receitasAvulsas) || []).length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -3975,9 +3970,9 @@ function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {novoCliente.logo ? <img src={novoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
+                      {novoCliente.logo ? <img src={novoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.logo')}</span>}
                     </div>
-                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoNovoCliente ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoNovoCliente ? tr('dash.enviando') : tr('dash.enviar-logo')}</span>
                     <input type="file" accept="image/*" style={{ display: 'none' }}
                       onChange={e => { if (e.target.files?.[0]) uploadLogoNovoCliente(e.target.files[0]); e.target.value = '' }} />
                   </label>
@@ -4032,11 +4027,11 @@ function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                <input value={clienteBusca} onChange={e => setClienteBusca(e.target.value)} placeholder="Buscar por nome, @ ou e-mail..." style={{ width: '100%', padding: '9px 34px 9px 36px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
+                <input value={clienteBusca} onChange={e => setClienteBusca(e.target.value)} placeholder={tr('dash.buscar-por-nome-ou-mail')} style={{ width: '100%', padding: '9px 34px 9px 36px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                {clienteBusca && <button onClick={() => setClienteBusca('')} aria-label={tr('dash.limpar-busca')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 17, lineHeight: 1, padding: 4 }}>×</button>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {([['todos', 'Todos'], ['renovar', 'A renovar'], ['sem_conexao', 'Sem conexão'], ['com_addon', 'Com add-on'], ['suspenso', 'Suspensos'], ['arquivado', 'Arquivados']] as const).map(([k, label]) => (
+                {([['todos', 'Todos'], ['renovar', tr('dash.a-renovar')], ['sem_conexao', tr('dash.sem-conexao')], ['com_addon', 'Com add-on'], ['suspenso', tr('dash.suspensos')], ['arquivado', tr('dash.arquivados')]] as const).map(([k, label]) => (
                   <button key={k} onClick={() => setClienteFiltro(k)}
                     style={{ padding: '7px 13px', borderRadius: 999, border: clienteFiltro === k ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: clienteFiltro === k ? 'var(--v2-ink)' : 'var(--v2-surface)', color: clienteFiltro === k ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
                 ))}
@@ -4060,7 +4055,7 @@ function Dashboard() {
                 return true
               }
               const fonteClientes = clienteFiltro === 'arquivado' ? clientesArquivados : clientes
-              const grupos = [{ titulo: 'Clientes', lista: fonteClientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: 'Projetos internos', lista: fonteClientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
+              const grupos = [{ titulo: tr('dash.clientes'), lista: fonteClientes.filter(c => (c as any).tipo !== 'interno' && match(c)) }, { titulo: tr('dash.projetos-internos'), lista: fonteClientes.filter(c => (c as any).tipo === 'interno' && match(c)) }]
               if (grupos.every(g => g.lista.length === 0)) return (
                 <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--v2-ink3)', fontSize: 14, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhum cliente encontrado{(clienteBusca || clienteFiltro !== 'todos') ? ' com esse filtro.' : '.'}</div>
               )
@@ -4077,9 +4072,9 @@ function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontWeight: 700, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         {c.nome}
-                        <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? 'var(--v2-info-bg)' : 'var(--v2-ok-bg)', color: (c as any).tipo === 'interno' ? 'var(--v2-info)' : 'var(--v2-ok)' }}>{(c as any).tipo === 'interno' ? 'Projeto interno' : 'Cliente'}</span>
-                        {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)' }}>Suspenso</span>}
-                        {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule2)' }}>Arquivado</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: (c as any).tipo === 'interno' ? 'var(--v2-info-bg)' : 'var(--v2-ok-bg)', color: (c as any).tipo === 'interno' ? 'var(--v2-info)' : 'var(--v2-ok)' }}>{tr((c as any).tipo === 'interno' ? 'dash.projeto-interno' : 'dash.cliente')}</span>
+                        {(c as any).inadimplente && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)' }}>{tr('dash.suspenso')}</span>}
+                        {(c as any).arquivado && <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule2)' }}>{tr('dash.arquivado')}</span>}
                         {clientesView !== 'blocos' && (() => { const cc = c as any; const temBrand = !!(cc.segmento || cc.palavrasChave || cc.descricao || cc.publicoAlvo || cc.tomDeVoz || cc.preferencias || cc.documentoMarca); return temBrand ? (
                           <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#f3e8ff', color: '#7c3aed' }}>Brand Board{cc.documentoMarca ? ' + IA' : ''}</span>
                         ) : null })()}
@@ -4097,7 +4092,7 @@ function Dashboard() {
                             const perto = dias >= 0 && dias <= 30
                             return (
                               <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: perto || venceu ? 700 : 500, color: venceu ? 'var(--v2-hot)' : perto ? '#ea580c' : 'var(--v2-ink3)' }}>
-                                Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString('pt-BR')}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
+                                Renovação: {new Date((c as any).contratoRenovacao).toLocaleDateString(localeDe(idioma))}{venceu ? ' (vencido)' : perto ? ` (em ${dias} dia(s))` : ''}
                               </p>
                             )
                           })()}
@@ -4114,12 +4109,12 @@ function Dashboard() {
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cbd0d6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                             {(temIG || temFB) ? (
-                              <span style={{ display: 'inline-flex', gap: 3 }} title={`${temIG ? 'Instagram ' : ''}${temFB ? 'Facebook ' : ''}conectado`}>
+                              <span style={{ display: 'inline-flex', gap: 3 }} title={tr('dash.rede-conectada', { redes: `${temIG ? 'Instagram ' : ''}${temFB ? 'Facebook ' : ''}`.trim() })}>
                                 {temIG && <span style={{ ...dotS, background: '#c2185b' }} />}
                                 {temFB && <span style={{ ...dotS, background: '#1877f2' }} />}
                               </span>
                             ) : (
-                              <span style={{ ...dotS, background: 'var(--v2-surface2)' }} title="Sem redes conectadas" />
+                              <span style={{ ...dotS, background: 'var(--v2-surface2)' }} title={tr('dash.sem-redes-conectadas')} />
                             )}
                             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                           </div>
@@ -4151,7 +4146,7 @@ function Dashboard() {
                             <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--v2-ink)' }}>{c.nome}</p>
                             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Ficha do cliente{c.loginEmail ? ' · ' + c.loginEmail : ''}</p>
                           </div>
-                          <button onClick={() => setEditandoCliente(null)} aria-label="Fechar" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <button onClick={() => setEditandoCliente(null)} aria-label={tr('comum.fechar')} style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                           </button>
                         </div>
@@ -4159,25 +4154,25 @@ function Dashboard() {
                         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '18px 22px' }}>
                           {c.tipo !== 'interno' && (
                             <div>
-                              <span style={secLabel}>Compartilhar com o cliente</span>
+                              <span style={secLabel}>{tr('dash.compartilhar-cliente')}</span>
                               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button onClick={() => abrirResumo(c.id)} title="Gerar o resumo da semana para enviar ao cliente" style={mbtn}>
+                                <button onClick={() => abrirResumo(c.id)} title={tr('dash.gerar-resumo-semana-enviar-ao')} style={mbtn}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.2-1.4A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.1.1.3 0 .5l-.4.5-.2.2c-.1.1-.3.3-.1.5.1.3.7 1.1 1.4 1.8.96.85 1.7 1.1 2 1.2.2.1.4.1.5-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.3.1.1.1.6-.1 1.2z" /></svg>
                                   Resumo semanal
                                 </button>
-                                <button onClick={() => statusPublico(c.id)} title="Copiar o link público de status (sem login)" style={mbtn}>
+                                <button onClick={() => statusPublico(c.id)} title={tr('dash.copiar-link-publico-status-sem')} style={mbtn}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
                                   Status público
                                 </button>
-                                <button onClick={() => revogarLinkStatus(c.id)} title="Revoga o link de status atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
+                                <button onClick={() => revogarLinkStatus(c.id)} title={tr('dash.revoga-link-status-atual-funci')} style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
                                   Revogar status
                                 </button>
-                                <button onClick={() => linkAprovacao(c.id)} title="Copiar o link ÚNICO de aprovação (sem login)" style={{ ...mbtn, background: 'var(--v2-ink)', border: '1px solid var(--v2-ink)', color: 'var(--v2-surface)' }}>
+                                <button onClick={() => linkAprovacao(c.id)} title={tr('dash.copiar-link-unico-aprovacao-se')} style={{ ...mbtn, background: 'var(--v2-ink)', border: '1px solid var(--v2-ink)', color: 'var(--v2-surface)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   Link de aprovação
                                 </button>
-                                <button onClick={() => revogarLinkAprovacao(c.id, c.nome)} title="Revoga o link atual (para de funcionar) e gera um novo" style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
+                                <button onClick={() => revogarLinkAprovacao(c.id, c.nome)} title={tr('dash.revoga-link-atual-funcionar-ge')} style={{ ...mbtn, color: 'var(--v2-hot)', borderColor: 'var(--v2-hot-bg)' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.5 2.8L3 8" /><path d="M3 3v5h5" /></svg>
                                   Revogar link
                                 </button>
@@ -4185,7 +4180,7 @@ function Dashboard() {
                             </div>
                           )}
                           <div style={c.tipo !== 'interno' ? secDiv : undefined}>
-                            <span style={secLabel}>Conexões</span>
+                            <span style={secLabel}>{tr('dash.conexoes')}</span>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                               {temIG && <span style={{ ...mchip, background: '#fdecf3', color: '#c2185b' }}>{igIcon}Instagram{c.instagramUsername ? ' · @' + c.instagramUsername : ''}</span>}
                               {temFB && <span style={{ ...mchip, background: '#e7f0fd', color: '#1877f2' }}>{fbIcon}Facebook</span>}
@@ -4193,47 +4188,47 @@ function Dashboard() {
                                 <>
                                   {!temIG && <a href={`/api/instagram/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#c2185b' }}>{igIcon} Conectar Instagram</a>}
                                   {!temFB && <a href={`/api/meta/oauth?cliente=${c.id}`} style={{ ...mbtn, textDecoration: 'none', color: '#1877f2' }}>{fbIcon} Conectar Facebook</a>}
-                                  {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: 'Desconectar redes', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: 'var(--v2-ink3)' }}>Desconectar</button>}
+                                  {(temFB || temIG) && <button onClick={async () => { if (await confirmar(`Desconectar as redes sociais de ${c.nome}? O perfil perdera o acesso para publicacao ate ser reconectado.`, { titulo: tr('dash.tit-desconectar-redes'), okLabel: tr('dash.ok-desconectar'), perigo: true })) desconectarInstagram(c.id) }} style={{ ...mbtn, color: 'var(--v2-ink3)' }}>{tr('dash.desconectar')}</button>}
                                 </>
-                              ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: 'var(--v2-amber)' }}>Não conectado</span> : null}
+                              ) : (!temFB && !temIG) ? <span style={{ ...mchip, background: '#fff7ed', color: 'var(--v2-amber)' }}>{tr('dash.nao-conectado')}</span> : null}
                               <span style={{ ...mchip, marginLeft: 'auto', background: 'var(--v2-surface2)', color: 'var(--v2-ink3)' }}>{nPosts} {nPosts === 1 ? 'post' : 'posts'}</span>
                             </div>
                           </div>
-                          <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)' }}>Dados do cliente</span>
+                          <span style={{ ...secLabel, marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)' }}>{tr('dash.dados-cliente')}</span>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                        <input value={edicaoCliente.nome || ''} onChange={e => setEdicaoCliente(p => ({ ...p, nome: e.target.value }))} placeholder={tr('crm.nome')}
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
-                        <input value={edicaoCliente.instagram || ''} onChange={e => setEdicaoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram"
+                        <input value={edicaoCliente.instagram || ''} onChange={e => setEdicaoCliente(p => ({ ...p, instagram: e.target.value }))} placeholder={tr('crm.arroba-cliente')}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <select value={(edicaoCliente as any).tipo || 'cliente'} onChange={e => setEdicaoCliente(p => ({ ...p, tipo: e.target.value as 'cliente' | 'interno' }))}
                           style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                          <option value="cliente">Cliente</option>
-                          <option value="interno">Projeto interno</option>
+                          <option value="cliente">{tr('dash.cliente')}</option>
+                          <option value="interno">{tr('dash.projeto-interno')}</option>
                         </select>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Entregaveis</label>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>{tr('dash.entregaveis')}</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {ENTREGAVEIS_OPCOES.map(op => {
                             const ativo = ((edicaoCliente as any).entregaveis || []).includes(op.key)
                             return (
                               <button key={op.key} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, entregaveis: ativo ? ((p as any).entregaveis || []).filter((e: string) => e !== op.key) : [...((p as any).entregaveis || []), op.key] }))}
                                 style={{ padding: '5px 10px', borderRadius: 8, border: ativo ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: ativo ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', fontSize: 11, fontWeight: ativo ? 700 : 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', cursor: 'pointer' }}>
-                                {op.label}
+                                {tr(op.rotulo)}
                               </button>
                             )
                           })}
                         </div>
                         {((edicaoCliente as any).entregaveis || []).includes('social_media') && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Posts mensais:</label>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('dash.posts-mensais')}</label>
                             <input type="number" min="0" value={(edicaoCliente as any).postsMensais || 0} onChange={e => setEdicaoCliente(p => ({ ...p, postsMensais: Number(e.target.value) }))}
                               style={{ width: 70, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                           </div>
                         )}
                         {/* Contrato */}
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>Contrato</label>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8 }}>{tr('dash.contrato')}</label>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <input type="number" min="0" placeholder="Valor (R$)" value={(edicaoCliente as any).contratoValor ?? ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoValor: Number(e.target.value) }))}
                               style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
@@ -4245,31 +4240,31 @@ function Dashboard() {
                                 style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                             <select value={(edicaoCliente as any).contratoCiclo || ''} onChange={e => setEdicaoCliente(p => ({ ...p, contratoCiclo: e.target.value as any }))}
                               style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                              <option value="">Ciclo...</option>
-                              <option value="mensal">Mensal</option>
-                              <option value="trimestral">Trimestral</option>
-                              <option value="semestral">Semestral</option>
-                              <option value="anual">Anual</option>
+                              <option value="">{tr('dash.ciclo')}</option>
+                              <option value="mensal">{tr('dash.mensal')}</option>
+                              <option value="trimestral">{tr('dash.trimestral')}</option>
+                              <option value="semestral">{tr('dash.semestral')}</option>
+                              <option value="anual">{tr('dash.anual')}</option>
                             </select>
                             <label style={{ fontSize: 11, color: 'var(--v2-ink3)', display: 'flex', flexDirection: 'column', gap: 2 }}>Dia de vencimento
-                              <input type="number" min="1" max="31" value={(edicaoCliente as any).diaVencimento || ''} onChange={e => setEdicaoCliente(p => ({ ...p, diaVencimento: Number(e.target.value) || undefined } as any))} placeholder="ex.: 10"
+                              <input type="number" min="1" max="31" value={(edicaoCliente as any).diaVencimento || ''} onChange={e => setEdicaoCliente(p => ({ ...p, diaVencimento: Number(e.target.value) || undefined } as any))} placeholder={tr('dash.ex-10')}
                                 style={{ width: 90, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} /></label>
                           </div>
-                          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Valor mensal recorrente. Para projeto pontual ou valores diferentes mês a mês, use as cobranças abaixo.</p>
+                          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.valor-mensal-recorrente-projet')}</p>
 
                           {/* Cobranças avulsas / modulares (pontual ou valor por mês) */}
                           <div style={{ marginTop: 12 }}>
-                            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cobranças avulsas / modulares (por mês)</label>
+                            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.cobrancas-avulsas-modulares-po')}</label>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
                               <input type="month" value={avMes} onChange={e => setAvMes(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                               <input type="number" min="0" placeholder="Valor R$" value={avValor} onChange={e => setAvValor(e.target.value)} style={{ width: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-                              <input placeholder="Descrição (ex.: Landing page)" value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                              <input placeholder={tr('dash.descricao-ex-landing-page')} value={avDesc} onChange={e => setAvDesc(e.target.value)} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                               <button type="button" onClick={() => {
                                 if (!avMes || !(Number(avValor) > 0)) return
                                 const nova = { id: Math.random().toString(36).slice(2), mes: avMes, valor: Number(avValor), descricao: avDesc.trim() }
                                 setEdicaoCliente(p => ({ ...p, receitasAvulsas: [...(((p as any).receitasAvulsas) || []), nova] } as any))
                                 setAvValor(''); setAvDesc('')
-                              }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
+                              }} style={{ padding: '7px 12px', background: (avMes && Number(avValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (avMes && Number(avValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('dash.adicionar-2')}</button>
                             </div>
                             {(((edicaoCliente as any).receitasAvulsas) || []).length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -4289,17 +4284,17 @@ function Dashboard() {
                       {/* Passagem de bastão (vendas → gestão) — vem da conversão do CRM */}
                       {'handoffVendas' in edicaoCliente && (
                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Passagem de bastão (vendas → onboarding)</label>
-                          <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Contexto da venda transmitido pelo closer. Edite/complemente conforme o onboarding avança.</p>
-                          <textarea lang="pt-BR" value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder="Sem passagem de bastão registrada (clientes criados pela conversão do CRM trazem este resumo automaticamente)."
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>{tr('dash.passagem-bastao-vendas-onboard')}</label>
+                          <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.contexto-venda-transmitido-pel')}</p>
+                          <textarea lang="pt-BR" value={(edicaoCliente as any).handoffVendas || ''} onChange={e => setEdicaoCliente(p => ({ ...p, handoffVendas: e.target.value } as any))} placeholder={tr('dash.sem-passagem-bastao-registrada')}
                             style={{ width: '100%', minHeight: 110, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', whiteSpace: 'pre-wrap' }} />
                         </div>
                       )}
 
                       {/* Papéis do squad — quem faz O QUÊ neste cliente */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Papéis do squad</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Quem ocupa cada função neste cliente. Quem entra aqui entra no squad automaticamente.</p>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>{tr('dash.papeis-squad')}</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.quem-ocupa-cada-funcao-neste-c')}</p>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 14 }}>
                           {PAPEIS_SQUAD.map(p => (
                             <div key={p.chave}>
@@ -4307,14 +4302,14 @@ function Dashboard() {
                               <select value={((edicaoCliente as any).squadPapeis || {})[p.chave] || ''}
                                 onChange={e => setEdicaoCliente(prev => ({ ...prev, squadPapeis: { ...((prev as any).squadPapeis || {}), [p.chave]: e.target.value } } as any))}
                                 style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box' }}>
-                                <option value="">A definir</option>
+                                <option value="">{tr('dash.definir')}</option>
                                 {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => <option key={u.email} value={u.email}>{u.nome || u.email}</option>)}
                               </select>
                             </div>
                           ))}
                         </div>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Squad do cliente</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Quem mais acompanha este cliente, além dos papéis acima. É esta lista que recebe as notificações.</p>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>{tr('dash.squad-cliente')}</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.quem-mais-acompanha-este-clien')}</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                           {usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => {
                             const sel = ((edicaoCliente as any).squad || []).includes(u.email)
@@ -4326,7 +4321,7 @@ function Dashboard() {
                               </button>
                             )
                           })}
-                          {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum colaborador cadastrado ainda.</span>}
+                          {usuarios.filter((u: any) => u.role !== 'cliente').length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.nenhum-colaborador-cadastrado')}</span>}
                         </div>
                       </div>
 
@@ -4337,14 +4332,14 @@ function Dashboard() {
                           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                               <div>
-                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Perfis conectados</label>
-                                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Cliente com mais de uma loja/perfil: adicione cada Instagram ou Facebook. No Novo Post você escolhe em quais publicar.</p>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('dash.perfis-conectados')}</label>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.cliente-mais-loja-perfil-adici')}</p>
                               </div>
                               <button type="button" onClick={() => { setConectarComoNova(true); setConectarRedesCliente(edicaoCliente.id!) }}
-                                style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Adicionar perfil</button>
+                                style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('dash.adicionar-perfil')}</button>
                             </div>
                             {contasCli.length === 0
-                              ? <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum perfil conectado ainda. Use "Conectar redes" (conta principal) ou "Adicionar perfil".</p>
+                              ? <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.nenhum-perfil-conectado-ainda')}</p>
                               : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                   {contasCli.map(conta => (
@@ -4353,16 +4348,16 @@ function Dashboard() {
                                         <AvatarCliente logo={conta.logo} nome={conta.nome} />
                                       </span>
                                       <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)' }}>{conta.nome}
-                                        {conta.id === 'principal' && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>principal</span>}
+                                        {conta.id === 'principal' && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('dash.principal')}</span>}
                                       </span>
                                       <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{[conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ') || 'sem rede'}</span>
                                       {conta.id !== 'principal' && (
                                         <button type="button" onClick={async () => {
-                                          if (!(await confirmar(`Desconectar o perfil "${conta.nome}"? Os posts já publicados não são afetados.`, { titulo: 'Desconectar perfil', okLabel: 'Desconectar', perigo: true }))) return
+                                          if (!(await confirmar(tr('dash.dlg-desconectar-perfil', { nome: conta.nome }), { titulo: tr('dash.tit-desconectar-perfil'), okLabel: tr('dash.ok-desconectar'), perigo: true }))) return
                                           const r = await fetch('/api/clientes/conectar', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: edicaoCliente.id, contaId: conta.id }) }).then(x => x.json()).catch(() => null)
                                           if (r?.ok) { setEdicaoCliente(p => ({ ...p, contas: r.contas } as any)); fetch('/api/clientes').then(x => x.json()).then(setClientes) }
-                                          else toast('Não foi possível desconectar.', 'erro')
-                                        }} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Desconectar</button>
+                                          else toast(tr('dash.av-falha-desconectar'), 'erro')
+                                        }} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('dash.desconectar')}</button>
                                       )}
                                     </div>
                                   ))}
@@ -4375,13 +4370,13 @@ function Dashboard() {
                       {/* Módulos & assinatura (plano modular) */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Módulos & assinatura</label>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('dash.modulos-assinatura')}</label>
                           <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ok)' }}>{totalMensalModulos((edicaoCliente as any).modulos).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</span>
                         </div>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>O núcleo é grátis e vem incluído em todo cliente. Ative os add-ons contratados e ajuste o valor mensal de cada um.</p>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.nucleo-gratis-vem-incluido-tod')}</p>
 
                         {/* Núcleo — grátis, pré-definido (sempre incluído) */}
-                        <p style={{ margin: '4px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Incluído no núcleo (grátis)</p>
+                        <p style={{ margin: '4px 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tr('dash.incluido-nucleo-gratis')}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                           {MODULOS.filter(m => m.gratuito).map(m => (
                             <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
@@ -4392,13 +4387,13 @@ function Dashboard() {
                                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{m.label}</p>
                                 <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.descricao}</p>
                               </div>
-                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px' }}>Incluído</span>
+                              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px' }}>{tr('dash.incluido')}</span>
                             </div>
                           ))}
                         </div>
 
                         {/* Add-ons — pagos, a selecionar */}
-                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add-ons (opcionais)</p>
+                        <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tr('dash.add-ons-opcionais')}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {MODULOS_PAGOS.map(m => {
                             const mod = ((edicaoCliente as any).modulos || {})[m.key] || {}
@@ -4407,7 +4402,7 @@ function Dashboard() {
                             const set = (patch: any) => setEdicaoCliente(p => ({ ...p, modulos: { ...((p as any).modulos || {}), [m.key]: { ...(((p as any).modulos || {})[m.key] || {}), ...patch } } } as any))
                             return (
                               <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: ativo ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: `1px solid ${ativo ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)'}`, borderRadius: 10 }}>
-                                <button type="button" onClick={() => set({ ativo: !ativo, ...(!ativo && !mod.desde ? { desde: new Date().toISOString() } : {}) })} aria-label={ativo ? 'Desativar' : 'Ativar'} style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: ativo ? 'var(--v2-ok)' : 'var(--v2-rule)', position: 'relative' }}>
+                                <button type="button" onClick={() => set({ ativo: !ativo, ...(!ativo && !mod.desde ? { desde: new Date().toISOString() } : {}) })} aria-label={ativo ? tr('dash.desativar') : tr('dash.ativar')} style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: ativo ? 'var(--v2-ok)' : 'var(--v2-rule)', position: 'relative' }}>
                                   <span style={{ position: 'absolute', top: 3, left: ativo ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: 'var(--v2-surface)', transition: 'left .15s' }} />
                                 </button>
                                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -4429,22 +4424,22 @@ function Dashboard() {
                         const suspenso = !!(edicaoCliente as any).inadimplente
                         return (
                           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Cobrança e acesso</label>
-                            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Suspender por inadimplência bloqueia o acesso do cliente ao portal (a equipe continua vendo tudo). Reative ao regularizar o pagamento.</p>
+                            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>{tr('dash.cobranca-acesso')}</label>
+                            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.suspender-por-inadimplencia-bl')}</p>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: suspenso ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', border: `1px solid ${suspenso ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)'}` }}>
-                              <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, inadimplente: !suspenso, suspensoDesde: !suspenso ? new Date().toISOString() : undefined } as any))} aria-label={suspenso ? 'Reativar acesso' : 'Suspender acesso'}
+                              <button type="button" onClick={() => setEdicaoCliente(p => ({ ...p, inadimplente: !suspenso, suspensoDesde: !suspenso ? new Date().toISOString() : undefined } as any))} aria-label={suspenso ? tr('dash.reativar-acesso') : tr('dash.suspender-acesso')}
                                 style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer', background: suspenso ? 'var(--v2-hot)' : 'var(--v2-rule)', position: 'relative' }}>
                                 <span style={{ position: 'absolute', top: 3, left: suspenso ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: 'var(--v2-surface)', transition: 'left .15s' }} />
                               </button>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: suspenso ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{suspenso ? 'Acesso suspenso (inadimplente)' : 'Acesso liberado'}</p>
-                                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString('pt-BR')}` : 'Cliente sem acesso ao portal.') : 'Cliente acessa o portal normalmente.'}</p>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: suspenso ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{suspenso ? tr('dash.acesso-suspenso') : tr('dash.acesso-liberado')}</p>
+                                <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{suspenso ? (((edicaoCliente as any).suspensoDesde) ? `Suspenso desde ${new Date((edicaoCliente as any).suspensoDesde).toLocaleDateString(localeDe(idioma))}` : tr('dash.cliente-sem-acesso')) : tr('dash.cliente-acessa-normal')}</p>
                               </div>
                             </div>
                             {stripeOn && (
                               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                                 <button type="button" onClick={() => cobrarStripe(c.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', background: '#635bff', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-                                  {(c as any).stripeCustomerId ? 'Nova cobrança (Stripe)' : 'Cobrar via Stripe (assinatura mensal)'}
+                                  {(c as any).stripeCustomerId ? tr('dash.nova-cobranca') : tr('dash.cobrar-stripe')}
                                 </button>
                                 {(c as any).stripeCustomerId && <span style={{ fontSize: 11.5, fontWeight: 700, color: (c as any).assinaturaStatus === 'active' ? 'var(--v2-ok)' : 'var(--v2-amber)' }}>Assinatura vinculada{(c as any).assinaturaStatus ? ` · ${(c as any).assinaturaStatus}` : ''}</span>}
                               </div>
@@ -4455,10 +4450,10 @@ function Dashboard() {
 
                       {/* Permissoes do portal do cliente */}
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--v2-rule)' }}>
-                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>Permissões do portal</label>
-                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>O que este cliente vê e faz no portal. Tudo ligado por padrão.</p>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 2 }}>{tr('dash.permissoes-portal')}</label>
+                        <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.que-este-cliente-ve-faz-portal')}</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {([['entregas', 'Entregas'], ['aprovacoes', 'Aprovações'], ['aprovar', 'Aprovar/reprovar'], ['solicitar', 'Solicitar conteúdo']] as [string, string][]).map(([chave, rotulo]) => {
+                          {([['entregas', tr('dash.entregas')], ['aprovacoes', tr('dash.aprovacoes')], ['aprovar', tr('dash.aprovar-reprovar')], ['solicitar', tr('dash.solicitar-conteudo')]] as [string, string][]).map(([chave, rotulo]) => {
                             const ligado = (edicaoCliente as any).permissoes?.[chave] !== false
                             return (
                               <button key={chave} type="button" onClick={() => setEdicaoCliente(p => ({ ...p, permissoes: { ...((p as any).permissoes || {}), [chave]: ((p as any).permissoes?.[chave] !== false) ? false : true } } as any))}
@@ -4471,13 +4466,13 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)', marginBottom: 10 }}>Identidade visual</span>
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--v2-rule)', marginBottom: 10 }}>{tr('dash.identidade-visual')}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                           <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {edicaoCliente.logo ? <img src={edicaoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
+                            {edicaoCliente.logo ? <img src={edicaoCliente.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.logo')}</span>}
                           </div>
-                          <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoCliente ? 'Enviando...' : 'Trocar logomarca'}</span>
+                          <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoCliente ? tr('dash.enviando') : tr('dash.trocar-logo')}</span>
                           <input type="file" accept="image/*" style={{ display: 'none' }}
                             onChange={e => { if (e.target.files?.[0]) uploadLogoCliente(e.target.files[0]); e.target.value = '' }} />
                         </label>
@@ -4500,14 +4495,14 @@ function Dashboard() {
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                             Excluir cliente
                           </button>
-                          <button onClick={() => arquivarCliente(c.id, c.nome, !(c as any).arquivado)} title={(c as any).arquivado ? 'Restaurar o cliente e o conteúdo dele' : 'Arquivar: some das telas e corta o acesso ao portal (reversível)'} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: (c as any).arquivado ? 'var(--v2-ok)' : 'var(--v2-amber)', cursor: 'pointer' }}>
+                          <button onClick={() => arquivarCliente(c.id, c.nome, !(c as any).arquivado)} title={(c as any).arquivado ? tr('dash.restaurar-cliente') : tr('dash.arquivar-ajuda')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '9px 14px', fontSize: 12.5, fontWeight: 700, color: (c as any).arquivado ? 'var(--v2-ok)' : 'var(--v2-amber)', cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>
-                            {(c as any).arquivado ? 'Restaurar' : 'Arquivar'}
+                            {tr((c as any).arquivado ? 'dash.restaurar' : 'dash.arquivar')}
                           </button>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title="Gera uma nova senha de acesso para o cliente" style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Resetar senha</button>}
-                            <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                            <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar alterações</button>
+                            {(c as any).loginEmail && <button onClick={() => resetarSenhaCliente(c.id, c.nome)} title={tr('dash.gera-nova-senha-acesso-cliente')} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('dash.resetar-senha')}</button>}
+                            <button onClick={() => setEditandoCliente(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, fontSize: 13, color: 'var(--v2-ink2)', fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+                            <button onClick={() => salvarEdicaoCliente(c.id)} style={{ padding: '9px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('dash.salvar-alteracoes')}</button>
                           </div>
                         </div>
                       </div>
@@ -4526,16 +4521,16 @@ function Dashboard() {
         {/* USUÁRIOS (admin only) */}
         {aba === 'usuarios' && role === 'admin' && (
           <div>
-            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>Colaboradores</h2>
+            <h2 style={{ margin: '0 0 20px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.colaboradores')}</h2>
 
             {/* Permissões por papel — padrão do papel (Ver/Editar/Excluir por módulo) */}
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: 0, fontSize: 15 }}>Permissões por papel</h3>
-              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Padrão de cada papel por módulo (Ver / Editar / Excluir). <b>Admin</b> vê tudo (inclusive Financeiro). <b>Vendas</b>/<b>Cliente</b> têm acesso próprio. Cada usuário pode ter ajuste individual no cadastro.</p>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{tr('dash.permissoes-por-papel')}</h3>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.papeis-explicacao', { admin: tr('dash.admin'), vendas: tr('dash.vendas'), cliente: tr('dash.cliente') })}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(['gerente', 'usuario'] as const).map(papel => (
                   <div key={papel}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr(papel === 'gerente' ? 'dash.gerente' : 'dash.usuario')}</span>
                     {matrizNiveis(papel, permPapel[papel] || {}, (novoPerm: any) => setPermPapelNivel(papel, novoPerm), 'papel', '')}
                   </div>
                 ))}
@@ -4545,12 +4540,12 @@ function Dashboard() {
             {/* Permissões detalhadas por papel — liga/desliga CADA tela e ação
                 para todo gerente/usuário (o cadastro individual sobrepõe). */}
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: 0, fontSize: 15 }}>Funcionalidades por papel (telas e ações)</h3>
-              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Controle fino de <b>cada tela</b> e das <b>ações críticas</b> (gerar com IA, enviar ao cliente, publicar, aprovar, excluir). Vale como padrão do papel — no cadastro de cada colaborador dá para ajustar individualmente. <b>Admin</b> sempre tem acesso total.</p>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{tr('dash.funcionalidades-por-papel-tela')}</h3>
+              <p style={{ margin: '4px 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.permissoes-explicacao', { admin: tr('dash.admin') })}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(['gerente', 'usuario'] as const).map(papel => (
                   <div key={papel}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{papel === 'gerente' ? 'Gerente' : 'Usuário'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr(papel === 'gerente' ? 'dash.gerente' : 'dash.usuario')}</span>
                     {renderGranular(papel, permGranular?.[papel] || {}, (novoPerm: any) => setPermGranularPapel(papel, novoPerm), 'papel')}
                   </div>
                 ))}
@@ -4559,43 +4554,43 @@ function Dashboard() {
 
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 15 }}>Adicionar colaborador</h3>
+                <h3 style={{ margin: 0, fontSize: 15 }}>{tr('dash.adicionar-colaborador')}</h3>
                 <button onClick={() => { setMostrarFormUsuario(v => !v); setErroUsuario(''); setVerSenhaNovo(false) }} style={{
                   padding: '9px 18px', background: mostrarFormUsuario ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', border: 'none', borderRadius: 10,
                   fontWeight: 700, fontSize: 13, cursor: 'pointer', color: 'var(--v2-ink)',
-                }}>{mostrarFormUsuario ? 'Fechar' : '+ Cadastrar usuário'}</button>
+                }}>{tr(mostrarFormUsuario ? 'comum.fechar' : 'dash.cadastrar-usuario')}</button>
               </div>
               {mostrarFormUsuario && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <input value={novoUsuario.nome} onChange={e => setNovoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                    <input value={novoUsuario.nome} onChange={e => setNovoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder={tr('crm.nome')}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
-                    <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder="Email"
+                    <input value={novoUsuario.email} onChange={e => setNovoUsuario(p => ({ ...p, email: e.target.value }))} placeholder={tr('crm.email')}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                   </div>
-                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? 'Função / Cargo (ex.: Recepção, Esteticista, Gestora)' : perfilCidadania ? 'Função / Cargo (ex.: Analista de processos, Genealogista, Comercial)' : perfilTurismo ? 'Função / Cargo (ex.: Atendimento, Motorista, Guia)' : 'Função / Cargo (ex.: Social Media, Designer, Gestor de Tráfego)'}
+                  <input value={novoUsuario.cargo} onChange={e => setNovoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder={perfilClinica ? tr('dash.cargo-clinica') : perfilCidadania ? tr('dash.cargo-cidadania') : perfilTurismo ? tr('dash.cargo-turismo') : tr('dash.cargo-agencia')}
                     style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                   {perfilTurismo && (
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 12 }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Tipo no turismo</label>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('dash.tipo-turismo')}</label>
                         <select value={(novoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setNovoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
                           style={{ padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                          <option value="equipe">Equipe</option>
-                          <option value="motorista">Motorista</option>
-                          <option value="guia">Guia</option>
-                          <option value="parceiro">Parceiro</option>
+                          <option value="equipe">{tr('dash.equipe')}</option>
+                          <option value="motorista">{tr('dash.motorista')}</option>
+                          <option value="guia">{tr('dash.guia')}</option>
+                          <option value="parceiro">{tr('dash.parceiro')}</option>
                         </select>
                       </div>
                       <div style={{ flex: 1, minWidth: 160 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Telefone</label>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('crm.telefone')}</label>
                         <input value={(novoUsuario as any).telefone || ''} onChange={e => setNovoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
                           style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                       </div>
                       {(novoUsuario as any).tipoTurismo === 'motorista' && (
                         <div style={{ flex: 1, minWidth: 140 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>CNH</label>
-                          <input value={(novoUsuario as any).cnh || ''} onChange={e => setNovoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('dash.cnh')}</label>
+                          <input value={(novoUsuario as any).cnh || ''} onChange={e => setNovoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder={tr('dash.cnh-2')}
                             style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                         </div>
                       )}
@@ -4604,9 +4599,9 @@ function Dashboard() {
                   {perfilClinica && novoUsuario.role !== 'vendas' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>Disponibilidade de agenda</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('dash.disponibilidade-agenda')}</span>
                         <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
-                          {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
+                          {([[true, tr('dash.sim-recebe-pacientes')], [false, tr('dash.nao-so-eventos')]] as const).map(([v, lab]) => {
                             const ativo = ((novoUsuario as any).recebeAgenda ?? true) === v
                             return (
                               <button key={String(v)} type="button" onClick={() => setNovoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
@@ -4617,9 +4612,9 @@ function Dashboard() {
                       </div>
                       {((novoUsuario as any).recebeAgenda ?? true) && (
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética, Dermato)"
+                          <input value={(novoUsuario as any).areaSaude || ''} onChange={e => setNovoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder={tr('dash.area-atendimento-ex-estetica-d')}
                             style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
-                          <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--v2-ink2)', fontWeight: 600 }}>
+                          <label title={tr('dash.cor-agenda')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--v2-ink2)', fontWeight: 600 }}>
                             Cor na agenda
                             <input type="color" value={(novoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setNovoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 34, height: 30, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                           </label>
@@ -4630,22 +4625,22 @@ function Dashboard() {
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Custo/hora (R$)</label>
-                      <input type="number" min="0" value={novoUsuario.custoHora || ''} onChange={e => setNovoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder="Ex.: 50"
+                      <input type="number" min="0" value={novoUsuario.custoHora || ''} onChange={e => setNovoUsuario(p => ({ ...p, custoHora: Number(e.target.value) || 0 }))} placeholder={tr('dash.ex-50')}
                         style={{ width: 130, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Salário fixo (R$/mês)</label>
-                      <input type="number" min="0" value={novoUsuario.salarioFixo || ''} onChange={e => setNovoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder="Ex.: 2500"
+                      <input type="number" min="0" value={novoUsuario.salarioFixo || ''} onChange={e => setNovoUsuario(p => ({ ...p, salarioFixo: Number(e.target.value) || 0 }))} placeholder={tr('dash.ex-2500')}
                         style={{ width: 140, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Valor/projeto (R$)</label>
-                      <input type="number" min="0" value={novoUsuario.valorPorProjeto || ''} onChange={e => setNovoUsuario(p => ({ ...p, valorPorProjeto: Number(e.target.value) || 0 }))} placeholder="Ex.: 200"
+                      <input type="number" min="0" value={novoUsuario.valorPorProjeto || ''} onChange={e => setNovoUsuario(p => ({ ...p, valorPorProjeto: Number(e.target.value) || 0 }))} placeholder={tr('dash.ex-200')}
                         style={{ width: 120, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Nº de projetos</label>
-                      <input type="number" min="0" value={novoUsuario.qtdProjetos || ''} onChange={e => setNovoUsuario(p => ({ ...p, qtdProjetos: Number(e.target.value) || 0 }))} placeholder="Ex.: 10"
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('dash.projetos')}</label>
+                      <input type="number" min="0" value={novoUsuario.qtdProjetos || ''} onChange={e => setNovoUsuario(p => ({ ...p, qtdProjetos: Number(e.target.value) || 0 }))} placeholder={tr('dash.ex-10')}
                         style={{ width: 110, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit' }} />
                     </div>
                     <div style={{ alignSelf: 'flex-end', padding: '0 0 10px' }}>
@@ -4655,9 +4650,9 @@ function Dashboard() {
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
-                      <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder="Senha"
+                      <input type={verSenhaNovo ? 'text' : 'password'} value={novoUsuario.senha} onChange={e => setNovoUsuario(p => ({ ...p, senha: e.target.value }))} placeholder={tr('conta.senha')}
                         style={{ width: '100%', padding: '10px 42px 10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                      <button type="button" onClick={() => setVerSenhaNovo(v => !v)} title={verSenhaNovo ? 'Ocultar senha' : 'Mostrar senha'}
+                      <button type="button" onClick={() => setVerSenhaNovo(v => !v)} title={verSenhaNovo ? tr('dash.ocultar-senha') : tr('dash.mostrar-senha')}
                         style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', padding: 0 }}>
                         {verSenhaNovo ? <IconEyeOff size={17} /> : <IconEye size={17} />}
                       </button>
@@ -4665,44 +4660,44 @@ function Dashboard() {
                     <select value={novoUsuario.role} onChange={e => setNovoUsuario(p => ({ ...p, role: e.target.value }))}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                       {perfilTelefonia ? (<>
-                        <option value="usuario">Estoquista</option>
-                        <option value="vendas">Vendedor</option>
-                        <option value="gerente">Gerente</option>
-                        <option value="admin">Admin</option>
+                        <option value="usuario">{tr('dash.estoquista')}</option>
+                        <option value="vendas">{tr('dash.vendedor')}</option>
+                        <option value="gerente">{tr('dash.gerente')}</option>
+                        <option value="admin">{tr('dash.admin')}</option>
                       </>) : (<>
-                        <option value="gerente">Gerente</option>
-                        <option value="usuario">Usuário</option>
-                        <option value="admin">Admin</option>
-                        <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
-                        {!perfilClinica && <option value="cliente">Cliente</option>}
+                        <option value="gerente">{tr('dash.gerente')}</option>
+                        <option value="usuario">{tr('dash.usuario')}</option>
+                        <option value="admin">{tr('dash.admin')}</option>
+                        <option value="vendas">{perfilClinica ? tr('dash.comercial') : 'Vendas'}</option>
+                        {!perfilClinica && <option value="cliente">{tr('dash.cliente')}</option>}
                       </>)}
                     </select>
                     {novoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                       <select value={(novoUsuario as any).funcaoVendas || ''} onChange={e => setNovoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                        <option value="">Função...</option>
-                        <option value="sdr">SDR / BDR</option>
-                        <option value="closer">Closer</option>
+                        <option value="">{tr('dash.funcao')}</option>
+                        <option value="sdr">{tr('dash.sdr-bdr')}</option>
+                        <option value="closer">{tr('dash.closer')}</option>
                       </select>
                     )}
                     {novoUsuario.role === 'cliente' && (
                       <select value={(novoUsuario as any).clienteId || ''} onChange={e => setNovoUsuario(p => ({ ...p, clienteId: e.target.value }))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                        <option value="">Vincular a qual cliente?</option>
+                        <option value="">{tr('dash.vincular-qual-cliente')}</option>
                         {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
                     )}
                     {perfilTelefonia && novoUsuario.role !== 'admin' && novoUsuario.role !== 'cliente' && (
                       <select value={(novoUsuario as any).lojaId || ''} onChange={e => setNovoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                        <option value="">{novoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
+                        <option value="">{novoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : tr('dash.vincular-loja')}</option>
                         {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                       </select>
                     )}
                     <button onClick={criarUsuario} disabled={!usuarioFormValido} style={{
                       padding: '10px 20px', background: usuarioFormValido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', border: 'none', borderRadius: 10,
                       fontWeight: 700, cursor: usuarioFormValido ? 'pointer' : 'not-allowed', color: usuarioFormValido ? 'var(--v2-ink)' : 'var(--v2-ink3)',
-                    }}>Adicionar</button>
+                    }}>{tr('dash.adicionar')}</button>
                   </div>
                   {renderPermissoes(novoUsuario.role, (novoUsuario as any).permissoes, (p: any) => setNovoUsuario(u => ({ ...u, permissoes: p } as any)))}
                   {renderGranular(novoUsuario.role, (novoUsuario as any).permissoesGranular, (p: any) => setNovoUsuario(u => ({ ...u, permissoesGranular: p } as any)))}
@@ -4735,7 +4730,7 @@ function Dashboard() {
                     <span style={{ background: u.role === 'admin' ? 'var(--v2-amber-bg)' : u.role === 'cliente' ? 'var(--v2-info-bg)' : 'var(--v2-surface2)', borderRadius: 12, padding: '4px 12px', fontSize: 12, fontWeight: 700, color: u.role === 'cliente' ? 'var(--v2-info)' : 'var(--v2-ink)' }}>{u.role}</span>
                     <button onClick={() => editandoUsuario === u.email ? setEditandoUsuario(null) : iniciarEdicaoUsuario(u)}
                       style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>
-                      {editandoUsuario === u.email ? 'Fechar' : 'Editar'}
+                      {tr(editandoUsuario === u.email ? 'comum.fechar' : 'comum.editar')}
                     </button>
                     <button onClick={() => excluirUsuario(u.email, u.nome)}
                       style={{ background: 'none', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: 'var(--v2-hot)', cursor: 'pointer' }}>
@@ -4747,7 +4742,7 @@ function Dashboard() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <label style={{ cursor: 'pointer', flexShrink: 0 }}>
                           <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid var(--v2-rule)' }}>
-                            {edicaoUsuario.foto ? <img src={edicaoUsuario.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Foto</span>}
+                            {edicaoUsuario.foto ? <img src={edicaoUsuario.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.foto')}</span>}
                           </div>
                           <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
                             if (!e.target.files?.[0]) return
@@ -4759,7 +4754,7 @@ function Dashboard() {
                         <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Clique para alterar a foto</span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder="Nome"
+                        <input value={edicaoUsuario.nome} onChange={e => setEdicaoUsuario(p => ({ ...p, nome: e.target.value }))} placeholder={tr('crm.nome')}
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                         <input value={edicaoUsuario.cargo} onChange={e => setEdicaoUsuario(p => ({ ...p, cargo: e.target.value }))} placeholder="Função / Cargo"
                           style={{ flex: 1, minWidth: 160, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
@@ -4775,44 +4770,44 @@ function Dashboard() {
                         <select value={edicaoUsuario.role} onChange={e => setEdicaoUsuario(p => ({ ...p, role: e.target.value }))}
                           style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
                           {perfilTelefonia ? (<>
-                            <option value="usuario">Estoquista</option>
-                            <option value="vendas">Vendedor</option>
-                            <option value="gerente">Gerente</option>
-                            <option value="admin">Admin</option>
+                            <option value="usuario">{tr('dash.estoquista')}</option>
+                            <option value="vendas">{tr('dash.vendedor')}</option>
+                            <option value="gerente">{tr('dash.gerente')}</option>
+                            <option value="admin">{tr('dash.admin')}</option>
                           </>) : (<>
-                            <option value="gerente">Gerente</option>
-                            <option value="usuario">Usuário</option>
-                            <option value="admin">Admin</option>
-                            <option value="vendas">{perfilClinica ? 'Comercial' : 'Vendas'}</option>
-                            {!perfilClinica && <option value="cliente">Cliente</option>}
+                            <option value="gerente">{tr('dash.gerente')}</option>
+                            <option value="usuario">{tr('dash.usuario')}</option>
+                            <option value="admin">{tr('dash.admin')}</option>
+                            <option value="vendas">{perfilClinica ? tr('dash.comercial') : 'Vendas'}</option>
+                            {!perfilClinica && <option value="cliente">{tr('dash.cliente')}</option>}
                           </>)}
                         </select>
                         {edicaoUsuario.role === 'vendas' && !perfilClinica && !perfilTelefonia && (
                           <select value={(edicaoUsuario as any).funcaoVendas || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, funcaoVendas: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                            <option value="">Função...</option>
-                            <option value="sdr">SDR / BDR</option>
-                            <option value="closer">Closer</option>
+                            <option value="">{tr('dash.funcao')}</option>
+                            <option value="sdr">{tr('dash.sdr-bdr')}</option>
+                            <option value="closer">{tr('dash.closer')}</option>
                           </select>
                         )}
                         {edicaoUsuario.role === 'cliente' && !perfilClinica && (
                           <select value={(edicaoUsuario as any).clienteId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, clienteId: e.target.value }))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                            <option value="">Vincular a qual cliente?</option>
+                            <option value="">{tr('dash.vincular-qual-cliente')}</option>
                             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                           </select>
                         )}
                         {perfilTelefonia && edicaoUsuario.role !== 'admin' && edicaoUsuario.role !== 'cliente' && (
                           <select value={(edicaoUsuario as any).lojaId || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, lojaId: e.target.value } as any))}
                             style={{ flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                            <option value="">{edicaoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : 'Vincular a qual loja?'}</option>
+                            <option value="">{edicaoUsuario.role === 'gerente' ? 'Loja (vazio = toda a rede)' : tr('dash.vincular-loja')}</option>
                             {lojasTel.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
                           </select>
                         )}
                         <div style={{ flex: 1, minWidth: 160, position: 'relative' }}>
                           <input type={verSenhaEdicao ? 'text' : 'password'} value={edicaoUsuario.novaSenha} onChange={e => setEdicaoUsuario(p => ({ ...p, novaSenha: e.target.value }))} placeholder="Redefinir senha (vazio = manter)"
                             style={{ width: '100%', padding: '10px 40px 10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                          <button type="button" onClick={() => setVerSenhaEdicao(v => !v)} title={verSenhaEdicao ? 'Ocultar senha' : 'Mostrar senha'}
+                          <button type="button" onClick={() => setVerSenhaEdicao(v => !v)} title={verSenhaEdicao ? tr('dash.ocultar-senha') : tr('dash.mostrar-senha')}
                             style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', padding: 0 }}>
                             {verSenhaEdicao ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                           </button>
@@ -4821,24 +4816,24 @@ function Dashboard() {
                       {perfilTurismo && (
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: 12 }}>
                           <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Tipo no turismo</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('dash.tipo-turismo')}</label>
                             <select value={(edicaoUsuario as any).tipoTurismo || 'equipe'} onChange={e => setEdicaoUsuario(p => ({ ...p, tipoTurismo: e.target.value } as any))}
                               style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-                              <option value="equipe">Equipe</option>
-                              <option value="motorista">Motorista</option>
-                              <option value="guia">Guia</option>
-                              <option value="parceiro">Parceiro</option>
+                              <option value="equipe">{tr('dash.equipe')}</option>
+                              <option value="motorista">{tr('dash.motorista')}</option>
+                              <option value="guia">{tr('dash.guia')}</option>
+                              <option value="parceiro">{tr('dash.parceiro')}</option>
                             </select>
                           </div>
                           <div style={{ flex: 1, minWidth: 150 }}>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>Telefone</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('crm.telefone')}</label>
                             <input value={(edicaoUsuario as any).telefone || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, telefone: e.target.value } as any))} placeholder="(00) 00000-0000"
                               style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                           </div>
                           {(edicaoUsuario as any).tipoTurismo === 'motorista' && (
                             <div style={{ flex: 1, minWidth: 130 }}>
-                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>CNH</label>
-                              <input value={(edicaoUsuario as any).cnh || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder="Nº da CNH"
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 4 }}>{tr('dash.cnh')}</label>
+                              <input value={(edicaoUsuario as any).cnh || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, cnh: e.target.value } as any))} placeholder={tr('dash.cnh-2')}
                                 style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                             </div>
                           )}
@@ -4847,9 +4842,9 @@ function Dashboard() {
                       {perfilClinica && edicaoUsuario.role !== 'vendas' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)' }}>Disponibilidade de agenda</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('dash.disponibilidade-agenda')}</span>
                             <div style={{ display: 'inline-flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
-                              {([[true, 'Sim — recebe pacientes'], [false, 'Não — só cria eventos']] as const).map(([v, lab]) => {
+                              {([[true, tr('dash.sim-recebe-pacientes')], [false, tr('dash.nao-so-eventos')]] as const).map(([v, lab]) => {
                                 const ativo = ((edicaoUsuario as any).recebeAgenda ?? !!(edicaoUsuario as any).areaSaude) === v
                                 return (
                                   <button key={String(v)} type="button" onClick={() => setEdicaoUsuario(p => ({ ...p, recebeAgenda: v } as any))}
@@ -4862,7 +4857,7 @@ function Dashboard() {
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                               <input value={(edicaoUsuario as any).areaSaude || ''} onChange={e => setEdicaoUsuario(p => ({ ...p, areaSaude: e.target.value } as any))} placeholder="Área de atendimento (ex.: Estética)"
                                 style={{ flex: 1, minWidth: 180, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
-                              <label title="Cor na Agenda" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>
+                              <label title={tr('dash.cor-agenda')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--v2-ink2)', fontWeight: 600 }}>
                                 Cor
                                 <input type="color" value={(edicaoUsuario as any).corAgenda || '#7c3aed'} onChange={e => setEdicaoUsuario(p => ({ ...p, corAgenda: e.target.value } as any))} style={{ width: 32, height: 28, border: '1px solid #e0e0e0', borderRadius: 8, cursor: 'pointer', padding: 2 }} />
                               </label>
@@ -4875,15 +4870,15 @@ function Dashboard() {
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                         {/* Recuperação de lockout: reseta o 2FA de quem perdeu o autenticador (auditado) */}
                         <button onClick={async () => {
-                          if (!(await confirmar(`Resetar a verificação em 2 fatores de ${u.nome}? A pessoa volta a entrar só com e-mail e senha e pode reativar o 2FA depois.`, { titulo: 'Resetar 2FA', okLabel: 'Resetar', perigo: true }))) return
+                          if (!(await confirmar(tr('dash.dlg-resetar-2fa', { nome: u.nome }), { titulo: tr('dash.tit-resetar-2fa'), okLabel: tr('dash.ok-resetar'), perigo: true }))) return
                           const r = await fetch('/api/usuarios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: u.email, resetar2FA: true }) }).then(x => x.json()).catch(() => null)
-                          if (r && !r.error) toast('2FA resetado — o colaborador entra só com e-mail e senha.', 'sucesso')
-                          else toast(r?.error || 'Falha ao resetar o 2FA.', 'erro')
+                          if (r && !r.error) toast(tr('dash.av-2fa-resetado'), 'sucesso')
+                          else toast(r?.error || tr('dash.falha-resetar-2fa'), 'erro')
                         }} style={{ marginRight: 'auto', padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)', cursor: 'pointer' }}>
                           Resetar 2FA
                         </button>
-                        <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 13, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
-                        <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Salvar</button>
+                        <button onClick={() => setEditandoUsuario(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 13, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+                        <button onClick={() => salvarEdicaoUsuario(u.email)} style={{ padding: '9px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.salvar')}</button>
                       </div>
                     </div>
                   )}
@@ -4933,7 +4928,7 @@ function Dashboard() {
           <LogsCliente clientes={clientes} onAbrirPost={async (postId: string) => {
             // Abre o post da solicitação no editor (corrigir → "Enviar para aprovação" reenvia ao cliente).
             const p = await buscarPostFresco(postId)
-            if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
+            if (!p) { toast(tr('dash.av-post-sumiu'), 'erro'); return }
             // Pedido de COPY: a peça ainda não tem arte e vive no Studio. O composer
             // edita legenda/imagens, não headline/subtítulo/CTA — mandar para lá era
             // o destino errado.
@@ -4942,7 +4937,7 @@ function Dashboard() {
           }} onVerNoPlanner={async (postId: string) => {
             // Já resolvido: não há o que corrigir, só reencontrar a peça.
             const p = await buscarPostFresco(postId)
-            if (!p) { toast('Post não encontrado — pode ter sido excluído.', 'erro'); return }
+            if (!p) { toast(tr('dash.av-post-sumiu'), 'erro'); return }
             if (!apareceNoPlanner(p as any)) { abrirPautaNoStudio(p as any); return }
             setBibCliente(p.clienteNome || '')
             setPlannerView('lista')
@@ -4971,14 +4966,14 @@ function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 760 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Página Trabalhe Conosco</h2>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Personalize o formulário público de candidaturas e compartilhe o link.</p>
+                <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('dash.pagina-trabalhe-conosco')}</h2>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.personalize-formulario-publico')}</p>
               </div>
               <button onClick={() => {
                 const url = `${window.location.origin}/trabalhe-conosco`
                 const nav: any = navigator
                 if (nav.share) { nav.share({ title: 'Trabalhe conosco — Grupo 10+', url }).catch(() => {}) }
-                else { navigator.clipboard?.writeText(url); setConfigMsg('Link copiado: ' + url); setTimeout(() => setConfigMsg(''), 4000) }
+                else { navigator.clipboard?.writeText(url); setConfigMsg(tr('dash.link-copiado-com') + url); setTimeout(() => setConfigMsg(''), 4000) }
               }} className="soma10-no-invert" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                 Compartilhar
@@ -4986,17 +4981,17 @@ function Dashboard() {
             </div>
 
             <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <a href="/trabalhe-conosco" target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--v2-info)', fontWeight: 700, textDecoration: 'none' }}>Abrir página pública em nova aba →</a>
+              <a href="/trabalhe-conosco" target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--v2-info)', fontWeight: 700, textDecoration: 'none' }}>{tr('dash.abrir-pagina-publica-nova-aba')}</a>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Logomarca (use a oficial do 10+)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.logomarca-use-oficial-10')}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {configAgencia.recrutamentoLogo ? <img src={configAgencia.recrutamentoLogo} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', background: 'var(--v2-surface1)', borderRadius: 8, padding: 4 }} /> : <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Sem logo (usará o nome da agência)</span>}
+                  {configAgencia.recrutamentoLogo ? <img src={configAgencia.recrutamentoLogo} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', background: 'var(--v2-surface1)', borderRadius: 8, padding: 4 }} /> : <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.sem-logo-usara-nome-agencia')}</span>}
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>
                     Enviar logo
                     <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { if (e.target.files?.[0]) { const url = await enviarImagem(e.target.files[0]); if (url) setConfigAgencia(c => ({ ...c, recrutamentoLogo: url })) } e.target.value = '' }} />
                   </label>
-                  {configAgencia.recrutamentoLogo && <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoLogo: '' }))} style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Remover</button>}
+                  {configAgencia.recrutamentoLogo && <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoLogo: '' }))} style={{ background: 'none', border: 'none', color: 'var(--v2-hot)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('comum.remover')}</button>}
                 </div>
               </div>
 
@@ -5024,7 +5019,7 @@ function Dashboard() {
                   {(configAgencia.recrutamentoVagas || []).map((v, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input value={v} onChange={e => setConfigAgencia(c => { const arr = [...(c.recrutamentoVagas || [])]; arr[i] = e.target.value; return { ...c, recrutamentoVagas: arr } })} placeholder="Ex: Social Media" style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                      <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: (c.recrutamentoVagas || []).filter((_, j) => j !== i) }))} title="Remover" style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Remover</button>
+                      <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: (c.recrutamentoVagas || []).filter((_, j) => j !== i) }))} title={tr('comum.remover')} style={{ flexShrink: 0, padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.remover')}</button>
                     </div>
                   ))}
                   <button onClick={() => setConfigAgencia(c => ({ ...c, recrutamentoVagas: [...(c.recrutamentoVagas || []), ''] }))} style={{ alignSelf: 'flex-start', padding: '8px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar vaga</button>
@@ -5045,7 +5040,7 @@ function Dashboard() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={salvarConfigAgencia} disabled={salvandoConfig} className="soma10-no-invert" style={{ padding: '11px 22px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: salvandoConfig ? 'not-allowed' : 'pointer' }}>{salvandoConfig ? 'Salvando...' : 'Salvar página'}</button>
+                <button onClick={salvarConfigAgencia} disabled={salvandoConfig} className="soma10-no-invert" style={{ padding: '11px 22px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: salvandoConfig ? 'not-allowed' : 'pointer' }}>{salvandoConfig ? tr('dash.salvando') : tr('dash.salvar-pagina')}</button>
                 {configMsg && <span style={{ fontSize: 13, color: configMsg.startsWith('Erro') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{configMsg}</span>}
               </div>
             </div>
@@ -5055,16 +5050,16 @@ function Dashboard() {
         {/* CONFIGURAÇÕES (admin only) */}
         {aba === 'config' && role === 'admin' && (
           <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 760, color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)' }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--v2-ink)' }}>Configurações</h2>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--v2-ink)' }}>{tr('nav.config')}</h2>
 
             {/* Hub de configurações — abas */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--v2-rule)' }}>
-              {([['geral', 'Geral'], ['operacional', 'Operacional'], ['notificacoes', 'Notificações'], ['integracoes', 'Integrações'], ['permissoes', 'Permissões'], ['sistema', 'Saúde do sistema'], ['regras', 'Regras do mês'], ['onboarding', 'Onboarding']] as const).map(([k, l]) => (
+              {([['geral', tr('dash.geral')], ['operacional', tr('dash.operacional')], ['notificacoes', tr('dash.notificacoes')], ['integracoes', tr('dash.integracoes')], ['permissoes', tr('dash.permissoes')], ['sistema', tr('dash.saude-sistema')], ['regras', tr('dash.regras-mes')], ['onboarding', tr('dash.onboarding')]] as [typeof abaConfig, string][]).map(([k, l]) => (
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
-              {([['clientes', 'Clientes'], ['usuarios', 'Colaboradores'], ['automacoes', 'Automações']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setAba(k as any)} title={`Abrir ${l}`} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--v2-ink3)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
+              {([['clientes', tr('dash.clientes')], ['usuarios', tr('dash.colaboradores')], ['automacoes', tr('nav.automacoes')]] as [string, string][]).map(([k, l]) => (
+                <button key={k} onClick={() => setAba(k as any)} title={tr('dash.abrir-tela', { tela: l })} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--v2-ink3)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
                   {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
                 </button>
               ))}
@@ -5072,15 +5067,15 @@ function Dashboard() {
 
             {abaConfig === 'operacional' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Operacional</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Prazos e padrões do dia a dia (antes fixos no sistema).</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.operacional')}</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.prazos-padroes-dia-dia-antes-f')}</p>
               <OperacionalConfig />
             </div>
             )}
 
             {abaConfig === 'notificacoes' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Notificações do sistema</h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.notificacoes-sistema')}</h3>
               <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Quais tipos o sistema envia. Desligar afeta todos; cada usuário ainda pode silenciar os seus em Minha Conta.</p>
               <NotificacoesConfig modo="admin" />
             </div>
@@ -5088,7 +5083,7 @@ function Dashboard() {
 
             {abaConfig === 'permissoes' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Permissões detalhadas</h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.permissoes-detalhadas')}</h3>
               <PermissoesGranular />
             </div>
             )}
@@ -5103,9 +5098,9 @@ function Dashboard() {
                 {/* Veio do onboarding de um cliente? Volta garantida para o mesmo card (soma10-voltar-cliente). */}
                 {voltarCliente && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber)' }}>
-                    <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink)' }}>Você veio do onboarding de <strong style={{ fontWeight: 600 }}>{voltarCliente.nome}</strong>.</span>
-                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; router.push(voltarCliente.href) }} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>← Voltar para o cliente</button>
-                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; setVoltarCliente(null) }} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 12.5, cursor: 'pointer' }}>ficar aqui</button>
+                    <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink)' }}>{tr('dash.veio-do-onboarding', { nome: voltarCliente.nome })}</span>
+                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; router.push(voltarCliente.href) }} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('dash.voltar-cliente')}</button>
+                    <button onClick={() => { try { sessionStorage.removeItem('soma10-voltar-cliente') } catch {}; setVoltarCliente(null) }} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 12.5, cursor: 'pointer' }}>{tr('dash.ficar-aqui')}</button>
                   </div>
                 )}
                 <OnboardingConfig />
@@ -5113,16 +5108,16 @@ function Dashboard() {
             )}
             {abaConfig === 'sistema' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Saúde do sistema</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>O que está no ar: banco, integrações, backup e erros recentes.</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.saude-sistema')}</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.que-esta-ar-banco-integracoes')}</p>
               <SaudeSistema />
             </div>
             )}
 
             {abaConfig === 'geral' && (<>
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Perfil da instância</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Adapta o sistema ao tipo de negócio: painel inicial, cadastro de pacientes e vínculo da Agenda. Instâncias criadas com perfil no setup já vêm definidas.</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.perfil-instancia')}</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('dash.adapta-sistema-ao-tipo-negocio')}</p>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <select value={perfilInstancia || ''} onChange={async e => {
                   const novo = e.target.value || ''
@@ -5132,21 +5127,21 @@ function Dashboard() {
                   // opções corriqueiras — encostar nele sem querer já foi capaz de
                   // trocar o perfil de uma instância no ar. Sem estado local: negando
                   // qualquer uma das duas, o valor exibido volta sozinho (controlado).
-                  const nome = (c: string) => PERFIS_INSTANCIA.find(p => p.chave === c)?.label || 'Agência (padrão)'
+                  const nome = (c: string) => PERFIS_INSTANCIA.find(p => p.chave === c)?.label || tr('dash.agencia-padrao')
                   const de = nome(perfilInstancia || ''), para = nome(novo)
                   const ok1 = await confirmar(
                     `O perfil define QUAIS TELAS a instância mostra — menu, cadastros e painel inicial mudam para toda a equipe, não só para você.\n\nDe: ${de}\nPara: ${para}`,
-                    { titulo: 'Trocar o perfil da instância?', okLabel: 'Continuar', cancelLabel: 'Cancelar' }
+                    { titulo: tr('dash.tit-trocar-perfil'), okLabel: tr('dash.ok-continuar'), cancelLabel: tr('comum.cancelar') }
                   )
                   if (!ok1) return
                   const ok2 = await confirmar(
-                    `Confirma trocar para ${para}? A equipe vê a mudança no próximo carregamento.`,
-                    { titulo: 'Tem certeza?', okLabel: `Sim, trocar para ${para}`, cancelLabel: `Não, manter ${de}`, perigo: true }
+                    tr('dash.dlg-trocar-perfil-curto', { para }),
+                    { titulo: tr('dash.tit-tem-certeza'), okLabel: `Sim, trocar para ${para}`, cancelLabel: `Não, manter ${de}`, perigo: true }
                   )
                   if (!ok2) return
                   const r = await fetch('/api/perfil-instancia', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil: novo }) }).then(x => x.json()).catch(() => null)
-                  if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null); toast(`Perfil da instância alterado para ${para}.`, 'sucesso') }
-                  else toast(r?.error || 'Não foi possível trocar o perfil — nada foi alterado.', 'erro')
+                  if (r?.ok !== undefined ? r.ok : r) { setPerfilInstancia(novo || null); toast(tr('dash.perfil-alterado', { para }), 'sucesso') }
+                  else toast(r?.error || tr('dash.falha-trocar-perfil'), 'erro')
                 }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
                   {/* Opções vindas do CATÁLOGO, nunca escritas à mão. Quando eram
                       fixas aqui, o perfil `cidadania` ficou de fora: o <select>
@@ -5154,15 +5149,15 @@ function Dashboard() {
                       exibia a primeira ("Agência (padrão)") e a instância PARECIA
                       ser agência — pior, salvar o campo sem querer trocaria o
                       perfil de verdade. Perfil novo agora aparece sozinho. */}
-                  <option value="">Agência (padrão)</option>
+                  <option value="">{tr('dash.agencia-padrao')}</option>
                   {PERFIS_INSTANCIA.map(p => <option key={p.chave} value={p.chave}>{p.label}</option>)}
                 </select>
-                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>Muda só a experiência — permissões e funil existentes não são tocados.</span>
+                <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('dash.muda-so-experiencia-permissoes')}</span>
               </div>
             </div>
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Aparência</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Escolha como o painel é exibido para você neste navegador.</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.aparencia')}</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.escolha-como-painel-exibido-vo')}</p>
               <div style={{ display: 'flex', gap: 10 }}>
                 {(['claro', 'escuro'] as const).map(opcao => (
                   <button key={opcao} onClick={() => { if (tema !== opcao) alternarTema() }} style={{
@@ -5173,7 +5168,7 @@ function Dashboard() {
                     color: tema === opcao ? 'var(--v2-amber-on)' : 'var(--v2-ink3)',
                   }}>
                     {opcao === 'claro' ? <IconSun size={16} /> : <IconMoon size={16} />}
-                    {opcao === 'claro' ? 'Modo claro' : 'Modo escuro'}
+                    {opcao === 'claro' ? tr('dash.modo-claro') : tr('dash.modo-escuro')}
                   </button>
                 ))}
               </div>
@@ -5184,21 +5179,21 @@ function Dashboard() {
 
             {/* Dados gerais da agência */}
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Dados da agência</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Informações e identidade visual exibidas no sistema.</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.dados-agencia')}</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.informacoes-identidade-visual')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <input value={configAgencia.nomeAgencia || ''} onChange={e => setConfigAgencia(p => ({ ...p, nomeAgencia: e.target.value }))} placeholder="Nome da agência"
+                  <input value={configAgencia.nomeAgencia || ''} onChange={e => setConfigAgencia(p => ({ ...p, nomeAgencia: e.target.value }))} placeholder={tr('dash.nome-agencia')}
                     style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
-                  <input value={configAgencia.emailContato || ''} onChange={e => setConfigAgencia(p => ({ ...p, emailContato: e.target.value }))} placeholder="E-mail de contato" type="email"
+                  <input value={configAgencia.emailContato || ''} onChange={e => setConfigAgencia(p => ({ ...p, emailContato: e.target.value }))} placeholder={tr('dash.mail-contato')} type="email"
                     style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', background: 'var(--v2-surface2)', border: '1.5px solid var(--v2-rule2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {configAgencia.logo ? <img src={configAgencia.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Logo</span>}
+                      {configAgencia.logo ? <img src={configAgencia.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('dash.logo')}</span>}
                     </div>
-                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoAgencia ? 'Enviando...' : 'Enviar logomarca'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--v2-ink2)', textDecoration: 'underline' }}>{enviandoLogoAgencia ? tr('dash.enviando') : tr('dash.enviar-logo')}</span>
                     <input type="file" accept="image/*" style={{ display: 'none' }}
                       onChange={e => { if (e.target.files?.[0]) uploadLogoAgencia(e.target.files[0]); e.target.value = '' }} />
                   </label>
@@ -5214,7 +5209,7 @@ function Dashboard() {
                   </label>
                   <button onClick={salvarConfigAgencia} disabled={salvandoConfig}
                     style={{ marginLeft: 'auto', padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoConfig ? 0.6 : 1 }}>
-                    {salvandoConfig ? 'Salvando...' : 'Salvar alterações'}
+                    {salvandoConfig ? tr('dash.salvando') : tr('dash.salvar-alteracoes')}
                   </button>
                 </div>
                 {configMsg && (
@@ -5225,7 +5220,7 @@ function Dashboard() {
 
             {/* Créditos da IA (Anthropic) */}
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Créditos da IA (Anthropic)</h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.creditos-ia-anthropic')}</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
                 Saldo estimado da API usada na geração de documentos. A Anthropic não informa o saldo real — cadastre aqui o valor atual (veja em console.anthropic.com) e o sistema desconta automaticamente a cada documento gerado, avisando só os ADMINs quando estiver acabando.
               </p>
@@ -5249,7 +5244,7 @@ function Dashboard() {
                 </div>
                 <button onClick={salvarSaldoIA} disabled={salvandoSaldoIA}
                   style={{ padding: '10px 20px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: salvandoSaldoIA ? 0.6 : 1 }}>
-                  {salvandoSaldoIA ? 'Salvando...' : 'Salvar saldo'}
+                  {salvandoSaldoIA ? tr('dash.salvando') : tr('dash.salvar-saldo')}
                 </button>
                 {saldoIAMsg && <span style={{ fontSize: 12, color: saldoIAMsg.includes('Erro') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{saldoIAMsg}</span>}
               </div>
@@ -5259,10 +5254,10 @@ function Dashboard() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Backup dos dados</h3>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Um backup completo é gerado <strong>todo dia</strong> automaticamente (guardado de forma privada). Aqui você pode baixar uma cópia agora, quando quiser.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.backup-dados')}</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('dash.backup-ajuda')}</p>
                 </div>
-                <a href="/api/backup" title="Baixa um JSON com todos os dados (clientes, posts, tarefas, CRM, config...)"
+                <a href="/api/backup" title={tr('dash.baixa-json-todos-dados-cliente')}
                   style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
                   Baixar backup agora
@@ -5274,16 +5269,16 @@ function Dashboard() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Imagem de perfil dos clientes</h3>
-                  <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>Defina a foto de perfil de cada cliente — exibida nas pré-visualizações e listagens.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.imagem-perfil-clientes')}</h3>
+                  <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.defina-foto-perfil-cada-client')}</p>
                 </div>
-                <button onClick={ressincronizarFotos} disabled={resyncFotos} title="Rebusca as fotos do Instagram e salva de forma permanente (corrige fotos quebradas)"
+                <button onClick={ressincronizarFotos} disabled={resyncFotos} title={tr('dash.rebusca-fotos-instagram-salva')}
                   style={{ flexShrink: 0, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: resyncFotos ? 'default' : 'pointer' }}>
                   {resyncFotos ? 'Re-sincronizando...' : 'Re-sincronizar fotos do Instagram'}
                 </button>
               </div>
               {clientes.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum cliente cadastrado ainda.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.nenhum-cliente-cadastrado-aind')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {clientes.map(c => (
@@ -5296,7 +5291,7 @@ function Dashboard() {
                         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{c.instagram?.replace(/^@/, '')}</p>
                       </div>
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0, opacity: fotoClienteId === c.id ? 0.6 : 1 }}>
-                        {fotoClienteId === c.id ? 'Enviando...' : (c.logo ? 'Trocar imagem' : 'Enviar imagem')}
+                        {fotoClienteId === c.id ? tr('dash.enviando') : (c.logo ? tr('dash.trocar-imagem') : tr('dash.enviar-imagem'))}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={fotoClienteId === c.id}
                           onChange={e => { if (e.target.files?.[0]) uploadFotoCliente(c.id, e.target.files[0]); e.target.value = '' }} />
                       </label>
@@ -5311,7 +5306,7 @@ function Dashboard() {
             {abaConfig === 'integracoes' && (<>
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>WhatsApp (conexão){perfilTelefonia ? ' — por loja' : ''}</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{perfilTelefonia ? 'Cada loja pareia o seu próprio número (mesmo host, instâncias separadas). Defina a instância de cada loja em Produtos → Gerenciar lojas.' : 'Conecte o WhatsApp da empresa por QR — mantém o número atual. O host fica no Evolution; aqui você pareia e vê o status. As conversas aparecem no CRM, na aba Mensagens.'}</p>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>{perfilTelefonia ? tr('dash.whatsapp-por-loja') : tr('dash.whatsapp-qr-ajuda')}</p>
               {perfilTelefonia ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {lojasTel.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--v2-amber)' }}>Cadastre as lojas em Produtos → Gerenciar lojas primeiro.</p>}
@@ -5321,7 +5316,7 @@ function Dashboard() {
                       <div key={l.id} style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden' }}>
                         <button onClick={() => setWaLojaAberta(aberta ? '' : l.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: aberta ? 'var(--v2-surface1)' : 'var(--v2-surface1)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                           <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.nome}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: l.evolutionInstance ? 'var(--v2-info)' : 'var(--v2-amber)' }}>{l.evolutionInstance ? (aberta ? 'Fechar' : 'Abrir conexão') : 'defina a instância'}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: l.evolutionInstance ? 'var(--v2-info)' : 'var(--v2-amber)' }}>{l.evolutionInstance ? tr(aberta ? 'dash.fechar-conexao' : 'dash.abrir-conexao') : tr('dash.defina-instancia')}</span>
                         </button>
                         {aberta && (
                           <div style={{ padding: 14, borderTop: '1px solid var(--v2-rule)' }}>
@@ -5366,8 +5361,8 @@ function Dashboard() {
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
                 <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Contas sociais conectadas</h3>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Perfis de Facebook e Instagram vinculados aos clientes.</p>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.contas-sociais-conectadas')}</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.perfis-facebook-instagram-vinc')}</p>
                 </div>
                 <button onClick={() => setConectarRedesCliente('')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
@@ -5376,15 +5371,15 @@ function Dashboard() {
               </div>
 
               {clientes.filter(c => c.metaConectado).length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma conta conectada ainda. Use "Conectar redes" para vincular um perfil.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('dash.nenhuma-conta-conectada-ainda')}</p>
               ) : (
                 <div style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflowX: 'auto' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, padding: '10px 14px', background: 'var(--v2-surface2)', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    <span>Conta social</span><span>Status</span><span>Tipo</span><span></span>
+                    <span>{tr('dash.conta-social')}</span><span>{tr('comum.status')}</span><span>{tr('comum.tipo')}</span><span></span>
                   </div>
                   {clientes.filter(c => c.metaConectado).flatMap(c => ([
-                    ...(c.facebookPageId ? [{ c, rede: 'facebook' as const, label: c.nome, tipo: 'Página', sub: 'Facebook' }] : []),
-                    ...((c.instagramConectado || c.instagramUserId || c.instagramUsername) ? [{ c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: 'Profissional', sub: 'Instagram' }] : []),
+                    ...(c.facebookPageId ? [{ c, rede: 'facebook' as const, label: c.nome, tipo: tr('dash.pagina-facebook'), sub: 'Facebook' }] : []),
+                    ...((c.instagramConectado || c.instagramUserId || c.instagramUsername) ? [{ c, rede: 'instagram' as const, label: c.instagramUsername ? `@${c.instagramUsername}` : (c.instagram?.replace(/^@/, '') || c.nome), tipo: tr('dash.profissional'), sub: 'Instagram' }] : []),
                   ])).map((row, i) => (
                     <div key={row.c.id + row.rede} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 44px', minWidth: 460, gap: 8, alignItems: 'center', padding: '12px 14px', borderTop: '1px solid var(--v2-rule)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -5401,10 +5396,10 @@ function Dashboard() {
                           <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{row.sub} · {row.c.nome}</p>
                         </div>
                       </div>
-                      <span><span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>Conectado</span></span>
+                      <span><span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>{tr('dash.conectado')}</span></span>
                       <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{row.tipo}</span>
                       {(row.rede === 'facebook' || !row.c.facebookPageId) ? (
-                        <button onClick={async () => { if (await confirmar(`Desconectar as contas de ${row.c.nome}?`, { titulo: 'Desconectar contas', okLabel: 'Desconectar', perigo: true })) desconectarInstagram(row.c.id) }} title="Desconectar"
+                        <button onClick={async () => { if (await confirmar(tr('dash.dlg-desconectar-contas', { nome: row.c.nome }), { titulo: tr('dash.tit-desconectar-contas'), okLabel: tr('dash.ok-desconectar'), perigo: true })) desconectarInstagram(row.c.id) }} title={tr('dash.desconectar')}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-hot)', padding: 4, display: 'flex', alignItems: 'center' }}><IconTrash size={15} /></button>
                       ) : <span />}
                     </div>
@@ -5417,16 +5412,16 @@ function Dashboard() {
 
             {abaConfig === 'notificacoes' && (
             <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Notificações por e-mail</h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('dash.notificacoes-por-mail')}</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
                 Envio automático de e-mails (ex: ao gerar link de aprovação) usa um servidor SMTP configurado nas variáveis de ambiente da Vercel.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--v2-surface2)', borderRadius: 10 }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>Servidor SMTP</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Para alterar host, usuário ou senha, edite as variáveis SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS na Vercel</p>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: 'var(--v2-ink)' }}>{tr('dash.servidor-smtp')}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.alterar-host-usuario-ou-senha')}</p>
                 </div>
-                <span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Configurado</span>
+                <span style={{ background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>{tr('dash.configurado')}</span>
               </div>
             </div>
             )}
@@ -5439,39 +5434,39 @@ function Dashboard() {
       {resumoCliente && (
         <div onClick={fecharFora(() => setResumoCliente(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Resumo da semana</h3>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('dash.resumo-semana')}</h3>
             <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>{clientes.find(c => c.id === resumoCliente)?.nome}</p>
-            {resumoCarregando ? <p style={{ color: 'var(--v2-ink3)' }}>Gerando...</p> : (
+            {resumoCarregando ? <p style={{ color: 'var(--v2-ink3)' }}>{tr('dash.gerando')}</p> : (
               <>
                 {resumoInfo && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink2)' }}>✅ {resumoInfo.publicados} publicados · ⏳ {resumoInfo.aguardando} aguardando · 📅 {resumoInfo.proximos} próximos</p>}
                 {/* Predefinicoes (templates): aplica saudacao/fechamento personalizados */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <select value={resumoTemplateId} onChange={e => aplicarTemplateResumo(e.target.value)} style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">Texto padrão</option>
+                    <option value="">{tr('dash.texto-padrao')}</option>
                     {resumoTemplates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
                   {(role === 'admin' || role === 'gerente') && (
-                    <button onClick={() => setGerirPresets(v => !v)} style={{ flexShrink: 0, padding: '9px 14px', background: gerirPresets ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: gerirPresets ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Predefinições</button>
+                    <button onClick={() => setGerirPresets(v => !v)} style={{ flexShrink: 0, padding: '9px 14px', background: gerirPresets ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: gerirPresets ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('dash.predefinicoes')}</button>
                   )}
                 </div>
                 {gerirPresets && (role === 'admin' || role === 'gerente') && (
                   <div style={{ marginBottom: 12, padding: 14, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12 }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Saudação e fechamento personalizados. Use <b>{'{cliente}'}</b> e <b>{'{periodo}'}</b> — serão substituídos. O corpo (publicados/aguardando/próximos) é sempre automático.</p>
+                    <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('dash.resumo-modelo-ajuda', { cliente: '{cliente}', periodo: '{periodo}' })}</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {resumoTemplates.map((t, i) => (
                         <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Nome da predefinição" style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                            <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title="Remover" style={{ flexShrink: 0, padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>Remover</button>
+                            <input value={t.nome} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder={tr('dash.nome-predefinicao')} style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                            <button onClick={() => setResumoTemplates(arr => arr.filter((_, j) => j !== i))} title={tr('comum.remover')} style={{ flexShrink: 0, padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}>{tr('comum.remover')}</button>
                           </div>
                           <textarea lang="pt-BR" value={t.intro} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, intro: e.target.value } : x))} placeholder="Saudação (ex: Oi {cliente}! Aqui está seu resumo de {periodo})" style={{ width: '100%', minHeight: 46, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                          <textarea lang="pt-BR" value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder="Fechamento (ex: Qualquer dúvida, é só chamar! — Grupo 10+)" style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+                          <textarea lang="pt-BR" value={t.fechamento} onChange={e => setResumoTemplates(arr => arr.map((x, j) => j === i ? { ...x, fechamento: e.target.value } : x))} placeholder={tr('dash.fechamento-ex-qualquer-duvida')} style={{ width: '100%', minHeight: 40, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
                         </div>
                       ))}
                     </div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <button onClick={() => setResumoTemplates(arr => [...arr, { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), nome: 'Nova predefinição', intro: '', fechamento: '' }])} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>+ Adicionar</button>
-                      <button onClick={salvarPresetsResumo} disabled={salvandoPresets} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvandoPresets ? 'not-allowed' : 'pointer' }}>{salvandoPresets ? 'Salvando...' : 'Salvar predefinições'}</button>
+                      <button onClick={() => setResumoTemplates(arr => [...arr, { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), nome: tr('dash.nova-predefinicao'), intro: '', fechamento: '' }])} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('dash.adicionar-2')}</button>
+                      <button onClick={salvarPresetsResumo} disabled={salvandoPresets} style={{ padding: '8px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvandoPresets ? 'not-allowed' : 'pointer' }}>{salvandoPresets ? tr('dash.salvando') : tr('dash.salvar-predefinicoes')}</button>
                     </div>
                   </div>
                 )}
@@ -5483,9 +5478,9 @@ function Dashboard() {
                   {(resumoInfo?.aguardando || 0) > 0 && (
                     <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Você tem ${resumoInfo!.aguardando} conteúdo(s) aguardando a sua aprovação. Acesse o portal para aprovar: ${typeof window !== 'undefined' ? window.location.origin : ''}/login`)}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#0ea5e9', color: 'var(--v2-surface)', borderRadius: 10, fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>Cobrar aprovação ({resumoInfo!.aguardando})</a>
                   )}
-                  <button onClick={() => { navigator.clipboard?.writeText(resumoTexto); setResumoMsg('Copiado!') }} style={{ padding: '10px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Copiar</button>
-                  <button onClick={enviarResumoEmail} disabled={enviandoResumo || !resumoInfo?.emailCliente} title={resumoInfo?.emailCliente ? `Enviar para ${resumoInfo.emailCliente}` : 'Cliente sem e-mail cadastrado'} style={{ padding: '10px 16px', background: resumoInfo?.emailCliente ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: resumoInfo?.emailCliente ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: resumoInfo?.emailCliente ? 'pointer' : 'not-allowed' }}>{enviandoResumo ? 'Enviando...' : 'Enviar por e-mail'}</button>
-                  <button onClick={() => setResumoCliente(null)} style={{ marginLeft: 'auto', padding: '10px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+                  <button onClick={() => { navigator.clipboard?.writeText(resumoTexto); setResumoMsg(tr('dash.copiado')) }} style={{ padding: '10px 16px', background: 'var(--v2-surface1)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('dash.copiar')}</button>
+                  <button onClick={enviarResumoEmail} disabled={enviandoResumo || !resumoInfo?.emailCliente} title={resumoInfo?.emailCliente ? `Enviar para ${resumoInfo.emailCliente}` : 'Cliente sem e-mail cadastrado'} style={{ padding: '10px 16px', background: resumoInfo?.emailCliente ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: resumoInfo?.emailCliente ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: resumoInfo?.emailCliente ? 'pointer' : 'not-allowed' }}>{enviandoResumo ? tr('dash.enviando') : 'Enviar por e-mail'}</button>
+                  <button onClick={() => setResumoCliente(null)} style={{ marginLeft: 'auto', padding: '10px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
                 </div>
                 {resumoMsg && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: resumoMsg.includes('Falha') || resumoMsg.includes('Não') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600 }}>{resumoMsg}</p>}
               </>
