@@ -24,6 +24,7 @@ function perfilAtual(p: { perfilClinica?: boolean; perfilTurismo?: boolean; perf
 }
 import BibliotecaVendasTela from './BibliotecaVendas'
 import EditorLinhagem from './EditorLinhagem'
+import { useT, useArea } from '@/app/components/Idioma'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -50,9 +51,10 @@ type ViagemLite = { id: string; titulo: string; dataIda?: string; status?: strin
 const fmtDataViagem = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.slice(5).split('-').reverse().join('/') : '')
 
 const fmtR$ = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const TIPOS_ATIV: [string, string][] = [['nota', 'Nota'], ['ligacao', 'Ligação'], ['whatsapp', 'WhatsApp'], ['email', 'E-mail'], ['reuniao', 'Reunião']]
+const TIPOS_ATIV: [string, string][] = [['nota', 'crm.inter.nota'], ['ligacao', 'crm.inter.ligacao'], ['whatsapp', 'crm.inter.whatsapp'], ['email', 'crm.inter.email'], ['reuniao', 'crm.reuniao']]
 
 export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', podeTrocarLoja = false, onIrAgenda, onIrProcessos }: { usuarios?: any[]; onClienteCriado?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; podeTrocarLoja?: boolean; onIrAgenda?: () => void; onIrProcessos?: () => void }) {
+  const tr = useT()
   // Varejo: admin/gestor em "Todas" precisa focar uma loja pra CRIAR (o servidor
   // exige a loja). Filtro de leitura vai por ?lojaId= no carregar().
   const bloquearCriarPorLoja = perfilTelefonia && podeTrocarLoja && !lojaAtiva
@@ -97,7 +99,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     if (!telefoneWhatsApp(telefone)) {
       // Sem número reconhecível não há conversa: abrir uma thread com número
       // inválido mandaria mensagem para sabe-se lá quem.
-      toast('Telefone inválido para o WhatsApp. Corrija o número na ficha do contato (com DDD).', 'erro')
+      toast(tr('crm.av.telefone-invalido'), 'erro')
       return
     }
     setAberto(null); setContatoModal(null)
@@ -125,7 +127,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     if (!fichaPedida || carregando) return
     const c = contatos.find(x => x.id === fichaPedida)
     setFichaPedida('')
-    if (!c) { toast('Contato nao encontrado — pode ter sido excluido.', 'erro'); return }
+    if (!c) { toast(tr('crm.av.contato-sumiu'), 'erro'); return }
     setVista('contatos')
     setContatoModal(c)
   }, [fichaPedida, carregando, contatos])
@@ -220,7 +222,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   }, [contatos])
   async function concluirAbordagem(contatoId: string, passoId: string) {
     const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contatoId, togglePasso: passoId }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) carregar(); else toast('Não foi possível concluir a abordagem.', 'erro')
+    if (r?.ok) carregar(); else toast(tr('crm.av.falha-abordagem'), 'erro')
   }
 
   const [contatoModal, setContatoModal] = useState<Contato | null | 'novo'>(null)
@@ -259,17 +261,17 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [importar, setImportar] = useState<{ linhas: string[][]; tipo?: string } | null>(null)
   async function importarCSV(file: File, tipo?: string) {
     if (!/\.csv$/i.test(file.name) && file.type && !/csv|excel|spreadsheet|text/.test(file.type)) {
-      toast('Envie um arquivo .csv (nome; telefone; e-mail; …).', 'erro'); return
+      toast(tr('crm.av.envie-csv'), 'erro'); return
     }
     const txt = await file.text()
     // Barra arquivo binário (Excel .xlsx/.zip/.pdf) lido como texto — vira lixo (assinatura "PK", bytes de controle, caractere de substituição).
     const amostra = txt.slice(0, 4000)
     if (/^PK\x03\x04/.test(txt) || /%PDF-/.test(txt.slice(0, 8)) || /[\x00-\x08\x0E-\x1F]/.test(amostra) || (amostra.match(/�/g) || []).length > 3) {
-      toast('Isso parece um Excel/arquivo binário (.xlsx), não um CSV. No Excel ou Google Sheets use "Salvar como / Baixar como CSV (UTF-8)" e importe o .csv gerado.', 'erro')
+      toast(tr('crm.av.parece-excel'), 'erro')
       return
     }
     const brutas = txt.replace(/\r/g, '').split('\n').filter(l => l.trim())
-    if (!brutas.length) { toast('Arquivo vazio.', 'erro'); return }
+    if (!brutas.length) { toast(tr('crm.av.arquivo-vazio'), 'erro'); return }
     const sep = (brutas[0].match(/;/g) || []).length >= (brutas[0].match(/,/g) || []).length ? ';' : ','
     const linhas = brutas.map(l => l.split(sep).map(s => s.trim().replace(/^"|"$/g, '')))
     setImportar({ linhas, tipo })
@@ -321,8 +323,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     if (!r || !r.ok) {
       setNegocios(ns => ns.map(n => n.id === neg.id ? { ...n, estagioId: anterior } : n))
       toast(r?.status === 403
-        ? 'Seu acesso permite ver o CRM, mas não mover oportunidades. Um administrador libera em Configurações → Permissões (CRM → editar).'
-        : 'Não deu para mover a oportunidade. Confira a conexão e tente de novo.', 'erro')
+        ? tr('crm.sem-permissao-mover')
+        : tr('crm.falha-mover'), 'erro')
       return
     }
     carregar()
@@ -361,8 +363,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
     return [
       { id: '', rotulo: 'Todas', n: doPipe.length },
       ...pacotes.map(v => ({ id: v.id, rotulo: `${v.titulo}${v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}`, n: conta(x => x.viagemId === v.id) })),
-      ...(temFretamento ? [{ id: 'fretamento', rotulo: 'Fretamento', n: nFretamento }] : []),
-      { id: 'outro', rotulo: 'Outro (não especificado)', n: conta(x => !x.viagemId) },
+      ...(temFretamento ? [{ id: 'fretamento', rotulo: tr('crm.fretamento'), n: nFretamento }] : []),
+      { id: 'outro', rotulo: tr('crm.outro-nao-especificado'), n: conta(x => !x.viagemId) },
     ]
   }, [perfilTurismo, negocios, viagens, pipelineSel, pipelines, idsFretamento])
   // Filtros por pipeline (negócio/etapa sem pipelineId caem no pipeline padrão = o primeiro)
@@ -373,20 +375,20 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const origensConhecidas = Array.from(new Set(['Indicação', 'Instagram', 'Ex-paciente', 'Tráfego pago', 'Tráfego orgânico', 'Prospecção ativa', 'Site', 'Google', 'Evento', ...negocios.map(n => (n.origem || '').trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'pt'))
   // Legenda por aba (perfil-aware). Fica FORA da linha das abas para não deslocá-las.
   const subtitulo = perfilClinica
-    ? (({ painel: 'Visão geral dos agendamentos e da captação de pacientes.', funil: 'Arraste os pacientes entre as etapas do agendamento.', pacientes: 'Pacientes que já passaram por atendimento.', contatos: 'Leads e contatos ainda não atendidos.', mensagens: 'Conversas com pacientes e leads.', playbook: 'Roteiro de atendimento e cadência de mensagens.' } as Record<string, string>)[vista] || '')
-    : (vista === 'funil' ? 'Arraste os negócios entre as etapas — ou use "Mover para" no card. Clique para ver detalhes e a timeline.' : vista === 'contatos' ? 'Contatos de prospects e clientes.' : 'Roteiro de qualificação e cadência de mensagens para SDR/closer.')
+    ? (({ painel: tr('crm.sub-visao-agendamentos'), funil: tr('crm.dica-arraste-pacientes'), pacientes: tr('crm.sub-atendidos'), contatos: tr('crm.sub-nao-atendidos'), mensagens: tr('crm.sub-conversas'), playbook: tr('crm.sub-roteiro-clinica') } as Record<string, string>)[vista] || '')
+    : (vista === 'funil' ? tr('crm.dica-arraste-negocios') : vista === 'contatos' ? tr('crm.sub-contatos') : tr('crm.sub-roteiro-vendas'))
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)', flexShrink: 0 }}>CRM</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)', flexShrink: 0 }}>{tr('crm.titulo')}</h2>
         {/* flexWrap: sem ele a linha de abas não encolhia e as últimas opções
             (Mensagens, Biblioteca, "+ Nova oportunidade") saíam da área visível
             em tela menor — existiam, mas ninguém alcançava pra clicar. */}
         <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 10, padding: 3, flexWrap: 'wrap' }}>
           {((perfilClinica || perfilCidadania || perfilTelefonia
-            ? [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
-            : [['painel', 'Painel'], ['funil', 'Funil'], ['contatos', 'Contatos'], ['empresas', 'Empresas'], ['mensagens', 'Mensagens'], ['playbook', 'Biblioteca de Vendas']]
+            ? [['painel', tr('crm.painel')], ['funil', tr('crm.funil')], ['contatos', tr('crm.contatos')], ['mensagens', tr('crm.mensagens')], ['playbook', tr('crm.biblioteca-vendas')]]
+            : [['painel', tr('crm.painel')], ['funil', tr('crm.funil')], ['contatos', tr('crm.contatos')], ['empresas', tr('crm.empresas')], ['mensagens', tr('crm.mensagens')], ['playbook', tr('crm.biblioteca-vendas')]]
           ) as ['painel' | 'funil' | 'contatos' | 'empresas' | 'mensagens' | 'playbook', string][]).map(([v, l]) => (
             <button key={v} onClick={() => setVista(v)} style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, background: vista === v ? 'var(--v2-surface)' : 'transparent', color: vista === v ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: vista === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
@@ -394,7 +396,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         {vista === 'funil' && (
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Discreto: só um contador. Vira alerta quando há atrasada/para hoje. */}
-            <button onClick={() => setAbordagensAberto(true)} title="Lembretes registrados nas fichas dos contatos"
+            <button onClick={() => setAbordagensAberto(true)} title={tr('crm.lembretes-dica')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', background: 'var(--v2-surface)', color: abordagens.urgentes ? 'var(--v2-amber)' : 'var(--v2-ink2)', border: `1px solid ${abordagens.urgentes ? 'var(--v2-amber-bg)' : 'var(--v2-rule)'}`, borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               Próximas abordagens
@@ -402,22 +404,22 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                 <span style={{ background: 'var(--v2-amber)', color: 'var(--v2-surface)', borderRadius: 999, fontSize: 10.5, fontWeight: 800, padding: '1px 7px' }}>{abordagens.urgentes}</span>
               )}
             </button>
-            {podeEditar && <button onClick={() => setNovoModal(true)} disabled={bloquearCriarPorLoja} title={bloquearCriarPorLoja ? 'Escolha uma loja no seletor lateral para adicionar' : undefined} style={{ padding: '10px 18px', background: bloquearCriarPorLoja ? 'var(--v2-surface2)' : 'var(--marca, var(--v2-amber-on))', color: bloquearCriarPorLoja ? 'var(--v2-ink3)' : 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: bloquearCriarPorLoja ? 'not-allowed' : 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania || perfilTelefonia ? 'Nova oportunidade' : 'Novo negócio'}</button>}
+            {podeEditar && <button onClick={() => setNovoModal(true)} disabled={bloquearCriarPorLoja} title={bloquearCriarPorLoja ? tr('crm.escolha-loja') : undefined} style={{ padding: '10px 18px', background: bloquearCriarPorLoja ? 'var(--v2-surface2)' : 'var(--marca, var(--v2-amber-on))', color: bloquearCriarPorLoja ? 'var(--v2-ink3)' : 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: bloquearCriarPorLoja ? 'not-allowed' : 'pointer' }}>+ {perfilClinica || perfilTurismo || perfilCidadania || perfilTelefonia ? tr('crm.nova-oportunidade') : tr('crm.novo-negocio')}</button>}
           </div>
         )}
         {vista === 'contatos' && (
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={exportarCSV} style={{ padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Exportar CSV</button>
+            <button onClick={exportarCSV} style={{ padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.exportar')}</button>
             <label style={{ padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
               Importar CSV
               <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importarCSV(e.target.files[0], perfilClinica ? 'lead' : undefined); e.target.value = '' }} />
             </label>
-            {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar vários</button>}
-            {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo</button>}
+            {podeEditar && <button onClick={() => setBulkModal(true)} style={{ padding: '9px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.adicionar-varios')}</button>}
+            {podeEditar && <button onClick={() => setContatoModal('novo')} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('crm.novo')}</button>}
           </div>
         )}
         {vista === 'empresas' && podeEditar && (
-          <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova empresa</button>
+          <button onClick={() => setEmpresaModal('novo')} style={{ marginLeft: 'auto', padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('crm.nova-empresa')}</button>
         )}
       </div>
       {subtitulo && <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>{subtitulo}</p>}
@@ -425,18 +427,18 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       {/* Seletor de pipeline (funil e painel) */}
       {(vista === 'funil' || vista === 'painel') && pipelines.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('crm.pipeline')}</span>
           <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, flexWrap: 'wrap' }}>
             {pipelines.map(p => (
               <button key={p.id} onClick={() => setPipelineSel(p.id)} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: pipelineSel === p.id ? 'var(--v2-ink)' : 'transparent', color: pipelineSel === p.id ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>{p.nome}</button>
             ))}
           </div>
-          {podeEditar && <button onClick={() => setEtapasModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar etapas</button>}
-          {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gerenciar pipelines</button>}
+          {podeEditar && <button onClick={() => setEtapasModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('crm.editar-etapas')}</button>}
+          {podeEditar && <button onClick={() => setPipelinesModal(true)} style={{ padding: '6px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('crm.gerenciar-pipelines')}</button>}
         </div>
       )}
 
-      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : vista === 'painel' ? (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p> : vista === 'painel' ? (
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
       ) : vista === 'contatos' ? (
         // Lista ÚNICA: leads e pacientes convivem aqui (o tipo vira só um selo).
@@ -456,7 +458,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             pipeline vinculados àquela viagem; sem vínculo = "Outro". */}
         {perfilTurismo && chipsViagem.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Interessados em</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('crm.interessados')}</span>
             {chipsViagem.map(c => {
               const on = filtroViagem === c.id
               return (
@@ -473,7 +475,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
             com largura mínima para caber o dedo. touchAction none para o dedo
             arrastar a barra em vez de rolar a página. */}
         <style>{`.crm-coluna-cards::-webkit-scrollbar{width:8px}.crm-coluna-cards::-webkit-scrollbar-thumb{background:var(--v2-rule);border-radius:999px}.crm-coluna-cards::-webkit-scrollbar-thumb:hover{background:#b5bcc6}.crm-coluna-cards::-webkit-scrollbar-track{background:transparent}`}</style>
-        <div ref={trilhoRef} onPointerDown={pegarBarra} title="Arraste para o lado para ver as outras etapas"
+        <div ref={trilhoRef} onPointerDown={pegarBarra} title={tr('crm.arraste-lado')}
           style={{ position: 'relative', height: barra.visivel ? 10 : 0, marginBottom: barra.visivel ? 8 : 0, borderRadius: 999, background: barra.visivel ? 'var(--v2-surface2)' : 'transparent', cursor: barra.visivel ? 'grab' : 'default', touchAction: 'none' }}>
           {barra.visivel && (
             <div style={{ position: 'absolute', top: 0, left: barra.esquerda, width: barra.largura, height: '100%', borderRadius: 999, background: 'var(--v2-ink3)' }} />
@@ -515,17 +517,17 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                         <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{n.titulo}</p>
                         {perfilTurismo && (
                           <span style={{ display: 'inline-block', marginBottom: 4, fontSize: 10, fontWeight: 800, color: n.viagemId ? 'var(--v2-info)' : 'var(--v2-ink3)', background: n.viagemId ? 'var(--v2-info-bg)' : 'var(--v2-surface1)', borderRadius: 999, padding: '2px 8px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {viagemDe(n.viagemId)?.titulo || n.destinoDesejado || 'Outro (não especificado)'}
+                            {viagemDe(n.viagemId)?.titulo || n.destinoDesejado || tr('crm.outro-nao-especificado')}
                           </span>
                         )}
                         {!!n.valor && <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ok)' }}>{fmtR$(n.valor)}</p>}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <span style={{ fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || 'Sem contato'}</span>
+                          <span style={{ fontSize: 11, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ct?.nome || tr('crm.sem-contato-badge')}</span>
                           {n.donoNome && <span style={{ fontSize: 10, color: 'var(--v2-ink3)', flexShrink: 0 }}>{n.donoNome.split(' ')[0]}</span>}
                         </div>
                         {n.proximoFollowUp && (() => { const atrasado = new Date(new Date(n.proximoFollowUp).setHours(23, 59, 59, 999)).getTime() < Date.now(); return (
                           <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700, color: atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>
-                            {atrasado ? 'Follow-up atrasado' : 'Follow-up'} · {new Date(n.proximoFollowUp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                            {tr(atrasado ? 'crm.follow-atrasado' : 'crm.follow')} · {new Date(n.proximoFollowUp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           </span>
                         ) })()}
                         {(() => {
@@ -543,11 +545,11 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                             fora da tela. Um select nativo resolve os dois — e o
                             stopPropagation impede que o clique abra a ficha. */}
                         {podeEditar && (
-                          <select value="" draggable={false} title="Mover para outra etapa"
+                          <select value="" draggable={false} title={tr('crm.mover-etapa')}
                             onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
                             onChange={e => { const destino = e.target.value; if (destino) moverEstagio(n, destino) }}
                             style={{ marginTop: 8, width: '100%', padding: '4px 6px', borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                            <option value="">Mover para…</option>
+                            <option value="">{tr('crm.mover-para')}</option>
                             {estagiosDoPipeline(pipelineSel).filter(x => x.id !== est.id).map(x => (
                               <option key={x.id} value={x.id}>{x.nome}</option>
                             ))}
@@ -570,31 +572,31 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <div onClick={fecharFora(() => setAbordagensAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Próximas abordagens</h3>
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{tr('crm.proximas-abordagens')}</h3>
               <span style={{ flex: 1 }} />
               <button onClick={() => setAbordagensAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1 }}>×</button>
             </div>
-            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Lembretes registrados nas fichas dos contatos. Concluir aqui dá baixa na tarefa do responsável.</p>
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.lembretes-ajuda')}</p>
             {([
-              ['Atrasadas', abordagens.atrasadas, 'var(--v2-hot)'],
+              [tr('crm.atrasadas'), abordagens.atrasadas, 'var(--v2-hot)'],
               ['Hoje', abordagens.hoje, 'var(--v2-amber)'],
-              ['Próximos 7 dias', abordagens.semana, 'var(--v2-info)'],
+              [tr('crm.proximos-7'), abordagens.semana, 'var(--v2-info)'],
             ] as [string, { contato: Contato; passo: ProximoPasso }[], string][]).map(([titulo, itens, cor]) => (
               <div key={titulo} style={{ marginBottom: 14 }}>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 800, color: cor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{titulo} · {itens.length}</p>
                 {itens.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nada por aqui.</p>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.nada-aqui')}</p>
                 ) : itens.map(({ contato: c, passo: p }) => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
-                    <button onClick={() => concluirAbordagem(c.id, p.id)} title="Marcar como feita"
+                    <button onClick={() => concluirAbordagem(c.id, p.id)} title={tr('crm.marcar-feita')}
                       style={{ width: 17, height: 17, borderRadius: 5, border: '1.5px solid var(--v2-rule2)', background: 'var(--v2-surface)', cursor: 'pointer', flexShrink: 0 }} />
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: cor, flexShrink: 0 }}>{p.quando.split('-').reverse().slice(0, 2).join('/')}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</p>
                       <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</p>
                     </div>
-                    <button onClick={() => { setAbordagensAberto(false); setContatoModal(c) }} title="Abrir a ficha do contato"
-                      style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0, padding: 0 }}>Abrir ficha</button>
+                    <button onClick={() => { setAbordagensAberto(false); setContatoModal(c) }} title={tr('crm.abrir-ficha-dica')}
+                      style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0, padding: 0 }}>{tr('crm.abrir-ficha')}</button>
                   </div>
                 ))}
               </div>
@@ -635,6 +637,7 @@ const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', b
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }
 
 function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: { negocios: Negocio[]; estagios: Estagio[]; usuarios: any[]; perfilClinica?: boolean }) {
+  const tr = useT()
   const agora = new Date(), m = agora.getMonth(), y = agora.getFullYear()
   const noMes = (iso?: string) => { if (!iso) return false; const d = new Date(iso); return d.getMonth() === m && d.getFullYear() === y }
   const abertos = negocios.filter(n => n.status === 'aberto')
@@ -683,15 +686,15 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   return (
     <div style={{ maxWidth: 920 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 18 }}>
-        <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={`${abertos.length} negócio(s)`} />
-        <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={`${ganhosMes.length} venda(s)`} cor="var(--v2-ok)" />
-        <Card titulo="Win rate" valor={`${winRate}%`} sub={`${ganhos.length} ganho / ${negocios.length} oportunidade(s)`} />
+        <Card titulo="Em aberto" valor={fmtR$(valorAberto)} sub={tr('crm.n-negocios', { n: abertos.length })} />
+        <Card titulo="Ganho no mês" valor={fmtR$(valorGanhoMes)} sub={tr('crm.n-vendas', { n: ganhosMes.length })} cor="var(--v2-ok)" />
+        <Card titulo="Win rate" valor={`${winRate}%`} sub={tr('crm.win-rate-sub', { ganhos: ganhos.length, total: negocios.length })} />
         <Card titulo="Conversão (R$)" valor={`${conversaoValor}%`} sub={`${fmtR$(valorConvertido)} de ${fmtR$(valorOportunidades)}`} />
         <Card titulo="Ticket médio" valor={fmtR$(ticket)} sub="negócios ganhos" />
-        <Card titulo="Perdidas" valor={fmtR$(valorPerdido)} sub={`${perdidos.length} oportunidade(s)`} cor="var(--v2-hot)" />
+        <Card titulo="Perdidas" valor={fmtR$(valorPerdido)} sub={tr('crm.n-oportunidades', { n: perdidos.length })} cor="var(--v2-hot)" />
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Funil (em aberto por etapa)</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{tr('crm.funil-aberto')}</span>
       <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
         {colsAbertas.map(e => {
           const ns = abertos.filter(n => n.estagioId === e.id)
@@ -709,18 +712,18 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
         })}
       </div>
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Origem dos leads' : 'Origem dos negócios'}</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? tr('crm.origem-leads') : tr('crm.origem-negocios')}</span>
       {perfilClinica ? (
         /* Pizza (rosca) da origem — a lista do dropdown é fechada (lib/origensLead),
            então cada fatia é um canal de verdade e a soma fecha o total de leads
            deste funil. Grafias antigas caem no balde certo; o que ninguém
            preencheu aparece como "Sem origem", em vez de sumir. */
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
-          {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma oportunidade neste funil ainda.</p> : (
+          {pizza.total === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('crm.sem-oportunidade')}</p> : (
             <div ref={pizzaBoxRef} onMouseLeave={() => setHoverFatia(null)}
               style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
               <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
-                <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Origem dos leads">
+                <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label={tr('crm.origem-leads')}>
                   {fatiaUnica(pizza.fatias)
                     ? <circle cx="90" cy="90" r="66" fill="none" stroke={pizza.fatias[0].cor} strokeWidth="42"
                         style={{ cursor: 'pointer' }} onMouseMove={e => moverNaPizza(e, pizza.fatias[0].nome)} onClick={e => moverNaPizza(e, pizza.fatias[0].nome)} />
@@ -764,7 +767,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                     </div>
                   )
                 })}
-                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Passe o mouse por uma fatia para ver o que aquele canal virou.</p>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.fatia-dica')}</p>
               </div>
 
               {/* Detalhe do canal — a pergunta seguinte à do gráfico: não só de onde
@@ -789,12 +792,12 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
                     <div style={{ fontSize: 12, color: 'var(--v2-ink2)', marginBottom: 8 }}>
                       <b style={{ color: 'var(--v2-ink)' }}>{f.qtd}</b> {f.qtd === 1 ? 'lead' : 'leads'} · {Math.round(f.pct)}% do funil
                     </div>
-                    {linha('Em aberto', String(f.abertos))}
-                    {linha('Ganhos', String(f.ganhos), 'var(--v2-ok)')}
-                    {linha('Perdidos', String(f.perdidos), f.perdidos ? 'var(--v2-hot)' : undefined)}
+                    {linha(tr('crm.em-aberto'), String(f.abertos))}
+                    {linha(tr('crm.ganhos'), String(f.ganhos), 'var(--v2-ok)')}
+                    {linha(tr('crm.perdidos'), String(f.perdidos), f.perdidos ? 'var(--v2-hot)' : undefined)}
                     <div style={{ borderTop: '1px solid var(--v2-rule)', marginTop: 6, paddingTop: 6 }}>
-                      {linha('Conversão', `${Math.round(f.conversao)}%`)}
-                      {linha('Valor ganho', fmtR$(f.valorGanho), f.valorGanho ? 'var(--v2-ok)' : undefined)}
+                      {linha(tr('crm.conversao'), `${Math.round(f.conversao)}%`)}
+                      {linha(tr('crm.valor-ganho'), fmtR$(f.valorGanho), f.valorGanho ? 'var(--v2-ok)' : undefined)}
                     </div>
                   </div>
                 )
@@ -804,7 +807,7 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
         </div>
       ) : (
       <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18 }}>
-        {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum negócio com origem preenchida ainda.</p> : porOrigem.map(o => (
+        {porOrigem.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('crm.sem-origem-negocio')}</p> : porOrigem.map(o => (
           <div key={o.nome} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
             <span style={{ width: 120, fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
             <div style={{ flex: 1, height: 18, background: 'var(--v2-surface1)', borderRadius: 6, overflow: 'hidden' }}>
@@ -816,12 +819,12 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
       </div>
       )}
 
-      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? 'Pipeline por responsável' : 'Pipeline por vendedor'}</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{perfilClinica ? tr('crm.pipeline-responsavel') : tr('crm.pipeline-vendedor')}</span>
       <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Sem negócios em aberto.</p> : porVendedor.map((v: any) => (
+        {porVendedor.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('crm.sem-negocio')}</p> : porVendedor.map((v: any) => (
           <div key={v.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
             <span style={{ fontSize: 13, color: 'var(--v2-ink)' }}>{v.nome}</span>
-            <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{v.qtd} negócio(s) · <b style={{ color: 'var(--v2-ink)' }}>{fmtR$(v.valor)}</b></span>
+            <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.n-negocios', { n: v.qtd })} · <b style={{ color: 'var(--v2-ink)' }}>{fmtR$(v.valor)}</b></span>
           </div>
         ))}
       </div>
@@ -829,12 +832,13 @@ function PainelVendas({ negocios, estagios, usuarios, perfilClinica = false }: {
   )
 }
 
-const CANAL: Record<string, { label: string; cor: string }> = {
-  whatsapp: { label: 'WhatsApp', cor: 'var(--v2-ok)' }, ligacao: { label: 'Ligação', cor: 'var(--v2-info)' }, email: { label: 'E-mail', cor: '#7c3aed' },
+const CANAL: Record<string, { rotulo: string; cor: string }> = {
+  whatsapp: { rotulo: 'crm.inter.whatsapp', cor: 'var(--v2-ok)' }, ligacao: { rotulo: 'crm.inter.ligacao', cor: 'var(--v2-info)' }, email: { rotulo: 'crm.inter.email', cor: '#7c3aed' },
 }
 type Passo = { id: string; dia: number; canal: string; titulo: string; script: string }
 
 function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = '', onClose, onSalvo }: { perfilTelefonia?: boolean; lojas?: { id: string; nome: string; codigo?: string }[]; lojaAtiva?: string; onClose: () => void; onSalvo: () => void }) {
+  const tr = useT()
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [lojaDestino, setLojaDestino] = useState(lojaAtiva)
@@ -849,19 +853,19 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
     setTexto(t); e.target.value = ''
   }
   async function salvar() {
-    if (!linhas.length) { toast('Cole ou envie ao menos um contato.', 'erro'); return }
-    if (perfilTelefonia && !lojaDestino) { toast('Escolha a loja de destino.', 'erro'); return }
+    if (!linhas.length) { toast(tr('crm.av.cole-contato'), 'erro'); return }
+    if (perfilTelefonia && !lojaDestino) { toast(tr('crm.av.escolha-loja'), 'erro'); return }
     setSalvando(true)
     const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: linhas, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { toast(`${r.criados} contato(s) importado(s).`, 'sucesso'); onSalvo() } else toast(r?.error || 'Falha ao importar.', 'erro')
+    if (r?.ok) { toast(tr('crm.aviso-importados', { n: r.criados }), 'sucesso'); onSalvo() } else toast(r?.error || tr('crm.falha-importar'), 'erro')
   }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--v2-ink)' }}>Importar contatos</h3>
+        <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('crm.importar')}</h3>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', flex: 1, minWidth: 180 }}>Envie o <b>.csv do seu sistema</b> (reconhece Nome, CPF, DDD+Celular, E-mail, Nascimento) ou cole: <code style={{ background: 'var(--v2-surface1)', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)', flex: 1, minWidth: 180 }}>{tr('crm.envie-o')}<b>{tr('crm.csv-sistema')}</b>{tr('crm.importar-reconhece')}<code style={{ background: 'var(--v2-surface1)', padding: '1px 5px', borderRadius: 4 }}>Nome ; Telefone ; Email ; Empresa</code></p>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Enviar arquivo
             <input type="file" accept=".csv,.txt,text/csv" onChange={onArquivo} style={{ display: 'none' }} />
@@ -869,19 +873,19 @@ function BulkContatosModal({ perfilTelefonia = false, lojas = [], lojaAtiva = ''
         </div>
         {perfilTelefonia && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Loja de destino</label>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('crm.loja-destino')}</label>
             <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-              <option value="">Selecione a loja…</option>
+              <option value="">{tr('crm.selecione-loja')}</option>
               {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
             </select>
           </div>
         )}
         <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder={'Cole aqui ou envie o .csv…\nJoão Silva ; 5511999990000 ; joao@x.com ; Loja Y'}
           style={{ width: '100%', minHeight: 180, padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'monospace', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5 }} />
-        <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{linhas.length}</strong> contato(s) prontos{ignoradas > 0 && <span style={{ color: 'var(--v2-amber)' }}> · {ignoradas} sem nome ignorada(s)</span>}</> : <span style={{ color: 'var(--v2-ink3)' }}>Cole ou envie o arquivo para ver a prévia.</span>}</div>
+        <div style={{ margin: '8px 0 12px', fontSize: 12.5 }}>{texto.trim() ? <><strong style={{ color: linhas.length ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{tr('crm.n-contatos-prontos', { n: linhas.length })}</strong>{ignoradas > 0 && <span style={{ color: 'var(--v2-amber)' }}>{tr('crm.n-ignoradas', { n: ignoradas })}</span>}</> : <span style={{ color: 'var(--v2-ink3)' }}>{tr('crm.importar-previa')}</span>}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: linhas.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando...' : `Importar ${linhas.length || ''} contato(s)`}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || linhas.length === 0} style={{ flex: 1, padding: '11px 0', background: linhas.length ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: linhas.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: linhas.length ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.importando') : tr('crm.importar-n', { n: linhas.length || '' })}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -897,7 +901,8 @@ function ligadosEmpresa(emp: Empresa, contatos: Contato[], negocios: Negocio[]) 
 }
 
 function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Empresa[]; contatos: Contato[]; negocios: Negocio[]; onAbrir: (e: Empresa) => void }) {
-  if (empresas.length === 0) return <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhuma empresa ainda.</p></div>
+  const tr = useT()
+  if (empresas.length === 0) return <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}><p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('crm.sem-empresa')}</p></div>
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
       {empresas.map(e => {
@@ -908,8 +913,8 @@ function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Em
             <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{e.nome}</p>
             {e.segmento && <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>{e.segmento}</p>}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>{cts.length} contato(s)</span>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{negs.length} negócio(s)</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px' }}>{tr('crm.n-contatos', { n: cts.length })}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('crm.n-negocios', { n: negs.length })}</span>
               {aberto > 0 && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '2px 8px' }}>{fmtR$(aberto)} em aberto</span>}
             </div>
           </div>
@@ -920,6 +925,7 @@ function EmpresasLista({ empresas, contatos, negocios, onAbrir }: { empresas: Em
 }
 
 function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExcluir = false, onAbrirContato }: { empresa: Empresa | null; contatos: Contato[]; negocios: Negocio[]; onClose: () => void; onSalvo: () => void; podeExcluir?: boolean; onAbrirContato?: (c: Contato) => void }) {
+  const tr = useT()
   const [f, setF] = useState<any>({ nome: empresa?.nome || '', cnpj: formatarCnpj((empresa as any)?.cnpj), segmento: empresa?.segmento || '', site: empresa?.site || '', instagram: empresa?.instagram || '', telefone: empresa?.telefone || '', observacoes: empresa?.observacoes || '' })
   const [salvando, setSalvando] = useState(false)
   const lig = empresa ? ligadosEmpresa(empresa, contatos, negocios) : { cts: [], negs: [] }
@@ -960,56 +966,56 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
     setSalvando(false); onSalvo()
   }
   async function excluir() {
-    if (!empresa?.id || !(await confirmar('Excluir esta empresa? Os contatos e negócios não são apagados.', { titulo: 'Excluir empresa', okLabel: 'Excluir', perigo: true }))) return
+    if (!empresa?.id || !(await confirmar(tr('crm.dlg-excluir-empresa'), { titulo: tr('crm.dlg-titulo-empresa'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch(`/api/crm/empresas?id=${empresa.id}`, { method: 'DELETE' }).catch(() => {})
     onSalvo()
   }
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{empresa ? 'Editar empresa' : 'Nova empresa'}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{empresa ? tr('crm.editar-empresa') : tr('crm.titulo-nova-empresa')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          <div><label style={labelStyle}>{tr('crm.nome-obrigatorio')}</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label style={labelStyle}>CNPJ</label>
+              <label style={labelStyle}>{tr('crm.cnpj')}</label>
               <input value={f.cnpj} onChange={e => setF({ ...f, cnpj: formatarCnpj(e.target.value) })} inputMode="numeric" placeholder="00.000.000/0000-00" style={inputStyle} />
               {/* Opcional — mas se veio errado, avisa. CNPJ torto vai parar em
                   contrato e nota, e ninguém confere de novo. Não impede salvar. */}
               {f.cnpj.trim() && !cnpjValido(f.cnpj) && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-hot)', fontWeight: 600 }}>CNPJ incompleto ou inválido — confira antes de salvar.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-hot)', fontWeight: 600 }}>{tr('crm.cnpj-invalido')}</p>
               )}
             </div>
-            <div><label style={labelStyle}>Segmento</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Site</label><input value={f.site} onChange={e => setF({ ...f, site: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Instagram</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.segmento')}</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.telefone')}</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.site')}</label><input value={f.site} onChange={e => setF({ ...f, site: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.instagram')}</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} style={inputStyle} /></div>
           </div>
-          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
         </div>
         {/* Contatos da empresa: clicáveis (abrem a ficha) e vinculáveis daqui */}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--v2-rule)' }}>
-          <label style={labelStyle}>Contatos desta empresa</label>
+          <label style={labelStyle}>{tr('crm.contatos-empresa')}</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {naFicha.map(c => (
               <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: vincularIds.includes(c.id) ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '4px 6px 4px 10px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink)' }}>
-                <button onClick={() => onAbrirContato?.(c)} title="Abrir a ficha do contato"
+                <button onClick={() => onAbrirContato?.(c)} title={tr('crm.abrir-ficha-dica')}
                   style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: onAbrirContato ? 'var(--v2-info)' : 'var(--v2-ink)', cursor: onAbrirContato ? 'pointer' : 'default' }}>{c.nome}</button>
                 <button onClick={() => {
                   if (vincularIds.includes(c.id)) setVincularIds(ids => ids.filter(x => x !== c.id))
                   else setDesvincularIds(ids => [...ids, c.id])
-                }} title="Desvincular da empresa"
+                }} title={tr('crm.desvincular-empresa')}
                   style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>×</button>
               </span>
             ))}
-            {naFicha.length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato vinculado.</span>}
+            {naFicha.length === 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.sem-contato-vinculado')}</span>}
             <button onClick={() => setSeletorAberto(v => !v)}
-              style={{ padding: '4px 10px', background: 'var(--v2-surface)', border: '1.5px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Vincular</button>
+              style={{ padding: '4px 10px', background: 'var(--v2-surface)', border: '1.5px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('crm.vincular')}</button>
           </div>
 
           {seletorAberto && (
             <div style={{ marginTop: 8, border: '1px solid var(--v2-rule)', borderRadius: 10, overflow: 'hidden' }}>
-              <input value={buscaCt} onChange={e => setBuscaCt(e.target.value)} autoFocus placeholder="Buscar contato por nome..."
+              <input value={buscaCt} onChange={e => setBuscaCt(e.target.value)} autoFocus placeholder={tr('crm.buscar-contato')}
                 style={{ ...inputStyle, border: 'none', borderBottom: '1px solid var(--v2-rule)', borderRadius: 0 }} />
               <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                 {candidatos.map(c => (
@@ -1018,19 +1024,19 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
                     {c.nome}{c.empresa ? <span style={{ color: 'var(--v2-ink3)' }}> · hoje em {c.empresa}</span> : ''}
                   </button>
                 ))}
-                {candidatos.length === 0 && <p style={{ margin: 0, padding: '10px 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.</p>}
+                {candidatos.length === 0 && <p style={{ margin: 0, padding: '10px 12px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.contato-nao-encontrado')}</p>}
               </div>
             </div>
           )}
           {(vincularIds.length > 0 || desvincularIds.length > 0) && (
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-amber)' }}>As mudanças de vínculo são aplicadas ao salvar.</p>
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-amber)' }}>{tr('crm.vinculo-ao-salvar')}</p>
           )}
-          {lig.negs.length > 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}><b>Negócios:</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
+          {lig.negs.length > 0 && <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}><b>{tr('crm.negocios')}</b> {lig.negs.map(n => n.titulo).join(', ')}</p>}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : empresa ? 'Salvar' : 'Criar empresa'}</button>
-          {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.salvando') : tr(empresa ? 'comum.salvar' : 'crm.criar-empresa')}</button>
+          {empresa && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>}
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -1041,6 +1047,7 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
 const semAcento = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = [], mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string }[]; mostrarFrequencia?: boolean }) {
+  const tr = useT()
   const [vista, setVista] = useState<'lista' | 'cards'>('lista')
   // Busca: nome, telefone, e-mail, empresa, área e etiquetas. Telefone casa só
   // pelos dígitos — assim "99994104" acha "+55 (55) 99994-4104".
@@ -1069,7 +1076,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
     const f = frequenciaPaciente(datasAtendidas.get(id) || [])
     if (f.total === 0) return { txt: '—', forte: false }
     if (f.total === 1) return { txt: '1 atend.', forte: false }
-    return { txt: `${f.total}× · a cada ~${f.mediaDias}d`, forte: true }
+    return { txt: tr('crm.freq-total', { n: f.total, dias: f.mediaDias }), forte: true }
   }
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [excluindo, setExcluindo] = useState(false)
@@ -1095,7 +1102,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
       {children}
       {arrastando && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,192,15,0.12)', border: '2px dashed var(--v2-amber-on)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>Solte o arquivo .csv para importar em massa</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>{tr('crm.importar-solte')}</span>
         </div>
       )}
     </div>
@@ -1104,19 +1111,19 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
   const toggle = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const todos = contatos.length > 0 && sel.size === contatos.length
   const toggleTodos = () => setSel(todos ? new Set() : new Set(contatos.map(c => c.id)))
-  const empresaLabel = (c: Contato) => c.profissionalAutonomo ? 'Autônomo' : (c.empresa || '—')
+  const empresaLabel = (c: Contato) => c.profissionalAutonomo ? tr('crm.autonomo-simples') : (c.empresa || '—')
   // Limpeza de importação quebrada: nomes-lixo de arquivo binário importado como CSV.
   const quebrados = contatos.filter(c => pareceQuebrado(c.nome))
   const selecionarQuebrados = () => setSel(new Set(quebrados.map(c => c.id)))
 
   async function excluirSelecionados() {
     if (sel.size === 0) return
-    if (!(await confirmar(`Excluir ${sel.size} contato(s) selecionado(s)? Esta ação não pode ser desfeita.`, { titulo: 'Excluir contatos', okLabel: `Excluir ${sel.size}`, perigo: true }))) return
+    if (!(await confirmar(tr('crm.dlg-excluir-contatos', { n: sel.size }), { titulo: tr('crm.dlg-titulo-contatos'), okLabel: tr('comum.excluir'), perigo: true }))) return
     setExcluindo(true)
     const r = await fetch(`/api/crm/contatos?ids=${Array.from(sel).join(',')}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
     setExcluindo(false)
-    if (r?.ok) { toast(`${r.excluidos} contato(s) excluído(s).`, 'sucesso'); setSel(new Set()); onRecarregar() }
-    else toast('Falha ao excluir.', 'erro')
+    if (r?.ok) { toast(tr('crm.aviso-excluidos', { n: r.excluidos }), 'sucesso'); setSel(new Set()); onRecarregar() }
+    else toast(tr('crm.av.falha-excluir'), 'erro')
   }
 
   // Contatos selecionados (para mesclar) + pontuação de "completude" p/ sugerir o principal
@@ -1134,15 +1141,15 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
     setMesclando(true)
     const r = await fetch('/api/crm/contatos/mesclar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ principalId, secundarioId }) }).then(x => x.json()).catch(() => null)
     setMesclando(false)
-    if (r?.ok) { toast('Contatos mesclados.', 'sucesso'); setMesclarAberto(false); setSel(new Set()); onRecarregar() }
-    else toast(r?.error || 'Falha ao mesclar.', 'erro')
+    if (r?.ok) { toast(tr('crm.av.mesclados'), 'sucesso'); setMesclarAberto(false); setSel(new Set()); onRecarregar() }
+    else toast(r?.error || tr('crm.falha-mesclar'), 'erro')
   }
 
   // Base vazia de verdade: nem mostra a busca (não há o que buscar).
   if (contatosTodos.length === 0) return dz(
     <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum contato ainda.</p>
-      {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Arraste um arquivo .csv aqui para importar em massa.</p>}
+      <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('crm.sem-contato')}</p>
+      {onImportar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.importar-arraste')}</p>}
     </div>
   )
 
@@ -1150,15 +1157,15 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
     <>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{sel.size} selecionado(s)</span>
-      {podeExcluir && sel.size === 2 && <button onClick={abrirMesclar} style={{ padding: '7px 14px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Mesclar duplicados</button>}
-      {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? 'Excluindo...' : 'Excluir selecionados'}</button>}
-      <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-rule2)', border: '1px solid var(--v2-ink2)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Limpar seleção</button>
+      {podeExcluir && sel.size === 2 && <button onClick={abrirMesclar} style={{ padding: '7px 14px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.mesclar-duplicados')}</button>}
+      {podeExcluir && <button onClick={excluirSelecionados} disabled={excluindo} style={{ padding: '7px 14px', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: excluindo ? 'default' : 'pointer' }}>{excluindo ? tr('crm.excluindo') : tr('crm.excluir-selecionados')}</button>}
+      <button onClick={() => setSel(new Set())} style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-rule2)', border: '1px solid var(--v2-ink2)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.limpar-selecao')}</button>
     </div>
     {mesclarAberto && selecionados.length === 2 && (
       <div onClick={fecharFora(() => setMesclarAberto(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
         <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', padding: 22 }}>
-          <h3 style={{ margin: '0 0 6px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Mesclar contatos</h3>
-          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Escolha qual registro fica como principal. O outro será removido e seus dados (telefone, histórico, negócios, agendamentos e conversas) vão para o principal.</p>
+          <h3 style={{ margin: '0 0 6px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{tr('crm.mesclar')}</h3>
+          <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.mesclar-ajuda')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {selecionados.map(c => {
               const marcado = principalId === c.id
@@ -1169,14 +1176,14 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
                     <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>
                     <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[c.telefone, c.email, empresaLabel(c) !== '—' ? empresaLabel(c) : ''].filter(Boolean).join(' · ') || 'sem outros dados'}</span>
                   </span>
-                  {marcado && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>PRINCIPAL</span>}
+                  {marcado && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>{tr('crm.principal')}</span>}
                 </button>
               )
             })}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button onClick={() => setMesclarAberto(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-            <button onClick={mesclar} disabled={mesclando} style={{ padding: '10px 18px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: mesclando ? 'wait' : 'pointer' }}>{mesclando ? 'Mesclando…' : 'Mesclar'}</button>
+            <button onClick={() => setMesclarAberto(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+            <button onClick={mesclar} disabled={mesclando} style={{ padding: '10px 18px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: mesclando ? 'wait' : 'pointer' }}>{tr(mesclando ? 'crm.mesclando' : 'crm.btn-mesclar')}</button>
           </div>
         </div>
       </div>
@@ -1196,16 +1203,16 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
         <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--v2-ink3)', pointerEvents: 'none' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
         </span>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome, telefone, e-mail…"
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('crm.buscar-nome-tel-email')}
           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 30px 8px 30px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
         {busca && (
-          <button onClick={() => setBusca('')} title="Limpar busca"
+          <button onClick={() => setBusca('')} title={tr('crm.limpar-busca')}
             style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
         )}
       </div>
       {busca && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
       {podeExcluir && quebrados.length > 0 && (
-        <button onClick={selecionarQuebrados} title="Seleciona os contatos com nome corrompido (importação de arquivo binário) para você conferir e excluir"
+        <button onClick={selecionarQuebrados} title={tr('crm.selecionar-corrompidos')}
           style={{ padding: '6px 13px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
           Selecionar {quebrados.length} quebrado(s)
         </button>
@@ -1240,7 +1247,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
                   {c.telefone && <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>{c.telefone}</span>}
                   {c.email && <span style={{ fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
                 </div>
-                {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{nNeg} negócio(s)</span>}
+                {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('crm.n-negocios', { n: nNeg })}</span>}
               </div>
             )
           })}
@@ -1262,15 +1269,15 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr>
-              <th style={{ ...th, width: 40 }}><input type="checkbox" checked={todos} onChange={toggleTodos} style={{ width: 16, height: 16, cursor: 'pointer' }} title="Selecionar todos" /></th>
-              <th style={th}>Nome</th>
-              <th style={th}>Empresa</th>
-              <th style={th}>Área de atuação</th>
-              <th style={th}>Telefone</th>
-              {!perfilClinica && <th style={th}>E-mail</th>}
-              {perfilClinica && <th style={th}>Última interação</th>}
-              {mostrarFrequencia && <th style={th}>Frequência</th>}
-              <th style={{ ...th, textAlign: 'center' }}>Neg.</th>
+              <th style={{ ...th, width: 40 }}><input type="checkbox" checked={todos} onChange={toggleTodos} style={{ width: 16, height: 16, cursor: 'pointer' }} title={tr('crm.selecionar-todos')} /></th>
+              <th style={th}>{tr('crm.nome')}</th>
+              <th style={th}>{tr('crm.empresa')}</th>
+              <th style={th}>{tr('crm.area-atuacao')}</th>
+              <th style={th}>{tr('crm.telefone')}</th>
+              {!perfilClinica && <th style={th}>{tr('crm.email')}</th>}
+              {perfilClinica && <th style={th}>{tr('crm.ultima-interacao')}</th>}
+              {mostrarFrequencia && <th style={th}>{tr('crm.frequencia')}</th>}
+              <th style={{ ...th, textAlign: 'center' }}>{tr('crm.neg')}</th>
             </tr>
           </thead>
           <tbody>
@@ -1300,16 +1307,16 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
   )
 }
 
-const STATUS_AG: Record<string, { label: string; cor: string }> = {
-  agendado: { label: 'Agendado', cor: 'var(--v2-info)' }, confirmado: { label: 'Confirmado', cor: 'var(--v2-ok)' },
-  atendido: { label: 'Atendido', cor: 'var(--v2-ink2)' }, faltou: { label: 'Faltou', cor: 'var(--v2-hot)' }, cancelado: { label: 'Cancelado', cor: 'var(--v2-ink3)' },
+const STATUS_AG: Record<string, { rotulo: string; cor: string }> = {
+  agendado: { rotulo: 'crm.ag.agendado', cor: 'var(--v2-info)' }, confirmado: { rotulo: 'crm.ag.confirmado', cor: 'var(--v2-ok)' },
+  atendido: { rotulo: 'crm.ag.atendido', cor: 'var(--v2-ink2)' }, faltou: { rotulo: 'crm.ag.faltou', cor: 'var(--v2-hot)' }, cancelado: { rotulo: 'crm.ag.cancelado', cor: 'var(--v2-ink3)' },
 }
 // Tipos de toque de nutrição (linha do tempo do paciente/contato)
-const TIPOS_INTER: { key: string; label: string; cor: string }[] = [
-  { key: 'nota', label: 'Nota', cor: 'var(--v2-ink3)' }, { key: 'ligacao', label: 'Ligação', cor: 'var(--v2-info)' },
-  { key: 'whatsapp', label: 'WhatsApp', cor: 'var(--v2-ok)' }, { key: 'email', label: 'E-mail', cor: '#7c3aed' },
-  { key: 'retorno', label: 'Retorno', cor: '#0891b2' }, { key: 'reabordagem', label: 'Reabordagem', cor: 'var(--v2-amber)' },
-  { key: 'campanha', label: 'Campanha', cor: '#c026d3' }, { key: 'outro', label: 'Outro', cor: 'var(--v2-ink3)' },
+const TIPOS_INTER: { key: string; rotulo: string; cor: string }[] = [
+  { key: 'nota', rotulo: 'crm.inter.nota', cor: 'var(--v2-ink3)' }, { key: 'ligacao', rotulo: 'crm.inter.ligacao', cor: 'var(--v2-info)' },
+  { key: 'whatsapp', rotulo: 'crm.inter.whatsapp', cor: 'var(--v2-ok)' }, { key: 'email', rotulo: 'crm.inter.email', cor: '#7c3aed' },
+  { key: 'retorno', rotulo: 'crm.inter.retorno', cor: '#0891b2' }, { key: 'reabordagem', rotulo: 'crm.inter.reabordagem', cor: 'var(--v2-amber)' },
+  { key: 'campanha', rotulo: 'crm.inter.campanha', cor: '#c026d3' }, { key: 'outro', rotulo: 'crm.inter.outro', cor: 'var(--v2-ink3)' },
 ]
 const interInfo = (k: string) => TIPOS_INTER.find(t => t.key === k) || TIPOS_INTER[0]
 // Detecta nome "quebrado": lixo de um arquivo binário (.xlsx/.zip) importado como
@@ -1346,10 +1353,11 @@ function haQuanto(iso?: string): { txt: string; frio: boolean } | null {
 function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = false, lojas = [], lojaAtiva = '', onClose, onImportado }: {
   linhas: string[][]; tipo?: string; perfilClinica: boolean; perfilTelefonia?: boolean; lojas?: { id: string; nome: string; codigo?: string }[]; lojaAtiva?: string; onClose: () => void; onImportado: () => void
 }) {
+  const tr = useT()
   const [lojaDestino, setLojaDestino] = useState(lojaAtiva)
   const CAMPOS: { k: string; label: string; req?: boolean }[] = perfilClinica
-    ? [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'nascimento', label: 'Nascimento' }, { k: 'etiquetas', label: 'Etiquetas' }]
-    : [{ k: 'nome', label: 'Nome', req: true }, { k: 'telefone', label: 'Telefone' }, { k: 'email', label: 'E-mail' }, { k: 'empresa', label: 'Empresa' }, { k: 'cargo', label: 'Cargo' }]
+    ? [{ k: 'nome', label: tr('crm.nome'), req: true }, { k: 'telefone', label: tr('crm.telefone') }, { k: 'email', label: tr('crm.email') }, { k: 'nascimento', label: tr('crm.nascimento') }, { k: 'etiquetas', label: tr('crm.campo-etiquetas') }]
+    : [{ k: 'nome', label: tr('crm.nome'), req: true }, { k: 'telefone', label: tr('crm.telefone') }, { k: 'email', label: tr('crm.email') }, { k: 'empresa', label: tr('crm.empresa') }, { k: 'cargo', label: tr('crm.cargo') }]
   const nCols = Math.max(...linhas.map(l => l.length), 0)
   const cabDetectado = /nome/i.test((linhas[0] || []).join(' ')) && /(email|telefone|empresa|nascimento|celular|whats)/i.test((linhas[0] || []).join(' '))
   const [cab, setCab] = useState(cabDetectado)
@@ -1396,14 +1404,14 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
   const validos = montarLote()
 
   async function importar() {
-    if (map.nome === undefined || map.nome < 0) { toast('Escolha qual coluna é o Nome.', 'erro'); return }
-    if (!validos.length) { toast('Nenhuma linha com nome preenchido.', 'erro'); return }
-    if (perfilTelefonia && !lojaDestino) { toast('Escolha a loja de destino.', 'erro'); return }
+    if (map.nome === undefined || map.nome < 0) { toast(tr('crm.av.escolha-coluna'), 'erro'); return }
+    if (!validos.length) { toast(tr('crm.av.sem-linha-nome'), 'erro'); return }
+    if (perfilTelefonia && !lojaDestino) { toast(tr('crm.av.escolha-loja'), 'erro'); return }
     setSalvando(true)
     const r = await fetch('/api/crm/contatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lote: validos, ...(lojaDestino ? { lojaId: lojaDestino } : {}) }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { toast(`${r.criados} ${perfilClinica ? 'paciente(s)/contato(s)' : 'contato(s)'} importado(s).`, 'sucesso'); onImportado() }
-    else toast(r?.error || 'Falha ao importar.', 'erro')
+    if (r?.ok) { toast(tr(perfilClinica ? 'crm.aviso-importados-clinica' : 'crm.aviso-importados', { n: r.criados }), 'sucesso'); onImportado() }
+    else toast(r?.error || tr('crm.falha-importar'), 'erro')
   }
 
   const colOpts = Array.from({ length: nCols }, (_, i) => i)
@@ -1420,9 +1428,9 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
 
         {perfilTelefonia && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Loja de destino dos contatos</label>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('crm.loja-destino-contatos')}</label>
             <select value={lojaDestino} onChange={e => setLojaDestino(e.target.value)} style={{ width: '100%', maxWidth: 320, padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${lojaDestino ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, fontSize: 13, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
-              <option value="">Selecione a loja…</option>
+              <option value="">{tr('crm.selecione-loja')}</option>
               {lojas.map(l => <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>)}
             </select>
           </div>
@@ -1440,7 +1448,7 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: c.req ? 'var(--v2-amber)' : 'var(--v2-ink3)', marginBottom: 4 }}>{c.label}{c.req ? ' *' : ''}</label>
               <select value={map[c.k] ?? -1} onChange={e => setMap(m => ({ ...m, [c.k]: Number(e.target.value) }))} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px', borderRadius: 8, border: `1.5px solid ${c.req && (map[c.k] ?? -1) < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-rule)'}`, fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 <option value={-1}>—</option>
-                {colOpts.map(i => <option key={i} value={i}>{cab && linhas[0]?.[i] ? linhas[0][i] : `Coluna ${i + 1}`}</option>)}
+                {colOpts.map(i => <option key={i} value={i}>{cab && linhas[0]?.[i] ? linhas[0][i] : tr('crm.coluna-n', { n: i + 1 })}</option>)}
               </select>
             </div>
           ))}
@@ -1464,13 +1472,13 @@ function ImportarContatosModal({ linhas, tipo, perfilClinica, perfilTelefonia = 
           </table>
         </div>
         <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--v2-ink3)' }}>
-          {validos.length} de {dados.length} linha(s) serão importadas{dados.length > validos.length ? ` (${dados.length - validos.length} sem nome serão ignoradas)` : ''}
-          {perfilClinica && tipo ? ` · entram como ${tipo === 'paciente' ? 'Paciente' : 'Lead'}` : ''}.
+          {tr('crm.linhas-importadas', { n: validos.length, total: dados.length })}{dados.length > validos.length ? tr('crm.linhas-ignoradas', { n: dados.length - validos.length }) : ''}
+          {perfilClinica && tipo ? tr('crm.entram-como', { tipo: tr(tipo === 'paciente' ? 'crm.paciente' : 'crm.lead') }) : ''}.
         </p>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 10, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={importar} disabled={salvando || !validos.length} style={{ padding: '10px 18px', background: validos.length ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: validos.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: validos.length ? 'pointer' : 'not-allowed' }}>{salvando ? 'Importando…' : `Importar ${validos.length}`}</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 10, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+          <button onClick={importar} disabled={salvando || !validos.length} style={{ padding: '10px 18px', background: validos.length ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: validos.length ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: validos.length ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.importando') : tr('crm.importar-qtd', { n: validos.length })}</button>
         </div>
       </div>
     </div>
@@ -1491,6 +1499,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
   onAbrirConversa: (telefone: string, contatoId?: string) => void
   onAbrirOportunidade?: (contatoId: string) => void
 }) {
+  const tr = useT()
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [templates, setTemplates] = useState<{ id: string; titulo: string; texto: string }[]>([])
@@ -1509,7 +1518,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
     const r = await fetch('/api/crm/mensagens', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ telefone: tel, texto: texto.trim() }),
-    }).then(x => x.json()).catch(() => ({ error: 'Erro de conexão' }))
+    }).then(x => x.json()).catch(() => ({ error: tr('crm.erro-conexao') }))
     // Vincula mesmo quando o envio falha: o número é dele de qualquer jeito.
     await fetch('/api/crm/mensagens', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1517,7 +1526,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
     }).catch(() => {})
     setEnviando(false)
     if (r?.error) { toast(r.error, 'erro'); return }
-    toast(`Mensagem enviada para ${primeiro || contato.nome}.`, 'sucesso')
+    toast(tr('crm.aviso-enviada', { quem: primeiro || contato.nome }), 'sucesso')
     onClose()
   }
 
@@ -1526,7 +1535,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
         <h3 style={{ margin: '0 0 2px', fontSize: 16, color: 'var(--v2-ink)' }}>Abordar {contato.nome}</h3>
         <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>
-          {tel ? `WhatsApp +${tel}` : 'Contato sem telefone válido — corrija o número na ficha (com DDD).'}
+          {tel ? tr('crm.whatsapp-numero', { tel }) : tr('crm.sem-telefone')}
         </p>
 
         {tel && (<>
@@ -1539,22 +1548,22 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
             </div>
           )}
           <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} rows={5} autoFocus
-            placeholder={`Primeira mensagem para ${primeiro || 'o contato'}...`}
+            placeholder={tr('crm.primeira-mensagem', { quem: primeiro || tr('crm.o-contato') })}
             style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
         </>)}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14, flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
           {podeEditar && onAbrirOportunidade && (
             <button onClick={() => onAbrirOportunidade(contato.id)}
-              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Nova oportunidade</button>
+              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.nova-oportunidade')}</button>
           )}
           {tel && (<>
-            <button onClick={() => onAbrirConversa(tel, contato.id)} title="Ver o histórico e conversar na aba Mensagens"
-              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1.5px solid var(--v2-ok-bg)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Abrir conversa</button>
+            <button onClick={() => onAbrirConversa(tel, contato.id)} title={tr('crm.ver-historico')}
+              style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1.5px solid var(--v2-ok-bg)', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{tr('crm.abrir-conversa')}</button>
             <button onClick={enviar} disabled={!texto.trim() || enviando}
               style={{ padding: '9px 18px', background: texto.trim() && !enviando ? '#25D366' : 'var(--v2-surface2)', color: texto.trim() && !enviando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 12.5, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>
-              {enviando ? 'Enviando...' : 'Enviar'}
+              {tr(enviando ? 'crm.enviando' : 'comum.enviar')}
             </button>
           </>)}
         </div>
@@ -1564,6 +1573,7 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
 }
 
 function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+  const tr = useT()
   const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', cpfCnpj: (contato as any)?.cpfCnpj || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
   const [salvando, setSalvando] = useState(false)
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
@@ -1633,8 +1643,8 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
     setAddPassoBusy(true)
     const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novoPasso: { titulo: novoPasso.titulo, quando: novoPasso.quando } }) }).then(x => x.json()).catch(() => null)
     setAddPassoBusy(false)
-    if (r?.ok) { setPassos(r.contato.proximosPassos || []); setNovoPasso({ titulo: '', quando: '' }); toast('Abordagem agendada — o comercial foi avisado.', 'sucesso') }
-    else toast(r?.error || 'Falha ao agendar a abordagem.', 'erro')
+    if (r?.ok) { setPassos(r.contato.proximosPassos || []); setNovoPasso({ titulo: '', quando: '' }); toast(tr('crm.av.abordagem-agendada'), 'sucesso') }
+    else toast(r?.error || tr('crm.falha-agendar-abordagem'), 'erro')
   }
   async function togglePasso(passoId: string) {
     if (!contato?.id) return
@@ -1687,67 +1697,67 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
     ir()
   }
   async function excluir() {
-    if (!contato?.id || !(await confirmar('Excluir este contato?', { titulo: 'Excluir contato', okLabel: 'Excluir', perigo: true }))) return
+    if (!contato?.id || !(await confirmar(tr('crm.dlg-excluir-contato'), { titulo: tr('crm.dlg-titulo-contato'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch(`/api/crm/contatos?id=${contato.id}`, { method: 'DELETE' }).catch(() => {})
     onSalvo()
   }
   return (
-    <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada, salvar: () => { if (!f.nome.trim()) { toast('Informe o nome para salvar a ficha.', 'erro'); return } return salvar() } })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada, salvar: () => { if (!f.nome.trim()) { toast(tr('crm.av.informe-nome'), 'erro'); return } return salvar() } })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? 'Editar paciente' : 'Editar contato') : 'Editar contato') : (perfilClinica ? (tipoPadrao === 'paciente' ? 'Novo paciente' : 'Novo contato') : 'Novo contato')}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? tr('crm.editar-paciente') : tr('crm.editar-contato')) : tr('crm.editar-contato')) : (perfilClinica ? (tipoPadrao === 'paciente' ? tr('crm.novo-paciente') : tr('crm.novo-contato')) : tr('crm.novo-contato'))}</h3>
           {/* Atalhos só na ficha JÁ SALVA: a oportunidade precisa do id do contato,
               e a conversa precisa do telefone. Em contato novo eles não existem. */}
           {contato && String(f.telefone || '').trim() && onAbrirWhatsApp && (
-            <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone, contato.id))} disabled={salvando} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
-              style={{ padding: '7px 14px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+            <button onClick={() => salvarEIr(() => onAbrirWhatsApp(f.telefone, contato.id))} disabled={salvando} title={tr('crm.abrir-conversa-wpp')}
+              style={{ padding: '7px 14px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{tr('crm.whatsapp')}</button>
           )}
           {contato && onAbrirOportunidade && (
-            <button onClick={() => salvarEIr(() => onAbrirOportunidade(contato.id))} disabled={salvando} title="Abrir uma oportunidade no funil para este contato"
-              style={{ padding: '7px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Oportunidade</button>
+            <button onClick={() => salvarEIr(() => onAbrirOportunidade(contato.id))} disabled={salvando} title={tr('crm.abrir-oportunidade')}
+              style={{ padding: '7px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{tr('crm.oportunidade')}</button>
           )}
           {perfilClinica && contato && onAgendar && (
             <button onClick={() => onAgendar({ pacienteNome: contato.nome, pacienteTelefone: contato.telefone, contatoId: contato.id })}
-              style={{ padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+              style={{ padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{tr('crm.agendar')}</button>
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><label style={labelStyle}>Nome *</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
+          <div><label style={labelStyle}>{tr('crm.nome-obrigatorio')}</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           {perfilClinica && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Tipo</label>
+              <div><label style={labelStyle}>{tr('crm.tipo')}</label>
                 <select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                  <option value="paciente">Paciente</option><option value="lead">Lead</option><option value="profissional">Profissional</option><option value="fornecedor">Fornecedor</option><option value="outro">Outro</option>
+                  <option value="paciente">{tr('crm.paciente')}</option><option value="lead">{tr('crm.lead')}</option><option value="profissional">{tr('crm.profissional')}</option><option value="fornecedor">{tr('crm.fornecedor')}</option><option value="outro">{tr('crm.outro')}</option>
                 </select>
               </div>
-              <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.nascimento')}</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>
             </div>
           )}
           {perfilClinica || perfilTurismo || perfilCidadania ? (
             // Clínica, turismo e cidadania: sem empresa/área/cargo/autônomo — a venda é para pessoa física
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
-              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
-              {perfilTurismo && <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
-              {perfilTurismo && <div><label style={labelStyle}>Etiquetas (vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: VIP, grupo igreja" style={inputStyle} /></div>}
+              <div><label style={labelStyle}>{tr('crm.whatsapp-telefone')}</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.email')}</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+              {perfilTurismo && <div><label style={labelStyle}>{tr('crm.nascimento')}</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
+              {perfilTurismo && <div><label style={labelStyle}>{tr('crm.etiquetas-curto')}</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder={tr('crm.ex-vip')} style={inputStyle} /></div>}
               {perfilCidadania && (
                 <div>
-                  <label style={labelStyle}>Sobrenome da linhagem</label>
+                  <label style={labelStyle}>{tr('crm.sobrenome-linhagem')}</label>
                   {/* Lista fechada quando os sobrenomes estiverem cadastrados: digitado
                       à mão, a mesma família entra como "Lunkes"/"Lunques"/"lunkes" e não
                       dá para agrupar os leads por linhagem. Enquanto a lista não chega,
                       aceita texto livre — dropdown vazio seria uma tela quebrada. */}
                   {temListaSobrenomes() ? (
                     <select value={f.sobrenomeLinhagem} onChange={e => setF({ ...f, sobrenomeLinhagem: e.target.value })} style={inputStyle}>
-                      <option value="">— selecione —</option>
+                      <option value="">{tr('crm.selecione-traco')}</option>
                       {sobrenomesOrdenados().map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   ) : (
-                    <input value={f.sobrenomeLinhagem} onChange={e => setF({ ...f, sobrenomeLinhagem: e.target.value })} placeholder="Ex.: Lunkes" style={inputStyle} />
+                    <input value={f.sobrenomeLinhagem} onChange={e => setF({ ...f, sobrenomeLinhagem: e.target.value })} placeholder={tr('crm.ex-sobrenome')} style={inputStyle} />
                   )}
                 </div>
               )}
-              {perfilCidadania && <div><label style={labelStyle}>Nascimento</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
+              {perfilCidadania && <div><label style={labelStyle}>{tr('crm.nascimento')}</label><input type="date" value={f.nascimento} onChange={e => setF({ ...f, nascimento: e.target.value })} style={inputStyle} /></div>}
             </div>
           ) : perfilTelefonia ? (<>
             {/* Varejo: cliente PF (CPF) na maioria, PJ (CNPJ) numa venda para empresa.
@@ -1757,15 +1767,15 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               Pessoa física (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Pessoa física' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
+              <div><label style={labelStyle}>{tr('crm.empresa')}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? tr('crm.pessoa-fisica') : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
               <div>
-                <label style={labelStyle}>CPF / CNPJ</label>
-                <input value={formatarDoc(f.cpfCnpj)} onChange={e => setF({ ...f, cpfCnpj: soDigitosDoc(e.target.value) })} inputMode="numeric" placeholder="Só números" style={inputStyle} />
-                {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--v2-hot)' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? 'Incompleto — CPF tem 11 dígitos, CNPJ 14.' : 'Dígitos não conferem — confira o número.'}</span>}
+                <label style={labelStyle}>{tr('crm.cpf-cnpj')}</label>
+                <input value={formatarDoc(f.cpfCnpj)} onChange={e => setF({ ...f, cpfCnpj: soDigitosDoc(e.target.value) })} inputMode="numeric" placeholder={tr('crm.so-numeros')} style={inputStyle} />
+                {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--v2-hot)' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? tr('crm.doc-incompleto') : tr('crm.digitos-nao-conferem')}</span>}
               </div>
-              <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
-              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.cargo')}</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.whatsapp-telefone')}</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.email')}</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
             </div>
           </>) : (<>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600 }}>
@@ -1773,16 +1783,16 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               Profissional Autônomo (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
-              <div><label style={labelStyle}>Área de atuação</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder="Ex: Odontologia, Advocacia..." style={inputStyle} /></div>
-              <div><label style={labelStyle}>Cargo</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>WhatsApp / telefone</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
-              <div><label style={labelStyle}>E-mail</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.empresa')}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? tr('crm.autonomo-simples') : ''} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
+              <div><label style={labelStyle}>{tr('crm.area-atuacao')}</label><input value={f.areaAtuacao} onChange={e => setF({ ...f, areaAtuacao: e.target.value })} placeholder={tr('crm.ex-odonto2')} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.cargo')}</label><input value={f.cargo} onChange={e => setF({ ...f, cargo: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.whatsapp-telefone')}</label><input value={f.telefone} onChange={e => setF({ ...f, telefone: e.target.value })} placeholder="+55..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.email')}</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} style={inputStyle} /></div>
             </div>
           </>)}
           {perfilClinica && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
-              <div><label style={labelStyle}>Etiquetas (separadas por vírgula)</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder="Ex: botox, avaliação, VIP" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.etiquetas')}</label><input value={f.etiquetasTxt} onChange={e => setF({ ...f, etiquetasTxt: e.target.value })} placeholder={tr('crm.ex-botox')} style={inputStyle} /></div>
               {contato && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600, paddingBottom: 10 }}>
                   <input type="checkbox" checked={f.ativo} onChange={e => setF({ ...f, ativo: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
@@ -1794,14 +1804,14 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           {perfilClinica && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end' }}>
               <div>
-                <label style={labelStyle}>Último procedimento</label>
+                <label style={labelStyle}>{tr('crm.ultimo-procedimento')}</label>
                 {/* À mão porque a base veio de outro sistema: o histórico da
                     Agenda só existe para quem foi atendido AQUI. A lista sugere
                     o catálogo de Procedimentos (o mesmo da Agenda), mas aceita
                     texto livre — procedimento antigo pode nem estar no catálogo. */}
                 <input list="lista-procedimentos" value={f.ultimoProcedimento} disabled={f.nuncaVeio}
                   onChange={e => setF({ ...f, ultimoProcedimento: e.target.value })}
-                  placeholder={f.nuncaVeio ? 'Nunca veio à clínica' : 'Ex.: Botox, Preenchimento labial...'}
+                  placeholder={f.nuncaVeio ? tr('crm.nunca-veio') : tr('crm.ex-procedimentos')}
                   style={{ ...inputStyle, background: f.nuncaVeio ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.nuncaVeio ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} />
                 <datalist id="lista-procedimentos">
                   {procedimentos.map(p => <option key={p} value={p} />)}
@@ -1820,33 +1830,33 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           )}
           {perfilTurismo && (
             <div>
-              <label style={labelStyle}>Preferências e desejos de viagem</label>
-              <textarea lang="pt-BR" value={f.preferenciasViagem} onChange={e => setF({ ...f, preferenciasViagem: e.target.value })} placeholder="Destinos dos sonhos, tipo de viagem (praia/serra), leito, época preferida... vira oportunidade futura" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} />
+              <label style={labelStyle}>{tr('crm.preferencias-viagem')}</label>
+              <textarea lang="pt-BR" value={f.preferenciasViagem} onChange={e => setF({ ...f, preferenciasViagem: e.target.value })} placeholder={tr('crm.sonhos-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} />
             </div>
           )}
-          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
 
           {perfilClinica && contato?.id && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Histórico e nutrição</label>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>{tr('crm.historico')}</label>
                 {freq.total > 0 && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '3px 10px' }}>
-                    {freq.total} atendimento{freq.total > 1 ? 's' : ''}{freq.mediaDias != null ? ` · a cada ~${freq.mediaDias} dias` : ''}
+                    {tr('crm.atendimentos', { n: freq.total })}{freq.mediaDias != null ? tr('crm.a-cada-dias', { dias: freq.mediaDias }) : ''}
                   </span>
                 )}
               </div>
               {/* Próximos passos — jornada futura do paciente (cada passo vira tarefa) */}
               <div style={{ margin: '10px 0 12px', background: '#f8faff', border: '1px solid #e3eaff', borderRadius: 10, padding: 10 }}>
-                <label style={{ ...labelStyle, marginBottom: 6 }}>Próximas abordagens (jornada)</label>
+                <label style={{ ...labelStyle, marginBottom: 6 }}>{tr('crm.proximas-abordagens-jornada')}</label>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input value={novoPasso.titulo} onChange={e => setNovoPasso(p => ({ ...p, titulo: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') addPasso() }}
-                    placeholder="O que fazer (ex.: Retorno de avaliação)" style={{ ...inputStyle, flex: 1, minWidth: 170 }} />
+                    placeholder={tr('crm.o-que-fazer2')} style={{ ...inputStyle, flex: 1, minWidth: 170 }} />
                   {/* Data exata — o comercial é avisado na semana e no dia */}
                   <input type="date" value={novoPasso.quando} min={hojeYmd} onChange={e => setNovoPasso(p => ({ ...p, quando: e.target.value }))}
                     style={{ ...inputStyle, width: 150, flexShrink: 0, color: novoPasso.quando ? 'var(--v2-ink)' : 'var(--v2-ink3)' }} />
                   <button onClick={addPasso} disabled={addPassoBusy || !novoPasso.titulo.trim() || !novoPasso.quando}
-                    title={!novoPasso.quando ? 'Escolha a data da abordagem' : 'Agendar abordagem'}
+                    title={!novoPasso.quando ? tr('crm.escolha-data-abordagem') : tr('crm.agendar-abordagem')}
                     style={{ padding: '9px 14px', background: 'var(--v2-info)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: novoPasso.titulo.trim() && novoPasso.quando ? 1 : 0.5, flexShrink: 0 }}>+</button>
                 </div>
                 {/* Atalhos de data (o caso comum é "retorno em X") */}
@@ -1864,17 +1874,17 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {passosOrdenados.map(p => {
                       const n = diasAte(p.quando)
-                      const prazoTxt = p.feito ? '' : n > 0 ? `em ${n}d` : n === 0 ? 'hoje' : `atrasado ${-n}d`
+                      const prazoTxt = p.feito ? '' : n > 0 ? tr('crm.prazo-em', { n }) : n === 0 ? tr('crm.prazo-hoje') : tr('crm.prazo-atrasado', { n: -n })
                       return (
                         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px' }}>
-                          <button onClick={() => togglePasso(p.id)} title={p.feito ? 'Reabrir' : 'Concluir'}
+                          <button onClick={() => togglePasso(p.id)} title={tr(p.feito ? 'crm.reabrir' : 'crm.concluir')}
                             style={{ width: 16, height: 16, borderRadius: 5, border: p.feito ? 'none' : '1.5px solid var(--v2-rule2)', background: p.feito ? 'var(--v2-ok)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}>
                             {p.feito && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                           </button>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-info)', flexShrink: 0 }}>{new Date(p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
                           {prazoTxt && <span style={{ fontSize: 10.5, fontWeight: 700, color: n < 0 ? 'var(--v2-hot)' : 'var(--v2-ink3)', flexShrink: 0 }}>{prazoTxt}</span>}
                           <span style={{ flex: 1, fontSize: 12.5, color: p.feito ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.titulo}</span>
-                          {podeExcluir && <button onClick={() => removerPasso(p.id)} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                          {podeExcluir && <button onClick={() => removerPasso(p.id)} title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
                         </div>
                       )
                     })}
@@ -1884,18 +1894,18 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               {/* O histórico é AUTOMÁTICO (criação, atendimentos, WhatsApp, abordagens).
                   Registro manual de toque vive no CRM, não na ficha. */}
               {timeline.length === 0
-                ? <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem histórico ainda. Atendimentos, mensagens e abordagens aparecem aqui automaticamente.</p>
+                ? <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.sem-historico')}</p>
                 : (
                   <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 260, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
                     {timeline.map(item => item.kind === 'criado' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>INÍCIO</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('crm.inicio')}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
-                        <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>Contato criado</span>
+                        <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>{tr('crm.contato-criado')}</span>
                       </div>
                     ) : item.kind === 'whatsapp' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>WHATSAPP</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('crm.whatsapp-maiusculo')}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.data).toLocaleDateString('pt-BR')}</span>
                         <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)' }}>
                           {item.w.total} mensage{item.w.total > 1 ? 'ns' : 'm'} · {item.w.recebidas} recebida{item.w.recebidas === 1 ? '' : 's'}
@@ -1903,17 +1913,17 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                       </div>
                     ) : item.kind === 'passo' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: item.p.feito ? 'var(--v2-ok)' : 'var(--v2-info)', background: item.p.feito ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{item.p.feito ? 'FEITO' : 'ABORDAGEM'}</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: item.p.feito ? 'var(--v2-ok)' : 'var(--v2-info)', background: item.p.feito ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr(item.p.feito ? 'crm.badge-feito' : 'crm.badge-abordagem')}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.p.quando + 'T00:00').toLocaleDateString('pt-BR')}</span>
                         <span style={{ flex: 1, fontSize: 12, color: item.p.feito ? 'var(--v2-ink3)' : 'var(--v2-ink2)', textDecoration: item.p.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.p.titulo}</span>
                       </div>
                     ) : item.kind === 'agenda' ? (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>AGENDA</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ink2)', background: 'var(--v2-surface2)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('crm.agenda')}</span>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.h.dataInicio).toLocaleDateString('pt-BR')}</span>
                           <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.h.servico || '—'} · {(item.h.profissionalNome || '').split(' ')[0]}</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{(STATUS_AG[item.h.status] || STATUS_AG.agendado).label}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{tr((STATUS_AG[item.h.status] || STATUS_AG.agendado).rotulo)}</span>
                         </div>
                         {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
                         {Array.isArray(item.h.procedimentosRealizados) && item.h.procedimentosRealizados.length > 0 && (
@@ -1925,10 +1935,10 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
                     ) : (
                       <div key={item.id} style={{ padding: '7px 10px', borderBottom: '1px solid var(--v2-surface1)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-surface)', background: interInfo(item.i.tipo).cor, borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{interInfo(item.i.tipo).label.toUpperCase()}</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-surface)', background: interInfo(item.i.tipo).cor, borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr(interInfo(item.i.tipo).rotulo).toUpperCase()}</span>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', flexShrink: 0 }}>{new Date(item.i.data).toLocaleDateString('pt-BR')}</span>
                           <span style={{ flex: 1, fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.i.texto}</span>
-                          {podeExcluir && <button onClick={() => removerToque(item.i.id)} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
+                          {podeExcluir && <button onClick={() => removerToque(item.i.id)} title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>}
                         </div>
                         {item.i.autor && <p style={{ margin: '2px 0 0 34px', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{item.i.autor}</p>}
                       </div>
@@ -1939,9 +1949,9 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : contato ? 'Salvar' : 'Criar contato'}</button>
-          {contato && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !f.nome.trim()} style={{ flex: 1, padding: '11px 0', background: f.nome.trim() ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: f.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.salvando') : tr(contato ? 'comum.salvar' : 'crm.btn-criar-contato')}</button>
+          {contato && podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>}
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -1949,6 +1959,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
 }
 
 function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { pipelines: { id: string; nome: string; ordem: number }[]; podeExcluir?: boolean; onClose: () => void; onMudou: () => void }) {
+  const tr = useT()
   const [novo, setNovo] = useState('')
   const [editId, setEditId] = useState('')
   const [editNome, setEditNome] = useState('')
@@ -1959,49 +1970,49 @@ function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { 
     setSalvando(true)
     const r = await fetch('/api/crm/pipelines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { setNovo(''); toast('Pipeline criado.', 'sucesso'); onMudou() } else toast(r?.error || 'Falha ao criar.', 'erro')
+    if (r?.ok) { setNovo(''); toast(tr('crm.av.pipeline-criado'), 'sucesso'); onMudou() } else toast(r?.error || tr('crm.falha-criar'), 'erro')
   }
   async function renomear(id: string) {
     if (!editNome.trim()) return
     const r = await fetch('/api/crm/pipelines', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nome: editNome.trim() }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { setEditId(''); onMudou() } else toast(r?.error || 'Falha ao renomear.', 'erro')
+    if (r?.ok) { setEditId(''); onMudou() } else toast(r?.error || tr('crm.falha-renomear'), 'erro')
   }
   async function excluir(id: string, nome: string) {
-    if (!(await confirmar(`Excluir o pipeline "${nome}"? As oportunidades dele serão movidas para outro pipeline.`, { titulo: 'Excluir pipeline', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('crm.dlg-excluir-pipeline', { nome }), { titulo: tr('crm.dlg-titulo-pipeline'), okLabel: tr('comum.excluir'), perigo: true }))) return
     const r = await fetch(`/api/crm/pipelines?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { toast('Pipeline excluído.', 'sucesso'); onMudou() } else toast(r?.error || 'Falha ao excluir.', 'erro')
+    if (r?.ok) { toast(tr('crm.av.pipeline-excluido'), 'sucesso'); onMudou() } else toast(r?.error || tr('crm.av.falha-excluir'), 'erro')
   }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Pipelines</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Crie funis separados (ex.: Marketing, +Clínicas, Mentoria). Cada um tem suas etapas.</p>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('crm.pipelines')}</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.funis-ajuda')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {pipelines.map(p => (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: '8px 12px' }}>
               {editId === p.id ? (
                 <>
                   <input value={editNome} onChange={e => setEditNome(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') renomear(p.id) }} style={{ ...inputStyle, flex: 1 }} />
-                  <button onClick={() => renomear(p.id)} style={{ padding: '7px 12px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
-                  <button onClick={() => setEditId('')} style={{ padding: '7px 10px', background: 'none', color: 'var(--v2-ink3)', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={() => renomear(p.id)} style={{ padding: '7px 12px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.salvar')}</button>
+                  <button onClick={() => setEditId('')} style={{ padding: '7px 10px', background: 'none', color: 'var(--v2-ink3)', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
                 </>
               ) : (
                 <>
                   <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{p.nome}</span>
-                  <button onClick={() => { setEditId(p.id); setEditNome(p.nome) }} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Renomear</button>
-                  {podeExcluir && pipelines.length > 1 && <button onClick={() => excluir(p.id, p.nome)} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Excluir</button>}
+                  <button onClick={() => { setEditId(p.id); setEditNome(p.nome) }} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('est.renomear')}</button>
+                  {podeExcluir && pipelines.length > 1 && <button onClick={() => excluir(p.id, p.nome)} style={{ padding: '6px 10px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.excluir')}</button>}
                 </>
               )}
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} placeholder="Nome do novo pipeline (ex.: Marketing)" style={{ ...inputStyle, flex: 1 }} />
+          <input value={novo} onChange={e => setNovo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') criar() }} placeholder={tr('crm.novo-pipeline-ph')} style={{ ...inputStyle, flex: 1 }} />
           <button onClick={criar} disabled={!novo.trim() || salvando} style={{ padding: '10px 16px', background: novo.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: novo.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvando ? '...' : '+ Criar'}</button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
         </div>
       </div>
     </div>
@@ -2009,6 +2020,7 @@ function PipelinesModal({ pipelines, podeExcluir = false, onClose, onMudou }: { 
 }
 
 function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: { pipelineId: string; pipelineNome: string; estagios: Estagio[]; onClose: () => void; onMudou: () => void }) {
+  const tr = useT()
   type Item = { id: string; nome: string; ganho?: boolean; perdido?: boolean }
   const [lista, setLista] = useState<Item[]>(() => estagios.map(e => ({ id: e.id, nome: e.nome, ganho: e.ganho, perdido: e.perdido })))
   const [salvando, setSalvando] = useState(false)
@@ -2025,12 +2037,12 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
     })
   }
   async function salvar() {
-    if (lista.some(e => !e.nome.trim())) { toast('Dê um nome a todas as etapas.', 'erro'); return }
+    if (lista.some(e => !e.nome.trim())) { toast(tr('crm.av.nomeie-etapas'), 'erro'); return }
     setSalvando(true)
     const payload = lista.map((e, idx) => ({ id: e.id, nome: e.nome.trim(), ordem: idx, ...(e.ganho ? { ganho: true } : {}), ...(e.perdido ? { perdido: true } : {}) }))
     const r = await fetch('/api/crm/estagios', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pipelineId, estagios: payload }) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { toast('Etapas salvas.', 'sucesso'); onMudou(); onClose() } else toast(r?.error || 'Falha ao salvar.', 'erro')
+    if (r?.ok) { toast(tr('crm.av.etapas-salvas'), 'sucesso'); onMudou(); onClose() } else toast(r?.error || tr('crm.falha-salvar'), 'erro')
   }
 
   const arrow = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
@@ -2038,28 +2050,28 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Etapas — {pipelineNome}</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Renomeie, adicione, reordene ou remova as fases deste pipeline. Ganho e Perdido são obrigatórios e não podem ser removidos.</p>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.etapas-ajuda')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
           {lista.map((e, i) => {
             const terminal = e.ganho || e.perdido
             return (
               <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--v2-surface1)', borderRadius: 10, padding: '6px 10px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--v2-ink3)' }}>
-                  <button onClick={() => mover(i, -1)} disabled={i === 0} title="Subir" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m18 15-6-6-6 6')}</button>
-                  <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} title="Descer" style={{ background: 'none', border: 'none', cursor: i === lista.length - 1 ? 'default' : 'pointer', color: i === lista.length - 1 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m6 9 6 6 6-6')}</button>
+                  <button onClick={() => mover(i, -1)} disabled={i === 0} title={tr('cfg.subir')} style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m18 15-6-6-6 6')}</button>
+                  <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} title={tr('cfg.descer')} style={{ background: 'none', border: 'none', cursor: i === lista.length - 1 ? 'default' : 'pointer', color: i === lista.length - 1 ? 'var(--v2-rule2)' : 'var(--v2-ink3)', padding: 0, lineHeight: 0 }}>{arrow('m6 9 6 6 6-6')}</button>
                 </div>
-                <input value={e.nome} onChange={ev => setNome(i, ev.target.value)} placeholder="Nome da etapa" style={{ ...inputStyle, flex: 1 }} />
+                <input value={e.nome} onChange={ev => setNome(i, ev.target.value)} placeholder={tr('crm.nome-etapa')} style={{ ...inputStyle, flex: 1 }} />
                 {terminal
-                  ? <span style={{ fontSize: 10.5, fontWeight: 800, color: e.ganho ? 'var(--v2-ok)' : 'var(--v2-hot)', background: e.ganho ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)', borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{e.ganho ? 'Ganho' : 'Perdido'}</span>
-                  : <button onClick={() => remover(i)} title="Remover etapa" style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0, padding: '0 4px' }}>×</button>}
+                  ? <span style={{ fontSize: 10.5, fontWeight: 800, color: e.ganho ? 'var(--v2-ok)' : 'var(--v2-hot)', background: e.ganho ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)', borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{tr(e.ganho ? 'crm.ganho-cap' : 'crm.perdido-cap')}</span>
+                  : <button onClick={() => remover(i)} title={tr('crm.remover-etapa')} style={{ background: 'none', border: 'none', color: '#c00', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0, padding: '0 4px' }}>×</button>}
               </div>
             )
           })}
         </div>
-        <button onClick={adicionar} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: '100%' }}>+ Adicionar etapa</button>
+        <button onClick={adicionar} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: '100%' }}>{tr('crm.add-etapa')}</button>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar etapas'}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? tr('crm.salvando') : tr('crm.salvar-etapas')}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -2067,6 +2079,7 @@ function EtapasModal({ pipelineId, pipelineNome, estagios, onClose, onMudou }: {
 }
 
 function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = [], origens = [], perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', contatoIdInicial = '', onClose, onSalvo }: { estagios: Estagio[]; pipelineId?: string; usuarios: any[]; contatos: Contato[]; viagens?: ViagemLite[]; origens?: string[]; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; contatoIdInicial?: string; onClose: () => void; onSalvo: () => void }) {
+  const tr = useT()
   const [f, setF] = useState({ titulo: '', valor: '', contatoNome: '', contatoTelefone: '', dono: '', origem: '', previsaoFechamento: '', estagioId: '', empresa: '', profissionalAutonomo: false, segmento: '', faturamentoEstimado: '', instagram: '', dores: '', solucoes: '', queixaPrincipal: '', viagemId: '', destinoDesejado: '', qtdPassageiros: '', epocaDesejada: '', preferencias: '', paisInteresse: 'Luxemburgo', ascendenteOrigem: '', grauParentesco: '' })
   // Viagens que dá para vincular: pacote planejada/aberta (fretamento e viagem já
   // realizada/cancelada não recebem interessado novo).
@@ -2093,7 +2106,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
   const valido = (modoContato === 'existente' ? !!contatoId : !!f.contatoNome.trim()) && (semEmpresa || !!f.empresa.trim() || f.profissionalAutonomo)
 
   async function salvar() {
-    if (!valido) { toast(semEmpresa ? 'Escolha ou informe o contato.' : 'Preencha o contato e a empresa (ou marque Profissional Autônomo).', 'erro'); return }
+    if (!valido) { toast(semEmpresa ? tr('crm.escolha-contato') : tr('crm.preencha-contato-empresa'), 'erro'); return }
     setSalvando(true)
     // Define o contato: usa o existente ou cria um novo. O nome do contato é o nome da oportunidade.
     let idContato = contatoId
@@ -2106,27 +2119,27 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
       idContato = c?.contato?.id || ''
       nomeNegocio = f.contatoNome.trim()
     }
-    if (!idContato) { setSalvando(false); toast('Não foi possível vincular o contato. Tente novamente.', 'erro'); return }
+    if (!idContato) { setSalvando(false); toast(tr('crm.av.falha-vincular'), 'erro'); return }
     const dono = equipe.find(u => u.email === f.dono)
     const r = await fetch('/api/crm/negocios', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: nomeNegocio || 'Oportunidade', valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', ...(lojaAtiva ? { lojaId: lojaAtiva } : {}), profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, viagemId: f.viagemId, destinoDesejado: f.viagemId ? '' : f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
+      body: JSON.stringify({ titulo: nomeNegocio || tr('crm.oportunidade'), valor: Number(f.valor) || 0, contatoId: idContato, pipelineId: pipelineId || '', ...(lojaAtiva ? { lojaId: lojaAtiva } : {}), profissionalAutonomo: f.profissionalAutonomo, dono: f.dono, donoNome: dono?.nome || '', origem: f.origem, previsaoFechamento: f.previsaoFechamento, estagioId: f.estagioId, empresa: f.empresa, segmento: f.segmento, faturamentoEstimado: f.faturamentoEstimado, instagram: f.instagram, dores: f.dores, solucoes: f.solucoes, queixaPrincipal: f.queixaPrincipal, viagemId: f.viagemId, destinoDesejado: f.viagemId ? '' : f.destinoDesejado, qtdPassageiros: Number(f.qtdPassageiros) || 0, epocaDesejada: f.epocaDesejada, preferencias: f.preferencias, paisInteresse: f.paisInteresse, ascendenteOrigem: f.ascendenteOrigem, grauParentesco: f.grauParentesco }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (!r?.ok) { toast(r?.error || 'Não foi possível criar o negócio.', 'erro'); return }
+    if (!r?.ok) { toast(r?.error || tr('crm.falha-criar-negocio'), 'erro'); return }
     onSalvo()
   }
 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{semEmpresa ? 'Nova oportunidade' : 'Novo negócio'}</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{semEmpresa ? tr('crm.nova-oportunidade') : tr('crm.novo-negocio')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* #5 — contato obrigatorio: existente ou novo */}
           <div>
-            <label style={labelStyle}>Contato da oportunidade *</label>
+            <label style={labelStyle}>{tr('crm.contato-oportunidade')}</label>
             <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, marginBottom: 8 }}>
-              {([['existente', 'Contato existente'], ['novo', 'Novo contato']] as const).map(([k, lab]) => (
+              {([['existente', tr('crm.contato-existente')], ['novo', tr('crm.novo-contato')]] as const).map(([k, lab]) => (
                 <button key={k} type="button" onClick={() => setModoContato(k)} disabled={k === 'existente' && !(contatos || []).length}
                   style={{ flex: 1, padding: '7px 10px', border: 'none', borderRadius: 7, cursor: (k === 'existente' && !(contatos || []).length) ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, background: modoContato === k ? 'var(--v2-surface)' : 'transparent', color: modoContato === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: modoContato === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{lab}</button>
               ))}
@@ -2136,20 +2149,20 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 9, padding: '9px 12px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{contatoSel.nome}</p>
-                    {(contatoSel.empresa || contatoSel.profissionalAutonomo) && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{contatoSel.empresa || 'Autônomo'}</p>}
+                    {(contatoSel.empresa || contatoSel.profissionalAutonomo) && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{contatoSel.empresa || tr('crm.autonomo-simples')}</p>}
                   </div>
-                  <button type="button" onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: 'var(--v2-ok)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Trocar</button>
+                  <button type="button" onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: 'var(--v2-ok)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('crm.trocar')}</button>
                 </div>
               ) : (
                 <div>
-                  <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} autoFocus placeholder="Pesquisar contato pelo nome..." style={inputStyle} />
+                  <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} autoFocus placeholder={tr('crm.pesquisar-contato')} style={inputStyle} />
                   <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 9, marginTop: 6 }}>
                     {contatosFiltrados.length === 0 ? (
                       <p style={{ margin: 0, padding: 12, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.{buscaContato.trim() ? ' Use "Novo contato" para criar.' : ''}</p>
                     ) : contatosFiltrados.slice(0, 50).map(c => (
                       <button key={c.id} type="button" onClick={() => { setContatoId(c.id); setF(prev => ({ ...prev, empresa: c.empresa || '', profissionalAutonomo: !!c.profissionalAutonomo })) }}
                         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', background: 'var(--v2-surface)', border: 'none', borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', fontSize: 13 }}>
-                        <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>{c.empresa ? <span style={{ color: 'var(--v2-ink3)' }}> — {c.empresa}</span> : c.profissionalAutonomo ? <span style={{ color: 'var(--v2-ink3)' }}> — Autônomo</span> : ''}
+                        <span style={{ fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</span>{c.empresa ? <span style={{ color: 'var(--v2-ink3)' }}> — {c.empresa}</span> : c.profissionalAutonomo ? <span style={{ color: 'var(--v2-ink3)' }}>{tr('crm.autonomo')}</span> : ''}
                       </button>
                     ))}
                   </div>
@@ -2157,28 +2170,28 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
               )
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder={perfilClinica ? 'Nome do paciente / lead' : perfilTurismo ? 'Nome do cliente / lead' : 'Nome do responsável'} style={inputStyle} />
-                <input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder="WhatsApp / telefone" style={inputStyle} />
+                <input value={f.contatoNome} onChange={e => setF({ ...f, contatoNome: e.target.value })} placeholder={perfilClinica ? tr('crm.nome-paciente-lead') : perfilTurismo ? tr('crm.nome-cliente-lead') : tr('crm.nome-responsavel')} style={inputStyle} />
+                <input value={f.contatoTelefone} onChange={e => setF({ ...f, contatoTelefone: e.target.value })} placeholder={tr('crm.whatsapp-telefone')} style={inputStyle} />
               </div>
             )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><label style={labelStyle}>Valor (R$)</label><input type="number" min="0" value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} placeholder="0" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Etapa</label>
+            <div><label style={labelStyle}>{tr('crm.etapa')}</label>
               <select value={f.estagioId} onChange={e => setF({ ...f, estagioId: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Primeira (Lead)</option>
+                <option value="">{tr('crm.primeira-lead')}</option>
                 {estagios.filter(e => !e.ganho && !e.perdido).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
               </select>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>{perfilClinica ? 'Responsável' : 'Vendedor responsável'}</label>
+            <div><label style={labelStyle}>{tr(perfilClinica ? 'crm.responsavel' : 'crm.vendedor-responsavel')}</label>
               <select value={f.dono} onChange={e => setF({ ...f, dono: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Eu</option>
+                <option value="">{tr('crm.eu')}</option>
                 {equipe.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
             </div>
-            <div><label style={labelStyle}>Previsão</label><input type="date" value={f.previsaoFechamento} onChange={e => setF({ ...f, previsaoFechamento: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.previsao')}</label><input type="date" value={f.previsaoFechamento} onChange={e => setF({ ...f, previsaoFechamento: e.target.value })} style={inputStyle} /></div>
           </div>
           <div><label style={labelStyle}>Origem{perfilClinica ? ' do lead' : ''}</label>
             {/* Clínica: lista FECHADA (lib/origensLead). Texto livre viraria
@@ -2186,78 +2199,78 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
                 canal. Os outros perfis seguem com o dropdown editável. */}
             {perfilClinica ? (
               <select value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Selecione…</option>
+                <option value="">{tr('crm.selecione')}</option>
                 {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             ) : (<>
-              <input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} list="crm-origens" placeholder="Selecione ou digite..." style={inputStyle} />
+              <input value={f.origem} onChange={e => setF({ ...f, origem: e.target.value })} list="crm-origens" placeholder={tr('crm.selecione-digite')} style={inputStyle} />
               <datalist id="crm-origens">{origens.map(o => <option key={o} value={o} />)}</datalist>
             </>)}
           </div>
 
           {perfilClinica ? (<>
-            <div><label style={labelStyle}>Queixa principal</label><input value={f.queixaPrincipal} onChange={e => setF({ ...f, queixaPrincipal: e.target.value })} placeholder="O que a paciente relata (ex.: melasma, flacidez, acne...)" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Anotações sobre a oportunidade (interesse, procedimento, etc.)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.queixa')}</label><input value={f.queixaPrincipal} onChange={e => setF({ ...f, queixaPrincipal: e.target.value })} placeholder={tr('crm.queixa-ph2')} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder={tr('crm.notas-oportunidade')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
             {/* Turismo: a qualificação é DA VIAGEM — destino, pessoas, época e desejos */}
             <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Sobre a viagem</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.sobre-viagem')}</span>
             {/* SELECIONA a viagem cadastrada (é o que agrupa os interessados por
                 viagem no funil). Sem viagem específica = "Outro (não especificado)",
                 aí sim o destino é digitado à mão. */}
             <div>
-              <label style={labelStyle}>Viagem de interesse</label>
+              <label style={labelStyle}>{tr('crm.viagem-interesse')}</label>
               <select value={f.viagemId} onChange={e => setF({ ...f, viagemId: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Outro (não especificado)</option>
+                <option value="">{tr('crm.outro-nao-especificado')}</option>
                 {viagensAbertas.map(v => <option key={v.id} value={v.id}>{v.titulo}{v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}</option>)}
               </select>
-              {viagensAbertas.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Nenhuma viagem aberta cadastrada — cadastre em Viagens para vincular interessados.</p>}
+              {viagensAbertas.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.sem-viagem')}</p>}
             </div>
             {!f.viagemId && (
-              <div><label style={labelStyle}>Destino desejado (texto livre)</label><input value={f.destinoDesejado} onChange={e => setF({ ...f, destinoDesejado: e.target.value })} placeholder="Ex.: Gramado, praia no verão..." style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.destino')}</label><input value={f.destinoDesejado} onChange={e => setF({ ...f, destinoDesejado: e.target.value })} placeholder={tr('crm.destino-ph')} style={inputStyle} /></div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={f.qtdPassageiros} onChange={e => setF({ ...f, qtdPassageiros: e.target.value })} placeholder="Ex.: 4" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Época desejada</label><input value={f.epocaDesejada} onChange={e => setF({ ...f, epocaDesejada: e.target.value })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.quantas-pessoas')}</label><input type="number" min="1" value={f.qtdPassageiros} onChange={e => setF({ ...f, qtdPassageiros: e.target.value })} placeholder={tr('crm.ex-4')} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.epoca')}</label><input value={f.epocaDesejada} onChange={e => setF({ ...f, epocaDesejada: e.target.value })} placeholder={tr('crm.epoca-ph')} style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Preferências e desejos</label><textarea lang="pt-BR" value={f.preferencias} onChange={e => setF({ ...f, preferencias: e.target.value })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.preferencias')}</label><textarea lang="pt-BR" value={f.preferencias} onChange={e => setF({ ...f, preferencias: e.target.value })} placeholder={tr('crm.preferencias-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilCidadania ? (<>
             {/* Cidadania: a qualificação é DA ELEGIBILIDADE — de qual país, por qual
                 ascendente e a que distância. Venda é sempre para CPF. */}
             <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Elegibilidade</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.elegibilidade')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>País de interesse</label><input value={f.paisInteresse} onChange={e => setF({ ...f, paisInteresse: e.target.value })} placeholder="Luxemburgo" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Grau de parentesco</label><input value={f.grauParentesco} onChange={e => setF({ ...f, grauParentesco: e.target.value })} placeholder="Ex.: bisneto, trineto" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.pais')}</label><input value={f.paisInteresse} onChange={e => setF({ ...f, paisInteresse: e.target.value })} placeholder={tr('crm.ex-pais')} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.parentesco')}</label><input value={f.grauParentesco} onChange={e => setF({ ...f, grauParentesco: e.target.value })} placeholder={tr('crm.ex-bisneto2')} style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Ascendente / origem da família</label><input value={f.ascendenteOrigem} onChange={e => setF({ ...f, ascendenteOrigem: e.target.value })} placeholder="Nome do antepassado estrangeiro, se souber" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.ascendente')}</label><input value={f.ascendenteOrigem} onChange={e => setF({ ...f, ascendenteOrigem: e.target.value })} placeholder={tr('crm.antepassado2')} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder={tr('crm.documentos-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTelefonia ? (<>
             {/* Varejo: venda para PESSOA — nada de empresa/segmento/faturamento. */}
             <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
-            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="Produto de interesse, negociação, observações da venda..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder={tr('crm.notas-venda2')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
             <div style={{ height: 1, background: 'var(--v2-surface2)', margin: '2px 0' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Qualificação da oportunidade</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.qualificacao-oportunidade')}</span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--v2-ink)', fontWeight: 600 }}>
               <input type="checkbox" checked={f.profissionalAutonomo} onChange={e => setF({ ...f, profissionalAutonomo: e.target.checked, empresa: e.target.checked ? '' : f.empresa })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
               Profissional Autônomo (sem empresa)
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Empresa {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? 'Autônomo' : 'Nome da empresa'} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
-              <div><label style={labelStyle}>Segmento / nicho</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder="Ex: Odontologia" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.empresa')} {f.profissionalAutonomo ? '' : '*'}</label><input value={f.empresa} disabled={f.profissionalAutonomo} onChange={e => setF({ ...f, empresa: e.target.value })} placeholder={f.profissionalAutonomo ? tr('crm.autonomo-simples') : tr('crm.nome-empresa')} style={{ ...inputStyle, background: f.profissionalAutonomo ? 'var(--v2-surface1)' : 'var(--v2-surface)', color: f.profissionalAutonomo ? 'var(--v2-ink3)' : 'var(--v2-ink)' }} /></div>
+              <div><label style={labelStyle}>{tr('crm.segmento-nicho')}</label><input value={f.segmento} onChange={e => setF({ ...f, segmento: e.target.value })} placeholder={tr('crm.ex-odonto')} style={inputStyle} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Faturamento estimado</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Instagram / site</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder="@empresa ou site" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.faturamento')}</label><input value={f.faturamentoEstimado} onChange={e => setF({ ...f, faturamentoEstimado: e.target.value })} placeholder="Ex: R$ 50-100k/mês" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.instagram-site')}</label><input value={f.instagram} onChange={e => setF({ ...f, instagram: e.target.value })} placeholder={tr('crm.arroba-empresa')} style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Principais dores / desafios</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder="O que mais incomoda o prospect hoje..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
-            <div><label style={labelStyle}>Possíveis soluções</label><textarea lang="pt-BR" value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder="O que podemos oferecer / proposta de valor..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.dores-desafios')}</label><textarea lang="pt-BR" value={f.dores} onChange={e => setF({ ...f, dores: e.target.value })} placeholder={tr('crm.dores-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.solucoes')}</label><textarea lang="pt-BR" value={f.solucoes} onChange={e => setF({ ...f, solucoes: e.target.value })} placeholder={tr('crm.solucoes-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>)}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? 'Salvando...' : (semEmpresa ? 'Criar oportunidade' : 'Criar negócio')}</button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando || !valido} style={{ flex: 1, padding: '11px 0', background: valido ? 'var(--v2-amber-on)' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: valido ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.salvando') : tr(semEmpresa ? 'crm.btn-criar-oportunidade' : 'crm.criar-negocio')}</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -2265,6 +2278,7 @@ function NovoNegocioModal({ estagios, pipelineId, usuarios, contatos, viagens = 
 }
 
 function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contato, usuarios, viagens = [], onClose, onMudou, onFechar, onClienteCriado, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, onAgendar, onAbrirWhatsApp, onIrProcessos }: { negocio: Negocio; estagios: Estagio[]; pipelines?: { id: string; nome: string; ordem: number }[]; padraoId?: string; contato?: Contato; usuarios: any[]; viagens?: ViagemLite[]; onClose: () => void; onMudou: () => void; onFechar: () => void; onClienteCriado?: () => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp: (telefone: string, contatoId?: string) => void; onIrProcessos?: () => void }) {
+  const tr = useT()
   const [neg, setNeg] = useState<Negocio>(negocio)
   const pipeAtual = neg.pipelineId || padraoId
   const estagiosPipe = estagios.filter(e => (e.pipelineId || padraoId) === pipeAtual)
@@ -2344,7 +2358,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
     const r = await fetch('/api/processos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        titulo: contato?.nome || neg.titulo || 'Novo processo',
+        titulo: contato?.nome || neg.titulo || tr('crm.novo-processo'),
         clienteId: contato?.id || '',
         paisAlvo: neg.paisInteresse || 'Luxemburgo',
         ascendente: ascendenteNome,
@@ -2357,11 +2371,11 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
       }),
     }).then(x => x.json()).catch(() => null)
     setAbrindoProc(false)
-    if (!r?.ok || !r?.processo?.id) { toast(r?.error || 'Não foi possível abrir o processo.', 'erro'); return }
+    if (!r?.ok || !r?.processo?.id) { toast(r?.error || tr('crm.falha-abrir-processo'), 'erro'); return }
     // Marca ganho no funil E amarra o processo ao negócio, numa tacada só.
     const g = estagiosPipe.find(e => e.ganho)
     await patch({ processoId: r.processo.id, ...(g ? { estagioId: g.id } : { status: 'ganho' }) })
-    toast('Processo aberto na esteira.', 'sucesso')
+    toast(tr('crm.av.processo-aberto'), 'sucesso')
   }
 
   async function addAtividade() {
@@ -2375,7 +2389,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
     setAgQuando(''); setAgTitulo('')
   }
   async function excluir() {
-    if (!(await confirmar('Excluir este negócio?', { titulo: 'Excluir negócio', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('crm.dlg-excluir-negocio'), { titulo: tr('crm.dlg-titulo-negocio'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch(`/api/crm/negocios?id=${neg.id}`, { method: 'DELETE' }).catch(() => {})
     onFechar()
   }
@@ -2397,16 +2411,16 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             {estagiosPipe.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
           {pipelines.length > 1 && (
-            <select value={pipeAtual} onChange={e => moverPipeline(e.target.value)} title="Mover para outro pipeline" style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #c7d2fe', background: 'var(--v2-info-bg)', color: '#3730a3', cursor: 'pointer' }}>
+            <select value={pipeAtual} onChange={e => moverPipeline(e.target.value)} title={tr('crm.mover-pipeline')} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '4px 12px', border: '1.5px solid #c7d2fe', background: 'var(--v2-info-bg)', color: '#3730a3', cursor: 'pointer' }}>
               {pipelines.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </select>
           )}
-          {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ok)', borderRadius: 999, padding: '4px 12px' }}>GANHO</span>}
-          {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-hot)', borderRadius: 999, padding: '4px 12px' }}>PERDIDO</span>}
+          {neg.status === 'ganho' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ok)', borderRadius: 999, padding: '4px 12px' }}>{tr('crm.ganho')}</span>}
+          {neg.status === 'perdido' && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-hot)', borderRadius: 999, padding: '4px 12px' }}>{tr('crm.perdido')}</span>}
           {perfilClinica && onAgendar && (
             <button onClick={() => onAgendar({ pacienteNome: contato?.nome || neg.titulo, pacienteTelefone: contato?.telefone, contatoId: contato?.id })}
-              title="Criar um horário na Agenda para este paciente/lead"
-              style={{ fontSize: 12, fontWeight: 800, color: '#17150E', background: 'var(--v2-amber-on)', borderRadius: 999, padding: '4px 14px', border: 'none', cursor: 'pointer' }}>Agendar na agenda</button>
+              title={tr('crm.criar-horario')}
+              style={{ fontSize: 12, fontWeight: 800, color: '#17150E', background: 'var(--v2-amber-on)', borderRadius: 999, padding: '4px 14px', border: 'none', cursor: 'pointer' }}>{tr('crm.agendar-agenda')}</button>
           )}
         </div>
 
@@ -2416,7 +2430,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             <input type="number" min="0" value={neg.valor || 0} onChange={e => setNeg({ ...neg, valor: Number(e.target.value) })} onBlur={() => patch({ valor: neg.valor })} style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Responsável</label>
+            <label style={labelStyle}>{tr('crm.responsavel')}</label>
             <select value={neg.dono || ''} onChange={e => { const u = (usuarios || []).find((x: any) => x.email === e.target.value); patch({ dono: e.target.value, donoNome: u?.nome || '' }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
               <option value="">—</option>
               {(usuarios || []).filter(u => u.role === 'admin' || u.role === 'vendas').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
@@ -2425,17 +2439,17 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Próximo follow-up</label>
+          <label style={labelStyle}>{tr('crm.proximo-contato')}</label>
           <input type="date" value={(neg.proximoFollowUp || '').slice(0, 10)} onChange={e => setNeg({ ...neg, proximoFollowUp: e.target.value })} onBlur={() => patch({ proximoFollowUp: neg.proximoFollowUp })} style={inputStyle} />
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>No dia, o responsável recebe um lembrete (push + inbox).</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.lembrete-dia')}</p>
         </div>
 
         {/* Cadência / agendamentos */}
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-            <label style={{ ...labelStyle, margin: 0 }}>Cadência / agendamentos</label>
-            <button type="button" onClick={() => patch({ aplicarCadencia: true })} title="Gera os toques a partir da cadência do Playbook (a contar de hoje)"
-              style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Aplicar cadência do Playbook</button>
+            <label style={{ ...labelStyle, margin: 0 }}>{tr('crm.cadencia')}</label>
+            <button type="button" onClick={() => patch({ aplicarCadencia: true })} title={tr('crm.cadencia-dica')}
+              style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('crm.aplicar-cadencia')}</button>
           </div>
           {(neg.agendamentos || []).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
@@ -2447,7 +2461,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
                     <span style={{ fontWeight: 700, color: venceu ? 'var(--v2-hot)' : 'var(--v2-ink2)', flexShrink: 0 }}>{new Date(a.quando + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                     <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 999, padding: '1px 7px', flexShrink: 0 }}>{a.canal}</span>
                     <span style={{ flex: 1, color: 'var(--v2-ink)', textDecoration: a.feito ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titulo}</span>
-                    <button type="button" onClick={() => patch({ removerAgendamento: a.id })} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>
+                    <button type="button" onClick={() => patch({ removerAgendamento: a.id })} title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, flexShrink: 0 }}>×</button>
                   </div>
                 )
               })}
@@ -2458,10 +2472,10 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             <select value={agCanal} onChange={e => setAgCanal(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, background: 'var(--v2-surface)', fontFamily: 'inherit' }}>
               {(['whatsapp', 'ligacao', 'email', 'reuniao', 'outro'] as const).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input value={agTitulo} onChange={e => setAgTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAgendamento() }} placeholder="O que fazer (ex.: enviar proposta)" style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-            <button type="button" onClick={addAgendamento} disabled={!agQuando || !agTitulo.trim()} style={{ padding: '7px 12px', background: (agQuando && agTitulo.trim()) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (agQuando && agTitulo.trim()) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Agendar</button>
+            <input value={agTitulo} onChange={e => setAgTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAgendamento() }} placeholder={tr('crm.o-que-fazer')} style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+            <button type="button" onClick={addAgendamento} disabled={!agQuando || !agTitulo.trim()} style={{ padding: '7px 12px', background: (agQuando && agTitulo.trim()) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (agQuando && agTitulo.trim()) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('crm.agendar')}</button>
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Cada toque vira lembrete (push + inbox) para o responsável no dia agendado.</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.toque-vira-lembrete')}</p>
         </div>
 
         {contato && (
@@ -2474,7 +2488,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
                 atendimento fica registrado e visível ao time. O wa.me abria o
                 WhatsApp Web e o histórico morria no celular de quem atendeu. */}
             {contato.telefone && (
-              <button onClick={() => onAbrirWhatsApp(contato.telefone!, contato.id)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>WhatsApp</button>
+              <button onClick={() => onAbrirWhatsApp(contato.telefone!, contato.id)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#25D366', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('crm.whatsapp')}</button>
             )}
           </div>
         )}
@@ -2485,9 +2499,9 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
           {perfilClinica ? (<>
             {/* Origem editável também aqui: sem isto, lead cadastrado sem origem
                 (ou na grafia antiga) ficaria para sempre fora do gráfico. */}
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Origem do lead</label>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.origem-lead')}</label>
               <select value={neg.origem || ''} onChange={e => { const origem = e.target.value; setNeg({ ...neg, origem }); patch({ origem }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Sem origem</option>
+                <option value="">{tr('crm.sem-origem')}</option>
                 {ORIGENS_CLINICA.map(o => <option key={o} value={o}>{o}</option>)}
                 {/* grafia antiga (ex.: "Ex-paciente") continua selecionável até
                     alguém trocar — o gráfico já a soma no balde certo */}
@@ -2495,97 +2509,97 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
               </select>
             </div>
             <div style={{ marginBottom: 10 }}>
-              <label style={labelStyle}>Procedimento / método vendido</label>
+              <label style={labelStyle}>{tr('crm.procedimento-vendido')}</label>
               {!!(neg.procedimentos || []).length && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
                   {(neg.procedimentos || []).map(pr => (
                     <span key={pr} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', padding: '4px 8px', borderRadius: 999 }}>
                       {pr}
                       <button onClick={() => { const lista = (neg.procedimentos || []).filter(x => x !== pr); setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
-                        title="Remover" style={{ background: 'none', border: 'none', color: '#8b8bd0', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                        title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: '#8b8bd0', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                     </span>
                   ))}
                 </div>
               )}
               <select value="" onChange={e => { const v = e.target.value; if (!v) return; const lista = [...(neg.procedimentos || []), v]; setNeg({ ...neg, procedimentos: lista }); patch({ procedimentos: lista }) }}
                 style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">{catalogoProc.length ? 'Adicionar do catálogo…' : 'Cadastre procedimentos em Procedimentos e Métodos'}</option>
+                <option value="">{catalogoProc.length ? tr('crm.adicionar-catalogo') : tr('crm.cadastre-procedimentos')}</option>
                 {catalogoProc.filter(c => !(neg.procedimentos || []).includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Queixa principal</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder="O que a paciente relata" style={inputStyle} /></div>
-            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a oportunidade (interesse, procedimento...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.queixa')}</label><input value={neg.queixaPrincipal || ''} onChange={e => setNeg({ ...neg, queixaPrincipal: e.target.value })} onBlur={() => patch({ queixaPrincipal: neg.queixaPrincipal })} placeholder={tr('crm.queixa-ph')} style={inputStyle} /></div>
+            <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder={tr('crm.notas-oportunidade2')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilTurismo ? (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Sobre a viagem</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{tr('crm.sobre-viagem')}</span>
             <div style={{ marginBottom: 10 }}>
-              <label style={labelStyle}>Viagem de interesse</label>
+              <label style={labelStyle}>{tr('crm.viagem-interesse')}</label>
               <select value={neg.viagemId || ''} onChange={e => { const viagemId = e.target.value; setNeg({ ...neg, viagemId }); patch({ viagemId, ...(viagemId ? { destinoDesejado: '' } : {}) }) }} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-                <option value="">Outro (não especificado)</option>
+                <option value="">{tr('crm.outro-nao-especificado')}</option>
                 {/* Viagens abertas + a já vinculada (mesmo fechada — o vínculo não some sozinho) */}
                 {viagens.filter(v => ['planejada', 'aberta'].includes(v.status || '') && (v.tipo || 'pacote') === 'pacote' || v.id === neg.viagemId)
                   .map(v => <option key={v.id} value={v.id}>{v.titulo}{v.dataIda ? ` · ${fmtDataViagem(v.dataIda)}` : ''}</option>)}
               </select>
             </div>
             {!neg.viagemId && (
-              <div style={{ marginBottom: 10 }}><label style={labelStyle}>Destino desejado (texto livre)</label><input value={neg.destinoDesejado || ''} onChange={e => setNeg({ ...neg, destinoDesejado: e.target.value })} onBlur={() => patch({ destinoDesejado: neg.destinoDesejado })} placeholder="Ex.: Gramado, praia no verão..." style={inputStyle} /></div>
+              <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.destino')}</label><input value={neg.destinoDesejado || ''} onChange={e => setNeg({ ...neg, destinoDesejado: e.target.value })} onBlur={() => patch({ destinoDesejado: neg.destinoDesejado })} placeholder={tr('crm.destino-ph')} style={inputStyle} /></div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={labelStyle}>Quantas pessoas</label><input type="number" min="1" value={neg.qtdPassageiros || ''} onChange={e => setNeg({ ...neg, qtdPassageiros: Number(e.target.value) || undefined })} onBlur={() => patch({ qtdPassageiros: neg.qtdPassageiros || 0 })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Época desejada</label><input value={neg.epocaDesejada || ''} onChange={e => setNeg({ ...neg, epocaDesejada: e.target.value })} onBlur={() => patch({ epocaDesejada: neg.epocaDesejada })} placeholder="Ex.: setembro / férias" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.quantas-pessoas')}</label><input type="number" min="1" value={neg.qtdPassageiros || ''} onChange={e => setNeg({ ...neg, qtdPassageiros: Number(e.target.value) || undefined })} onBlur={() => patch({ qtdPassageiros: neg.qtdPassageiros || 0 })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.epoca')}</label><input value={neg.epocaDesejada || ''} onChange={e => setNeg({ ...neg, epocaDesejada: e.target.value })} onBlur={() => patch({ epocaDesejada: neg.epocaDesejada })} placeholder={tr('crm.epoca-ph')} style={inputStyle} /></div>
             </div>
-            <div><label style={labelStyle}>Preferências e desejos</label><textarea lang="pt-BR" value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder="Ex.: leito, hotel com café, viaja com criança, quer parcelar..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.preferencias')}</label><textarea lang="pt-BR" value={neg.preferencias || ''} onChange={e => setNeg({ ...neg, preferencias: e.target.value })} onBlur={() => patch({ preferencias: neg.preferencias })} placeholder={tr('crm.preferencias-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : perfilCidadania ? (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Elegibilidade</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{tr('crm.elegibilidade')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={labelStyle}>País de interesse</label><input value={neg.paisInteresse || ''} onChange={e => setNeg({ ...neg, paisInteresse: e.target.value })} onBlur={() => patch({ paisInteresse: neg.paisInteresse })} placeholder="Luxemburgo" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Grau de parentesco</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder="Ex.: bisneto" style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.pais')}</label><input value={neg.paisInteresse || ''} onChange={e => setNeg({ ...neg, paisInteresse: e.target.value })} onBlur={() => patch({ paisInteresse: neg.paisInteresse })} placeholder={tr('crm.ex-pais')} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.parentesco')}</label><input value={neg.grauParentesco || ''} onChange={e => setNeg({ ...neg, grauParentesco: e.target.value })} onBlur={() => patch({ grauParentesco: neg.grauParentesco })} placeholder={tr('crm.ex-bisneto')} style={inputStyle} /></div>
             </div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Ascendente / origem da família</label><input value={neg.ascendenteOrigem || ''} onChange={e => setNeg({ ...neg, ascendenteOrigem: e.target.value })} onBlur={() => patch({ ascendenteOrigem: neg.ascendenteOrigem })} placeholder="Nome do antepassado estrangeiro" style={inputStyle} /></div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Documentos que já tem, dúvidas, urgência..." style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.ascendente')}</label><input value={neg.ascendenteOrigem || ''} onChange={e => setNeg({ ...neg, ascendenteOrigem: e.target.value })} onBlur={() => patch({ ascendenteOrigem: neg.ascendenteOrigem })} placeholder={tr('crm.antepassado')} style={inputStyle} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder={tr('crm.documentos-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
 
             {/* ANÁLISE DE NACIONALIDADE — é ela que diz se existe viabilidade.
                 Por isso mora aqui, na qualificação, e não só no processo. */}
             <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Análise de nacionalidade</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.analise-nacionalidade')}</span>
                 <span style={{ fontSize: 10.5, color: linhagemSalvando ? 'var(--v2-amber)' : 'var(--v2-ink3)', fontWeight: 600 }}>{linhagemSalvando ? 'salvando…' : 'salva sozinho'}</span>
               </div>
               {(() => { const r = resumoLinhagem(linhagemLocal); return (
                 <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>
-                  {r.total === 0 ? 'Monte a árvore do lead até o ascendente estrangeiro para avaliar a viabilidade.' : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
+                  {r.total === 0 ? tr('crm.dica-arvore') : `${r.total} pessoa(s) · ${r.geracoes} geração(ões)${r.temAscendente ? ` · ascendente: ${r.ascendenteNome}` : ' · falta marcar o ascendente'}`}
                 </p>
               ) })()}
               <EditorLinhagem value={linhagemLocal} onChange={mudarLinhagem} />
               {!neg.processoId && linhagemLocal.length > 0 && (
-                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Ao concretizar a venda, esta árvore vai junto para o processo.</p>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.arvore-vai-junto')}</p>
               )}
             </div>
           </>) : perfilTelefonia ? (<>
-            <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder="Anotações sobre a venda (produto de interesse, negociação...)" style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} placeholder={tr('crm.notas-venda')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
           </>) : (<>
-            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>Qualificação</span>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)', display: 'block', marginBottom: 10 }}>{tr('crm.qualificacao')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={labelStyle}>Empresa</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Segmento</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Faturamento estimado</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Instagram / site</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.empresa')}</label><input value={neg.empresa || ''} onChange={e => setNeg({ ...neg, empresa: e.target.value })} onBlur={() => patch({ empresa: neg.empresa })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.segmento')}</label><input value={neg.segmento || ''} onChange={e => setNeg({ ...neg, segmento: e.target.value })} onBlur={() => patch({ segmento: neg.segmento })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.faturamento')}</label><input value={neg.faturamentoEstimado || ''} onChange={e => setNeg({ ...neg, faturamentoEstimado: e.target.value })} onBlur={() => patch({ faturamentoEstimado: neg.faturamentoEstimado })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>{tr('crm.instagram-site')}</label><input value={neg.instagram || ''} onChange={e => setNeg({ ...neg, instagram: e.target.value })} onBlur={() => patch({ instagram: neg.instagram })} style={inputStyle} /></div>
             </div>
-            <div style={{ marginBottom: 10 }}><label style={labelStyle}>Principais dores</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
-            <div><label style={labelStyle}>Possíveis soluções</label><textarea lang="pt-BR" value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+            <div style={{ marginBottom: 10 }}><label style={labelStyle}>{tr('crm.dores')}</label><textarea lang="pt-BR" value={neg.dores || ''} onChange={e => setNeg({ ...neg, dores: e.target.value })} onBlur={() => patch({ dores: neg.dores })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+            <div><label style={labelStyle}>{tr('crm.solucoes')}</label><textarea lang="pt-BR" value={neg.solucoes || ''} onChange={e => setNeg({ ...neg, solucoes: e.target.value })} onBlur={() => patch({ solucoes: neg.solucoes })} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
           </>)}
         </div>
 
         {/* Timeline */}
-        <label style={labelStyle}>Atividades</label>
+        <label style={labelStyle}>{tr('crm.atividades')}</label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           <select value={tipoAtiv} onChange={e => setTipoAtiv(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-            {TIPOS_ATIV.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            {TIPOS_ATIV.map(([k, l]) => <option key={k} value={k}>{tr(l)}</option>)}
           </select>
-          <input value={textoAtiv} onChange={e => setTextoAtiv(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAtividade() }} placeholder="Registrar interação / nota..." style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-          <button onClick={addAtividade} disabled={!textoAtiv.trim()} style={{ padding: '8px 14px', background: textoAtiv.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: textoAtiv.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+          <input value={textoAtiv} onChange={e => setTextoAtiv(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAtividade() }} placeholder={tr('crm.registrar-interacao')} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+          <button onClick={addAtividade} disabled={!textoAtiv.trim()} style={{ padding: '8px 14px', background: textoAtiv.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: textoAtiv.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.add')}</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto', marginBottom: 16 }}>
-          {tl.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma atividade ainda.</p>}
+          {tl.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.sem-atividade')}</p>}
           {tl.map(a => (
             <div key={a.id} style={{ display: 'flex', gap: 8 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: a.tipo === 'ganho' ? 'var(--v2-ok)' : a.tipo === 'perdido' ? 'var(--v2-hot)' : a.tipo === 'estagio' ? 'var(--v2-amber-on)' : 'var(--v2-info)', marginTop: 5, flexShrink: 0 }} />
@@ -2608,7 +2622,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
         ) : perfilTurismo ? (
           neg.status === 'ganho' ? (
             <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>
-              ✓ Venda concretizada — registre a reserva em <strong>Reservas</strong>: as parcelas e os pagamentos dela entram sozinhos no Financeiro.
+              ✓ Venda concretizada — registre a reserva em <strong>{tr('crm.reservas')}</strong>: as parcelas e os pagamentos dela entram sozinhos no Financeiro.
             </div>
           ) : (
             <button onClick={() => { const g = estagiosPipe.find(e => e.ganho); patch(g ? { estagioId: g.id } : { status: 'ganho' }) }}
@@ -2621,18 +2635,18 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
              venda É abrir o processo da família na esteira. */
           neg.processoId ? (
             <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <span>✓ Processo aberto na esteira.</span>
-              {onIrProcessos && <button onClick={onIrProcessos} style={{ padding: '6px 12px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver processo</button>}
+              <span>{tr('crm.processo-aberto')}</span>
+              {onIrProcessos && <button onClick={onIrProcessos} style={{ padding: '6px 12px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('crm.ver-processo')}</button>}
             </div>
           ) : (
             <button onClick={abrirProcesso} disabled={abrindoProc}
               style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: abrindoProc ? 'default' : 'pointer', marginBottom: 12, opacity: abrindoProc ? 0.6 : 1 }}>
-              {abrindoProc ? 'Abrindo processo...' : 'Concretizar venda → abrir processo'}
+              {abrindoProc ? tr('crm.abrindo-processo') : tr('crm.concretizar-processo')}
             </button>
           )
         ) : perfilTelefonia ? (
           neg.status === 'ganho' ? (
-            <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>✓ Venda concretizada (ganho).</div>
+            <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>{tr('crm.venda-ganho')}</div>
           ) : (
             <button onClick={() => { const g = estagiosPipe.find(e => e.ganho); patch(g ? { estagioId: g.id } : { status: 'ganho' }) }}
               style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
@@ -2640,7 +2654,7 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
             </button>
           )
         ) : neg.clienteId ? (
-          <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>✓ Venda concretizada — cliente criado e entregas aplicadas.</div>
+          <div style={{ padding: '11px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 10, marginBottom: 12, fontSize: 12.5, color: 'var(--v2-ok)', fontWeight: 700 }}>{tr('crm.venda-cliente')}</div>
         ) : (
           <button onClick={() => setConverter(true)} style={{ width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer', marginBottom: 12 }}>
             Concretizar venda → criar cliente
@@ -2648,8 +2662,8 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
-          {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>}
+          <button onClick={onClose} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
+          {podeExcluir && <button onClick={excluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>}
         </div>
       </div>
       {converter && !perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && <ConversaoModal negocio={neg} contato={contato} onClose={() => setConverter(false)} onConvertido={(clienteId) => { setNeg({ ...neg, clienteId, status: 'ganho' }); setConverter(false); onMudou(); onClienteCriado?.() }} />}
@@ -2658,6 +2672,8 @@ function NegocioModal({ negocio, estagios, pipelines = [], padraoId = '', contat
 }
 
 function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: Negocio; contato?: Contato; onClose: () => void; onConvertido: (clienteId: string) => void }) {
+  const tr = useT()
+  const area = useArea()
   const [c, setC] = useState({
     nome: negocio.empresa || contato?.nome || negocio.titulo || '',
     instagram: negocio.instagram || '',
@@ -2674,14 +2690,14 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
   useEffect(() => { fetch('/api/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => {}) }, [])
 
   async function concretizar() {
-    if (!c.nome.trim()) { setErro('Informe o nome do cliente.'); return }
+    if (!c.nome.trim()) { setErro(tr('crm.av.nome-cliente')); return }
     setSalvando(true); setErro('')
     const r = await fetch('/api/crm/converter', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ negocioId: negocio.id, cliente: { nome: c.nome, instagram: c.instagram, loginEmail: c.loginEmail || '', contratoValor: Number(c.contratoValor) || 0 }, handoff: h, templateId }),
     }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (!r || r.error) { setErro(r?.error || 'Falha ao converter.'); return }
+    if (!r || r.error) { setErro(r?.error || tr('crm.falha-converter')); return }
     setResultado(r)
   }
 
@@ -2692,14 +2708,14 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
           <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--v2-ok-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ok)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
           </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--v2-ink)' }}>Venda concretizada! 🎉</h3>
-          <p style={{ margin: '0 0 6px', fontSize: 13.5, color: 'var(--v2-ink2)' }}>Cliente <b>{c.nome}</b> criado, com <b>{resultado.marcos}</b> etapas e <b>{resultado.tarefas}</b> tarefas no Playbook.</p>
+          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('crm.venda-feita')}</h3>
+          <p style={{ margin: '0 0 6px', fontSize: 13.5, color: 'var(--v2-ink2)' }}>{tr('crm.cliente-criado', { nome: c.nome, marcos: resultado.marcos, tarefas: resultado.tarefas, area: area('playbook') })}</p>
           {resultado.loginSenha && (
             <div style={{ margin: '10px 0', padding: '10px 14px', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, fontSize: 12.5, color: 'var(--v2-amber)' }}>
               Acesso do cliente criado. Senha: <b style={{ userSelect: 'all' }}>{resultado.loginSenha}</b> — anote/envie ao cliente.
             </div>
           )}
-          <button onClick={() => onConvertido(resultado.clienteId)} style={{ marginTop: 10, width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>Concluir</button>
+          <button onClick={() => onConvertido(resultado.clienteId)} style={{ marginTop: 10, width: '100%', padding: '12px 0', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>{tr('crm.concluir')}</button>
         </div>
       </div>
     )
@@ -2708,39 +2724,39 @@ function ConversaoModal({ negocio, contato, onClose, onConvertido }: { negocio: 
   return (
     <div onClick={fecharFora(onClose)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--v2-ink)' }}>Passagem de bastão → Onboarding</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Quanto mais detalhe o closer passar, melhor o onboarding do cliente pelo Gestor.</p>
+        <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--v2-ink)' }}>{tr('crm.passagem-onboarding')}</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('crm.handoff-ajuda')}</p>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Cliente</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.cliente')}</span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '8px 0 16px' }}>
-          <div><label style={labelStyle}>Nome *</label><input value={c.nome} onChange={e => setC({ ...c, nome: e.target.value })} style={inputStyle} /></div>
-          <div><label style={labelStyle}>Instagram</label><input value={c.instagram} onChange={e => setC({ ...c, instagram: e.target.value })} placeholder="@cliente" style={inputStyle} /></div>
-          <div><label style={labelStyle}>E-mail de acesso (opcional)</label><input value={c.loginEmail} onChange={e => setC({ ...c, loginEmail: e.target.value })} placeholder="cria login do portal" style={inputStyle} /></div>
+          <div><label style={labelStyle}>{tr('crm.nome-obrigatorio')}</label><input value={c.nome} onChange={e => setC({ ...c, nome: e.target.value })} style={inputStyle} /></div>
+          <div><label style={labelStyle}>{tr('crm.instagram')}</label><input value={c.instagram} onChange={e => setC({ ...c, instagram: e.target.value })} placeholder={tr('crm.arroba-cliente')} style={inputStyle} /></div>
+          <div><label style={labelStyle}>{tr('crm.email-acesso')}</label><input value={c.loginEmail} onChange={e => setC({ ...c, loginEmail: e.target.value })} placeholder={tr('crm.cria-login')} style={inputStyle} /></div>
           <div><label style={labelStyle}>Valor do contrato (R$)</label><input type="number" min="0" value={c.contratoValor} onChange={e => setC({ ...c, contratoValor: e.target.value })} style={inputStyle} /></div>
         </div>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Handoff (Closer → Gestor)</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.handoff')}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 16px' }}>
-          <div><label style={labelStyle}>Escopo vendido / entregáveis</label><textarea lang="pt-BR" value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Expectativas e objetivos do cliente</label><textarea lang="pt-BR" value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Detalhes importantes (decisor, prazos prometidos, sensibilidades)</label><textarea lang="pt-BR" value={h.detalhes} onChange={e => setH({ ...h, detalhes: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Observações</label><textarea lang="pt-BR" value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.escopo')}</label><textarea lang="pt-BR" value={h.escopoVendido} onChange={e => setH({ ...h, escopoVendido: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.expectativas')}</label><textarea lang="pt-BR" value={h.expectativas} onChange={e => setH({ ...h, expectativas: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.detalhes-importantes')}</label><textarea lang="pt-BR" value={h.detalhes} onChange={e => setH({ ...h, detalhes: e.target.value })} style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }} /></div>
+          <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={h.observacoes} onChange={e => setH({ ...h, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} /></div>
         </div>
 
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas (onboarding)</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.entregas-onboarding')}</span>
         <div style={{ margin: '8px 0 16px' }}>
-          <label style={labelStyle}>Modelo de projeto a aplicar (gera marcos + tarefas)</label>
+          <label style={labelStyle}>{tr('crm.modelo-projeto')}</label>
           <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
-            <option value="">Não aplicar modelo agora</option>
+            <option value="">{tr('crm.sem-modelo-agora')}</option>
             {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
           </select>
-          {templates.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Nenhum modelo cadastrado. Crie em Modelos para montar o escopo automaticamente.</p>}
+          {templates.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>{tr('crm.sem-modelo-cadastrado')}</p>}
         </div>
 
         {erro && <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-hot)', fontWeight: 700 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={concretizar} disabled={salvando || !c.nome.trim()} style={{ flex: 1, padding: '12px 0', background: c.nome.trim() ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: c.nome.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: c.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? 'Concretizando...' : 'Concretizar venda'}</button>
-          <button onClick={onClose} style={{ padding: '12px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={concretizar} disabled={salvando || !c.nome.trim()} style={{ flex: 1, padding: '12px 0', background: c.nome.trim() ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: c.nome.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: c.nome.trim() ? 'pointer' : 'not-allowed' }}>{salvando ? tr('crm.concretizando') : tr('crm.concretizar')}</button>
+          <button onClick={onClose} style={{ padding: '12px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       </div>
     </div>
@@ -2802,13 +2818,13 @@ const CANAL_CFG: Record<CanalMsg, {
   excluirMensagem?: (id: string, msgId: string) => Promise<any>
   buscar?: (q: string) => Promise<{ tel: string; snippet: string }[]>
   norm: (c: any) => MsgConversa
-  subId: (c: MsgConversa | undefined, id: string) => string
+  subId: (c: MsgConversa | undefined, id: string, tr: (chave: string) => string) => string
   matchContato: (c: MsgConversa, contatos: Contato[]) => string | undefined
   conectarUrl?: string
 }> = {
   whatsapp: {
     cor: 'var(--v2-ok)', bolha: '#dcf8c6',
-    aviso: 'WhatsApp ainda não conectado. Conecte pelo QR em Configurações → Integrações → WhatsApp (mantém o número atual). As conversas aparecem aqui assim que parear.',
+    aviso: 'crm.aviso-whatsapp',
     listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
     buscar: q => fetch(`/api/crm/mensagens?busca=${encodeURIComponent(q)}`).then(r => r.json()).then(d => Array.isArray(d?.matches) ? d.matches : []).catch(() => []),
@@ -2817,25 +2833,26 @@ const CANAL_CFG: Record<CanalMsg, {
     excluir: id => fetch(`/api/crm/mensagens?tel=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     excluirMensagem: (id, msgId) => fetch(`/api/crm/mensagens?tel=${id}&msgId=${encodeURIComponent(msgId)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c, id: c.telefone }),
-    subId: (c, id) => (c as any)?.grupo ? 'Grupo do WhatsApp' : `+${id}`,
+    subId: (c, id, tr) => (c as any)?.grupo ? tr('crm.grupo-whatsapp') : `+${id}`,
     matchContato: (c, contatos) => contatos.find(ct => mesmoTelefone(ct.telefone, c.id))?.nome,
   },
   instagram: {
     cor: '#d6249f', bolha: '#fce7f3',
-    aviso: 'Instagram Direct ainda não conectado. As conversas aparecem aqui após a aprovação da permissão instagram_business_manage_messages no App Review, a conexão da conta do cliente e o webhook (INSTAGRAM_VERIFY_TOKEN) configurado na Meta.',
+    aviso: 'crm.aviso-instagram',
     listar: () => fetch('/api/crm/mensagens-instagram').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens-instagram?id=${id}`).then(r => r.json()).catch(() => null),
     enviar: (id, texto) => fetch('/api/crm/mensagens-instagram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, texto }) }).then(x => x.json()).catch(() => null),
     vincular: (id, contatoId) => fetch('/api/crm/mensagens-instagram', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, contatoId }) }).catch(() => {}),
     excluirMensagem: (id, msgId) => fetch(`/api/crm/mensagens-instagram?id=${encodeURIComponent(id)}&msgId=${encodeURIComponent(msgId)}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null),
     norm: c => ({ ...c }),
-    subId: (c, id) => c?.username ? `@${c.username}` : id,
+    subId: (c, id, _tr) => c?.username ? `@${c.username}` : id,
     matchContato: () => undefined,
     conectarUrl: '/api/instagram/oauth?messaging=1',
   },
 }
 
 function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeExcluir = false, podeEditar = false, onContatosMudou, abrirTel = '', abrirContatoId = '', onAbriuTel, onAbrirOportunidade, onAbrirFicha, onAgendar }: { contatos: Contato[]; negocios?: Negocio[]; perfilClinica?: boolean; podeExcluir?: boolean; podeEditar?: boolean; onContatosMudou?: () => void; abrirTel?: string; abrirContatoId?: string; onAbriuTel?: () => void; onAbrirOportunidade?: (contatoId: string) => void; onAbrirFicha?: (c: Contato) => void; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void }) {
+  const tr = useT()
   // Clínica só usa WhatsApp; Instagram Direct fica fora (bloqueado no App Review e sem app)
   const CANAIS: CanalMsg[] = perfilClinica ? ['whatsapp'] : ['whatsapp', 'instagram']
   const [canal, setCanal] = useState<CanalMsg>(() => {
@@ -2905,7 +2922,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
 
   const painelSobrepoe = inboxMovel || telaEstreita
 
-  const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id)
+  const nomeDe = (c: MsgConversa) => c.nome || contatos.find(ct => ct.id === c.contatoId)?.nome || cfg.matchContato(c, contatos) || cfg.subId(c, c.id, tr)
 
   async function carregarConversas() {
     const d = await cfg.listar()
@@ -2917,8 +2934,8 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
   // não ter o botão.
   async function excluirMensagem(m: MsgItem) {
     if (!cfg.excluirMensagem) return
-    const ok = await confirmar('Ela sai do Soma10 para toda a equipe. No aparelho do cliente a mensagem continua — isto não apaga no WhatsApp/Instagram dele.', {
-      titulo: 'Excluir esta mensagem?', okLabel: 'Excluir', cancelLabel: 'Cancelar', perigo: true,
+    const ok = await confirmar(tr('crm.dlg-excluir-mensagem'), {
+      titulo: tr('crm.dlg-titulo-mensagem'), okLabel: tr('comum.excluir'), cancelLabel: tr('comum.cancelar'), perigo: true,
     })
     if (!ok) return
     const r = await cfg.excluirMensagem(sel, m.id)
@@ -2971,10 +2988,10 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telefone: sel, midia: { tipo, url: blob.url, mimetype: mime, fileName: file.name } }),
       }).then(x => x.json()).catch(() => null)
-      if (!r?.ok) toast(r?.error || 'Não foi possível enviar o anexo.', r?.registrado ? 'info' : 'erro')
+      if (!r?.ok) toast(r?.error || tr('crm.falha-anexo'), r?.registrado ? 'info' : 'erro')
       else { recarregarMensagens(sel); carregarConversas() }
     } catch (e: any) {
-      toast(e?.message || 'Falha ao enviar o anexo.', 'erro')
+      toast(e?.message || tr('crm.falha-anexo'), 'erro')
     } finally { setEnviandoMidia(false) }
   }
 
@@ -3050,7 +3067,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         const baseMime = (mr.mimeType || 'audio/webm').split(';')[0]
         const blob = new Blob(audioChunks.current, { type: baseMime })
         pararRecursosAudio(); setGravando(false)
-        if (blob.size < 800) { toast('Gravação muito curta.', 'info'); return }
+        if (blob.size < 800) { toast(tr('crm.av.gravacao-curta'), 'info'); return }
         const ext = baseMime.includes('ogg') ? 'ogg' : baseMime.includes('mp4') ? 'm4a' : 'webm'
         const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: baseMime })
         setAudioPreview({ url: URL.createObjectURL(blob), file })
@@ -3059,7 +3076,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       mr.start()
       setGravando(true); setSegundos(0)
       timerRef.current = setInterval(() => setSegundos(s => s + 1), 1000)
-    } catch { toast('Não foi possível acessar o microfone. Verifique a permissão do navegador.', 'erro') }
+    } catch { toast(tr('crm.av.sem-microfone'), 'erro') }
   }
   function pararGravacao() { mediaRec.current?.stop() } // o onstop gera o preview
   function cancelarGravacao() {
@@ -3105,14 +3122,14 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       setEnviando(true)
       const r = await fetch('/api/crm/mensagens', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel, editarMsgId: editando.id, novoTexto: t }) }).then(x => x.json()).catch(() => null)
       setEnviando(false)
-      if (r?.ok) { toast('Mensagem editada.', 'sucesso'); setEditando(null); setTexto(''); abrir(sel); carregarConversas() }
-      else toast(r?.error || 'Não foi possível editar.', 'erro')
+      if (r?.ok) { toast(tr('crm.av.mensagem-editada'), 'sucesso'); setEditando(null); setTexto(''); abrir(sel); carregarConversas() }
+      else toast(r?.error || tr('crm.falha-editar'), 'erro')
       return
     }
     setEnviando(true); setTexto('')
     const r = await cfg.enviar(sel, t)
     setEnviando(false)
-    if (!r?.ok) toast(r?.error || 'Não foi possível enviar.', r?.registrado ? 'info' : 'erro')
+    if (!r?.ok) toast(r?.error || tr('crm.falha-enviar'), r?.registrado ? 'info' : 'erro')
     recarregarMensagens(sel); carregarConversas()
   }
   // Encaminha a mensagem escolhida para OUTRA conversa (texto ou mídia do Blob)
@@ -3128,8 +3145,8 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       body.texto = m.texto
     }
     const r = await fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { toast('Mensagem encaminhada.', 'sucesso'); if (destinoId === sel) abrir(sel); carregarConversas() }
-    else toast(r?.error || 'Não foi possível encaminhar.', 'erro')
+    if (r?.ok) { toast(tr('crm.av.mensagem-encaminhada'), 'sucesso'); if (destinoId === sel) abrir(sel); carregarConversas() }
+    else toast(r?.error || tr('crm.falha-encaminhar'), 'erro')
   }
   async function vincular(contatoId: string) {
     if (!sel) return
@@ -3140,11 +3157,11 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
   // se mandar mensagem de novo (o webhook recria a conversa do zero).
   async function excluirConversa() {
     if (!sel || !cfg.excluir) return
-    const quem = conversaSel ? nomeDe(conversaSel) : cfg.subId(conversaSel, sel)
-    if (!(await confirmar(`Excluir a conversa com "${quem}"? Todo o histórico de mensagens será removido. Esta ação não pode ser desfeita.`, { titulo: 'Excluir conversa', okLabel: 'Excluir', perigo: true }))) return
+    const quem = conversaSel ? nomeDe(conversaSel) : cfg.subId(conversaSel, sel, tr)
+    if (!(await confirmar(tr('crm.dlg-excluir-conversa', { quem }), { titulo: tr('crm.dlg-titulo-conversa'), okLabel: tr('comum.excluir'), perigo: true }))) return
     const r = await cfg.excluir(sel)
-    if (r?.ok) { toast('Conversa excluída.', 'sucesso'); setSel(''); setMensagens([]); carregarConversas() }
-    else toast(r?.error || 'Não foi possível excluir a conversa.', 'erro')
+    if (r?.ok) { toast(tr('crm.av.conversa-excluida'), 'sucesso'); setSel(''); setMensagens([]); carregarConversas() }
+    else toast(r?.error || tr('crm.falha-excluir-conversa'), 'erro')
   }
   // Criar contato a partir da conversa: abre a ficha normal (já com o telefone e
   // o nome que vieram do WhatsApp) e vincula a conversa assim que salvar.
@@ -3154,7 +3171,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
     if (!criado?.id || !sel) return
     await cfg.vincular(sel, criado.id)
     onContatosMudou?.(); carregarConversas()
-    toast('Contato criado e vinculado.', 'sucesso')
+    toast(tr('crm.av.contato-vinculado'), 'sucesso')
   }
 
   // Troca de canal (e carga inicial): reseta a seleção e recarrega
@@ -3186,13 +3203,13 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
     setModelosAberto(false)
   }
   async function salvarTemplate() {
-    if (!templForm || !templForm.titulo.trim() || !templForm.texto.trim()) { toast('Informe título e texto do modelo.', 'erro'); return }
+    if (!templForm || !templForm.titulo.trim() || !templForm.texto.trim()) { toast(tr('crm.av.informe-modelo'), 'erro'); return }
     const r = await fetch('/api/crm/msg-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templForm) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { setTemplates(r.templates || []); setTemplForm(null); toast('Modelo salvo.', 'sucesso') }
-    else toast(r?.error || 'Falha ao salvar o modelo.', 'erro')
+    if (r?.ok) { setTemplates(r.templates || []); setTemplForm(null); toast(tr('crm.av.modelo-salvo'), 'sucesso') }
+    else toast(r?.error || tr('crm.falha-salvar-modelo'), 'erro')
   }
   async function removerTemplate(id: string) {
-    if (!(await confirmar('Remover este modelo?', { titulo: 'Modelos de mensagem', okLabel: 'Remover', perigo: true }))) return
+    if (!(await confirmar(tr('crm.dlg-remover-modelo'), { titulo: tr('crm.dlg-titulo-modelos'), okLabel: tr('comum.remover'), perigo: true }))) return
     const r = await fetch('/api/crm/msg-templates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json()).catch(() => null)
     if (r?.ok) setTemplates(r.templates || [])
   }
@@ -3208,7 +3225,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
     const r = await fetch('/api/crm/sugerir-perguntas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefone: sel }) }).then(x => x.json()).catch(() => null)
     setSugerindo(false)
     if (r?.ok && Array.isArray(r.sugestoes)) setSugestoes(r.sugestoes)
-    else { setSugestoesAbertas(false); toast(r?.error || 'Não foi possível sugerir perguntas.', 'erro') }
+    else { setSugestoesAbertas(false); toast(r?.error || tr('crm.falha-sugerir'), 'erro') }
   }
   function inserirPergunta(p: string) {
     setTexto(prev => (prev.trim() ? prev.replace(/\s*$/, '') + '\n' : '') + p)
@@ -3265,7 +3282,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {CANAIS.map(c => (
             <button key={c} onClick={() => setCanal(c)} style={{ padding: '7px 16px', borderRadius: 999, border: `1.5px solid ${canal === c ? CANAL_CFG[c].cor : 'var(--v2-surface2)'}`, background: canal === c ? CANAL_CFG[c].cor : 'var(--v2-surface)', color: canal === c ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-              {c === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
+              {c === 'whatsapp' ? tr('crm.whatsapp') : tr('crm.instagram')}
             </button>
           ))}
         </div>
@@ -3279,30 +3296,30 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
           )}
           <button onClick={() => { window.location.href = cfg.conectarUrl! }}
             style={{ padding: '8px 16px', background: contas.length > 0 ? 'var(--v2-surface)' : cfg.cor, color: contas.length > 0 ? cfg.cor : 'var(--v2-surface)', border: contas.length > 0 ? `1.5px solid ${cfg.cor}` : 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-            {contas.length > 0 ? 'Reconectar / adicionar conta' : 'Conectar conta do Instagram (mensagens)'}
+            {contas.length > 0 ? tr('crm.reconectar-conta') : tr('crm.conectar-instagram')}
           </button>
-          <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Conta de mensagens da própria agência (login de admin, conta profissional/testador).</span>
+          <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.conta-agencia')}</span>
         </div>
       )}
       {!configurado && (
         <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 10, padding: '11px 14px', marginBottom: 14, fontSize: 12.5, color: 'var(--v2-amber)' }}>
-          {cfg.aviso}
+          {tr(cfg.aviso)}
         </div>
       )}
       <div style={{ display: 'flex', gap: 14, height: 'min(620px, 70vh)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden', background: 'var(--v2-surface)' }}>
         {/* Lista de conversas — no celular ocupa tudo e some quando uma conversa abre */}
         <div style={{ width: inboxMovel ? '100%' : 280, borderRight: inboxMovel ? 'none' : '1px solid var(--v2-surface2)', overflowY: 'auto', flexShrink: 0, display: inboxMovel && sel ? 'none' : 'flex', flexDirection: 'column' }}>
           <div style={{ padding: 8, borderBottom: '1px solid var(--v2-rule)', position: 'sticky', top: 0, background: 'var(--v2-surface)', zIndex: 1 }}>
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou dentro da conversa..." style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-            {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Procurando no histórico das conversas…</p>}
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('crm.buscar-conversa')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+            {buscandoTexto && <p style={{ margin: '6px 2px 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('crm.procurando')}</p>}
           </div>
-          {carregando ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
-            : conversas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma conversa ainda.</p>
-            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>{buscandoTexto ? 'Procurando…' : `Nada encontrado para “${busca}”.`}</p>
+          {carregando ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('conta.carregando')}</p>
+            : conversas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('crm.sem-conversa')}</p>
+            : conversasFiltradas.length === 0 ? <p style={{ padding: 16, color: 'var(--v2-ink3)', fontSize: 13 }}>{buscandoTexto ? tr('crm.procurando') : tr('crm.nada-encontrado', { busca })}</p>
             : conversasFiltradas.map(c => {
               const trecho = matchesTexto[c.id]
               return (
-              <button key={c.id} onClick={() => encaminhar ? encaminharPara(c.id) : abrir(c.id)} title={encaminhar ? 'Encaminhar para esta conversa' : undefined} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: sel === c.id ? '#f0f9ff' : encaminhar ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button key={c.id} onClick={() => encaminhar ? encaminharPara(c.id) : abrir(c.id)} title={encaminhar ? tr('crm.encaminhar-aqui') : undefined} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: sel === c.id ? '#f0f9ff' : encaminhar ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AvatarConv foto={c.foto} nome={nomeDe(c)} cor={cfg.cor} />
                 <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -3320,11 +3337,11 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
         {/* Conversa — no celular só aparece com uma conversa aberta (voltar = lista) */}
         <div style={{ flex: 1, display: (inboxMovel && !sel) || (painelSobrepoe && painelAberto && sel) ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
           {!sel ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Selecione uma conversa</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('crm.selecione-conversa')}</div>
           ) : (<>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {inboxMovel && (
-                <button onClick={() => setSel('')} title="Voltar para as conversas" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                <button onClick={() => setSel('')} title={tr('crm.voltar-conversas')} style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                 </button>
               )}
@@ -3332,12 +3349,12 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 {conversaSel && <AvatarConv foto={conversaSel.foto} nome={nomeDe(conversaSel)} cor={cfg.cor} />}
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
-                  <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{cfg.subId(conversaSel, sel)}</p>
+                  <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{cfg.subId(conversaSel, sel, tr)}</p>
                 </div>
               </div>
               {/* Com o contato vinculado, a conversa vira venda em 1 clique */}
               {conversaSel?.contatoId && onAbrirOportunidade && (
-                <button onClick={() => onAbrirOportunidade(conversaSel.contatoId!)} title="Criar uma oportunidade no funil para este contato"
+                <button onClick={() => onAbrirOportunidade(conversaSel.contatoId!)} title={tr('crm.criar-oportunidade')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
                   Abrir oportunidade
@@ -3345,10 +3362,10 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               )}
               {/* Vincular contato — seletor com BUSCA (a lista tem centenas) */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <button onClick={() => { setVincularAberto(v => !v); setBuscaVinculo('') }} title="Vincular a um contato do CRM"
+                <button onClick={() => { setVincularAberto(v => !v); setBuscaVinculo('') }} title={tr('crm.vincular-contato')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: 190, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, background: 'var(--v2-surface)', cursor: 'pointer', color: conversaSel?.contatoId ? 'var(--v2-ink)' : 'var(--v2-ink3)', fontWeight: conversaSel?.contatoId ? 700 : 400 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {conversaSel?.contatoId ? (contatos.find(ct => ct.id === conversaSel.contatoId)?.nome || 'Contato vinculado') : 'Vincular contato...'}
+                    {conversaSel?.contatoId ? (contatos.find(ct => ct.id === conversaSel.contatoId)?.nome || tr('crm.contato-vinculado')) : tr('crm.vincular-contato-ph')}
                   </span>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M6 9l6 6 6-6" /></svg>
                 </button>
@@ -3356,18 +3373,18 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   <div onClick={fecharFora(() => setVincularAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
                   <div style={{ position: 'absolute', top: 'calc(100% + 5px)', right: 0, width: 260, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 11, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', zIndex: 31, overflow: 'hidden' }}>
                     <div style={{ padding: 8, borderBottom: '1px solid var(--v2-rule)' }}>
-                      <input autoFocus value={buscaVinculo} onChange={e => setBuscaVinculo(e.target.value)} placeholder="Buscar por nome ou telefone…"
+                      <input autoFocus value={buscaVinculo} onChange={e => setBuscaVinculo(e.target.value)} placeholder={tr('crm.buscar-nome-telefone')}
                         style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
                     </div>
                     <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                       <button onClick={() => { setVincularAberto(false); setContatoNovo({ nome: (conversaSel?.nome || '').trim(), telefone: canal === 'whatsapp' ? sel : '' }) }}
-                        style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-info)' }}>＋ Criar contato novo</button>
+                        style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-info)' }}>{tr('crm.criar-contato')}</button>
                       {conversaSel?.contatoId && (
                         <button onClick={() => { vincular(''); setVincularAberto(false) }}
-                          style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-hot)' }}>Desvincular</button>
+                          style={{ width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderBottom: '1px solid var(--v2-surface1)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-hot)' }}>{tr('crm.desvincular')}</button>
                       )}
                       {contatosVinculo.length === 0 ? (
-                        <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado.</p>
+                        <p style={{ margin: 0, padding: '12px 11px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.contato-nao-encontrado')}</p>
                       ) : contatosVinculo.map(ct => (
                         <button key={ct.id} onClick={() => { vincular(ct.id); setVincularAberto(false) }}
                           style={{ width: '100%', textAlign: 'left', padding: '8px 11px', border: 'none', borderBottom: '1px solid var(--v2-rule)', background: conversaSel?.contatoId === ct.id ? '#f0f9ff' : 'var(--v2-surface)', cursor: 'pointer' }}>
@@ -3385,21 +3402,19 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               {/* Raio-X: o painel do lead. Só no WhatsApp — é de lá que saem as
                   mensagens que alimentam situação, temperatura e a Assistente. */}
               {canal === 'whatsapp' && (
-                <button onClick={() => setPainelAberto(v => !v)} title={painelAberto ? 'Fechar o painel do lead' : 'Abrir o raio-X do lead'}
+                <button onClick={() => setPainelAberto(v => !v)} title={painelAberto ? tr('crm.fechar-painel-lead') : tr('crm.abrir-raiox')}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid ' + (painelAberto ? 'var(--v2-ink)' : 'var(--v2-rule)'), background: painelAberto ? 'var(--v2-ink)' : 'var(--v2-surface)', color: painelAberto ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
                   Raio-X
                 </button>
               )}
               {cfg.excluir && (
-                <button onClick={excluirConversa} title="Excluir conversa (remove todo o histórico)"
-                  style={{ background: 'transparent', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                  Excluir
-                </button>
+                <button onClick={excluirConversa} title={tr('crm.excluir-conversa')}
+                  style={{ background: 'transparent', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>{tr('comum.excluir')}</button>
               )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--v2-surface1)' }}>
-              {mensagens.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', margin: 'auto' }}>Sem mensagens.</p>
+              {mensagens.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', margin: 'auto' }}>{tr('crm.sem-mensagem')}</p>
                 : mensagens.map(m => {
                   const textoVisivel = m.midiaUrl && ehRotuloMidia(m.texto) ? '' : m.texto
                   // No grupo, mostra quem falou (avatar ao lado da bolha).
@@ -3409,7 +3424,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   {comAutor && <AvatarConv foto={m.autorFoto} nome={m.autor || '?'} cor={cfg.cor} tam={26} />}
                   <div style={{ padding: '8px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45, background: m.de === 'agente' ? cfg.bolha : 'var(--v2-surface)', border: m.de === 'agente' ? 'none' : '1px solid var(--v2-surface2)', color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
                     {m.midiaUrl && m.tipo === 'imagem' && (
-                      <button type="button" onClick={() => setLightbox({ url: midiaSrc(m.midiaUrl!), nome: m.fileName || nomeArquivoMidia(m) })} title="Ver imagem"
+                      <button type="button" onClick={() => setLightbox({ url: midiaSrc(m.midiaUrl!), nome: m.fileName || nomeArquivoMidia(m) })} title={tr('crm.ver-imagem')}
                         style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', display: 'block', width: '100%' }}>
                         <img src={midiaSrc(m.midiaUrl)} alt="" style={{ maxWidth: 240, width: '100%', borderRadius: 8, display: 'block', marginBottom: textoVisivel ? 6 : 0 }} />
                       </button>
@@ -3426,25 +3441,25 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                     {m.midiaUrl && m.tipo === 'documento' && (
                       <a href={midiaSrc(m.midiaUrl)} download={m.fileName || nomeArquivoMidia(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--v2-info)', fontWeight: 700, textDecoration: 'none', marginBottom: textoVisivel ? 6 : 0 }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2zM14 2v6h6" /></svg>
-                        {m.fileName || 'Baixar documento'}
+                        {m.fileName || tr('crm.baixar-documento')}
                       </a>
                     )}
-                    {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: 'var(--v2-ink3)' }}>{m.texto || '[mídia]'} <span style={{ fontSize: 10.5 }}>(mídia não disponível)</span></span>}
+                    {!m.midiaUrl && m.tipo && <span style={{ fontStyle: 'italic', color: 'var(--v2-ink3)' }}>{m.texto || tr('crm.midia')} <span style={{ fontSize: 10.5 }}>{tr('crm.midia-indisponivel')}</span></span>}
                     {textoVisivel && (!m.tipo || m.midiaUrl) && comLinks(textoVisivel)}
                     <span style={{ display: 'block', fontSize: 9.5, color: 'var(--v2-ink3)', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     {(m.texto || m.midiaUrl) && (
                       <span style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
                         {canal === 'whatsapp' && (
-                          <button onClick={() => { setEditando(null); setEncaminhar(m) }} title="Encaminhar para outra conversa"
-                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Encaminhar</button>
+                          <button onClick={() => { setEditando(null); setEncaminhar(m) }} title={tr('crm.encaminhar-outra')}
+                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('crm.encaminhar')}</button>
                         )}
                         {canal === 'whatsapp' && m.de === 'agente' && !m.tipo && (Date.now() - new Date(m.em).getTime()) < 15 * 60 * 1000 && (
-                          <button onClick={() => { setEncaminhar(null); setEditando(m); setTexto(m.texto) }} title="Editar (até ~15 min após o envio)"
-                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Editar</button>
+                          <button onClick={() => { setEncaminhar(null); setEditando(m); setTexto(m.texto) }} title={tr('crm.editar-15min')}
+                            style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('comum.editar')}</button>
                         )}
                         {podeExcluir && cfg.excluirMensagem && (
-                          <button onClick={() => excluirMensagem(m)} title="Excluir do Soma10 (não apaga no aparelho do cliente)"
-                            style={{ background: 'none', border: 'none', color: '#c88', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>Excluir</button>
+                          <button onClick={() => excluirMensagem(m)} title={tr('crm.excluir-soma10')}
+                            style={{ background: 'none', border: 'none', color: '#c88', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('comum.excluir')}</button>
                         )}
                       </span>
                     )}
@@ -3455,10 +3470,10 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
             </div>
             {(encaminhar || editando) && (
               <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '7px 12px', background: 'var(--v2-amber-bg)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-amber)', fontWeight: 600 }}>
-                {encaminhar ? 'Encaminhando — clique numa conversa da lista à esquerda para enviar.' : 'Editando mensagem enviada — altere o texto e confirme (vale até ~15 min).'}
+                {encaminhar ? tr('crm.encaminhando') : tr('crm.editando-enviada')}
                 <span style={{ flex: 1 }} />
                 <button onClick={() => { setEncaminhar(null); if (editando) { setEditando(null); setTexto('') } }}
-                  style={{ background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>Cancelar</button>
+                  style={{ background: 'none', border: 'none', color: 'var(--v2-amber)', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>{tr('comum.cancelar')}</button>
               </div>
             )}
             {/* paddingRight reserva a folga do FAB do assistente (fixed right:20, ~56px):
@@ -3468,29 +3483,29 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               {modelosAberto && (
                 <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Modelos de mensagem</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.modelos-mensagem')}</span>
                     <span style={{ flex: 1 }} />
-                    {!templForm && <button onClick={() => setTemplForm({ titulo: '', texto: '' })} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Novo</button>}
+                    {!templForm && <button onClick={() => setTemplForm({ titulo: '', texto: '' })} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>{tr('crm.novo')}</button>}
                     <button onClick={() => { setModelosAberto(false); setTemplForm(null) }} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: 'var(--v2-ink3)' }}>×</button>
                   </div>
                   {templForm && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: 9, marginBottom: 8 }}>
-                      <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Confirmar consulta)" style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                      <input value={templForm.titulo} onChange={e => setTemplForm(f => f && { ...f, titulo: e.target.value })} placeholder={tr('crm.titulo-ex')} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
                       <textarea lang="pt-BR" value={templForm.texto} onChange={e => setTemplForm(f => f && { ...f, texto: e.target.value })} placeholder="Texto do modelo. Use {primeiro} ou {nome} para o nome do contato." rows={3} style={{ padding: '7px 9px', borderRadius: 7, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical' }} />
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>Cancelar</button>
-                        <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Salvar</button>
+                        <button onClick={() => setTemplForm(null)} style={{ padding: '6px 11px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>{tr('comum.cancelar')}</button>
+                        <button onClick={salvarTemplate} style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.salvar')}</button>
                       </div>
                     </div>
                   )}
-                  {templates.length === 0 && !templForm && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum modelo ainda. Crie respostas rápidas para agilizar o atendimento.</p>}
+                  {templates.length === 0 && !templForm && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.sem-modelo')}</p>}
                   {templates.map(t => (
                     <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 4px', borderTop: '1px solid var(--v2-surface1)' }}>
-                      <button onClick={() => inserirModelo(t)} title="Inserir no compositor" style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <button onClick={() => inserirModelo(t)} title={tr('crm.inserir-compositor')} style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
                         <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{t.titulo}</span>
                         <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.texto}</span>
                       </button>
-                      <button onClick={() => removerTemplate(t.id)} title="Remover" style={{ background: 'transparent', border: 'none', color: '#c0392b', fontSize: 13, cursor: 'pointer', padding: '2px 5px', flexShrink: 0 }}>✕</button>
+                      <button onClick={() => removerTemplate(t.id)} title={tr('comum.remover')} style={{ background: 'transparent', border: 'none', color: '#c0392b', fontSize: 13, cursor: 'pointer', padding: '2px 5px', flexShrink: 0 }}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -3499,27 +3514,27 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
               {sugestoesAbertas && (
                 <div style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: 10, right: 10, maxHeight: 320, overflowY: 'auto', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.16)', padding: 10, zIndex: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>Próximas perguntas</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('crm.proximas-perguntas')}</span>
                     <span style={{ flex: 1 }} />
-                    {!sugerindo && sugestoes.length > 0 && <button onClick={sugerirPerguntas} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>Gerar de novo</button>}
+                    {!sugerindo && sugestoes.length > 0 && <button onClick={sugerirPerguntas} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-ink)' }}>{tr('crm.gerar-de-novo')}</button>}
                     <button onClick={() => setSugestoesAbertas(false)} style={{ padding: '4px 8px', background: 'transparent', border: 'none', fontSize: 15, cursor: 'pointer', color: 'var(--v2-ink3)' }}>×</button>
                   </div>
-                  {sugerindo && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>Lendo a conversa e o playbook...</p>}
+                  {sugerindo && <p style={{ margin: '4px 2px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('crm.lendo-conversa')}</p>}
                   {!sugerindo && sugestoes.map((s, i) => (
-                    <button key={i} onClick={() => inserirPergunta(s.pergunta)} title="Inserir no compositor"
+                    <button key={i} onClick={() => inserirPergunta(s.pergunta)} title={tr('crm.inserir-compositor')}
                       style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--v2-surface1)' : 'none', cursor: 'pointer', padding: '8px 4px' }}>
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{s.pergunta}</span>
                       <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)', marginTop: 2 }}>{[s.fase, s.porque].filter(Boolean).join(' · ')}</span>
                     </button>
                   ))}
-                  {!sugerindo && <p style={{ margin: '8px 2px 2px', fontSize: 11, color: 'var(--v2-ink3)' }}>Sugestões da IA a partir do playbook. Revise antes de enviar.</p>}
+                  {!sugerindo && <p style={{ margin: '8px 2px 2px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('crm.sugestoes-ia')}</p>}
                 </div>
               )}
-              <button onClick={() => { setModelosAberto(v => !v); setSugestoesAbertas(false) }} title="Modelos de mensagem" style={{ padding: '9px 12px', background: modelosAberto ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: modelosAberto ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Modelos</button>
+              <button onClick={() => { setModelosAberto(v => !v); setSugestoesAbertas(false) }} title={tr('crm.modelos-mensagem')} style={{ padding: '9px 12px', background: modelosAberto ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: modelosAberto ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>{tr('crm.modelos')}</button>
               {canal === 'whatsapp' && (
-                <button onClick={() => (sugestoesAbertas ? setSugestoesAbertas(false) : sugerirPerguntas())} disabled={sugerindo} title="Sugerir a próxima pergunta com base no playbook"
+                <button onClick={() => (sugestoesAbertas ? setSugestoesAbertas(false) : sugerirPerguntas())} disabled={sugerindo} title={tr('crm.sugerir-pergunta')}
                   style={{ padding: '9px 12px', background: sugestoesAbertas ? 'var(--v2-ink)' : 'var(--v2-surface1)', color: sugestoesAbertas ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: sugerindo ? 'wait' : 'pointer', flexShrink: 0 }}>
-                  {sugerindo ? '...' : 'Sugerir'}
+                  {sugerindo ? '...' : tr('crm.sugerir')}
                 </button>
               )}
               {gravando ? (
@@ -3528,8 +3543,8 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--v2-hot)', animation: 'soma-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{mmss(segundos)}</span>
                   <canvas ref={canvasRef} width={300} height={30} style={{ flex: 1, height: 30, minWidth: 0 }} />
-                  <button onClick={cancelarGravacao} title="Cancelar gravação" style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-ink3)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Cancelar</button>
-                  <button onClick={pararGravacao} title="Parar (ouvir antes de enviar)" style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
+                  <button onClick={cancelarGravacao} title={tr('crm.cancelar-gravacao')} style={{ padding: '7px 12px', background: 'transparent', color: 'var(--v2-ink3)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>{tr('comum.cancelar')}</button>
+                  <button onClick={pararGravacao} title={tr('crm.parar-gravacao')} style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0, padding: 0 }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 </div>
@@ -3551,15 +3566,15 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                     <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexoPreview.file.name}</p>
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{(anexoPreview.file.size / 1024 / 1024).toFixed(anexoPreview.file.size > 1024 * 1024 ? 1 : 2)} MB · pronto para enviar</p>
                   </div>
-                  <button onClick={descartarAnexoPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
-                  <button onClick={enviarAnexoPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar'}</button>
+                  <button onClick={descartarAnexoPreview} disabled={enviandoMidia} title={tr('crm.descartar')} style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>{tr('crm.descartar')}</button>
+                  <button onClick={enviarAnexoPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{tr(enviandoMidia ? 'crm.enviando' : 'comum.enviar')}</button>
                 </div>
               ) : audioPreview ? (
                 /* PRÉVIA — ouça antes de enviar; Descartar ou Enviar áudio */
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <audio src={audioPreview.url} controls style={{ flex: 1, height: 40, minWidth: 0 }} />
-                  <button onClick={descartarAudioPreview} disabled={enviandoMidia} title="Descartar" style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>Descartar</button>
-                  <button onClick={enviarAudioPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? 'Enviando…' : 'Enviar áudio'}</button>
+                  <button onClick={descartarAudioPreview} disabled={enviandoMidia} title={tr('crm.descartar')} style={{ padding: '9px 12px', background: 'transparent', color: '#c0716b', border: '1px solid #f1dddd', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', flexShrink: 0 }}>{tr('crm.descartar')}</button>
+                  <button onClick={enviarAudioPreview} disabled={enviandoMidia} style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12.5, cursor: enviandoMidia ? 'wait' : 'pointer', flexShrink: 0 }}>{enviandoMidia ? tr('crm.enviando') : tr('crm.enviar-audio')}</button>
                 </div>
               ) : (<>
                 {canal === 'whatsapp' && (<>
@@ -3576,7 +3591,7 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 </>)}
                 <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
                   placeholder="Escreva uma mensagem..." rows={1} style={{ flex: 1, resize: 'none', maxHeight: 110, border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
-                <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: texto.trim() && !enviando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : 'Enviar'}</button>
+                <button onClick={enviar} disabled={!texto.trim() || enviando} style={{ padding: '9px 18px', background: texto.trim() && !enviando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: texto.trim() && !enviando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: texto.trim() && !enviando ? 'pointer' : 'not-allowed' }}>{enviando ? '...' : tr('comum.enviar')}</button>
               </>)}
             </div>
           </>)}
@@ -3620,12 +3635,12 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
       {lightbox && (
         <div onClick={fecharFora(() => setLightbox(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 24, flexDirection: 'column', gap: 12 }}>
           <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'flex-end' }}>
-            <a href={lightbox.url} download={lightbox.nome} title="Baixar no computador"
+            <a href={lightbox.url} download={lightbox.nome} title={tr('crm.baixar')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 9, fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
               Baixar
             </a>
-            <button onClick={() => setLightbox(null)} title="Fechar (Esc)"
+            <button onClick={() => setLightbox(null)} title={tr('crm.fechar-esc')}
               style={{ width: 34, height: 34, borderRadius: 9, border: 'none', background: 'rgba(255,255,255,0.15)', color: 'var(--v2-surface)', fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>×</button>
           </div>
           <img onClick={e => e.stopPropagation()} src={lightbox.url} alt=""
