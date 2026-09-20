@@ -16,7 +16,11 @@ import { registrarDesfazer } from '@/lib/desfazer'
 import { foraDaJanela, inicioParaMostrar, etapasComTitulo, rotuloPeriodoLista } from '@/lib/playbookLista'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
-import { useArea } from '@/app/components/Idioma'
+import { useArea, useT, useIdioma } from '@/app/components/Idioma'
+import { TEXTOS } from '@/lib/i18n'
+
+// Mês e dia no eixo do Gantt seguem o idioma de quem lê.
+const LOCALE_IDIOMA: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -54,6 +58,15 @@ const STATUS_LABEL: Record<string, string> = {
   planejado: 'Planejado', em_andamento: 'Em andamento', concluido: 'Concluido', atrasado: 'Atrasado', cancelado: 'Cancelado',
 }
 
+// Categoria e período têm nome no dicionário (lib/i18n): a chave não muda, o rótulo sim.
+function useRotulosPlano() {
+  const tr = useT()
+  return {
+    rotuloCat: (chave: string, reserva: string) => (TEXTOS[`categoria.${chave}`] ? tr(`categoria.${chave}`) : reserva),
+    rotuloPeriodoOpcao: (chave: string, reserva: string) => (TEXTOS[`periodo.${chave}`] ? tr(`periodo.${chave}`) : reserva),
+  }
+}
+
 function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?.cor || 'var(--v2-ink3)' }
 // Cor propria do marco (dono, 07/09: "troca de cor a cada marco ou etapa para ficar muito visual") ou a da categoria.
 function corDoMarco(m: { cor?: string; categoria: string }) { return m.cor || corCategoria(m.categoria) }
@@ -61,13 +74,14 @@ const PALETA = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'
 type TarefaLeve = { id: string; titulo: string; status: string; tipo?: string; prioridade?: string; responsavelNome?: string; responsavelEmail?: string; prazo?: string; marcoId?: string; subetapaId?: string; clienteId?: string; excluidoEm?: string }
 const STATUS_TAREFA: Record<string, { label: string; cor: string }> = { a_fazer: { label: 'A fazer', cor: 'var(--v2-ink3)' }, em_andamento: { label: 'Em andamento', cor: 'var(--v2-amber)' }, em_revisao: { label: 'Em revisão', cor: 'var(--v2-info)' }, concluido: { label: 'Concluída', cor: 'var(--v2-ok)' }, descartado: { label: 'Descartada', cor: 'var(--v2-ink3)' } }
 function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (cor?: string) => void; titulo?: string }) {
+  const tr = useT()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} title={titulo}>
-      {PALETA.map(c => <button key={c} type="button" onClick={() => onChange(valor === c ? undefined : c)} aria-label={`Cor ${c}`} style={{ width: 22, height: 22, borderRadius: 7, border: valor === c ? '2px solid var(--v2-ink)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />)}
-      <label title="Qualquer cor" style={{ width: 22, height: 22, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-        <input type="color" value={valor && /^#[0-9a-f]{6}$/i.test(valor) ? valor : '#888888'} onChange={e => onChange(e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label="Escolher qualquer cor" />
+      {PALETA.map(c => <button key={c} type="button" onClick={() => onChange(valor === c ? undefined : c)} aria-label={tr('plano.cor-n', { n: c })} style={{ width: 22, height: 22, borderRadius: 7, border: valor === c ? '2px solid var(--v2-ink)' : '2px solid transparent', background: c, cursor: 'pointer', padding: 0 }} />)}
+      <label title={tr('plano.qualquer-cor')} style={{ width: 22, height: 22, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+        <input type="color" value={valor && /^#[0-9a-f]{6}$/i.test(valor) ? valor : '#888888'} onChange={e => onChange(e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label={tr('plano.escolher-cor')} />
       </label>
-      {valor && <button type="button" onClick={() => onChange(undefined)} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px' }}>cor da categoria</button>}
+      {valor && <button type="button" onClick={() => onChange(undefined)} style={{ background: 'none', border: 0, color: 'var(--v2-ink3)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px' }}>{tr('plano.cor-categoria')}</button>}
     </div>
   )
 }
@@ -77,11 +91,14 @@ function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (c
 function fmtData(iso: string) {
   if (!iso) return ''
   const soDia = /^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z)?$/.test(iso)
-  return new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', ...(soDia ? { timeZone: 'UTC' } : {}) })
+  return new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', ...(soDia ? { timeZone: 'UTC' } : {}) })
 }
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
+  const { rotuloCat, rotuloPeriodoOpcao } = useRotulosPlano()
+  const tr = useT()
   const area = useArea()
+  const { idioma } = useIdioma()
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [periodo, setPeriodo] = useState('mensal')
   // Janela CONTÍNUA em dias (zoom livre): os botões de período são atalhos para escalas fixas.
@@ -284,14 +301,14 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     // Ctrl+Z: volta exatamente os campos que este arraste mexeu (lib/desfazer).
     const antesPatch: Record<string, any> = { id: m.id }
     for (const k of Object.keys(patch)) antesPatch[k] = (m as any)[k] ?? (k === 'subetapas' ? [] : '')
-    registrarDesfazer(`Prazo de "${m.titulo}"`, async () => {
+    registrarDesfazer(tr('plano.desfazer-prazo', { nome: m.titulo }), async () => {
       const rr = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antesPatch) }).catch(() => null)
       carregar()
       return !!rr?.ok
     })
     const se = a.subId ? (novo.subetapas || []).find(x => x.id === a.subId) : undefined
     const per = se ? periodoDaEtapa(novo, se) : { ini: novo.dataInicio, fim: novo.dataFim || novo.dataInicio }
-    toast(`${se ? se.titulo : m.titulo}: ${rotuloPeriodo(per.ini, per.fim)}`, 'sucesso', 'Prazo ajustado')
+    toast(tr('plano.aviso-prazo', { nome: se ? se.titulo : m.titulo, periodo: rotuloPeriodo(per.ini, per.fim) }), 'sucesso')
   }
   // Grava a nova ORDEM: etapa vira ordem do array (+ marca o marco como manual); marco
   // recebe `ordem` 0..n-1 e o cliente inteiro passa a seguir a mão.
@@ -307,12 +324,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ctx.marco.id, subetapas: nova, ordemEtapasManual: true }) }).catch(() => null)
       if (!r || !r.ok) { toast('Não foi possível gravar a nova ordem.', 'erro'); carregar(); return }
       const antesSubs = ctx.marco.subetapas || [], antesManual = ctx.marco.ordemEtapasManual === true
-      registrarDesfazer(`Ordem das etapas de "${ctx.marco.titulo}"`, async () => {
+      registrarDesfazer(tr('plano.desfazer-ordem-etapas', { nome: ctx.marco.titulo }), async () => {
         const rr = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: ctx.marco.id, subetapas: antesSubs, ordemEtapasManual: antesManual }) }).catch(() => null)
         carregar()
         return !!rr?.ok
       })
-      toast(`${nova[para].titulo}: agora é a ${para + 1}ª etapa`, 'sucesso', 'Ordem alterada')
+      toast(tr('plano.aviso-etapa-posicao', { nome: nova[para].titulo, n: para + 1 }), 'sucesso')
       return
     }
     const lista = marcosDoCliente(ctx.marco.clienteId)
@@ -326,7 +343,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       carregar()
       return rs.every(Boolean)
     })
-    toast(`${nova[para].titulo}: agora é o ${para + 1}º marco`, 'sucesso', 'Ordem alterada')
+    toast(tr('plano.aviso-marco-posicao', { nome: nova[para].titulo, n: para + 1 }), 'sucesso')
   }
   // Volta para a ordem automática (mais longo em cima) no cliente inteiro (temOrdemManual vive junto de clienteAtivo).
   async function voltarOrdemAutomatica() {
@@ -351,9 +368,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
   const arrastando = (marcoId: string, subId?: string) => !!previa && previa.marcoId === marcoId && (previa.subId || undefined) === subId
   const alcas = (marcoId: string, subId?: string) => (editavel ? (<>
-    <div onPointerDown={e => comecarArraste(e, 'inicio', marcoId, subId)} onClick={e => e.stopPropagation()} title="Puxe para mudar o início" aria-label="Mudar o início"
+    <div onPointerDown={e => comecarArraste(e, 'inicio', marcoId, subId)} onClick={e => e.stopPropagation()} title={tr('plano.puxe-inicio')} aria-label={tr('plano.mudar-inicio')}
       style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
-    <div onPointerDown={e => comecarArraste(e, 'fim', marcoId, subId)} onClick={e => e.stopPropagation()} title="Puxe para mudar o fim" aria-label="Mudar o fim"
+    <div onPointerDown={e => comecarArraste(e, 'fim', marcoId, subId)} onClick={e => e.stopPropagation()} title={tr('plano.puxe-fim')} aria-label={tr('plano.mudar-fim')}
       style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none', zIndex: 2 }} />
   </>) : null)
   const etiquetaPrevia = (ini: string, fim?: string) => (
@@ -491,12 +508,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   }
 
   // Gera labels de datas no eixo
-  const meses = rotulosMeses(inicio.getTime(), dias)
+  const meses = rotulosMeses(inicio.getTime(), dias, LOCALE_IDIOMA[idioma])
   const labels: { pct: number; txt: string }[] = []
   const step = dias <= 12 ? 1 : dias <= 45 ? 7 : dias <= 120 ? 15 : dias <= 240 ? 30 : 60
   for (let d = 0; d <= totalDias; d += step) {
     const dt = new Date(inicio.getTime() + d * 24 * 60 * 60 * 1000)
-    labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) })
+    labels.push({ pct: (d / totalDias) * 100, txt: dt.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' }) })
   }
 
   // ---------- AÇÕES compartilhadas pela Lista (mesmas gravações do Gantt, com Ctrl+Z):
@@ -518,13 +535,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     gravarMarco(m, { subetapas: (m.subetapas || []).map(se => se.id === subId ? { ...se, ...patch } : se) }, rotulo)
   async function novaEtapaEmLinha(m: Marco, titulo: string) {
     const t = titulo.trim(); if (!t) return
-    const ok = await gravarMarco(m, { subetapas: [...(m.subetapas || []), { id: uuid(), titulo: t, status: 'pendente' }] }, `Etapa "${t}" em "${m.titulo}"`)
-    if (ok) { setNivel(m.id, Math.max(1, nivelDe(m.id))); toast(`Etapa "${t}" criada.`, 'sucesso') }
+    const ok = await gravarMarco(m, { subetapas: [...(m.subetapas || []), { id: uuid(), titulo: t, status: 'pendente' }] }, tr('plano.desfazer-etapa-criada', { etapa: t, marco: m.titulo }))
+    if (ok) { setNivel(m.id, Math.max(1, nivelDe(m.id))); toast(tr('plano.aviso-etapa-criada', { nome: t }), 'sucesso') }
   }
   async function moverEtapaPorBotao(m: Marco, subId: string, dir: 1 | -1) {
     const lista = etapasOrdenadas(m); const de = lista.findIndex(x => x.id === subId); const para = de + dir
     if (de < 0 || para < 0 || para >= lista.length) return
-    await gravarMarco(m, { subetapas: reordenar(lista, de, para), ordemEtapasManual: true }, `Ordem das etapas de "${m.titulo}"`)
+    await gravarMarco(m, { subetapas: reordenar(lista, de, para), ordemEtapasManual: true }, tr('plano.desfazer-ordem-etapas', { nome: m.titulo }))
   }
   async function moverMarcoPorBotao(m: Marco, dir: 1 | -1) {
     const lista = marcosDoCliente(m.clienteId); const de = lista.findIndex(x => x.id === m.id); const para = de + dir
@@ -562,15 +579,15 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         <span style={{ color: 'var(--v2-ink3)' }}>{t.prazo ? fmtData(t.prazo) : '—'}</span>
         <span style={{ color: st.cor, fontWeight: 600 }}>{st.label}</span>
         <span style={{ color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.responsavelNome || '—'}</span>
-        <span style={{ color: 'var(--v2-ink3)', fontSize: 11 }}>tarefa</span><span /><span />
+        <span style={{ color: 'var(--v2-ink3)', fontSize: 11 }}>{tr('comum.tarefa')}</span><span /><span />
       </div>
     ) })
     return (
       <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170 }}>
-          <span style={cab}>Marco / etapa</span><span style={cab}>Início · fim</span><span style={cab}>Status</span><span style={cab}>Responsável</span><span style={cab}>Conclusão</span><span style={cab}>Tempo</span><span style={cab} />
+          <span style={cab}>{tr('plano.marco-etapa')}</span><span style={cab}>{tr('plano.inicio-fim')}</span><span style={cab}>{tr('comum.status')}</span><span style={cab}>{tr('comum.responsavel')}</span><span style={cab}>{tr('plano.conclusao')}</span><span style={cab}>{tr('plano.tempo')}</span><span style={cab} />
         </div>
-        {lista.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum marco ainda. Use "+ Novo marco" ou "Aplicar modelo".</div>}
+        {lista.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('plano.sem-marcos')}</div>}
         {lista.map((m, idx) => {
           const fimEf = fimEfetivoDoMarco(m, m.subetapas)
           const subs = etapasOrdenadas(m)
@@ -591,19 +608,19 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><path d="M9 18l6-6-6-6" /></svg>
                   </button>
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: corDoMarco(m), flexShrink: 0 }} />
-                  <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title="Abrir o marco" style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{m.titulo}</button>
+                  <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={tr('plano.abrir-marco')} style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{m.titulo}</button>
                   {subs.length > 0 && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{pg.concluidas}/{pg.total} etapas</span>}
-                  {fora && <button type="button" onClick={() => mostrarNoGantt(m)} title="Este marco está fora da janela atual do Gantt — clique para vê-lo lá" style={{ marginLeft: 4, fontSize: 10, fontWeight: 600, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: 0, borderRadius: 999, padding: '2px 7px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{fora === 'antes' ? '← fora da janela' : 'fora da janela →'}</button>}
+                  {fora && <button type="button" onClick={() => mostrarNoGantt(m)} title={tr('plano.fora-da-janela')} style={{ marginLeft: 4, fontSize: 10, fontWeight: 600, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: 0, borderRadius: 999, padding: '2px 7px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{fora === 'antes' ? '← fora da janela' : 'fora da janela →'}</button>}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   {editavel ? <>
-                    <input type="date" value={m.dataInicio ? m.dataInicio.slice(0, 10) : ''} onChange={e => { if (e.target.value) gravarMarco(m, { dataInicio: new Date(e.target.value + 'T12:00:00').toISOString() }, `Início de "${m.titulo}"`) }} style={dataInp} title="Início" />
-                    <input type="date" value={m.dataFim ? m.dataFim.slice(0, 10) : ''} onChange={e => gravarMarco(m, { dataFim: e.target.value ? new Date(e.target.value + 'T12:00:00').toISOString() : '' }, `Fim de "${m.titulo}"`)} style={dataInp} title="Fim" />
+                    <input type="date" value={m.dataInicio ? m.dataInicio.slice(0, 10) : ''} onChange={e => { if (e.target.value) gravarMarco(m, { dataInicio: new Date(e.target.value + 'T12:00:00').toISOString() }, tr('plano.desfazer-inicio', { nome: m.titulo })) }} style={dataInp} title={tr('plano.inicio')} />
+                    <input type="date" value={m.dataFim ? m.dataFim.slice(0, 10) : ''} onChange={e => gravarMarco(m, { dataFim: e.target.value ? new Date(e.target.value + 'T12:00:00').toISOString() : '' }, tr('plano.desfazer-fim', { nome: m.titulo }))} style={dataInp} title={tr('plano.fim')} />
                   </> : <span style={{ color: 'var(--v2-ink2)' }}>{rotuloPeriodoLista(m.dataInicio, fimEf || m.dataFim)}</span>}
                 </span>
                 <span>
                   {editavel ? (
-                    <select value={m.status} onChange={e => gravarMarco(m, { status: e.target.value }, `Status de "${m.titulo}"`)} style={{ ...sel, color: STATUS_COR[m.status] === 'var(--v2-rule)' ? 'var(--v2-ink2)' : STATUS_COR[m.status], fontWeight: 600 }}>
+                    <select value={m.status} onChange={e => gravarMarco(m, { status: e.target.value }, tr('plano.desfazer-status', { nome: m.titulo }))} style={{ ...sel, color: STATUS_COR[m.status] === 'var(--v2-rule)' ? 'var(--v2-ink2)' : STATUS_COR[m.status], fontWeight: 600 }}>
                       {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                   ) : <span style={{ fontSize: 12, fontWeight: 600, color: STATUS_COR[m.status] }}>{STATUS_LABEL[m.status] || m.status}</span>}
@@ -617,9 +634,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{textoTempo(tmpM)}</span>
                 <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                   {editavel && <>
-                    <button type="button" onClick={() => moverMarcoPorBotao(m, -1)} disabled={idx === 0} title="Subir" style={{ ...btn, opacity: idx === 0 ? 0.35 : 1 }}>↑</button>
-                    <button type="button" onClick={() => moverMarcoPorBotao(m, 1)} disabled={idx === lista.length - 1} title="Descer" style={{ ...btn, opacity: idx === lista.length - 1 ? 0.35 : 1 }}>↓</button>
-                    {!somenteLeitura && <button type="button" onClick={() => alternarTarefas(m.id)} title={mostraTarefas ? 'Esconder tarefas' : `Ver tarefas (${tarefasM.length})`} style={{ ...btn, width: 'auto', padding: '0 7px', fontSize: 11, color: mostraTarefas ? corDoMarco(m) : 'var(--v2-ink3)', borderColor: mostraTarefas ? corDoMarco(m) : 'var(--v2-rule)' }}>{tarefasM.length} tar.</button>}
+                    <button type="button" onClick={() => moverMarcoPorBotao(m, -1)} disabled={idx === 0} title={tr('cfg.subir')} style={{ ...btn, opacity: idx === 0 ? 0.35 : 1 }}>↑</button>
+                    <button type="button" onClick={() => moverMarcoPorBotao(m, 1)} disabled={idx === lista.length - 1} title={tr('cfg.descer')} style={{ ...btn, opacity: idx === lista.length - 1 ? 0.35 : 1 }}>↓</button>
+                    {!somenteLeitura && <button type="button" onClick={() => alternarTarefas(m.id)} title={mostraTarefas ? tr('plano.esconder-tarefas') : tr('plano.ver-tarefas', { n: tarefasM.length })} style={{ ...btn, width: 'auto', padding: '0 7px', fontSize: 11, color: mostraTarefas ? corDoMarco(m) : 'var(--v2-ink3)', borderColor: mostraTarefas ? corDoMarco(m) : 'var(--v2-rule)' }}>{tarefasM.length} tar.</button>}
                   </>}
                 </span>
               </div>
@@ -638,19 +655,19 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     <div style={{ display: 'grid', gridTemplateColumns: GRADE, gap: 8, padding: '7px 16px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170, alignItems: 'center', fontSize: 12.5 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 34, minWidth: 0 }}>
                         <span style={{ width: 3, height: 16, borderRadius: 2, background: corE, flexShrink: 0 }} />
-                        <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title="Abrir no marco" style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: se.status === 'concluido' ? 'line-through' : 'none', opacity: se.status === 'concluido' ? 0.65 : 1 }}>{se.titulo}</button>
+                        <button type="button" onClick={() => somenteLeitura ? setDetalheModal(m) : setEditModal(m)} title={tr('plano.abrir-no-marco')} style={{ background: 'none', border: 0, padding: 0, fontFamily: 'inherit', fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textDecoration: se.status === 'concluido' ? 'line-through' : 'none', opacity: se.status === 'concluido' ? 0.65 : 1 }}>{se.titulo}</button>
                         {se.kpi && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{se.kpi}: {se.kpiAtual ?? 0}{se.kpiMeta ? `/${se.kpiMeta}` : ''}</span>}
-                        {atrasada && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--v2-hot)' }}>atrasada</span>}
+                        {atrasada && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--v2-hot)' }}>{tr('plano.atrasada')}</span>}
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {editavel ? <>
-                          <input type="date" value={se.dataInicio || ''} onChange={e => gravarEtapa(m, se.id, { dataInicio: e.target.value || undefined }, `Início de "${se.titulo}"`)} style={dataInp} title="Início" />
-                          <input type="date" value={se.dataFim || ''} onChange={e => gravarEtapa(m, se.id, { dataFim: e.target.value || undefined }, `Prazo de "${se.titulo}"`)} style={dataInp} title="Prazo" />
+                          <input type="date" value={se.dataInicio || ''} onChange={e => gravarEtapa(m, se.id, { dataInicio: e.target.value || undefined }, tr('plano.desfazer-inicio', { nome: se.titulo }))} style={dataInp} title={tr('plano.inicio')} />
+                          <input type="date" value={se.dataFim || ''} onChange={e => gravarEtapa(m, se.id, { dataFim: e.target.value || undefined }, tr('plano.desfazer-prazo', { nome: se.titulo }))} style={dataInp} title={tr('comum.prazo')} />
                         </> : <span style={{ color: 'var(--v2-ink2)' }}>{rotuloPeriodoLista(se.dataInicio, se.dataFim)}</span>}
                       </span>
                       <span>
                         {editavel ? (
-                          <select value={se.status} onChange={e => gravarEtapa(m, se.id, { status: e.target.value as SubEtapa['status'] }, `Status de "${se.titulo}"`)} style={{ ...sel, color: corSt, fontWeight: 600 }}>
+                          <select value={se.status} onChange={e => gravarEtapa(m, se.id, { status: e.target.value as SubEtapa['status'] }, tr('plano.desfazer-status', { nome: se.titulo }))} style={{ ...sel, color: corSt, fontWeight: 600 }}>
                             {SUBETAPA_STATUS.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
                           </select>
                         ) : <span style={{ fontSize: 12, fontWeight: 600, color: corSt }}>{SUBETAPA_STATUS.find(x => x.key === se.status)?.label || se.status}</span>}
@@ -664,9 +681,9 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                       <span style={{ fontSize: 11, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{textoTempo(tmpE)}</span>
                       <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                         {editavel && <>
-                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, -1)} disabled={j === 0} title="Subir" style={{ ...btn, opacity: j === 0 ? 0.35 : 1 }}>↑</button>
-                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, 1)} disabled={j === subs.length - 1} title="Descer" style={{ ...btn, opacity: j === subs.length - 1 ? 0.35 : 1 }}>↓</button>
-                          {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(se.id); setNovaTarefaPara(m) }} title="Nova tarefa nesta etapa" style={{ ...btn, color: 'var(--v2-info)' }}>+</button>}
+                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, -1)} disabled={j === 0} title={tr('cfg.subir')} style={{ ...btn, opacity: j === 0 ? 0.35 : 1 }}>↑</button>
+                          <button type="button" onClick={() => moverEtapaPorBotao(m, se.id, 1)} disabled={j === subs.length - 1} title={tr('cfg.descer')} style={{ ...btn, opacity: j === subs.length - 1 ? 0.35 : 1 }}>↓</button>
+                          {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(se.id); setNovaTarefaPara(m) }} title={tr('plano.nova-tarefa-etapa')} style={{ ...btn, color: 'var(--v2-info)' }}>+</button>}
                         </>}
                       </span>
                     </div>
@@ -679,8 +696,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px 8px 50px', borderBottom: '1px solid var(--v2-rule)', minWidth: 1170 }}>
                   <input value={novaEtapaTexto[m.id] || ''} onChange={e => setNovaEtapaTexto(v => ({ ...v, [m.id]: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter' && (novaEtapaTexto[m.id] || '').trim()) { novaEtapaEmLinha(m, novaEtapaTexto[m.id]); setNovaEtapaTexto(v => ({ ...v, [m.id]: '' })) } }}
-                    placeholder="+ Nova etapa neste marco — Enter para criar" style={{ flex: 1, maxWidth: 420, padding: '6px 10px', borderRadius: 8, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12.5, fontFamily: 'inherit' }} />
-                  {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} style={{ ...btn, width: 'auto', padding: '0 10px', fontSize: 11.5, color: 'var(--v2-info)' }}>+ tarefa no marco</button>}
+                    placeholder={tr('plano.nova-etapa')} style={{ flex: 1, maxWidth: 420, padding: '6px 10px', borderRadius: 8, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12.5, fontFamily: 'inherit' }} />
+                  {!somenteLeitura && <button type="button" onClick={() => { setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} style={{ ...btn, width: 'auto', padding: '0 10px', fontSize: 11.5, color: 'var(--v2-info)' }}>{tr('plano.tarefa-no-marco')}</button>}
                 </div>
               )}
             </div>
@@ -694,8 +711,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('playbook')}</h2>
-        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label="Visualização">
-          {([['gantt', 'Gantt'], ['lista', 'Lista']] as const).map(([k, l]) => (
+        <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label={tr('plano.visualizacao')}>
+          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')]] as const).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>
           ))}
         </div>
@@ -705,26 +722,26 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
               padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
               background: periodo === p.key ? 'var(--v2-surface)' : 'transparent', color: periodo === p.key ? 'var(--v2-ink)' : 'var(--v2-ink3)',
               boxShadow: periodo === p.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-            }}>{p.label}</button>
+            }}>{rotuloPeriodoOpcao(p.key, p.label)}</button>
           ))}
         </div>}
         {!clienteFixo && (
           <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-            <option value="">Selecione um cliente...</option>
+            <option value="">{tr('composer.escolha-cliente')}</option>
             {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         )}
         {clienteAtivo && <>
           {view === 'gantt' && <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
-            <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Hoje</button>
-            {editavel && temOrdemManual && <button onClick={voltarOrdemAutomatica} title="Voltar a ordenar automaticamente (trabalhos mais longos em cima)" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>Ordem automática</button>}
-            <button onClick={() => { const j = janelaParaCaber(marcos.filter(m => m.clienteId === clienteAtivo)); setRefDate(new Date(j.inicioMs)); setDias(j.dias); const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a); setPeriodo(perto.key) }} title="Ajustar a janela para caber todos os marcos e etapas do cliente" style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>Ajustar</button>
+            <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>{tr('plano.hoje')}</button>
+            {editavel && temOrdemManual && <button onClick={voltarOrdemAutomatica} title={tr('plano.ordem-automatica-dica')} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>{tr('plano.ordem-automatica')}</button>}
+            <button onClick={() => { const j = janelaParaCaber(marcos.filter(m => m.clienteId === clienteAtivo)); setRefDate(new Date(j.inicioMs)); setDias(j.dias); const perto = PERIODOS.reduce((a, b) => Math.abs(Math.log(b.dias / j.dias)) < Math.abs(Math.log(a.dias / j.dias)) ? b : a); setPeriodo(perto.key) }} title={tr('plano.ajustar-dica')} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>{tr('plano.ajustar')}</button>
             <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>}
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
-            <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+            <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.aplicar-modelo')}</button>
+            <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('plano.novo-marco')}</button>
           </div>}
         </>}
       </div>
@@ -732,8 +749,8 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {/* Sem cliente selecionado (agencia): exige escolher um cliente */}
       {!clienteAtivo && (
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Selecione um cliente para ver o Playbook.</p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Cada cliente tem seu próprio Playbook — escolha um acima para ver, criar ou editar as etapas.</p>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('plano.escolha-cliente')}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('plano.cada-cliente')}</p>
         </div>
       )}
 
@@ -744,7 +761,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
           <span key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--v2-ink3)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: c.cor }} />{c.label}
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: c.cor }} />{rotuloCat(c.key, c.label)}
           </span>
         ))}
       </div>
@@ -767,18 +784,18 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           })()}
         </div>
         {/* Barra de rolagem: arrastar leva a janela para frente/para trás na faixa do cliente */}
-        <div ref={setBarraEl} onScroll={rolarBarra} title="Arraste para ver mais para frente ou mais para trás na linha do tempo" aria-label="Rolagem da linha do tempo"
+        <div ref={setBarraEl} onScroll={rolarBarra} title={tr('plano.rolagem-dica')} aria-label={tr('plano.rolagem-aria')}
           style={{ overflowX: 'auto', overflowY: 'hidden', height: 14, background: 'var(--v2-surface1)', borderBottom: '1px solid var(--v2-rule)' }}>
           <div style={{ width: larguraInterna || '100%', height: 1 }} />
         </div>
 
         {clientesComMarcos.length === 0 && clientesSemMarcos.length > 0 && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <p style={{ margin: 0 }}>{somenteLeitura ? 'Nenhum marco cadastrado ainda. Assim que a estratégia for montada, ela aparece aqui.' : 'Nenhum marco ainda. Comece de um modelo pronto (onboarding, ciclo mensal…) ou crie os marcos um a um. Cada marco pode ter etapas dentro dele.'}</p>
+            <p style={{ margin: 0 }}>{tr(somenteLeitura ? 'plano.vazio-cliente' : 'plano.vazio-equipe')}</p>
             {editavel && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button onClick={abrirModelos} style={{ padding: '10px 18px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Aplicar modelo</button>
-                <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo marco</button>
+                <button onClick={abrirModelos} style={{ padding: '10px 18px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('plano.aplicar-modelo')}</button>
+                <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.novo-marco')}</button>
               </div>
             )}
           </div>
@@ -834,7 +851,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                     return (
                       <div key={m.id}>
                         {fora && (
-                          <button type="button" onClick={() => setRefDate(new Date(inicioParaMostrar(m.dataInicio, diasRef.current)))} title={`"${m.titulo}" está ${fora === 'antes' ? 'antes' : 'depois'} da janela — clique para ir até ele`}
+                          <button type="button" onClick={() => setRefDate(new Date(inicioParaMostrar(m.dataInicio, diasRef.current)))} title={tr('plano.fora-janela-dica', { nome: m.titulo, lado: tr(fora === 'antes' ? 'plano.antes' : 'plano.depois') })}
                             style={{ position: 'absolute', top: topMarco + 4, [fora === 'antes' ? 'left' : 'right']: 8, height: Math.max(18, H_BARRA - 8), display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 999, border: `1px dashed ${corDoMarco(m)}`, background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', zIndex: 3, maxWidth: '45%' } as React.CSSProperties}>
                             {fora === 'antes' ? '←' : ''}<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>{fora === 'depois' ? '→' : ''}
                           </button>
@@ -861,7 +878,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           )}
                           <span style={{ position: 'relative', fontSize: F_MARCO, fontWeight: 700, color: 'var(--v2-surface)', textShadow: '0 1px 2px rgba(0,0,0,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
                           {!somenteLeitura && (
-                            <button type="button" onClick={e => { e.stopPropagation(); alternarTarefas(m.id) }} title={mostraTarefas ? 'Esconder as tarefas deste marco' : `Ver as tarefas deste marco (${tarefasM.length})`} aria-label={mostraTarefas ? 'Esconder as tarefas do marco' : 'Ver as tarefas do marco'}
+                            <button type="button" onClick={e => { e.stopPropagation(); alternarTarefas(m.id) }} title={mostraTarefas ? tr('plano.esconder-tarefas-marco') : tr('plano.ver-tarefas-marco', { n: tarefasM.length })} aria-label={mostraTarefas ? tr('plano.esconder-tarefas-marco') : tr('plano.ver-tarefas-marco', { n: tarefasM.length })}
                               style={{ position: 'relative', marginLeft: 8, height: 18, padding: '0 6px', borderRadius: 5, border: 0, background: mostraTarefas ? 'var(--v2-surface)' : 'rgba(0,0,0,0.22)', color: mostraTarefas ? corDoMarco(m) : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 9.5, fontWeight: 800 }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>{tarefasM.length}
                             </button>
@@ -870,12 +887,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           <span style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, color: 'var(--v2-surface)', background: 'rgba(0,0,0,0.3)', borderRadius: 999, padding: '1px 8px' }}>
                             {width >= 20 && <span style={{ fontSize: 9.5, fontWeight: 700, opacity: 0.95, whiteSpace: 'nowrap' }}>{textoTempo(tmpM)}</span>}
                             {tarM.total > 0 && width >= 10 && (
-                              <span title={`${tarM.feitas} de ${tarM.total} tarefas concluídas`} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                              <span title={tr('plano.tarefas-concluidas', { feitas: tarM.feitas, total: tarM.total })} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{tarM.feitas}/{tarM.total}
                               </span>
                             )}
-                            {pg.total > 0 && width >= 8 && <span title={`${pg.concluidas} de ${pg.total} etapas concluídas`} style={{ fontSize: 10, fontWeight: 800, color: pg.atrasadas.length ? 'var(--v2-hot)' : 'inherit' }}>{pg.concluidas}/{pg.total}</span>}
-                            <span title="Conclusão" style={{ fontSize: 10, fontWeight: 900 }}>{pctM}%</span>
+                            {pg.total > 0 && width >= 8 && <span title={tr('plano.etapas-concluidas', { feitas: pg.concluidas, total: pg.total })} style={{ fontSize: 10, fontWeight: 800, color: pg.atrasadas.length ? 'var(--v2-hot)' : 'inherit' }}>{pg.concluidas}/{pg.total}</span>}
+                            <span title={tr('plano.conclusao')} style={{ fontSize: 10, fontWeight: 900 }}>{pctM}%</span>
                           </span>
                         </div>
                         {/* Guia do destino ao arrastar uma ETAPA para cima/baixo */}
@@ -913,12 +930,12 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                               <span style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, color: 'var(--v2-surface)', background: 'rgba(0,0,0,0.28)', borderRadius: 999, padding: '0 6px' }}>
                                 {w >= 18 && <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.95, whiteSpace: 'nowrap' }}>{textoTempo(tmpE)}</span>}
                                 {tarSE.total > 0 && w >= 8 && (
-                                  <span title={`${tarSE.feitas} de ${tarSE.total} tarefas desta etapa concluídas`} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                                  <span title={tr('plano.tarefas-etapa-concluidas', { feitas: tarSE.feitas, total: tarSE.total })} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, whiteSpace: 'nowrap' }}>
                                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>{tarSE.feitas}/{tarSE.total}
                                   </span>
                                 )}
                                 {se.kpi && se.kpiMeta && w >= 12 ? <span title={se.kpi} style={{ fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap' }}>{se.kpiAtual ?? 0}/{se.kpiMeta}</span> : null}
-                                <span title="Conclusão" style={{ fontSize: 9, fontWeight: 900 }}>{pctE}%</span>
+                                <span title={tr('plano.conclusao')} style={{ fontSize: 9, fontWeight: 900 }}>{pctE}%</span>
                               </span>
                             </div>
                           )
@@ -928,20 +945,20 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                           <div style={{ position: 'absolute', top: topMarco + H_MARCO + (aberto ? H_SUB * subs.length : 0), left: 0, right: 0, height: alturaPainel(m), background: 'var(--v2-surface1)', borderTop: `2px solid ${corDoMarco(m)}`, boxSizing: 'border-box', padding: '4px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 22 }}>
                               <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Tarefas · {tarM.feitas}/{tarM.total} concluídas</span>
-                              {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>+ Tarefa</button>}
+                              {editavel && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(''); setNovaTarefaPara(m) }} title={squadPapeis && Object.keys(squadPapeis).length ? 'Nova tarefa neste marco — já no cliente, com o responsável do squad pelo tipo' : 'Nova tarefa neste marco — já no cliente (defina o squad do cliente para atribuir sozinho)'} style={{ marginLeft: 'auto', padding: '3px 10px', borderRadius: 999, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('plano.tarefa-no-marco')}</button>}
                             </div>
-                            {tarefasM.length === 0 && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: '26px' }}>Nenhuma tarefa neste marco.</p>}
+                            {tarefasM.length === 0 && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: '26px' }}>{tr('plano.sem-tarefa-marco')}</p>}
                             {gruposDeTarefas(m).map(g => (<div key={g.id || 'sem-etapa'}>
                             {g.titulo && (() => { const pt = progressoTarefas(g.itens); return (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 20 }}>
                                 <span style={{ width: 6, height: 6, borderRadius: 2, background: (m.subetapas || []).find(x => x.id === g.id)?.cor || corDoMarco(m), flexShrink: 0 }} />
                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.titulo}</span>
                                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{pt.feitas}/{pt.total} · {pt.pct}%</span>
-                                {editavel && g.id && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(g.id); setNovaTarefaPara(m) }} title={`Nova tarefa nesta etapa (${g.titulo})`} style={{ marginLeft: 'auto', background: 'none', border: 0, color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>+ Tarefa</button>}
+                                {editavel && g.id && <button type="button" onClick={e => { e.stopPropagation(); setNovaTarefaEtapa(g.id); setNovaTarefaPara(m) }} title={tr('plano.nova-tarefa-etapa-n', { nome: g.titulo })} style={{ marginLeft: 'auto', background: 'none', border: 0, color: 'var(--v2-info)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{tr('plano.tarefa-no-marco')}</button>}
                               </div>
                             ) })()}
                             {g.itens.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
-                              <button key={t.id} type="button" onClick={e => { e.stopPropagation(); setTarefaAberta(t) }} title="Abrir a tarefa" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 26, background: 'none', border: 0, borderBottom: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
+                              <button key={t.id} type="button" onClick={e => { e.stopPropagation(); setTarefaAberta(t) }} title={tr('plano.abrir-tarefa')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 26, background: 'none', border: 0, borderBottom: '1px solid var(--v2-rule)', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
                                 <span style={{ width: 7, height: 7, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
                                 <span style={{ flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.status === 'concluido' ? 'line-through' : 'none', opacity: t.status === 'concluido' ? 0.6 : 1 }}>{t.titulo}</span>
                                 <span style={{ fontSize: 10.5, color: st.cor, whiteSpace: 'nowrap' }}>{st.label}</span>
@@ -959,7 +976,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
                 {/* ALCA (uma por cliente — dono, 08/09: "se a do meio faz o mesmo que a de baixo, é inútil"):
                     arrastar para baixo amplia TODOS os marcos (escala vertical), para cima reduz */}
                 {!somenteLeitura && (
-                  <div onPointerDown={e => iniciarArraste(e)} onClick={e => e.stopPropagation()} title="Arraste para baixo para ampliar os marcos na tela (todos crescem juntos) ou para cima para reduzir" aria-label="Ampliar ou reduzir os marcos"
+                  <div onPointerDown={e => iniciarArraste(e)} onClick={e => e.stopPropagation()} title={tr('plano.escala-dica')} aria-label={tr('plano.escala-aria')}
                     style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 10, cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3 }}>
                     <span style={{ width: 34, height: 4, borderRadius: 999, background: 'var(--v2-rule2)', opacity: 0.8 }} />
                   </div>
@@ -984,7 +1001,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             const apagado = editModal
             await fetch(`/api/playbook?id=${apagado.id}`, { method: 'DELETE' })
             // Ctrl+Z recria o marco com o MESMO id (a rota aceita `id` quando ele não existe mais).
-            registrarDesfazer(`Exclusão do marco "${apagado.titulo}"`, async () => {
+            registrarDesfazer(tr('plano.desfazer-exclusao', { nome: apagado.titulo }), async () => {
               const r = await fetch('/api/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(apagado) }).catch(() => null)
               carregar()
               return !!r?.ok
@@ -1015,10 +1032,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {escolhendoModelo && !templateSel && (
         <div onClick={fecharFora(() => setEscolhendoModelo(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: 22, boxSizing: 'border-box' }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>Aplicar modelo</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>Um modelo cria todos os marcos (e as tarefas) de uma vez, encadeados a partir da data de início. Você confere a prévia antes de gravar.</p>
-            {templates === null && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando modelos…</p>}
-            {templates && templates.length === 0 && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhum modelo cadastrado. Crie um em Estratégia → Modelos.</p>}
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('plano.aplicar-modelo')}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('plano.modelo-ajuda')}</p>
+            {templates === null && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('plano.carregando-modelos')}</p>}
+            {templates && templates.length === 0 && <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('plano.sem-modelo')}</p>}
             {templates && templates.map(t => (
               <button key={t.id} onClick={() => setTemplateSel(t)} style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 3, padding: '12px 14px', marginBottom: 8, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)' }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{t.nome}</span>
@@ -1027,7 +1044,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
               </button>
             ))}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <button onClick={() => setEscolhendoModelo(false)} style={{ padding: '10px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setEscolhendoModelo(false)} style={{ padding: '10px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
             </div>
           </div>
         </div>
@@ -1035,7 +1052,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       {templateSel && (
         <AplicarModal template={templateSel} clientes={clientes as any} equipe={equipe} preSelecionados={clienteAtivo ? [clienteAtivo] : []}
           onClose={() => { setTemplateSel(null); setEscolhendoModelo(false) }}
-          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar({ enquadrar: true }); toast(`Modelo "${templateSel.nome}" aplicado: ${r.marcos} marco(s) e ${r.tarefas} tarefa(s) criadas.`, 'sucesso') }} />
+          onOk={(r) => { setTemplateSel(null); setEscolhendoModelo(false); carregar({ enquadrar: true }); toast(tr('plano.aviso-modelo', { nome: templateSel.nome, marcos: r.marcos, tarefas: r.tarefas }), 'sucesso') }} />
       )}
     </div>
   )
@@ -1044,6 +1061,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 // Detalhe de um marco em modo somente-leitura (portal do cliente): sem edicao,
 // so a informacao da etapa (titulo, categoria, status, periodo, responsavel, descricao).
 function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void }) {
+  const tr = useT()
   // Entregas (posts/campanhas) vinculadas a esta etapa. O endpoint força o
   // cliente a ver só o próprio; tarefas internas ficam ocultas (ocultarTarefas).
   const [entregas, setEntregas] = useState<Entregas>({ tarefas: [], posts: [], briefings: [] })
@@ -1067,19 +1085,19 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div>
-              <p style={lbl}>Período</p>
+              <p style={lbl}>{tr('plano.periodo')}</p>
               <p style={val}>{fmtData(marco.dataInicio)}{marco.dataFim ? ' — ' + fmtData(marco.dataFim) : ''}</p>
             </div>
             {marco.responsavelNome && (
               <div>
-                <p style={lbl}>Responsável</p>
+                <p style={lbl}>{tr('comum.responsavel')}</p>
                 <p style={val}>{marco.responsavelNome}</p>
               </div>
             )}
           </div>
           {marco.descricao && (
             <div>
-              <p style={lbl}>Descrição</p>
+              <p style={lbl}>{tr('comum.descricao')}</p>
               <p style={{ ...val, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{marco.descricao}</p>
             </div>
           )}
@@ -1098,11 +1116,11 @@ function MarcoDetalhe({ marco, onClose }: { marco: Marco; onClose: () => void })
                 ) })}
               </div>
             ) })()}
-            <p style={lbl}>Entregas deste marco</p>
+            <p style={lbl}>{tr('plano.entregas-do-marco')}</p>
             <EntregasMarco marcoId={marco.id} entregas={entregas} ocultarTarefas cor="var(--v2-ok)" />
           </div>
         </div>
-        <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+        <button onClick={onClose} style={{ marginTop: 22, width: '100%', padding: '11px 0', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
       </div>
     </div>
   )
@@ -1114,6 +1132,8 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
   corMarca?: string; corMarcaTexto?: string
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void
 }) {
+  const { rotuloCat, rotuloPeriodoOpcao } = useRotulosPlano()
+  const tr = useT()
   const [form, setForm] = useState({
     titulo: marco?.titulo || '', descricao: marco?.descricao || '',
     categoria: marco?.categoria || 'outro', status: marco?.status || 'planejado',
@@ -1156,7 +1176,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
       for (const k of Object.keys(body)) antes[k] = (marco as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
       const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marco.id, ...body }) }).catch(() => null)
       if (!r || !r.ok) { setSalvando(false); toast('Não foi possível salvar o marco. Tente de novo.', 'erro'); return }
-      registrarDesfazer(`Edição do marco "${marco.titulo}"`, async () => {
+      registrarDesfazer(tr('plano.desfazer-edicao', { nome: marco.titulo }), async () => {
         const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
         onSalvo() // recarrega a tela de trás (o modal já fechou quando o Ctrl+Z acontece)
         return !!r?.ok
@@ -1175,45 +1195,45 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
         <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{marco ? 'Editar marco' : 'Novo marco'}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>
-            <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ex.: Lancamento campanha de inverno"
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.titulo-obrigatorio')}</label>
+            <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder={tr('plano.marco-exemplo')}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Descrição</label>
-            <textarea lang="pt-BR" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes, objetivos, KPIs..."
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.descricao')}</label>
+            <textarea lang="pt-BR" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder={tr('plano.detalhes')}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente *</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.cliente')}</label>
               <select value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                <option value="">Selecione...</option>
+                <option value="">{tr('tarefa.escolha-marco')}</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Categoria</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('plano.categoria')}</label>
               <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                {CATEGORIAS.map(c => <option key={c.key} value={c.key}>{rotuloCat(c.key, c.label)}</option>)}
               </select>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Data início</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('plano.data-inicio')}</label>
               <input type="date" value={form.dataInicio} onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Data fim (opcional)</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('plano.data-fim')}</label>
               <input type="date" value={form.dataFim} onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Status</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.status')}</label>
               <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -1221,12 +1241,12 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Responsável</label>
-            <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder="Nome do responsável"
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.responsavel')}</label>
+            <input value={form.responsavelNome} onChange={e => setForm(f => ({ ...f, responsavelNome: e.target.value }))} placeholder={tr('plano.responsavel-nome')}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cor do marco <span style={{ fontWeight: 400 }}>— sem escolher, vale a da categoria</span></label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('plano.cor-marco')}<span style={{ fontWeight: 400 }}>{tr('plano.sem-cor')}</span></label>
             <ColorPicker valor={form.cor} onChange={cor => setForm(f => ({ ...f, cor }))} />
           </div>
         </div>
@@ -1235,32 +1255,32 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
             Contam no progresso (n/m na barra do Gantt), no prazo efetivo e nos KPIs — tudo no mesmo marco. */}
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Etapas deste marco</h4>
-            {pgSubs.total > 0 && <span style={{ fontSize: 12, color: pgSubs.atrasadas.length ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{pgSubs.concluidas} de {pgSubs.total} concluídas{pgSubs.atrasadas.length ? ` · ${pgSubs.atrasadas.length} atrasada(s)` : ''}{pgSubs.kpis.total ? ` · KPIs ${pgSubs.kpis.atingidos}/${pgSubs.kpis.total}` : ''}{pgSubs.fimEfetivo && (!form.dataFim || pgSubs.fimEfetivo > form.dataFim) ? ` · prazo efetivo ${fmtData(pgSubs.fimEfetivo)}` : ''}</span>}
-            <button type="button" onClick={() => setSubs(a => [...a, { id: uuid(), titulo: '', status: 'pendente' }])} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>+ Etapa</button>
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('plano.etapas-do-marco')}</h4>
+            {pgSubs.total > 0 && <span style={{ fontSize: 12, color: pgSubs.atrasadas.length ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{tr('plano.concluidas-de', { feitas: pgSubs.concluidas, total: pgSubs.total })}{pgSubs.atrasadas.length ? ` · ${tr('plano.atrasadas-n', { n: pgSubs.atrasadas.length })}` : ''}{pgSubs.kpis.total ? ` · ${tr('plano.kpis-contagem', { atingidos: pgSubs.kpis.atingidos, total: pgSubs.kpis.total })}` : ''}{pgSubs.fimEfetivo && (!form.dataFim || pgSubs.fimEfetivo > form.dataFim) ? ` · prazo efetivo ${fmtData(pgSubs.fimEfetivo)}` : ''}</span>}
+            <button type="button" onClick={() => setSubs(a => [...a, { id: uuid(), titulo: '', status: 'pendente' }])} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('cfg.add-etapa')}</button>
           </div>
-          {subs.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma etapa dentro deste marco. Use quando o marco tem passos com prazo e KPI próprios (ex.: "Auditoria", "Setup da campanha", "Primeiros 30 dias").</p>}
+          {subs.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('plano.sem-etapa-ajuda')}</p>}
           {subs.map((se, i) => { const k = kpiPct(se); const atrasada = pgSubs.atrasadas.some(a => a.id === se.id); const inp: React.CSSProperties = { padding: '8px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', background: 'var(--v2-surface)', color: 'var(--v2-ink)', minWidth: 0 }; return (
             <div key={se.id} style={{ border: `1px solid ${atrasada ? 'var(--v2-hot)' : 'var(--v2-rule)'}`, borderRadius: 12, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
                 <label title="Cor da etapa (vazio = cor do marco)" style={{ width: 22, height: 22, borderRadius: 7, border: '1px solid var(--v2-rule)', background: se.cor || form.cor || 'var(--v2-surface2)', cursor: 'pointer', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-                  <input type="color" value={se.cor || form.cor || '#888888'} onChange={e => patchSub(se.id, { cor: e.target.value })} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label="Cor da etapa" />
+                  <input type="color" value={se.cor || form.cor || '#888888'} onChange={e => patchSub(se.id, { cor: e.target.value })} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} aria-label={tr('plano.cor-etapa')} />
                 </label>
-                <input value={se.titulo} onChange={e => patchSub(se.id, { titulo: e.target.value })} placeholder="Etapa (ex.: Auditoria dos perfis)" style={{ ...inp, flex: 1 }} aria-label="Título da etapa" />
-                <select value={se.status} onChange={e => patchSub(se.id, { status: e.target.value as SubEtapa['status'] })} style={{ ...inp, width: 140, flexShrink: 0 }} aria-label="Status da etapa">
+                <input value={se.titulo} onChange={e => patchSub(se.id, { titulo: e.target.value })} placeholder={tr('plano.etapa-exemplo')} style={{ ...inp, flex: 1 }} aria-label={tr('plano.titulo-etapa')} />
+                <select value={se.status} onChange={e => patchSub(se.id, { status: e.target.value as SubEtapa['status'] })} style={{ ...inp, width: 140, flexShrink: 0 }} aria-label={tr('plano.status-etapa')}>
                   {SUBETAPA_STATUS.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
                 </select>
-                <button type="button" title="Subir" onClick={() => moverSub(i, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === 0 ? 0.35 : 1, flexShrink: 0 }}>↑</button>
-                <button type="button" title="Descer" onClick={() => moverSub(i, 1)} disabled={i === subs.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === subs.length - 1 ? 0.35 : 1, flexShrink: 0 }}>↓</button>
-                <button type="button" title="Remover etapa" onClick={() => setSubs(a => a.filter(x => x.id !== se.id))} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-hot)', cursor: 'pointer', flexShrink: 0 }}>×</button>
+                <button type="button" title={tr('cfg.subir')} onClick={() => moverSub(i, -1)} disabled={i === 0} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === 0 ? 0.35 : 1, flexShrink: 0 }}>↑</button>
+                <button type="button" title={tr('cfg.descer')} onClick={() => moverSub(i, 1)} disabled={i === subs.length - 1} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', opacity: i === subs.length - 1 ? 0.35 : 1, flexShrink: 0 }}>↓</button>
+                <button type="button" title={tr('plano.remover-etapa')} onClick={() => setSubs(a => a.filter(x => x.id !== se.id))} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-hot)', cursor: 'pointer', flexShrink: 0 }}>×</button>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--v2-ink3)' }}>Início<input type="date" value={se.dataInicio || ''} onChange={e => patchSub(se.id, { dataInicio: e.target.value || undefined })} style={{ ...inp, width: 140 }} /></label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: atrasada ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>Prazo<input type="date" value={se.dataFim || ''} onChange={e => patchSub(se.id, { dataFim: e.target.value || undefined })} style={{ ...inp, width: 140, borderColor: atrasada ? 'var(--v2-hot)' : undefined }} /></label>
-                <input value={se.kpi || ''} onChange={e => patchSub(se.id, { kpi: e.target.value })} placeholder="KPI (ex.: Leads)" style={{ ...inp, width: 150 }} aria-label="Nome do KPI" />
-                <input type="number" value={se.kpiMeta ?? ''} onChange={e => patchSub(se.id, { kpiMeta: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="Meta" style={{ ...inp, width: 90 }} aria-label="Meta do KPI" />
-                <input type="number" value={se.kpiAtual ?? ''} onChange={e => patchSub(se.id, { kpiAtual: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="Atual" style={{ ...inp, width: 90 }} aria-label="Valor atual do KPI" />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('plano.inicio')}<input type="date" value={se.dataInicio || ''} onChange={e => patchSub(se.id, { dataInicio: e.target.value || undefined })} style={{ ...inp, width: 140 }} /></label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: atrasada ? 'var(--v2-hot)' : 'var(--v2-ink3)' }}>{tr('comum.prazo')}<input type="date" value={se.dataFim || ''} onChange={e => patchSub(se.id, { dataFim: e.target.value || undefined })} style={{ ...inp, width: 140, borderColor: atrasada ? 'var(--v2-hot)' : undefined }} /></label>
+                <input value={se.kpi || ''} onChange={e => patchSub(se.id, { kpi: e.target.value })} placeholder={tr('plano.kpi-exemplo')} style={{ ...inp, width: 150 }} aria-label={tr('plano.nome-kpi')} />
+                <input type="number" value={se.kpiMeta ?? ''} onChange={e => patchSub(se.id, { kpiMeta: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder={tr('plano.meta')} style={{ ...inp, width: 90 }} aria-label={tr('plano.meta-kpi')} />
+                <input type="number" value={se.kpiAtual ?? ''} onChange={e => patchSub(se.id, { kpiAtual: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder={tr('plano.atual')} style={{ ...inp, width: 90 }} aria-label={tr('plano.valor-kpi')} />
                 {k !== null && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: k >= 100 ? 'var(--v2-ok)' : 'var(--v2-ink3)' }}><span style={{ width: 70, height: 5, background: 'var(--v2-surface2)', borderRadius: 999, overflow: 'hidden', display: 'inline-block' }}><span style={{ display: 'block', width: `${k}%`, height: '100%', background: k >= 100 ? 'var(--v2-ok)' : 'var(--v2-amber-on)' }} /></span>{k}%</span>}
               </div>
             </div>
@@ -1276,11 +1296,11 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
         {marco && tarefasDoMarcoModal && (
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Tarefas deste marco</h4>
+              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('plano.tarefas-do-marco')}</h4>
               <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tarefasDoMarcoModal.length} · nascem ja no cliente, neste marco e com o responsavel do squad pelo tipo</span>
-              {onNovaTarefa && <button type="button" onClick={onNovaTarefa} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>+ Nova tarefa</button>}
+              {onNovaTarefa && <button type="button" onClick={onNovaTarefa} style={{ marginLeft: 'auto', padding: '7px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px dashed var(--v2-rule2)', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.nova')}</button>}
             </div>
-            {tarefasDoMarcoModal.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma tarefa ainda.</p>}
+            {tarefasDoMarcoModal.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('plano.sem-tarefa')}</p>}
             {tarefasDoMarcoModal.map(t => { const st = STATUS_TAREFA[t.status] || STATUS_TAREFA.a_fazer; return (
               <button key={t.id} type="button" onClick={() => onAbrirTarefa?.(t)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 4px', background: 'none', border: 0, borderBottom: '1px solid var(--v2-surface1)', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)', textAlign: 'left' }}>
                 <span style={{ width: 8, height: 8, borderRadius: 999, background: st.cor, flexShrink: 0 }} />
@@ -1296,7 +1316,7 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
         {/* Entregas vinculadas a esta etapa */}
         {marco && (
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--v2-rule)' }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Entregas deste marco</h4>
+            <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('plano.entregas-do-marco')}</h4>
             <EntregasMarco marcoId={marco.id} entregas={entregas} cor={STATUS_COR[form.status] === 'var(--v2-amber-on)' ? 'var(--v2-amber)' : 'var(--v2-ok)'} />
           </div>
         )}
@@ -1305,9 +1325,9 @@ function MarcoModal({ marco, clientes, clientePadrao, corMarca = 'var(--v2-amber
           <button onClick={salvar} disabled={salvando || !form.titulo.trim() || !form.clienteId} style={{ flex: 1, padding: '11px 0', background: (form.titulo.trim() && form.clienteId) ? corMarca : 'var(--v2-surface2)', color: (form.titulo.trim() && form.clienteId) ? corMarcaTexto : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (form.titulo.trim() && form.clienteId) ? 'pointer' : 'not-allowed' }}>
             {salvando ? 'Salvando...' : (marco ? 'Salvar' : 'Criar marco')}
           </button>
-          <button onClick={fecharSalvando} title="Fecha; se algo mudou, salva antes" style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={fecharSalvando} title="Fecha; se algo mudou, salva antes" style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
           {onExcluir && (
-            <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+            <button onClick={async () => { if (await confirmar('Excluir este marco?', { titulo: 'Excluir marco', okLabel: 'Excluir', perigo: true })) onExcluir() }} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>
           )}
         </div>
       </div>

@@ -129,7 +129,7 @@ export function janelaParaCaber(marcos: MarcoDatas[], hoje: number = Date.now())
 
 // Eixo superior: um rótulo por mês dentro da janela ("set/2026"), na posição do dia 1
 // (ou no início da janela, para o mês que já começou).
-export function rotulosMeses(inicioMs: number, dias: number): { pct: number; txt: string }[] {
+export function rotulosMeses(inicioMs: number, dias: number, locale?: string): { pct: number; txt: string }[] {
   const out: { pct: number; txt: string }[] = []
   const fimMs = inicioMs + dias * MS_DIA
   const d = new Date(inicioMs)
@@ -137,7 +137,7 @@ export function rotulosMeses(inicioMs: number, dias: number): { pct: number; txt
   while (cursor < fimMs) {
     const dt = new Date(cursor)
     const pct = Math.max(0, ((cursor - inicioMs) / (dias * MS_DIA)) * 100)
-    out.push({ pct, txt: `${dt.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}/${dt.getFullYear()}` })
+    out.push({ pct, txt: `${dt.toLocaleDateString(locale, { month: 'short' }).replace('.', '')}/${dt.getFullYear()}` })
     cursor = new Date(dt.getFullYear(), dt.getMonth() + 1, 1).getTime()
   }
   return out
