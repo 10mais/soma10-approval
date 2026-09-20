@@ -95,6 +95,93 @@ export const TEXTOS: Record<string, Entrada> = {
   'nav.processos': { pt: 'Processos', en: 'Cases', es: 'Procesos' },
   'nav.recebiveis': { pt: 'Recebíveis', en: 'Receivables', es: 'Cuentas por cobrar' },
 
+  // ---- Painel (Home)
+  'home.ver-como': { pt: 'Ver como', en: 'View as', es: 'Ver como' },
+  'home.voce': { pt: '(você)', en: '(you)', es: '(usted)' },
+  'home.tentar-de-novo': { pt: 'tentar de novo', en: 'try again', es: 'intentar de nuevo' },
+  'home.regra-de': { pt: 'Regra de', en: 'Rule for', es: 'Regla de' },
+  'home.hoje': { pt: 'Hoje', en: 'Today', es: 'Hoy' },
+  'home.agenda-nao-conectada': { pt: 'Google Agenda ainda não conectada — só reuniões e publicações', en: 'Google Calendar not connected yet — meetings and posts only', es: 'Google Calendar aún no conectado — solo reuniones y publicaciones' },
+  'home.abrir-programador': { pt: 'Abrir o Programador', en: 'Open the scheduler', es: 'Abrir el programador' },
+  'home.nada-hoje': { pt: 'Nada programado para hoje.', en: 'Nothing scheduled for today.', es: 'Nada programado para hoy.' },
+  'home.leg-publicacao': { pt: 'Publicação', en: 'Post', es: 'Publicación' },
+  'home.leg-reuniao': { pt: 'Reunião', en: 'Meeting', es: 'Reunión' },
+  'home.leg-agenda': { pt: 'Agenda Google', en: 'Google Calendar', es: 'Google Calendar' },
+  'home.leg-passou': { pt: 'Já passou', en: 'Already past', es: 'Ya pasó' },
+  'home.clientes-dica': { pt: 'quem espera há mais tempo vem primeiro', en: 'whoever has waited longest comes first', es: 'quien espera hace más tiempo viene primero' },
+  'home.todos': { pt: 'Todos', en: 'All', es: 'Todos' },
+  'home.sem-clientes': { pt: 'Nenhum cliente ativo.', en: 'No active clients.', es: 'Ningún cliente activo.' },
+  'home.fase-entrada': { pt: 'Entrada', en: 'Onboarding', es: 'Ingreso' },
+  'home.nada-pendente': { pt: 'Nada pendente.', en: 'Nothing pending.', es: 'Nada pendiente.' },
+  'home.com-cliente': { pt: 'Com o cliente', en: 'With the client', es: 'Con el cliente' },
+  'home.com-equipe': { pt: 'Com a equipe', en: 'With the team', es: 'Con el equipo' },
+  'home.em-dia': { pt: 'Em dia', en: 'Up to date', es: 'Al día' },
+  'home.sua-fila': { pt: 'Sua fila', en: 'Your queue', es: 'Su fila' },
+  'home.fila-de': { pt: 'Fila de', en: 'Queue of', es: 'Fila de' },
+  'home.sem-tarefas': { pt: 'Nenhuma tarefa aberta.', en: 'No open tasks.', es: 'Ninguna tarea abierta.' },
+  'home.chegou': { pt: 'Chegou do cliente', en: 'Came from the client', es: 'Llegó del cliente' },
+  'home.ultimas-24h': { pt: 'últimas 24h', en: 'last 24h', es: 'últimas 24h' },
+  'home.sem-chegou': { pt: 'Nada nas últimas 24 horas.', en: 'Nothing in the last 24 hours.', es: 'Nada en las últimas 24 horas.' },
+  'home.busca-placeholder': { pt: 'Digite um cliente, uma tarefa ou um comando…', en: 'Type a client, a task or a command…', es: 'Escriba un cliente, una tarea o un comando…' },
+  'home.busca-vazia': { pt: 'Nada com', en: 'Nothing matching', es: 'Nada con' },
+  'home.navegar': { pt: 'navegar', en: 'move', es: 'navegar' },
+  'home.abrir': { pt: 'abrir', en: 'open', es: 'abrir' },
+  'home.fechar': { pt: 'fechar', en: 'close', es: 'cerrar' },
+  'home.busca-aria': { pt: 'Buscar ou executar um comando', en: 'Search or run a command', es: 'Buscar o ejecutar un comando' },
+  'home.linha-tempo': { pt: 'Linha do tempo de hoje', en: 'Today\'s timeline', es: 'Línea de tiempo de hoy' },
+  'home.clientes-antes': { pt: 'Clientes anteriores', en: 'Previous clients', es: 'Clientes anteriores' },
+  'home.clientes-mais': { pt: 'Mais clientes', en: 'More clients', es: 'Más clientes' },
+  'home.pal-cliente': { pt: 'cliente', en: 'client', es: 'cliente' },
+  'home.pal-ir': { pt: 'ir para', en: 'go to', es: 'ir a' },
+  'home.pal-tarefa': { pt: 'tarefa', en: 'task', es: 'tarea' },
+  'home.em-dia-curto': { pt: 'em dia', en: 'up to date', es: 'al día' },
+  'home.vendo-como': { pt: 'vendo como', en: 'viewing as', es: 'viendo como' },
+  'home.feito': { pt: 'feito', en: 'done', es: 'hecho' },
+
+  // ---- palavras de tempo e contagem
+  'tempo.agora': { pt: 'agora', en: 'just now', es: 'ahora' },
+  'tempo.ha': { pt: 'há', en: '', es: 'hace' },
+  'tempo.min': { pt: 'min', en: 'min ago', es: 'min' },
+  'tempo.h': { pt: 'h', en: 'h ago', es: 'h' },
+  'tempo.ontem': { pt: 'ontem', en: 'yesterday', es: 'ayer' },
+  'tempo.hoje': { pt: 'hoje', en: 'today', es: 'hoy' },
+  'tempo.amanha': { pt: 'amanhã', en: 'tomorrow', es: 'mañana' },
+  'tempo.atras': { pt: 'atrás', en: 'ago', es: 'atrás' },
+  'comum.dia': { pt: 'dia', en: 'day', es: 'día' },
+  'comum.dias': { pt: 'dias', en: 'days', es: 'días' },
+  'comum.tarefa': { pt: 'tarefa', en: 'task', es: 'tarea' },
+  'comum.tarefas': { pt: 'tarefas', en: 'tasks', es: 'tareas' },
+
+  // ---- status da tarefa
+  'status.a_fazer': { pt: 'A fazer', en: 'To do', es: 'Por hacer' },
+  'status.em_andamento': { pt: 'Em andamento', en: 'In progress', es: 'En curso' },
+  'status.em_revisao': { pt: 'Em revisão', en: 'In review', es: 'En revisión' },
+  'status.concluida': { pt: 'Concluída', en: 'Done', es: 'Concluida' },
+
+  // ---- tipo do trabalho (etiqueta na tarefa)
+  'tipo.carrossel': { pt: 'Carrossel', en: 'Carousel', es: 'Carrusel' },
+  'tipo.reel': { pt: 'Reel', en: 'Reel', es: 'Reel' },
+  'tipo.story': { pt: 'Story', en: 'Story', es: 'Story' },
+  'tipo.post': { pt: 'Post', en: 'Post', es: 'Publicación' },
+  'tipo.criativo': { pt: 'Criativo', en: 'Creative', es: 'Creativo' },
+  'tipo.copy': { pt: 'Texto', en: 'Copy', es: 'Texto' },
+  'tipo.briefing': { pt: 'Pauta', en: 'Brief', es: 'Pauta' },
+  'tipo.landing_page': { pt: 'Página', en: 'Landing', es: 'Página' },
+  'tipo.campanha': { pt: 'Campanha', en: 'Campaign', es: 'Campaña' },
+  'tipo.video': { pt: 'Vídeo', en: 'Video', es: 'Video' },
+  'tipo.tarefa': { pt: 'Tarefa', en: 'Task', es: 'Tarea' },
+  'tipo.planejamento': { pt: 'Plano', en: 'Plan', es: 'Plan' },
+  'tipo.estrategia': { pt: 'Estratégia', en: 'Strategy', es: 'Estrategia' },
+
+  // ---- o que o cliente mandou (ação do card "chegou do cliente")
+  'acao.aprovacao': { pt: 'Ver', en: 'View', es: 'Ver' },
+  'acao.ajuste_layout': { pt: 'Corrigir', en: 'Fix', es: 'Corregir' },
+  'acao.ajuste_copy': { pt: 'Abrir no Estúdio', en: 'Open in the studio', es: 'Abrir en el estudio' },
+  'acao.reprovacao': { pt: 'Abrir', en: 'Open', es: 'Abrir' },
+  'acao.corrigir_legenda': { pt: 'Ver', en: 'View', es: 'Ver' },
+  'acao.ajuste_aplicado': { pt: 'Ver', en: 'View', es: 'Ver' },
+  'acao.solicitacao_conteudo': { pt: 'Abrir', en: 'Open', es: 'Abrir' },
+
   // ---- grupos do menu lateral
   'grupo.producao': { pt: 'Produção', en: 'Production', es: 'Producción' },
   'grupo.estrategia': { pt: 'Estratégia', en: 'Strategy', es: 'Estrategia' },
@@ -215,7 +302,10 @@ export const TEXTOS: Record<string, Entrada> = {
 export function t(chave: string, idioma: Idioma = IDIOMA_PADRAO): string {
   const e = TEXTOS[chave]
   if (!e) return chave
-  return (idioma === 'pt' ? e.pt : e[idioma]) || e.pt
+  const v = idioma === 'pt' ? e.pt : e[idioma]
+  // Texto VAZIO é escolha (em inglês não existe o "há" de "há 5 min"), não falta de tradução:
+  // só cai no português quando a chave não tem nada naquele idioma.
+  return v === undefined ? e.pt : v
 }
 
 /** Nome da área pela chave da aba (`planner`, `studio`, `playbook`…). */

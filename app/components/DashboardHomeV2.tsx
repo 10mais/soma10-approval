@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useT } from '@/app/components/Idioma'
+import { useT, useArea, useIdioma } from '@/app/components/Idioma'
+import { TEXTOS } from '@/lib/i18n'
 
 // HOME NOVA (Soma10 Noturno) — perfil agência.
 //
@@ -28,21 +29,14 @@ type Dados = {
 }
 
 const ALVO_ID: Record<string, string> = { tarefas: 'v2-fila', clientes: 'v2-clientes', hoje: 'v2-hoje', reunioes: 'v2-hoje' }
-const TIPO_ROTULO: Record<string, string> = { carrossel: 'Carrossel', reel: 'Reel', story: 'Story', post: 'Post', criativo: 'Criativo', copy: 'Copy', briefing: 'Briefing', landing_page: 'Landing', campanha: 'Campanha', video: 'Vídeo', tarefa: 'Tarefa', planejamento: 'Plano', estrategia: 'Estratégia' }
-const ACAO_CHEGOU: Record<string, string> = { aprovacao: 'Ver', ajuste_layout: 'Corrigir', ajuste_copy: 'Abrir no Studio', reprovacao: 'Abrir', corrigir_legenda: 'Ver', ajuste_aplicado: 'Ver', solicitacao_conteudo: 'Abrir' }
+// Tipo do trabalho e ação do cliente têm nome no dicionário (lib/i18n, 'tipo.*' e 'acao.*').
+const TEM_TIPO = (t?: string) => !!t && !!TEXTOS[`tipo.${t}`]
+const TEM_ACAO = (t?: string) => !!t && !!TEXTOS[`acao.${t}`]
+// O formato de data segue o idioma de quem lê.
+const LOCALE: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
 
 function iniciais(nome: string) { return nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || '').join('') || '?' }
 function pctRegua(min: number) { return Math.max(0, Math.min(100, ((min - 8 * 60) / (12 * 60)) * 100)) }
-function haQuanto(ts: number) { const m = Math.floor((Date.now() - ts) / 60000); if (m < 1) return 'agora'; if (m < 60) return `há ${m} min`; const h = Math.floor(m / 60); return h < 24 ? `há ${h}h` : 'ontem' }
-function prazoCurto(iso?: string) {
-  if (!iso) return { t: '—', hoje: false, atrasada: false }
-  const d = new Date(iso), h = new Date(); h.setHours(0, 0, 0, 0)
-  const diff = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - h.getTime()) / 86400000)
-  if (diff < 0) return { t: `${-diff}d atrás`, hoje: false, atrasada: true }
-  if (diff === 0) return { t: 'hoje', hoje: true, atrasada: false }
-  if (diff === 1) return { t: 'amanhã', hoje: false, atrasada: false }
-  return { t: d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''), hoje: false, atrasada: false }
-}
 
 // Último payload por 'como', fora do componente: a Home REMONTA a cada volta ao
 // Painel (import dinâmico + aba condicional). Com isto ela abre na hora com o
@@ -54,6 +48,25 @@ const memoria: Record<string, Dados> = {}
 
 export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: { tema: 'claro' | 'escuro'; meuEmail: string; onIr: (aba: string) => void; onVerCliente: (id: string) => void }) {
   const tr = useT()
+  const area = useArea()
+  const { idioma } = useIdioma()
+  // "há 5 min", "ontem" e os prazos curtos falam o idioma de quem está usando.
+  const haQuanto = (ts: number) => {
+    const m = Math.floor((Date.now() - ts) / 60000)
+    if (m < 1) return tr('tempo.agora')
+    if (m < 60) return `${tr('tempo.ha')} ${m} ${tr('tempo.min')}`.trim()
+    const h = Math.floor(m / 60)
+    return h < 24 ? `${tr('tempo.ha')} ${h}${tr('tempo.h')}`.trim() : tr('tempo.ontem')
+  }
+  const prazoCurto = (iso?: string) => {
+    if (!iso) return { t: '—', hoje: false, atrasada: false }
+    const d = new Date(iso), h = new Date(); h.setHours(0, 0, 0, 0)
+    const diff = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - h.getTime()) / 86400000)
+    if (diff < 0) return { t: `${-diff}d ${tr('tempo.atras')}`, hoje: false, atrasada: true }
+    if (diff === 0) return { t: tr('tempo.hoje'), hoje: true, atrasada: false }
+    if (diff === 1) return { t: tr('tempo.amanha'), hoje: false, atrasada: false }
+    return { t: d.toLocaleDateString(LOCALE[idioma], { weekday: 'short' }).replace('.', ''), hoje: false, atrasada: false }
+  }
   const [como, setComo] = useState('')
   const chave = (c: string) => `${meuEmail.toLowerCase()}|${c}`
   const [dados, setDados] = useState<Dados | null>(() => memoria[chave('')] || null)
@@ -103,12 +116,13 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
   const itensPaleta = useMemo(() => {
     if (!dados) return [] as { k: string; t: string; d?: string; ir: () => void }[]
     const lista: { k: string; t: string; d?: string; ir: () => void }[] = []
-    for (const c of dados.clientes) lista.push({ k: 'cliente', t: c.nome, d: c.lado === 'ninguem' ? 'em dia' : c.frase, ir: () => onVerCliente(c.id) })
-    const abas: [string, string][] = [['planner', 'Planner'], ['studio', 'Studio'], ['tarefas', 'Tarefas'], ['solicitacoes', 'Solicitações do cliente'], ['crm', 'CRM'], ['playbook', 'Playbook'], ['reunioes', 'Reuniões internas'], ['rentabilidade', 'Financeiro'], ['analytics', 'Analytics'], ['clientes', 'Clientes'], ['config', 'Configurações'], ['novo-post', 'Novo post']]
-    for (const [a, l] of abas) lista.push({ k: 'ir para', t: l, ir: () => onIr(a) })
-    for (const t of dados.fila) lista.push({ k: 'tarefa', t: t.titulo, d: t.clienteNome, ir: () => onIr('tarefas') })
+    for (const c of dados.clientes) lista.push({ k: tr('home.pal-cliente'), t: c.nome, d: c.lado === 'ninguem' ? tr('home.em-dia-curto') : c.frase, ir: () => onVerCliente(c.id) })
+    const abas = ['planner', 'studio', 'tarefas', 'solicitacoes', 'crm', 'playbook', 'reunioes', 'rentabilidade', 'analytics', 'clientes', 'config', 'novo-post']
+    for (const a of abas) lista.push({ k: tr('home.pal-ir'), t: area(a), ir: () => onIr(a) })
+    for (const t of dados.fila) lista.push({ k: tr('home.pal-tarefa'), t: t.titulo, d: t.clienteNome, ir: () => onIr('tarefas') })
     return lista
-  }, [dados, onIr, onVerCliente])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dados, onIr, onVerCliente, idioma])
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   const filtrados = useMemo(() => { const t = norm(q.trim()); return t ? itensPaleta.filter(i => norm(`${i.t} ${i.k} ${i.d || ''}`).includes(t)) : itensPaleta }, [q, itensPaleta])
 
@@ -121,7 +135,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
   }
 
   const agoraMin = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() })()
-  const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const hojeTxt = new Date().toLocaleDateString(LOCALE[idioma], { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <div className="soma10-v2 soma10-no-invert v2-home" data-theme={tema === 'escuro' ? 'dark' : 'light'}>
@@ -244,16 +258,16 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
 
       <div className="v2-wrap">
         <div className="v2-top v2-a">
-          <button className="v2-busca" type="button" onClick={() => { setPaleta(true); setQ(''); setSel(0) }} aria-label="Buscar ou executar um comando">
+          <button className="v2-busca" type="button" onClick={() => { setPaleta(true); setQ(''); setSel(0) }} aria-label={tr('home.busca-aria')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
             {tr('topo.busca')}
             <kbd>Ctrl K</kbd>
           </button>
           {dados?.ehAdmin && dados.equipe.length > 0 && (
-            <label className="v2-como">Ver como
+            <label className="v2-como">{tr('home.ver-como')}
               <select value={como} onChange={e => setComo(e.target.value)}>
                 {/* Quem está logado é a primeira opção, com o próprio nome — e NÃO se repete na lista. */}
-                <option value="">{(dados.eu?.nome || 'Eu').split(' ')[0]} (você)</option>
+                <option value="">{(dados.eu?.nome || 'Eu').split(' ')[0]} {tr('home.voce')}</option>
                 {dados.equipe.filter(u => u.email.toLowerCase() !== (dados.eu?.email || '').toLowerCase()).map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
               </select>
             </label>
@@ -261,7 +275,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
           <span className="v2-data">{hojeTxt}</span>
         </div>
 
-        {erro && <p className="v2-erro">{erro} <button onClick={() => carregar()} style={{ marginLeft: 10, background: 'none', border: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>tentar de novo</button></p>}
+        {erro && <p className="v2-erro">{erro} <button onClick={() => carregar()} style={{ marginLeft: 10, background: 'none', border: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{tr('home.tentar-de-novo')}</button></p>}
 
         {!dados && !erro && (
           <div aria-busy="true">
@@ -275,7 +289,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
           <>
             {dados.regra && (
               <div className="v2-regra v2-a d1">
-                <span className="mes">Regra de {dados.regra.mes}</span>
+                <span className="mes">{tr('home.regra-de')} {dados.regra.mes}</span>
                 <span className="nome">{dados.regra.nome}</span>
                 {dados.regra.frase && <p className="frase">{dados.regra.frase}</p>}
               </div>
@@ -286,45 +300,45 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
                 ? <b key={i} className={p.quente ? 'hot' : ''} onClick={() => irPara(p.alvo)}>{p.texto}</b>
                 : <span key={i}>{p.texto}</span>)}
             </h1>
-            {dados.manchete.subtitulo && <p className="v2-sub v2-a d2">{dados.manchete.subtitulo}{dados.vendoComo ? ` · vendo como ${dados.vendoComo.nome}` : ''}</p>}
+            {dados.manchete.subtitulo && <p className="v2-sub v2-a d2">{dados.manchete.subtitulo}{dados.vendoComo ? ` · ${tr('home.vendo-como')} ${dados.vendoComo.nome}` : ''}</p>}
 
             {/* HOJE */}
             <section id="v2-hoje" className="v2-sec v2-a d3">
-              <div className="v2-sec-h"><h2>Hoje</h2>{!dados.agenda.configurada && dados.ehAdmin && <span className="dica">Google Agenda ainda não conectada — só reuniões e publicações</span>}<button className="mais" onClick={() => onIr('planner')}>Abrir o Planner</button></div>
+              <div className="v2-sec-h"><h2>{tr('home.hoje')}</h2>{!dados.agenda.configurada && dados.ehAdmin && <span className="dica">{tr('home.agenda-nao-conectada')}</span>}<button className="mais" onClick={() => onIr('planner')}>{tr('home.abrir-programador')}</button></div>
               <div className="v2-dia">
-                {dados.regua.length === 0 && <p className="v2-vazio">Nada programado para hoje.</p>}
-                <div className="v2-regua" aria-label="Linha do tempo de hoje">
+                {dados.regua.length === 0 && <p className="v2-vazio">{tr('home.nada-hoje')}</p>}
+                <div className="v2-regua" aria-label={tr('home.linha-tempo')}>
                   <div className="linha" />
                   {[8, 10, 12, 14, 16, 18, 20].map(h => <span key={h} className="h" style={{ left: `${pctRegua(h * 60)}%` }}>{String(h).padStart(2, '0')}h</span>)}
                   {agoraMin >= 8 * 60 && agoraMin <= 20 * 60 && <div className="agora" style={{ left: `${pctRegua(agoraMin)}%` }} />}
                   {dados.regua.map(e => (
                     <span key={e.id} className={`v2-ev ${e.tipo}${e.feito ? ' feito' : ''}`} style={{ left: `${pctRegua(e.minuto)}%` }} tabIndex={0} aria-label={`${e.hora} ${e.titulo}`}>
-                      <span className="tip">{e.titulo}<small>{e.hora}{e.detalhe ? ` · ${e.detalhe}` : ''}{e.feito ? ' · feito' : ''}</small></span>
+                      <span className="tip">{e.titulo}<small>{e.hora}{e.detalhe ? ` · ${e.detalhe}` : ''}{e.feito ? ` · ${tr('home.feito')}` : ''}</small></span>
                     </span>
                   ))}
                 </div>
-                <div className="v2-leg"><span><i style={{ background: 'var(--v2-amber-on)' }} />Publicação</span><span><i style={{ background: 'var(--v2-ok)', borderRadius: 2 }} />Reunião</span><span><i style={{ background: 'var(--v2-ink2)', borderRadius: 2, transform: 'rotate(45deg)' }} />Agenda Google</span><span><i style={{ background: 'var(--v2-ink3)' }} />Já passou</span></div>
+                <div className="v2-leg"><span><i style={{ background: 'var(--v2-amber-on)' }} />{tr('home.leg-publicacao')}</span><span><i style={{ background: 'var(--v2-ok)', borderRadius: 2 }} />{tr('home.leg-reuniao')}</span><span><i style={{ background: 'var(--v2-ink2)', borderRadius: 2, transform: 'rotate(45deg)' }} />{tr('home.leg-agenda')}</span><span><i style={{ background: 'var(--v2-ink3)' }} />{tr('home.leg-passou')}</span></div>
               </div>
             </section>
 
             {/* CLIENTES */}
             <section id="v2-clientes" className="v2-sec v2-a d4">
-              <div className="v2-sec-h"><h2>Clientes</h2><span className="dica">quem espera há mais tempo vem primeiro</span><button className="mais" onClick={() => onIr('clientes-todos')}>Todos</button></div>
-              {dados.clientes.length === 0 && <p className="v2-vazio">Nenhum cliente ativo.</p>}
+              <div className="v2-sec-h"><h2>{area('clientes')}</h2><span className="dica">{tr('home.clientes-dica')}</span><button className="mais" onClick={() => onIr('clientes-todos')}>{tr('home.todos')}</button></div>
+              {dados.clientes.length === 0 && <p className="v2-vazio">{tr('home.sem-clientes')}</p>}
               <div className="v2-trilho-wrap">
-                <button className="v2-seta e" type="button" aria-label="Clientes anteriores" onClick={() => rolarTrilho(-1)} disabled={!podeEsq}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg></button>
-                <button className="v2-seta d" type="button" aria-label="Mais clientes" onClick={() => rolarTrilho(1)} disabled={!podeDir}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg></button>
+                <button className="v2-seta e" type="button" aria-label={tr('home.clientes-antes')} onClick={() => rolarTrilho(-1)} disabled={!podeEsq}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg></button>
+                <button className="v2-seta d" type="button" aria-label={tr('home.clientes-mais')} onClick={() => rolarTrilho(1)} disabled={!podeDir}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg></button>
               <div className="v2-trilho" ref={trilhoRef} onScroll={medirTrilho}>
                 {dados.clientes.map(c => {
                   const parado = c.lado === 'cliente' && (c.diasParado || 0) >= 3
                   return (
                     <button key={c.id} className={`v2-cli${parado ? ' parado' : ''}`} onClick={() => onVerCliente(c.id)} type="button">
-                      {c.lado === 'cliente' && typeof c.diasParado === 'number' && c.diasParado > 0 && <div className="dias">{c.diasParado}<small>{c.diasParado === 1 ? 'dia' : 'dias'}</small></div>}
+                      {c.lado === 'cliente' && typeof c.diasParado === 'number' && c.diasParado > 0 && <div className="dias">{c.diasParado}<small>{tr(c.diasParado === 1 ? 'comum.dia' : 'comum.dias')}</small></div>}
                       <div className="logo" style={c.cor ? { background: c.cor } : undefined}>{c.logo ? <img src={c.logo} alt="" /> : iniciais(c.nome)}</div>
-                      {c.fase === 'onboarding' && <span className="v2-fase">Onboarding</span>}
+                      {c.fase === 'onboarding' && <span className="v2-fase">{tr('home.fase-entrada')}</span>}
                       <p className="nome">{c.nome}</p>
-                      <p className="estado">{c.lado === 'ninguem' ? 'Nada pendente.' : <>{c.frase}{c.primeiro ? <> — <b style={{ fontWeight: 500 }}>{c.primeiro}</b></> : null}</>}</p>
-                      <span className={`v2-bola ${c.lado}${parado ? ' parado' : ''}`}>{c.lado === 'cliente' ? 'Com o cliente' : c.lado === 'agencia' ? 'Com a equipe' : 'Em dia'}</span>
+                      <p className="estado">{c.lado === 'ninguem' ? tr('home.nada-pendente') : <>{c.frase}{c.primeiro ? <> — <b style={{ fontWeight: 500 }}>{c.primeiro}</b></> : null}</>}</p>
+                      <span className={`v2-bola ${c.lado}${parado ? ' parado' : ''}`}>{tr(c.lado === 'cliente' ? 'home.com-cliente' : c.lado === 'agencia' ? 'home.com-equipe' : 'home.em-dia')}</span>
                     </button>
                   )
                 })}
@@ -334,25 +348,25 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
 
             <div className="v2-duas v2-a d4">
               <section id="v2-fila" className="v2-card" style={{ margin: 0 }}>
-                <h3>{dados.vendoComo ? `Fila de ${dados.vendoComo.nome.split(' ')[0]}` : 'Sua fila'} <span>{dados.fila.length} {dados.fila.length === 1 ? 'tarefa' : 'tarefas'}</span></h3>
-                {dados.fila.length === 0 && <p className="v2-vazio">Nenhuma tarefa aberta.</p>}
+                <h3>{dados.vendoComo ? `${tr('home.fila-de')} ${dados.vendoComo.nome.split(' ')[0]}` : tr('home.sua-fila')} <span>{dados.fila.length} {tr(dados.fila.length === 1 ? 'comum.tarefa' : 'comum.tarefas')}</span></h3>
+                {dados.fila.length === 0 && <p className="v2-vazio">{tr('home.sem-tarefas')}</p>}
                 {dados.fila.map(t => { const pz = prazoCurto(t.prazo); return (
                   <div key={t.id} className="v2-t" role="button" tabIndex={0} onClick={() => onIr('tarefas')} onKeyDown={e => { if (e.key === 'Enter') onIr('tarefas') }} style={{ cursor: 'pointer' }}>
-                    <div className="tx"><p>{t.titulo}</p><small>{[t.clienteNome, t.status === 'em_revisao' ? 'Em revisão' : t.status === 'em_andamento' ? 'Em andamento' : 'A fazer', t.anexos ? `${t.anexos} anexo${t.anexos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</small></div>
-                    {t.tipo && <span className="v2-tipo">{TIPO_ROTULO[t.tipo] || t.tipo}</span>}
+                    <div className="tx"><p>{t.titulo}</p><small>{[t.clienteNome, tr(t.status === 'em_revisao' ? 'status.em_revisao' : t.status === 'em_andamento' ? 'status.em_andamento' : 'status.a_fazer'), t.anexos ? `${t.anexos} anexo${t.anexos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</small></div>
+                    {t.tipo && <span className="v2-tipo">{TEM_TIPO(t.tipo) ? tr(`tipo.${t.tipo}`) : t.tipo}</span>}
                     <span className={`v2-prazo${pz.hoje ? ' hoje' : ''}${pz.atrasada ? ' atrasada' : ''}`}>{pz.t}</span>
                   </div>
                 ) })}
               </section>
 
               <section id="v2-chegou" className="v2-card" style={{ margin: 0 }}>
-                <h3>Chegou do cliente <span>últimas 24h</span></h3>
-                {dados.chegou.length === 0 && <p className="v2-vazio">Nada nas últimas 24 horas.</p>}
+                <h3>{tr('home.chegou')} <span>{tr('home.ultimas-24h')}</span></h3>
+                {dados.chegou.length === 0 && <p className="v2-vazio">{tr('home.sem-chegou')}</p>}
                 {dados.chegou.map(l => (
                   <div key={l.id} className="v2-sol">
                     <span className="av">{iniciais(l.clienteNome)}</span>
                     <div style={{ minWidth: 0 }}><p><b>{l.clienteNome}</b> {l.acao.charAt(0).toLowerCase() + l.acao.slice(1)}</p><small>{haQuanto(l.ts)}{l.resumo ? ` · ${l.resumo.slice(0, 60)}${l.resumo.length > 60 ? '…' : ''}` : ''}</small></div>
-                    <button className="acao" onClick={() => onIr('solicitacoes')}>{ACAO_CHEGOU[l.tipo] || 'Ver'}</button>
+                    <button className="acao" onClick={() => onIr('solicitacoes')}>{TEM_ACAO(l.tipo) ? tr(`acao.${l.tipo}`) : tr('acao.aprovacao')}</button>
                   </div>
                 ))}
               </section>
@@ -364,23 +378,23 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
       </div>
 
       {paleta && (
-        <div className="v2-veu" role="dialog" aria-modal="true" aria-label="Buscar ou executar comando" onClick={e => { if (e.target === e.currentTarget) setPaleta(false) }}>
+        <div className="v2-veu" role="dialog" aria-modal="true" aria-label={tr('home.busca-aria')} onClick={e => { if (e.target === e.currentTarget) setPaleta(false) }}>
           <div className="v2-pal">
-            <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setSel(0) }} placeholder="Digite um cliente, uma tarefa ou um comando…" autoComplete="off"
+            <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setSel(0) }} placeholder={tr('home.busca-placeholder')} autoComplete="off"
               onKeyDown={e => {
                 if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => (s + 1) % Math.max(filtrados.length, 1)) }
                 else if (e.key === 'ArrowUp') { e.preventDefault(); setSel(s => (s - 1 + Math.max(filtrados.length, 1)) % Math.max(filtrados.length, 1)) }
                 else if (e.key === 'Enter') { e.preventDefault(); const it = filtrados[sel]; if (it) { setPaleta(false); it.ir() } }
               }} />
             <ul>
-              {filtrados.length === 0 && <li style={{ color: 'var(--v2-ink3)', cursor: 'default', justifyContent: 'center' }}>Nada com “{q}”.</li>}
+              {filtrados.length === 0 && <li style={{ color: 'var(--v2-ink3)', cursor: 'default', justifyContent: 'center' }}>{tr('home.busca-vazia')} “{q}”.</li>}
               {filtrados.slice(0, 40).map((it, n) => (
                 <li key={`${it.k}-${it.t}-${n}`} className={n === sel ? 'sel' : ''} onMouseEnter={() => setSel(n)} onClick={() => { setPaleta(false); it.ir() }}>
                   <span className="k">{it.k}</span>{it.t}{it.d && <span className="d">{it.d}</span>}
                 </li>
               ))}
             </ul>
-            <div className="rod"><span><kbd>↑</kbd><kbd>↓</kbd>navegar</span><span><kbd>↵</kbd>abrir</span><span><kbd>esc</kbd>fechar</span></div>
+            <div className="rod"><span><kbd>↑</kbd><kbd>↓</kbd>{tr('home.navegar')}</span><span><kbd>↵</kbd>{tr('home.abrir')}</span><span><kbd>esc</kbd>{tr('home.fechar')}</span></div>
           </div>
         </div>
       )}

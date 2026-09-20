@@ -33,8 +33,10 @@ describe('i18n — os outros idiomas', () => {
   })
 
   it('toda chave tem português e inglês; espanhol pode faltar e cai no português', () => {
-    const semIngles = Object.entries(TEXTOS).filter(([, v]) => !v.pt?.trim() || !v.en?.trim())
+    const semIngles = Object.entries(TEXTOS).filter(([, v]) => !v.pt?.trim() || v.en === undefined)
     expect(semIngles).toEqual([])
+    // texto vazio de propósito (o "há" de "há 5 min" não existe em inglês) não vira português
+    expect(t('tempo.ha', 'en')).toBe('')
     expect(t('nav.planner', 'es')).toBe('Programador de publicaciones')
     expect(t('termo.quadro', 'es')).toBe('Tablero')
   })

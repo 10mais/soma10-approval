@@ -6,6 +6,7 @@ import { clientesAtivosIds } from '@/lib/cache'
 import { listarLogsCliente } from '@/lib/logCliente'
 import { montarContexto, reguaDoDia, type PostLite } from '@/lib/contextoPessoa'
 import { montarManchete } from '@/lib/manchete'
+import { normalizarIdioma } from '@/lib/i18n'
 import { calcularBola, fraseDaBola } from '@/lib/bolaDaVez'
 import { faseDoCliente } from '@/lib/faseCliente'
 import { eventosDeHoje, agendaConfigurada } from '@/lib/googleCalendar'
@@ -36,11 +37,16 @@ export async function GET(req: NextRequest) {
     if (u && u.role !== 'cliente') { pessoa = { nome: u.nome || como, email: como }; vendoComo = pessoa }
   }
 
+  // IDIOMA de quem está lendo: a manchete é montada aqui, então precisa sair traduzida
+  // (lib/manchete fala pt/en/es). Quem escolhe é o dono da sessão, não o "ver como".
+  const usuarioLogado = await redis.get<Usuario>(`usuario:${String(su.email || '').toLowerCase()}`).catch(() => null)
+  const idiomaPessoa = normalizarIdioma(usuarioLogado?.idioma)
+
   // CACHE por pessoa (60s). A Home remonta a cada volta ao Painel e refazia a
   // varredura inteira de posts/tarefas/reuniões — 8 chamadas em 55s nos logs
   // de 06/09. Um minuto de cache elimina isso; quem aprovar/mover algo vê o
   // reflexo no próximo minuto, ou na hora com ?fresh=1.
-  const chaveCache = `home:cache:${pessoa.email.toLowerCase()}:${vendoComo ? vendoComo.email : ''}`
+  const chaveCache = `home:cache:${pessoa.email.toLowerCase()}:${vendoComo ? vendoComo.email : ''}:${idiomaPessoa}`
   if (!fresh) {
     const emCache = await redis.get<any>(chaveCache).catch(() => null)
     if (emCache && emCache.geradoEm && agora - emCache.geradoEm < 60000) {
@@ -69,7 +75,8 @@ export async function GET(req: NextRequest) {
 
   // 1) Manchete pessoal
   const contexto = montarContexto(pessoa, P, T as any, R, agora)
-  const manchete = montarManchete(contexto, agora)
+  // A manchete sai no idioma de quem está lendo (lib/i18n): a frase é montada aqui, no servidor.
+  const manchete = montarManchete(contexto, agora, idiomaPessoa as 'pt' | 'en' | 'es')
 
   // 2) Régua do dia: posts + reuniões + Google Agenda (quando configurada)
   const agenda = await eventosDeHoje(agora)

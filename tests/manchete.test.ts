@@ -133,3 +133,28 @@ describe('dia tranquilo', () => {
     expect(m.tom).toBe('tranquilo')
   })
 })
+
+// Dono, 20/09: o sistema fala português, inglês e espanhol — e a manchete é montada no
+// SERVIDOR, então ela também precisa sair traduzida.
+describe('manchete em outros idiomas', () => {
+  const c = {
+    tarefas: [{ titulo: 'Carrossel', prazo: new Date(Date.now() - 86400000).toISOString(), status: 'a_fazer' }],
+    aprovacoes: [], ajustes: [], publicaHoje: 2, reunioes: [],
+  }
+  it('inglês: a mesma fila sai em inglês, com os números destacados', () => {
+    const m = montarManchete(c, Date.now(), 'en')
+    const t = textoDaManchete(m)
+    expect(t).toContain('task is overdue')
+    expect(t).toContain('posts of yours go live')
+    expect(/[ãõçáéí]/.test(t)).toBe(false)
+    expect(m.partes.filter(p => p.destaque).length).toBeGreaterThan(0)
+  })
+  it('espanhol responde, e idioma desconhecido cai no português', () => {
+    expect(textoDaManchete(montarManchete(c, Date.now(), 'es'))).toContain('tarea está atrasada')
+    expect(textoDaManchete(montarManchete(c, Date.now(), 'klingon' as any))).toContain('tarefa está atrasada')
+  })
+  it('fila vazia também fala inglês', () => {
+    const vazio = { tarefas: [], aprovacoes: [], ajustes: [], publicaHoje: 0, reunioes: [] }
+    expect(textoDaManchete(montarManchete(vazio, Date.now(), 'en'))).toContain('Queue is clear')
+  })
+})
