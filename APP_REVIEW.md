@@ -3,7 +3,19 @@
 Guia completo para submeter o app à análise da Meta e sair do modo Desenvolvimento.
 App: **Soma10** · Produto: **Instagram API (com login do Instagram)** · Empresa: **Grupo 10+**
 
-> ## ESTADO (2026-08-25) — leia antes
+> ## ESTADO (2026-09-20) — leia antes
+> - **3ª reprovação em 14/09** (envio de 04/09, roteiro v2 A1+A2): as mesmas 5 permissões,
+>   o mesmo texto genérico da Política 1.6. O revisor listou: login completo da Meta, o
+>   usuário concedendo a permissão, a experiência completa do caso de uso, **interface em
+>   INGLÊS com dicas de ferramenta**, e declarar se é servidor-a-servidor.
+> - **Reenvio v3 (§3.1):** UM vídeo por grupo de permissão, take único, janela anônima
+>   começando deslogado, painel e CONTA da Meta em inglês, narração dizendo o nome da
+>   permissão no consentimento e no uso. Tabela cena a cena pronta, e as instruções do
+>   envio por grupo na §3.4-v3.
+> - Aprovadas e fora desta rodada: `instagram_business_basic`,
+>   `instagram_business_manage_messages`, `public_profile`.
+>
+> ## ESTADO (2026-08-25) — histórico
 > - **Business Verification: CONCLUÍDA** ✅ ("GRUPO 10+ LTDA", 17/05/2026).
 > - **App: PUBLICADO (Live)** ✅ · **DM funcionando ponta a ponta desde 03/07**.
 > - **RESULTADO DA ANÁLISE (envio de 20/08, respondido em 20/08):** parcial.
