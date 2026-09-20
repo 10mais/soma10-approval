@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useState } from 'react'
 import { labelFormato, seloFormato } from '@/lib/formatoPost'
 import { createPortal } from 'react-dom'
@@ -31,6 +32,7 @@ const campoAj: React.CSSProperties = { width: '100%', padding: '11px 13px', bord
 type ProgItem = { id: string; dataAgendada: string; formato: string; status: string; capa: string; legenda: string; imagens?: string[]; capasVideo?: Record<string, string> }
 
 export default function AprovacoesPublicas() {
+  const tr = useT()
   const { token } = useParams()
   const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
@@ -59,8 +61,8 @@ export default function AprovacoesPublicas() {
 
   async function carregar() {
     const d = await fetch(`/api/aprovacao-link?token=${token}`).then(r => r.json()).catch(() => null)
-    if (d?.suspenso) { setErro('Este acesso está temporariamente suspenso por pendência de pagamento. Fale com a nossa equipe para regularizar.'); setDados({ posts: [] }); return }
-    if (!d || d.error) { setErro(d?.error || 'Não foi possível carregar.'); setDados({ posts: [] }); return }
+    if (d?.suspenso) { setErro(tr('aprov.acesso-suspenso')); setDados({ posts: [] }); return }
+    if (!d || d.error) { setErro(d?.error || tr('aprov.falha-carregar')); setDados({ posts: [] }); return }
     setDados(d)
   }
   useEffect(() => { carregar() }, [token])
@@ -112,7 +114,7 @@ export default function AprovacoesPublicas() {
         {erro && <p style={{ color: '#b91c1c', fontSize: 14 }}>{erro}</p>}
         {!erro && dados.posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--v2-ink)', margin: '0 0 6px' }}>Tudo aprovado.</p>
+            <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--v2-ink)', margin: '0 0 6px' }}>{tr('aprov.tudo-aprovado')}</p>
             <p style={{ fontSize: 14, color: 'var(--v2-ink3)', margin: 0 }}>Não há materiais aguardando sua aprovação no momento.{temProg ? ' Veja ao lado o que está programado.' : ''}</p>
           </div>
         )}
@@ -121,8 +123,8 @@ export default function AprovacoesPublicas() {
           const ajuste = dados.posts.length - aguardando
           return (
             <p style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--v2-ink2)' }}>
-              {aguardando > 0 ? <><strong>{aguardando}</strong> {aguardando === 1 ? 'material aguardando' : 'materiais aguardando'} sua aprovação.</> : 'Nada aguardando sua aprovação.'}
-              {ajuste > 0 ? <> <strong>{ajuste}</strong> em ajuste.</> : ''} Analise cada um abaixo.
+              {aguardando > 0 ? tr('aprov.n-aguardando', { n: aguardando }) : tr('aprov.nada-aguardando')}
+              {ajuste > 0 ? tr('aprov.n-em-ajuste', { n: ajuste }) : ''}{tr('aprov.analise-abaixo')}
             </p>
           )
         })()}
@@ -155,6 +157,7 @@ export default function AprovacoesPublicas() {
 // Painel "Programação de postagens": a cascata do que já está aprovado —
 // próxima postagem em destaque e as demais em seguida. Lista ou calendário.
 function Programacao({ itens }: { itens: ProgItem[] }) {
+  const tr = useT()
   const [vista, setVista] = useState<'lista' | 'calendario'>('lista')
   const [mesBase, setMesBase] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [diaSel, setDiaSel] = useState('')
@@ -165,12 +168,12 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
   const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const porDia = itens.reduce((acc: Record<string, ProgItem[]>, it) => { const k = ymd(new Date(it.dataAgendada)); (acc[k] = acc[k] || []).push(it); return acc }, {})
-  const STATUS_ROTULO: Record<string, [string, string, string]> = { agendado: ['Agendado', '#166534', '#dcfce7'], publicando: ['Publicando', '#1d4ed8', '#eff6ff'], publicado: ['Publicado', '#475569', '#f1f5f9'] }
+  const STATUS_ROTULO: Record<string, [string, string, string]> = { agendado: [tr('aprov.status-agendado'), '#166534', '#dcfce7'], publicando: [tr('aprov.status-publicando'), '#1d4ed8', '#eff6ff'], publicado: [tr('aprov.status-publicado'), '#475569', '#f1f5f9'] }
 
   const Linha = ({ it, destaque }: { it: ProgItem; destaque?: boolean }) => {
     const [rot, cor, bg] = STATUS_ROTULO[it.status] || STATUS_ROTULO.agendado
     return (
-      <div onClick={() => { setSlide(0); setPreview(it) }} title="Ver prévia do criativo"
+      <div onClick={() => { setSlide(0); setPreview(it) }} title={tr('aprov.ver-previa-criativo')}
         style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: destaque ? '#fffbeb' : '#fff', borderTop: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
         {it.capa
           ? <img src={it.capa} alt="" style={{ width: 34, height: 42, objectFit: 'cover', borderRadius: 7, flexShrink: 0, background: 'var(--v2-surface2)' }} />
@@ -179,7 +182,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
             </div>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>
-            {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>Próxima:</span>}
+            {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>{tr('aprov.proxima')}</span>}
             {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {labelFormato(it.formato)}</span>
           </p>
           {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
@@ -193,12 +196,12 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
     <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden' }}>
       <div style={{ padding: '12px 14px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Programação</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('aprov.programacao')}</p>
           <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{itens.length} postagem(ns) a caminho</p>
         </div>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 8, padding: 2 }}>
           {(['lista', 'calendario'] as const).map(v => (
-            <button key={v} onClick={() => setVista(v)} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{v === 'lista' ? 'Lista' : 'Calendário'}</button>
+            <button key={v} onClick={() => setVista(v)} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, background: vista === v ? '#fff' : 'transparent', color: vista === v ? '#111' : '#888', boxShadow: vista === v ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{v === 'lista' ? 'Lista' : tr('aprov.calendario')}</button>
           ))}
         </div>
       </div>
@@ -239,7 +242,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
               })}
             </div>
             {diaSel && doDia.length > 0 && <div style={{ marginTop: 8, borderTop: '1px solid var(--v2-rule)' }}>{doDia.map(it => <Linha key={it.id} it={it} />)}</div>}
-            {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', textAlign: 'center' }}>Toque num dia marcado para ver as postagens.</p>}
+            {!diaSel && <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', textAlign: 'center' }}>{tr('aprov.toque-num-dia-marcado-ver-post')}</p>}
           </div>
         )
       })()}
@@ -260,7 +263,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
                 {atual ? (video
                   ? <video key={atual} src={atual} controls playsInline poster={(preview.capasVideo || {})[atual]} style={{ width: '100%', maxHeight: '62vh', display: 'block' }} />
                   : <img key={atual} src={atual} alt="" style={{ width: '100%', maxHeight: '62vh', objectFit: 'contain', display: 'block' }} />)
-                  : <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 12.5, lineHeight: 1.5 }}>Sem mídia para exibir.</div>}
+                  : <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 12.5, lineHeight: 1.5 }}>{tr('aprov.sem-midia-exibir')}</div>}
                 {imgs.length > 1 && (<>
                   {slide > 0 && <button onClick={() => setSlide(s => s - 1)} style={{ position: 'absolute', top: '50%', left: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer' }}>‹</button>}
                   {slide < imgs.length - 1 && <button onClick={() => setSlide(s => s + 1)} style={{ position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', color: 'var(--v2-ink)', border: 'none', fontSize: 18, cursor: 'pointer' }}>›</button>}
@@ -289,6 +292,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
 // o cliente.logo quebrado e, no pior caso, devolve um SVG com a inicial. Por isso o
 // card não recebe mais `logo`/`logoAlt`: eram props mortas que fingiam ser fallback.
 function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: string; handle: string; onDecidido: () => void }) {
+  const tr = useT()
   const [cur, setCur] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')          // observação geral do ajuste / motivo da reprovação
@@ -340,7 +344,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
     setEnviando(true)
     const r = await fetch('/api/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: post.id, type, rejectReason: opts?.motivo || '', token, novaLegenda: opts?.novaLegenda, novaData: opts?.novaData, annotations: type === 'corrected' ? annotations : [] }) }).then(x => x.json()).catch(() => null)
     setEnviando(false)
-    if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
+    if (!r?.ok) { toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
     if (type === 'corrected') {
       // Só legenda/data, sem marcação no layout: o servidor APLICA e reprograma na
       // hora (não há retrabalho). O card não pode dizer "em ajuste" nesse caso.
@@ -348,7 +352,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         const quando = r.agendadoPara ? new Date(r.agendadoPara) : null
         toast(quando
           ? `Pronto! Ajustes aplicados e publicação reprogramada para ${quando.toLocaleString('pt-BR')}.`
-          : 'Pronto! Ajustes aplicados — a publicação segue programada.', 'sucesso')
+          : tr('aprov.ajustes-aplicados'), 'sucesso')
         onDecidido()
         return
       }
@@ -360,16 +364,16 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         anotacoes: annotations, motivoReprovacao: opts?.motivo || '',
       }))
       setModo('view')
-      toast('Ajustes enviados! O criativo fica marcado como EM AJUSTE — você pode editar o pedido quando quiser.', 'sucesso')
+      toast(tr('aprov.ajustes-enviados-criativo'), 'sucesso')
       return
     }
-    toast(type === 'approved' ? (opts?.novaLegenda ? 'Legenda corrigida e aprovado!' : 'Aprovado!') : 'Reprovado.', type === 'rejected' ? 'erro' : 'sucesso')
+    toast(type === 'approved' ? (opts?.novaLegenda ? tr('aprov.legenda-corrigida') : tr('aprov.aprovado-ok')) : tr('aprov.reprovado-ok'), type === 'rejected' ? 'erro' : 'sucesso')
     onDecidido()
   }
 
   function enviarAjuste() {
     if (annotations.length === 0 && !texto.trim() && !legendaMudou && !dataMudou) {
-      toast('Faça pelo menos um ajuste (legenda, layout ou data) antes de enviar.', 'erro'); return
+      toast(tr('aprov.faca-um-ajuste'), 'erro'); return
     }
     decidir('corrected', { motivo: texto.trim() || undefined, novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataMudou ? dataTxt : undefined })
   }
@@ -388,7 +392,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
             : inicial}
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{handle}</span>
-        {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>}
+        {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tr('aprov.ajuste')}</span>}
         {seloFormato(post.formato) && (
           <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{seloFormato(post.formato)}</span>
         )}
@@ -429,12 +433,12 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         return (
           <div onClick={() => { setPendingPin(null); setPinText('') }} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
             <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', left, top, width: W, background: 'var(--v2-surface)', borderRadius: 12, padding: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.24)', border: '1px solid var(--v2-rule)', lineHeight: 1.35 }}>
-              <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>O que ajustar aqui?</p>
-              <textarea lang="pt-BR" autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder="Ex.: trocar a cor do título..."
+              <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('aprov.que-ajustar-aqui')}</p>
+              <textarea lang="pt-BR" autoFocus value={pinText} onChange={e => setPinText(e.target.value)} placeholder={tr('aprov.ex-trocar-cor-titulo')}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, resize: 'vertical', minHeight: 52, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4 }} />
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: 'var(--v2-surface2)', color: 'var(--v2-ink2)' }}>Cancelar</button>
-                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: 'var(--v2-ink)', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>Marcar</button>
+                <button onClick={() => { setPendingPin(null); setPinText('') }} style={{ ...mini, background: 'var(--v2-surface2)', color: 'var(--v2-ink2)' }}>{tr('aprov.cancelar')}</button>
+                <button onClick={confirmPin} disabled={!pinText.trim()} style={{ ...mini, background: '#ffc00f', color: 'var(--v2-ink)', cursor: pinText.trim() ? 'pointer' : 'not-allowed', opacity: pinText.trim() ? 1 : 0.6 }}>{tr('aprov.marcar')}</button>
               </div>
             </div>
           </div>
@@ -459,15 +463,15 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
       {/* Info + decisão */}
       <div style={{ padding: '12px 14px 16px', borderTop: '1px solid var(--v2-rule)' }}>
         {st.dataAgendada && (
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}><strong style={{ color: 'var(--v2-ink2)' }}>Publicação prevista:</strong> {new Date(st.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}><strong style={{ color: 'var(--v2-ink2)' }}>{tr('aprov.publicacao-prevista')}</strong> {new Date(st.dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         )}
 
         {/* EM AJUSTE — o criativo fica visível e o cliente pode editar o pedido */}
         {emAjuste && modo === 'view' && (
           <div>
             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#b45309' }}>Em ajuste</p>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#9a6b2e', lineHeight: 1.5 }}>Seu pedido foi enviado para a agência. Enquanto eles trabalham, você pode continuar editando o que pediu.</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#b45309' }}>{tr('aprov.ajuste')}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#9a6b2e', lineHeight: 1.5 }}>{tr('aprov.seu-pedido-foi-enviado-agencia')}</p>
             </div>
             {st.anotacoes.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
@@ -479,10 +483,10 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
                 ))}
               </div>
             )}
-            {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)' }}><strong>Observação:</strong> {st.motivoReprovacao}</p>}
+            {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)' }}><strong>{tr('aprov.observacao')}</strong> {st.motivoReprovacao}</p>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('var(--v2-amber-on)', '#17150E') }}>Editar ajuste</button>
-              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)') }}>Aprovar assim mesmo</button>
+              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('var(--v2-amber-on)', '#17150E') }}>{tr('aprov.editar-ajuste')}</button>
+              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)') }}>{tr('aprov.aprovar-assim-mesmo')}</button>
             </div>
           </div>
         )}
@@ -490,23 +494,23 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {/* Ações padrão (aguardando aprovação) */}
         {!emAjuste && modo === 'view' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>Aprovar</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('var(--v2-amber-on)', '#17150E') }}>Solicitar ajustes</button>
-            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>Rejeitar</button>
+            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>{tr('aprov.aprovar')}</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('var(--v2-amber-on)', '#17150E') }}>{tr('aprov.solicitar-ajustes')}</button>
+            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>{tr('aprov.rejeitar')}</button>
           </div>
         )}
 
         {/* Solicitar ajustes — TUDO num lugar só: legenda + layout + data/hora */}
         {modo === 'ajuste' && (
           <div>
-            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: 'var(--v2-ink)' }}>Solicitar ajustes</p>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Peça tudo de uma vez — legenda, layout e/ou data. Nada é enviado até você clicar em <strong>Enviar solicitação</strong>.</p>
+            <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('aprov.solicitar-ajustes')}</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('aprov.peca-tudo', { botao: tr('aprov.enviar-solicitacao') })}</p>
 
-            <label style={rotuloAj}>Legenda</label>
-            <textarea lang="pt-BR" value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder="Deixe como está ou reescreva do seu jeito..." style={{ ...campoAj, minHeight: 84 }} />
+            <label style={rotuloAj}>{tr('aprov.legenda')}</label>
+            <textarea lang="pt-BR" value={legendaTxt} onChange={e => setLegendaTxt(e.target.value)} placeholder={tr('aprov.deixe-como-esta-ou-reescreva-s')} style={{ ...campoAj, minHeight: 84 }} />
 
-            <label style={{ ...rotuloAj, marginTop: 14 }}>Layout do criativo</label>
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>Clique sobre o criativo acima</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
+            <label style={{ ...rotuloAj, marginTop: 14 }}>{tr('aprov.layout-criativo')}</label>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}><strong style={{ color: '#b45309' }}>{tr('aprov.clique-sobre-criativo-acima')}</strong> para marcar os pontos a corrigir{post.imagens.length > 1 ? ' (em cada slide)' : ''}.</p>
             {annotations.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
                 {annotations.map((a, i) => (
@@ -518,22 +522,22 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
                 ))}
               </div>
             )}
-            <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder="Observação geral sobre o layout (opcional)..." style={{ ...campoAj, minHeight: 56 }} />
+            <textarea lang="pt-BR" value={texto} onChange={e => setTexto(e.target.value)} placeholder={tr('aprov.observacao-geral-sobre-layout')} style={{ ...campoAj, minHeight: 56 }} />
 
-            <label style={{ ...rotuloAj, marginTop: 14 }}>Data e horário da publicação</label>
+            <label style={{ ...rotuloAj, marginTop: 14 }}>{tr('aprov.data-horario-publicacao')}</label>
             <input type="datetime-local" value={dataTxt} onChange={e => setDataTxt(e.target.value)} style={campoAj} />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('var(--v2-surface2)', 'var(--v2-ink2)'), flex: '0 0 auto', padding: '12px 16px' }}>Voltar</button>
+              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('var(--v2-surface2)', 'var(--v2-ink2)'), flex: '0 0 auto', padding: '12px 16px' }}>{tr('aprov.voltar')}</button>
               {(legendaMudou || dataMudou) && annotations.length === 0 && !texto.trim() && (
                 <button onClick={() => dataMudou
                   ? decidir('corrected', { novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataTxt })
                   : decidir('caption', { novaLegenda: legendaTxt })}
                   disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>
-                  {legendaMudou && dataMudou ? 'Aprovar com estes ajustes' : dataMudou ? 'Aprovar nesta data' : 'Aprovar com esta legenda'}
+                  {legendaMudou && dataMudou ? tr('aprov.aprovar-com-ajustes') : dataMudou ? tr('aprov.aprovar-nesta-data') : tr('aprov.aprovar-com-legenda')}
                 </button>
               )}
-              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('var(--v2-amber-on)', '#17150E') }}>{enviando ? '...' : 'Enviar solicitação'}</button>
+              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('var(--v2-amber-on)', '#17150E') }}>{enviando ? '...' : tr('aprov.enviar-solicitacao')}</button>
             </div>
           </div>
         )}
@@ -541,11 +545,11 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         {/* Rejeitar */}
         {modo === 'reject' && (
           <div>
-            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>Motivo da reprovação</p>
-            <textarea lang="pt-BR" autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder="Descreva o motivo..." style={{ ...campoAj, minHeight: 84 }} />
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{tr('aprov.motivo-reprovacao')}</p>
+            <textarea lang="pt-BR" autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder={tr('aprov.descreva-motivo')} style={{ ...campoAj, minHeight: 84 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('var(--v2-surface2)', 'var(--v2-ink2)') }}>Voltar</button>
-              <button onClick={() => { if (!texto.trim()) { toast('Descreva o motivo da reprovação.', 'erro'); return } decidir('rejected', { motivo: texto }) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : 'Confirmar reprovação'}</button>
+              <button onClick={() => { setModo('view'); setTexto('') }} disabled={enviando} style={{ flex: 1, ...btn('var(--v2-surface2)', 'var(--v2-ink2)') }}>{tr('aprov.voltar')}</button>
+              <button onClick={() => { if (!texto.trim()) { toast(tr('aprov.descreva-motivo-reprovacao'), 'erro'); return } decidir('rejected', { motivo: texto }) }} disabled={enviando} style={{ flex: 2, ...btn('#dc2626', '#fff') }}>{enviando ? '...' : tr('aprov.confirmar-reprovacao')}</button>
             </div>
           </div>
         )}
@@ -561,6 +565,7 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
 // e a revisão ponto a ponto (confundiam o cliente). Criativos com arte
 // continuam no PostCard. No celular a grade empilha (rótulo por célula).
 function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: string; onDecidido: (id: string) => void }) {
+  const tr = useT()
   return (
     <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, overflow: 'hidden', marginBottom: 26 }}>
       <style>{`
@@ -574,11 +579,11 @@ function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: str
         }
       `}</style>
       <div style={{ padding: '12px 16px 10px' }}>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Briefings para aprovação</p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Leia cada linha e decida: aprovar, pedir ajustes ou rejeitar. A arte é produzida depois que o texto for aprovado.</p>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('aprov.briefings-aprovacao')}</p>
+        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('aprov.leia-cada-linha-decida-aprovar')}</p>
       </div>
       <div className="copy-tab-head">
-        {['Imagem', 'Copy (texto na imagem)', 'Legenda', 'Aprovação'].map(h => (
+        {[tr('aprov.imagem'), tr('aprov.copy-texto-imagem'), tr('aprov.legenda'), tr('aprov.aprovacao')].map(h => (
           <span key={h} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
         ))}
       </div>
@@ -588,6 +593,7 @@ function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: str
 }
 
 function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number; token: string; onDecidido: () => void }) {
+  const tr = useT()
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [enviando, setEnviando] = useState(false)
   const [obs, setObs] = useState('')
@@ -618,14 +624,14 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
       }),
     }).then(x => x.json()).catch(() => null)
     setEnviando(false)
-    if (!r?.ok) { toast(r?.error || 'Não foi possível registrar.', 'erro'); return }
+    if (!r?.ok) { toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
     if (type === 'corrected') {
       setSt(s => ({ ...s, status: 'corrigir', ...(comCampos ? { ...campos } : {}), obs: obs.trim() }))
       setModo('view')
-      toast('Ajustes enviados! A linha fica marcada como EM AJUSTE — você pode editar o pedido quando quiser.', 'sucesso')
+      toast(tr('aprov.ajustes-enviados-copy'), 'sucesso')
       return
     }
-    toast(type === 'rejected' ? 'Briefing rejeitado.' : 'Briefing aprovado!', type === 'rejected' ? 'erro' : 'sucesso')
+    toast(type === 'rejected' ? tr('aprov.briefing-rejeitado') : tr('aprov.briefing-aprovado'), type === 'rejected' ? 'erro' : 'sucesso')
     onDecidido()
   }
 
@@ -636,13 +642,13 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
     <div className="copy-tab-row" style={{ background: emAjuste ? 'var(--v2-amber-bg)' : 'var(--v2-surface)' }}>
       {/* Col 1 — IMAGEM */}
       <div>
-        <span className="copy-cell-label">Imagem</span>
+        <span className="copy-cell-label">{tr('aprov.imagem')}</span>
         <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {labelFormato(post.formato)}</p>
         {capa
           ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface2)' }} />
           : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9c9ce" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--v2-ink3)', textAlign: 'center', lineHeight: 1.35 }}>Arte produzida após a aprovação do texto</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--v2-ink3)', textAlign: 'center', lineHeight: 1.35 }}>{tr('aprov.arte-produzida-apos-aprovacao')}</span>
             </div>}
         {(post.localAplicacao || post.medidas) && <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{[post.localAplicacao, post.medidas].filter(Boolean).join(' · ')}</p>}
         {post.dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Programado: {new Date(post.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>}
@@ -650,13 +656,13 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
 
       {/* Col 2 — COPY (texto na imagem) */}
       <div style={{ minWidth: 0 }}>
-        <span className="copy-cell-label">Copy (texto na imagem)</span>
+        <span className="copy-cell-label">{tr('aprov.copy-texto-imagem')}</span>
         {modo === 'ajuste' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(st.headline || campos.headline) && <textarea lang="pt-BR" value={campos.headline} onChange={e => setCampos(c => ({ ...c, headline: e.target.value }))} placeholder="Frase principal" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
-            {(st.subheadline || campos.subheadline) && <textarea lang="pt-BR" value={campos.subheadline} onChange={e => setCampos(c => ({ ...c, subheadline: e.target.value }))} placeholder="Frase de apoio" style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
-            {(st.textoImagem || campos.textoImagem) && <textarea lang="pt-BR" value={campos.textoImagem} onChange={e => setCampos(c => ({ ...c, textoImagem: e.target.value }))} placeholder="Texto da arte" style={{ ...campoAj, minHeight: 64, fontSize: 12.5 }} />}
-            {(st.cta || campos.cta) && <textarea lang="pt-BR" value={campos.cta} onChange={e => setCampos(c => ({ ...c, cta: e.target.value }))} placeholder="Chamada final" style={{ ...campoAj, minHeight: 38, fontSize: 12.5 }} />}
+            {(st.headline || campos.headline) && <textarea lang="pt-BR" value={campos.headline} onChange={e => setCampos(c => ({ ...c, headline: e.target.value }))} placeholder={tr('aprov.frase-principal')} style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
+            {(st.subheadline || campos.subheadline) && <textarea lang="pt-BR" value={campos.subheadline} onChange={e => setCampos(c => ({ ...c, subheadline: e.target.value }))} placeholder={tr('aprov.frase-apoio')} style={{ ...campoAj, minHeight: 44, fontSize: 12.5 }} />}
+            {(st.textoImagem || campos.textoImagem) && <textarea lang="pt-BR" value={campos.textoImagem} onChange={e => setCampos(c => ({ ...c, textoImagem: e.target.value }))} placeholder={tr('aprov.texto-arte')} style={{ ...campoAj, minHeight: 64, fontSize: 12.5 }} />}
+            {(st.cta || campos.cta) && <textarea lang="pt-BR" value={campos.cta} onChange={e => setCampos(c => ({ ...c, cta: e.target.value }))} placeholder={tr('aprov.chamada-final')} style={{ ...campoAj, minHeight: 38, fontSize: 12.5 }} />}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -665,50 +671,50 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
             {st.textoImagem && bloco(st.textoImagem)}
             {laminas.map((l, li) => <p key={li} style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}><strong style={{ color: 'var(--v2-ink3)' }}>{li + 1}.</strong> {l.texto}</p>)}
             {st.cta && bloco(st.cta, { fontWeight: 800, color: '#b45309' })}
-            {!st.headline && !st.subheadline && !st.textoImagem && laminas.length === 0 && !st.cta && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem texto de arte — veja a legenda ao lado.</p>}
+            {!st.headline && !st.subheadline && !st.textoImagem && laminas.length === 0 && !st.cta && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('aprov.sem-texto-arte-veja-legenda-ao')}</p>}
           </div>
         )}
       </div>
 
       {/* Col 3 — LEGENDA */}
       <div style={{ minWidth: 0 }}>
-        <span className="copy-cell-label">Legenda</span>
+        <span className="copy-cell-label">{tr('aprov.legenda')}</span>
         {modo === 'ajuste'
-          ? <textarea lang="pt-BR" value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} placeholder="Legenda" style={{ ...campoAj, minHeight: 120, fontSize: 12.5 }} />
-          : (st.legenda ? bloco(st.legenda) : <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Sem legenda.</p>)}
+          ? <textarea lang="pt-BR" value={campos.legenda} onChange={e => setCampos(c => ({ ...c, legenda: e.target.value }))} placeholder={tr('aprov.legenda')} style={{ ...campoAj, minHeight: 120, fontSize: 12.5 }} />
+          : (st.legenda ? bloco(st.legenda) : <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('aprov.sem-legenda')}</p>)}
       </div>
 
       {/* Col 4 — APROVAÇÃO */}
       <div>
-        <span className="copy-cell-label">Aprovação</span>
+        <span className="copy-cell-label">{tr('aprov.aprovacao')}</span>
         {modo === 'view' && !emAjuste && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('#16a34a', '#fff')}>Aprovar</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>Pedir ajustes</button>
-            <button onClick={() => { setObs(''); setModo('reject') }} disabled={enviando} style={mini('#fff', '#dc2626', '#dc2626')}>Rejeitar</button>
+            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('#16a34a', '#fff')}>{tr('aprov.aprovar')}</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{tr('aprov.pedir-ajustes')}</button>
+            <button onClick={() => { setObs(''); setModo('reject') }} disabled={enviando} style={mini('#fff', '#dc2626', '#dc2626')}>{tr('aprov.rejeitar')}</button>
           </div>
         )}
         {modo === 'view' && emAjuste && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Em ajuste</span>
+            <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tr('aprov.ajuste')}</span>
             {st.obs && <p style={{ margin: 0, fontSize: 11.5, color: '#9a6b2e', lineHeight: 1.45 }}>{st.obs}</p>}
-            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>Editar ajuste</button>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)')}>Aprovar assim mesmo</button>
+            <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{tr('aprov.editar-ajuste')}</button>
+            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)')}>{tr('aprov.aprovar-assim-mesmo')}</button>
           </div>
         )}
         {modo === 'ajuste' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <textarea lang="pt-BR" value={obs} onChange={e => setObs(e.target.value)} placeholder="Observação (opcional se você já editou os textos)" style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
-            {mudouAlgo && !obs.trim() && <button onClick={() => decidir('caption', true)} disabled={enviando} style={mini('#16a34a', '#fff')}>Aprovar com meus ajustes</button>}
-            <button onClick={() => { if (!mudouAlgo && !obs.trim()) { toast('Edite algum texto ou escreva uma observação.', 'erro'); return } decidir('corrected', true) }} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{enviando ? '...' : 'Enviar ajustes'}</button>
-            <button onClick={() => setModo('view')} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>Cancelar</button>
+            <textarea lang="pt-BR" value={obs} onChange={e => setObs(e.target.value)} placeholder={tr('aprov.observacao-opcional-se-voce-ja')} style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
+            {mudouAlgo && !obs.trim() && <button onClick={() => decidir('caption', true)} disabled={enviando} style={mini('#16a34a', '#fff')}>{tr('aprov.aprovar-meus-ajustes')}</button>}
+            <button onClick={() => { if (!mudouAlgo && !obs.trim()) { toast(tr('aprov.edite-algo'), 'erro'); return } decidir('corrected', true) }} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{enviando ? '...' : tr('aprov.enviar-ajustes')}</button>
+            <button onClick={() => setModo('view')} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>{tr('aprov.cancelar')}</button>
           </div>
         )}
         {modo === 'reject' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <textarea lang="pt-BR" autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder="Motivo da rejeição..." style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
-            <button onClick={() => { if (!obs.trim()) { toast('Descreva o motivo da rejeição.', 'erro'); return } decidir('rejected', false) }} disabled={enviando} style={mini('#dc2626', '#fff')}>{enviando ? '...' : 'Confirmar rejeição'}</button>
-            <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>Voltar</button>
+            <textarea lang="pt-BR" autoFocus value={obs} onChange={e => setObs(e.target.value)} placeholder={tr('aprov.motivo-rejeicao')} style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
+            <button onClick={() => { if (!obs.trim()) { toast(tr('aprov.descreva-motivo-rejeicao'), 'erro'); return } decidir('rejected', false) }} disabled={enviando} style={mini('#dc2626', '#fff')}>{enviando ? '...' : tr('aprov.confirmar-rejeicao')}</button>
+            <button onClick={() => { setModo('view'); setObs('') }} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>{tr('aprov.voltar')}</button>
           </div>
         )}
       </div>
@@ -717,6 +723,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
 }
 
 function Header({ clienteName, tema, onTema }: { clienteName: string; tema: 'claro' | 'escuro'; onTema: () => void }) {
+  const tr = useT()
   // A logo da agência vem de /api/marca (público). Sem logo configurada (ou se
   // ela falhar ao carregar), o fallback é a LOGOMARCA oficial do Soma10 —
   // /soma10-logo.png, a MESMA da sidebar do painel (o /logo.svg é só o ícone
@@ -733,11 +740,11 @@ function Header({ clienteName, tema, onTema }: { clienteName: string; tema: 'cla
         <img src={src} alt="Soma10" onError={() => setLogoErro(true)}
           style={{ height: 28, maxWidth: 140, objectFit: 'contain', display: 'block' }} />
         {/* Sem o nome escrito ao lado — a logomarca já diz quem é (pedido do dono, 12/08). */}
-        <div style={{ fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Aprovação de Criativos</div>
+        <div style={{ fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{tr('aprov.aprovacao-criativos')}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {clienteName && <div style={{ background: 'var(--v2-surface2)', borderRadius: 999, padding: '5px 13px', fontSize: 12.5, fontWeight: 500, color: 'var(--v2-ink2)' }}>{clienteName}</div>}
-        <button onClick={onTema} type="button" title={tema === 'escuro' ? 'Tema claro' : 'Tema escuro'} aria-label={tema === 'escuro' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+        <button onClick={onTema} type="button" title={tema === 'escuro' ? tr('aprov.tema-claro') : tr('aprov.tema-escuro')} aria-label={tema === 'escuro' ? tr('aprov.tema-claro-mudar') : tr('aprov.tema-escuro-mudar')}
           style={{ width: 36, height: 36, borderRadius: 999, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
           {tema === 'escuro'
             ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
@@ -749,9 +756,10 @@ function Header({ clienteName, tema, onTema }: { clienteName: string; tema: 'cla
 }
 
 function Footer() {
+  const tr = useT()
   return (
     <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '16px 24px', textAlign: 'center', background: 'var(--v2-surface)' }}>
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.12em' }}>SOMA10 APPROVAL · GRUPO 10+</p>
+      <p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)', letterSpacing: '0.12em' }}>{tr('aprov.rodape')}</p>
     </div>
   )
 }

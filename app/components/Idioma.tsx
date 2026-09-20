@@ -27,8 +27,12 @@ export function ProvedorIdioma({ children }: { children: React.ReactNode }) {
     try { local = localStorage.getItem(CHAVE_LOCAL) } catch {}
     if (local) setIdioma(normalizarIdioma(local))
     // Em página pública (link de aprovação, login, status) não há perfil para consultar:
-    // pedir daria 401 a cada abertura, de graça.
-    if (ehRotaPublica(typeof window === 'undefined' ? '' : window.location.pathname)) return
+    // pedir daria 401 a cada abertura, de graça. Quem chega pelo link do cliente nunca
+    // escolheu idioma nenhum, então vale o do navegador dele — é o palpite menos errado.
+    if (ehRotaPublica(typeof window === 'undefined' ? '' : window.location.pathname)) {
+      if (!local) { try { setIdioma(normalizarIdioma(navigator.language)) } catch {} }
+      return
+    }
     // O perfil é a fonte da verdade entre navegadores; só sobrescreve se for diferente.
     fetch('/api/meu-perfil').then(r => (r.ok ? r.json() : null)).then(d => {
       if (!vivo || !d?.idioma) return
